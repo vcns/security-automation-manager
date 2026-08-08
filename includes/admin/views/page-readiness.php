@@ -33,7 +33,7 @@ $status_badge = static function ( string $status ): void {
 
 	<?php if ( 'success' === $reset_result ) : ?>
 		<div class="notice notice-success is-dismissible">
-			<p><?php esc_html_e( 'CSP Automation Manager data has been reset and default profiles have been reseeded.', 'security-automation-manager' ); ?></p>
+			<p><?php esc_html_e( 'Security Automation Manager data has been reset and default profiles have been reseeded.', 'security-automation-manager' ); ?></p>
 		</div>
 	<?php elseif ( 'partial' === $reset_result ) : ?>
 		<div class="notice notice-warning is-dismissible">
@@ -115,7 +115,7 @@ $status_badge = static function ( string $status ): void {
 
 	<h2 id="wp-sam-reset"><?php esc_html_e( 'Reset Plugin Data', 'security-automation-manager' ); ?></h2>
 	<p>
-		<?php esc_html_e( 'This clears CSP Automation Manager custom-table rows and plugin-owned runtime options, then reseeds the default policy profiles needed for a clean start.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'This clears Security Automation Manager custom-table rows and plugin-owned runtime options, then reseeds the default policy profiles needed for a clean start.', 'security-automation-manager' ); ?>
 	</p>
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wp-sam-reset-form">
 		<?php wp_nonce_field( 'wp_sam_reset_data' ); ?>

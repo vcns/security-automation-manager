@@ -1,10 +1,10 @@
-# CSP Automation Manager
+# Security Automation Manager
 
-CSP Automation Manager is a WordPress plugin that helps site owners roll out strict Content Security Policy headers safely and incrementally.
-
-It provides per-surface CSP profiles, nonce injection, source discovery, violation reporting, policy-change review, and audit-first rollout tools.
+Security Automation Manager is a WordPress plugin that automates rollout of strict HTTP security headers. Content Security Policy (CSP) is its most capable pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, and Referrer-Policy as simpler per-surface pillars alongside it.
 
 ## Features
+
+**Content Security Policy**
 
 - Per-surface CSP profiles for `frontend`, `admin`, `login`, and `api`
 - Strict defaults across CSP directives, including `upgrade-insecure-requests`, `child-src`, `fenced-frame-src`, and the `sandbox` document directive
@@ -29,6 +29,14 @@ It provides per-surface CSP profiles, nonce injection, source discovery, violati
 - Conflict detection for competing CSP headers from `.htaccess`, server config, or other security-header plugins
 - Scheduled rescans with audit logging
 
+**Other header pillars**
+
+- X-Frame-Options: per-surface `DENY` or `SAMEORIGIN` (a fallback for browsers that don't honor CSP's `frame-ancestors`)
+- X-Content-Type-Options: per-surface on/off (`nosniff`)
+- Referrer-Policy: per-surface value from the eight standard tokens, defaulting to `strict-origin-when-cross-origin`
+
+These three pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
+
 All features shipped in the WordPress.org package are available locally without payment, remote entitlement checks, trialware-style feature locking, or third-party licensing calls.
 
 ## Requirements
@@ -43,7 +51,7 @@ All features shipped in the WordPress.org package are available locally without 
 Once published to WordPress.org:
 
 1. Go to **Plugins -> Add New Plugin**.
-2. Search for `CSP Automation Manager`.
+2. Search for `Security Automation Manager`.
 3. Click **Install**, then **Activate**.
 
 ### Install from GitHub Releases
