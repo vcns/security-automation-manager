@@ -8,7 +8,7 @@
     stopOnFailure="false"
 >
     <testsuites>
-        <testsuite name="CSP Automation Manager Unit Tests">
+        <testsuite name="Security Automation Manager Unit Tests">
             <directory>test/unit</directory>
         </testsuite>
     </testsuites>
