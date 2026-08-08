@@ -97,6 +97,7 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_policy_change_decisions',
 			null,
 			'wp_sam_decision_rule_evaluations',
+			'wp_sam_pillar_profiles',
 		);
 
 		$this->assertSame(
@@ -193,6 +194,7 @@ class SchemaMigrationTest extends TestCase {
 			'sam_policy_change_decisions',
 			'sam_policy_versions',
 			'sam_decision_rule_evaluations',
+			'sam_pillar_profiles',
 		);
 	}
 }

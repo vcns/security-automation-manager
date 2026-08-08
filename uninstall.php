@@ -23,6 +23,7 @@ $tables = array(
 	'sam_policy_change_decisions',
 	'sam_policy_versions',
 	'sam_decision_rule_evaluations',
+	'sam_pillar_profiles',
 );
 
 foreach ( $tables as $table ) {
