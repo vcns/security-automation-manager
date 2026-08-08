@@ -40,6 +40,10 @@ $simple_pillars = array(
 		'label' => __( 'Referrer-Policy', 'security-automation-manager' ),
 		'page'  => 'security-automation-manager-referrer-policy',
 	),
+	\WP_SAM\Security\Permissions_Policy_Builder::PILLAR_KEY => array(
+		'label' => __( 'Permissions-Policy', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-permissions-policy',
+	),
 );
 ?>
 <div class="wrap wp-sam-wrap">

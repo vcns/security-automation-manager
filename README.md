@@ -34,8 +34,9 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - X-Frame-Options: per-surface `DENY` or `SAMEORIGIN` (a fallback for browsers that don't honor CSP's `frame-ancestors`)
 - X-Content-Type-Options: per-surface on/off (`nosniff`)
 - Referrer-Policy: per-surface value from the eight standard tokens, defaulting to `strict-origin-when-cross-origin`
+- Permissions-Policy: per-surface, per-directive picker (`none` / `self` / `all`) across a starter set of seven browser features (geolocation, camera, microphone, fullscreen, payment, usb, autoplay)
 
-These three pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
+These four pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
 
 All features shipped in the WordPress.org package are available locally without payment, remote entitlement checks, trialware-style feature locking, or third-party licensing calls.
 

@@ -8,13 +8,13 @@ Stable tag: 1.0.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Automates strict HTTP security header rollout -- Content Security Policy, X-Frame-Options, X-Content-Type-Options, and Referrer-Policy -- with violation reporting, source discovery, and policy-change review for WordPress.
+Automates strict HTTP security header rollout -- Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy -- with violation reporting, source discovery, and policy-change review for WordPress.
 
 == Description ==
 
-Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, and Referrer-Policy are simpler per-surface pillars alongside it.
+Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy are simpler per-surface pillars alongside it.
 
-The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other three pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
+The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other four pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
 
 == External services ==
 

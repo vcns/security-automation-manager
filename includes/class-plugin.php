@@ -22,6 +22,7 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
+use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
@@ -45,6 +46,7 @@ final class Plugin {
 	public X_Frame_Options_Builder $x_frame_options_builder;
 	public X_Content_Type_Options_Builder $x_content_type_options_builder;
 	public Referrer_Policy_Builder $referrer_policy_builder;
+	public Permissions_Policy_Builder $permissions_policy_builder;
 	private Learning_Window $learning_window;
 
 	/**
@@ -105,6 +107,7 @@ final class Plugin {
 		$this->x_frame_options_builder        = new X_Frame_Options_Builder();
 		$this->x_content_type_options_builder = new X_Content_Type_Options_Builder();
 		$this->referrer_policy_builder        = new Referrer_Policy_Builder();
+		$this->permissions_policy_builder     = new Permissions_Policy_Builder();
 		$this->learning_window                = new Learning_Window();
 
 		// Hash manager: instantiated here so Scheduler can read captured_hashes
@@ -118,6 +121,7 @@ final class Plugin {
 		$this->x_frame_options_builder->register();
 		$this->x_content_type_options_builder->register();
 		$this->referrer_policy_builder->register();
+		$this->permissions_policy_builder->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already
