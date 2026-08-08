@@ -112,7 +112,7 @@ final class Github_Update_Checker {
 		}
 
 		$info                = new stdClass();
-		$info->name          = $remote->name ?? 'CSP Automation Manager';
+		$info->name          = $remote->name ?? 'Security Automation Manager';
 		$info->slug          = self::SLUG;
 		$info->version       = $remote->version;
 		$info->author        = '<a href="' . esc_url( $remote->author_homepage ?? '' ) . '">'
@@ -168,11 +168,11 @@ final class Github_Update_Checker {
 
 		$remote = $this->get_remote_info();
 		if ( null === $remote || empty( $remote->download_url ) || $package !== $remote->download_url ) {
-			return new WP_Error( 'wp_sam_update_metadata_unavailable', 'CSP Automation Manager update metadata could not be verified.' );
+			return new WP_Error( 'wp_sam_update_metadata_unavailable', 'Security Automation Manager update metadata could not be verified.' );
 		}
 
 		if ( empty( $remote->sha256 ) || ! $this->is_valid_sha256( (string) $remote->sha256 ) ) {
-			return new WP_Error( 'wp_sam_update_checksum_missing', 'CSP Automation Manager update package checksum is missing or invalid.' );
+			return new WP_Error( 'wp_sam_update_checksum_missing', 'Security Automation Manager update package checksum is missing or invalid.' );
 		}
 
 		if ( ! function_exists( 'download_url' ) ) {
@@ -190,7 +190,7 @@ final class Github_Update_Checker {
 				wp_delete_file( $file );
 			}
 
-			return new WP_Error( 'wp_sam_update_checksum_mismatch', 'CSP Automation Manager update package checksum verification failed.' );
+			return new WP_Error( 'wp_sam_update_checksum_mismatch', 'Security Automation Manager update package checksum verification failed.' );
 		}
 
 		return $file;

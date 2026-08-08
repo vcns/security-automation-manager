@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin view: CSP Automation Manager dashboard.
+ * Admin view: CSP dashboard.
  * Shows per-surface policy profiles, source inventory, violations, scan log.
  * Rendered by Admin_UI::render_dashboard().
  */

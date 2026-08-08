@@ -2,7 +2,7 @@
 
 ## Purpose
 
-CSP Automation Manager is a WordPress plugin that helps site owners roll out strict Content Security Policy controls without maintaining the entire policy by hand. It combines local discovery and policy management with optional entitlement-gated premium capabilities. Billing and account management are expected to move through VCNS licensing services rather than being owned by the CSP runtime.
+Security Automation Manager is a WordPress plugin that helps site owners roll out strict HTTP security headers without maintaining the policy by hand. Content Security Policy is its most capable pillar -- combining local discovery and policy management with optional entitlement-gated premium capabilities -- with simpler per-surface pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy) alongside it. Billing and account management are expected to move through VCNS licensing services rather than being owned by the CSP runtime.
 
 ## Primary design principles
 
@@ -73,6 +73,20 @@ Responsibilities:
 - run scheduled and manual scans (including post-scan violation purge)
 - detect conflicting CSP headers from WordPress filters, `.htaccess`, server configuration, or other security-header plugins
 
+### Shared header envelope and simple pillars
+
+`includes/security/*`
+
+`Header_Builder` (`includes/security/class-header-builder.php`) is the pillar-agnostic envelope every header pillar registers on `send_headers`/`wp_redirect`: the `header_emitted`/`headers_sent()` guard, the internal conflict-probe suppression, and surface detection. CSP's `Policy_Builder` extends it directly, since CSP's own storage (`csp_policy_profiles`) and header assembly (directives, overrides, strict-dynamic, Reporting API) are too specific to share.
+
+`Pillar_Header_Builder` extends `Header_Builder` for pillars simple enough to store their per-surface state as a single JSON `payload` in the shared `sam_pillar_profiles` table rather than CSP's directive/override shape:
+
+- **X-Frame-Options** (`X_Frame_Options_Builder`) -- per-surface `DENY` or `SAMEORIGIN`. CSP's `frame-ancestors` directive supersedes this header in browsers that support it; this remains a fallback for older browsers. `ALLOW-FROM` is deliberately not offered (deprecated, unsupported by modern browsers).
+- **X-Content-Type-Options** (`X_Content_Type_Options_Builder`) -- per-surface on/off. `nosniff` is the only defined value, so there is nothing to configure beyond enabling it.
+- **Referrer-Policy** (`Referrer_Policy_Builder`) -- per-surface value from the eight standard tokens, defaulting to `strict-origin-when-cross-origin`. HTTP header only; no `<meta name="referrer">` injection.
+
+None of these three pillars have a report-only mode (browsers don't support one for these headers), a discovery workflow, or Decision Engine wiring -- each is either sent exactly as configured, or not sent at all. `sam_pillar_profiles` and `Automation_Config`/`Decision_Engine`/`Policy_Change_Manager` remain unconnected until a future pillar (Permissions-Policy is the leading candidate) actually needs discovery or risk-scoring.
+
 ### Entitlement and payment runtime
 
 `includes/modules/*`
@@ -94,7 +108,7 @@ Responsibilities:
 
 Responsibilities:
 
-- render dashboard, settings, policy audit, and readiness pages
+- render the Overview, CSP dashboard/settings, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, policy audit, and readiness pages
 - support source review and mode switching
 - trigger scans and config refreshes
 - surface one-per-session warnings for known platform constraints (e.g. wp-admin strict CSP limitation)
