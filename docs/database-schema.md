@@ -333,7 +333,7 @@ Key columns:
 - `pillar` — e.g. `x-frame-options`, `x-content-type-options`, `referrer-policy`
 - `surface` — `frontend` | `admin` | `login` | `api`
 - `enabled`
-- `payload` — JSON, shape is pillar-specific (e.g. `{"value": "SAMEORIGIN"}`)
+- `payload` — JSON, shape is pillar-specific (e.g. `{"value": "SAMEORIGIN"}`); the column is `NOT NULL`, so a pillar with no configurable value (e.g. X-Content-Type-Options) must still store valid JSON such as `{}` rather than an empty string
 - `override_expires_at`, `override_owner`
 - `created_at`, `updated_at`
 

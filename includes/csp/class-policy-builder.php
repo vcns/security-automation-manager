@@ -22,6 +22,10 @@
  * FIX: source host values are sanitised with sanitize_text_field() rather than
  * esc_attr(). esc_attr() HTML-encodes characters such as & which are invalid
  * in HTTP header values and would produce a malformed CSP directive.
+ *
+ * Extends Header_Builder, which owns the pillar-agnostic envelope: hook
+ * registration, the header_emitted/headers_sent() guard, and surface
+ * detection. See includes/security/class-header-builder.php.
  */
 
 declare( strict_types=1 );
