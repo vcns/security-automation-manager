@@ -14,7 +14,7 @@ declare( strict_types=1 );
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
 define( 'WP_SAM_VERSION',        '1.0.16' );
-define( 'WP_SAM_DB_VERSION',     '9' );
+define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
 define( 'WP_SAM_URL',            'https://example.com/wp-content/plugins/security-automation-manager/' );

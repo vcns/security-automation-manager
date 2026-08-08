@@ -15,6 +15,7 @@ The plugin creates custom tables on activation. All table names are prefixed wit
 | v7 | decision provenance columns, policy version snapshots, deterministic rule evaluations, and manual automation defaults |
 | v8 | adds `last_seen_at` and `source_host` indexes to `csp_source_inventory`, and an `occurrence_count` index to `csp_violation_reports`, for the sortable/filterable dashboard tables |
 | v9 | renames the shared/generic tables (`csp_scan_logs`→`sam_scan_logs`, `csp_entitlements`→`sam_entitlements`, `csp_processed_events`→`sam_processed_events`, `csp_audit_log`→`sam_audit_log`, `csp_policy_change_decisions`→`sam_policy_change_decisions`, `csp_policy_versions`→`sam_policy_versions`, `csp_decision_rule_evaluations`→`sam_decision_rule_evaluations`) via `RENAME TABLE`, ahead of multi-pillar support. The four CSP-owned tables (`csp_policy_profiles`, `csp_source_inventory`, `csp_hash_inventory`, `csp_violation_reports`) are unchanged. |
+| v10 | adds `sam_pillar_profiles`, a shared per-surface profile table for header pillars simple enough not to need CSP's directive/override/strict-dynamic shape (X-Frame-Options, X-Content-Type-Options, Referrer-Policy). Created empty; unused until those pillars ship. |
 
 ## Table list
 
@@ -319,6 +320,27 @@ Operational notes:
 
 - rule IDs are stable product identifiers such as `CSP-SRC-003`
 - these rows explain why a proposal was eligible, blocked, or required administrator review
+
+### `sam_pillar_profiles`
+
+Purpose:
+
+- per-surface configuration for header pillars that don't need CSP's directive/override/strict-dynamic shape
+
+Key columns:
+
+- `id`
+- `pillar` — e.g. `x-frame-options`, `x-content-type-options`, `referrer-policy`
+- `surface` — `frontend` | `admin` | `login` | `api`
+- `enabled`
+- `payload` — JSON, shape is pillar-specific (e.g. `{"value": "SAMEORIGIN"}`)
+- `override_expires_at`, `override_owner`
+- `created_at`, `updated_at`
+
+Operational notes:
+
+- unique on `(pillar, surface)` — one row per pillar per surface
+- added in v10; empty and unused until X-Frame-Options, X-Content-Type-Options, and Referrer-Policy ship
 
 ## Relationships
 
