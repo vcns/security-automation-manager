@@ -117,16 +117,16 @@ Responsibilities:
 3. `Policy_Builder` identifies the current surface: `frontend`, `admin`, `login`, or `api`. REST requests use the API surface, `wp-admin` request paths use the admin surface even on redirects or 404 responses, and `wp-login.php` paths use the login surface.
 4. The relevant profile is loaded from the database.
 5. Approved sources and active hashes are merged into the directive set.
-6. Forbidden or deprecated directives (`plugin-types`, `block-all-mixed-content`, `navigate-to`, `prefetch-src`) are stripped from overrides; any stripped directive is logged to `csp_audit_log` at `warning` severity.
+6. Forbidden or deprecated directives (`plugin-types`, `block-all-mixed-content`, `navigate-to`, `prefetch-src`) are stripped from overrides; any stripped directive is logged to `sam_audit_log` at `warning` severity.
 7. If enabled and licensed, `'strict-dynamic'` is appended to `script-src`; approved host sources are suppressed from `script-src` at this point (browsers silently ignore host allowlists when `strict-dynamic` is present — CSP3 §8.2).
 8. `sandbox` is skipped if null or if the profile is in report-only mode (CSP spec — `sandbox` is ignored in `Content-Security-Policy-Report-Only`).
 9. Trusted Types directives (`require-trusted-types-for`, `trusted-types`) are skipped when their arrays are empty; when enabled they are always emitted as report-only regardless of surface mode.
-10. The reporting endpoint is resolved from `wp_csp_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'security-manager/v1/report' )`.
+10. The reporting endpoint is resolved from `wp_sam_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'security-manager/v1/report' )`.
 11. The CSP includes `report-uri <report_uri>` by default so browser reports are delivered directly and promptly to the local learning endpoint.
-12. If `wp_csp_reporting_transport` is set to `both` or `report-to`, two additional Reporting API headers are emitted before the CSP header:
+12. If `wp_sam_reporting_transport` is set to `both` or `report-to`, two additional Reporting API headers are emitted before the CSP header:
     - `Reporting-Endpoints: csp-endpoint="<report_uri>"` — Structured Fields Dictionary (RFC 9651); required for browsers to honour `report-to csp-endpoint` in the CSP
     - `Report-To: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"<report_uri>"}]}` — deprecated JSON format retained as a legacy fallback for pre-Reporting-API browsers
-13. The policy header name is resolved from `wp_csp_policy_header_name`. Blank emits the normal mode-aware `Content-Security-Policy-Report-Only` or `Content-Security-Policy` header. A validated custom value emits the exact origin header name for a proxy to copy back into the browser-facing CSP header.
+13. The policy header name is resolved from `wp_sam_policy_header_name`. Blank emits the normal mode-aware `Content-Security-Policy-Report-Only` or `Content-Security-Policy` header. A validated custom value emits the exact origin header name for a proxy to copy back into the browser-facing CSP header.
 14. The CSP or CSP-Report-Only policy value is emitted via `send_headers`.
 
 ### Conflict detection
@@ -149,7 +149,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 6. `Policy_Change_Manager` assigns a risk level and skips any source whose latest administrator decision suppresses the same fingerprint.
 7. Hash retirement is run to mark previously seen inline hashes as stale when absent.
 8. `Audit_Log::finish_scan()` records scan summary and sets status to `completed` or `failed`.
-9. `Scheduler::purge_old_violations()` deletes `csp_violation_reports` rows older than `wp_csp_violation_retention_days` days (default 90); the count deleted is logged to `csp_audit_log`.
+9. `Scheduler::purge_old_violations()` deletes `csp_violation_reports` rows older than `wp_sam_violation_retention_days` days (default 90); the count deleted is logged to `sam_audit_log`.
 
 ### 4. Violation ingestion flow
 
@@ -172,7 +172,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 5. Administrators approve, reject, revert, or undo decisions from the For Review queue. Every material administrator decision requires a reason.
 6. When a surface is explicitly configured for automation, emergency disable is off, and a per-run limit is set, deterministic low-risk proposals may be approved automatically with actor `automation_engine`.
 7. Medium, high, unknown, ambiguous, hard-excluded, disallowed-scheme, excluded-directive, and AI-agreement-required proposals remain pending for administrator review.
-8. Every decision is appended to `csp_policy_change_decisions`, mirrored to `csp_audit_log`, and linked to deterministic rule findings in `csp_decision_rule_evaluations`.
+8. Every decision is appended to `csp_policy_change_decisions`, mirrored to `sam_audit_log`, and linked to deterministic rule findings in `csp_decision_rule_evaluations`.
 9. Approved, automatically approved, and reverted decisions capture a `csp_policy_versions` snapshot for the affected surface.
 10. Rejected and reverted decisions set suppression on that fingerprint; future automation skips the same source until a later approval or undo becomes the newest decision.
 
@@ -255,7 +255,7 @@ These design choices should not be changed casually:
 - `report-to` without a corresponding `Reporting-Endpoints` header is a silent failure, and browsers that use `report-to` may ignore `report-uri`, so Reporting API transport must remain an explicit administrator choice
 - when `strict-dynamic` is active, host-based sources are suppressed from `script-src` at emit time; emitting them is harmless but creates misleading policy noise since browsers ignore them
 - cross-origin violation reports are silently discarded; only reports whose `document-uri` matches the site's own origin are stored
-- `csp_audit_log` is append-only — no `UPDATE` or `DELETE` may ever be issued against it; it is the permanent operational audit trail
+- `sam_audit_log` is append-only — no `UPDATE` or `DELETE` may ever be issued against it; it is the permanent operational audit trail
 - `csp_policy_change_decisions` is append-only; suppression is represented by the latest decision for a fingerprint, not by rewriting old decisions; undo appends a new non-suppressing decision and links to the decision it reverses where available
 - the violation retention purge uses `UTC_TIMESTAMP()` not `NOW()` to avoid timezone-offset errors in environments where MySQL and PHP have different local time configurations
 
@@ -265,7 +265,7 @@ These design choices should not be changed casually:
 
 - serve the cached config when available
 - serve grace copy if current refresh fails but a stale signed copy exists
-- write audit warnings to `csp_audit_log` for operator visibility
+- write audit warnings to `sam_audit_log` for operator visibility
 
 ### Webhook replay or duplicate delivery
 
@@ -277,7 +277,7 @@ These design choices should not be changed casually:
 - record the scan result in the scan log table with status `failed`
 - preserve existing policy state
 - do not auto-promote or auto-approve anything
-- `csp_audit_log` receives a `scan_exception` event with the exception message at `error` severity
+- `sam_audit_log` receives a `scan_exception` event with the exception message at `error` severity
 
 ### Violation ingestion failure
 
@@ -287,9 +287,9 @@ These design choices should not be changed casually:
 
 ### Violation table growth
 
-- rows are automatically purged after `wp_csp_violation_retention_days` days (default 90) by the daily cron scan
+- rows are automatically purged after `wp_sam_violation_retention_days` days (default 90) by the daily cron scan
 - per-surface transient rate limiting (500 reports/hour) prevents ingestion storms from filling the table between purge cycles
-- set `wp_csp_violation_retention_days` to `0` to disable purging (keep forever); operators should add external archival in that case
+- set `wp_sam_violation_retention_days` to `0` to disable purging (keep forever); operators should add external archival in that case
 
 ## Operational dependencies
 
@@ -308,5 +308,5 @@ Future work should preserve existing seams:
 - add new remote config values through the existing signed JSON contract
 - add new scan types through `Scheduler` and `Discovery`
 - keep admin actions behind capability checks and nonces
-- all significant plugin events must be logged to `csp_audit_log` via `Audit_Log::log()` — not only the wp_options FIFO queue
+- all significant plugin events must be logged to `sam_audit_log` via `Audit_Log::log()` — not only the wp_options FIFO queue
 - document every new operational dependency before release

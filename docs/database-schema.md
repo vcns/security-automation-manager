@@ -136,7 +136,7 @@ Operational notes:
 - the endpoint validates `Content-Type` and rejects non-CSP payloads with HTTP 400
 - the endpoint validates that `document-uri` belongs to this site's origin; cross-origin reports are silently discarded (CSP reports are client-generated and spoofable)
 - duplicate reports (same fingerprint) increment `occurrence_count` rather than inserting new rows
-- rows are purged automatically after `wp_csp_violation_retention_days` days (default: 90) by the daily cron scan; set to `0` to disable purging
+- rows are purged automatically after `wp_sam_violation_retention_days` days (default: 90) by the daily cron scan; set to `0` to disable purging
 
 #### v6 roll-up columns and migration
 
@@ -373,7 +373,7 @@ Whenever schema changes are introduced:
 
 - all plugin tables are created if absent
 - default settings and default per-surface policy profiles are seeded
-- the `wp_csp_db_version` option is set to `WP_SAM_DB_VERSION`
+- the `wp_sam_db_version` option is set to `WP_SAM_DB_VERSION`
 
 ### Updated during runtime
 
@@ -390,7 +390,7 @@ Whenever schema changes are introduced:
 ### Removed on uninstall
 
 - all plugin tables are dropped
-- all `wp_csp_*` options are deleted
+- all `wp_sam_*` options are deleted
 - plugin transients are deleted
 - scheduled cron events are cleared
 
@@ -398,7 +398,7 @@ Whenever schema changes are introduced:
 
 | Risk | Mitigation |
 |------|-----------|
-| High-volume violation reports filling the table | Automatic purge of rows older than `wp_csp_violation_retention_days` days (default 90) runs after every daily cron scan. Per-surface transient rate limiting (500 reports/hour) throttles ingestion. |
+| High-volume violation reports filling the table | Automatic purge of rows older than `wp_sam_violation_retention_days` days (default 90) runs after every daily cron scan. Per-surface transient rate limiting (500 reports/hour) throttles ingestion. |
 | Large source inventories on plugin-heavy installs | Review and deny unnecessary pending sources regularly. Expired approved sources are flagged automatically. |
 | Stale entitlements if webhook setup is broken | Grace period allows continued access during transient Stripe outages; surfaced via audit log warnings. |
 | Stale remote config if DNS or HTTPS endpoint is neglected | Grace-copy fallback serves the last verified config until the grace TTL expires; audit log warning is emitted. |

@@ -151,7 +151,7 @@ Reporting directives:
 - `navigate-to` - removed from CSP3
 - `prefetch-src` - deprecated and never formally shipped; Chromium intent-to-remove
 
-Any `plugin-types`, `block-all-mixed-content`, `navigate-to`, or `prefetch-src` values present in admin override configurations must be stripped at emit time and the removal logged to `csp_audit_log` at `warning` severity.
+Any `plugin-types`, `block-all-mixed-content`, `navigate-to`, or `prefetch-src` values present in admin override configurations must be stripped at emit time and the removal logged to `sam_audit_log` at `warning` severity.
 
 **Strict-mode defaults:**
 
@@ -165,7 +165,7 @@ Any `plugin-types`, `block-all-mixed-content`, `navigate-to`, or `prefetch-src` 
 
 `'self'`, `'none'`, `'unsafe-inline'` (blocked in enforce mode unless overridden), `'unsafe-eval'` (blocked in enforce mode unless overridden), `'strict-dynamic'` (premium; see §5.16), `'unsafe-hashes'`, `'report-sample'`, nonce sources `'nonce-{base64}'`, hash sources `'sha256-{base64}'` / `'sha384-{base64}'` / `'sha512-{base64}'`, scheme sources, host sources.
 
-The plugin must forbid `'unsafe-inline'` and `'unsafe-eval'` in enforce mode unless explicitly approved by an administrator override with expiration timestamp, reason, and owner identity, all recorded in `csp_audit_log`.
+The plugin must forbid `'unsafe-inline'` and `'unsafe-eval'` in enforce mode unless explicitly approved by an administrator override with expiration timestamp, reason, and owner identity, all recorded in `sam_audit_log`.
 
 **`'report-sample'` keyword:**
 
@@ -230,7 +230,7 @@ The builder must include `'report-sample'` in fetch directives that cover inline
 - The default run time is 02:00 server time and must be configurable.
 - Jobs must execute asynchronously and must not block front-end requests.
 - Each run must produce an audit record in `csp_scan_logs` containing policy diff summary, source changes, hash changes, and warnings.
-- Each daily scan run must trigger a purge of `csp_violation_reports` rows older than `wp_csp_violation_retention_days` days (default 90 days). Setting this option to `0` disables automatic purging. The count of purged rows must be written to `csp_audit_log`.
+- Each daily scan run must trigger a purge of `csp_violation_reports` rows older than `wp_sam_violation_retention_days` days (default 90 days). Setting this option to `0` disables automatic purging. The count of purged rows must be written to `sam_audit_log`.
 
 ### 5.11 Manual Rescan and Rebuild
 
@@ -326,7 +326,7 @@ The `sample` field is only populated by the browser when `'report-sample'` is pr
 
 ### 5.19 Append-Only Audit Log
 
-- All significant plugin events must be written to the `csp_audit_log` table via `Audit_Log::log()`.
+- All significant plugin events must be written to the `sam_audit_log` table via `Audit_Log::log()`.
 - The audit log must be append-only. No `UPDATE` or `DELETE` statements may be issued against it.
 - Auditable events include: source approvals, override grants and expirations, mode promotions and demotions, scan start and completion, scan exceptions, directive strip warnings, violation purge counts, conflict detections, and entitlement grants and revocations.
 
@@ -335,7 +335,7 @@ The `sample` field is only populated by the browser when `'report-sample'` is pr
 - The plugin must discover the remote configuration URL by querying a DNS TXT record.
 - The remote configuration document must be verified using Ed25519 signature verification when `libsodium` is available.
 - The remote configuration must contain public product metadata only. It must never contain Stripe secrets, webhook secrets, or private signing keys.
-- When verification fails, the plugin must fall back to a cached copy if available and log the failure to `csp_audit_log`.
+- When verification fails, the plugin must fall back to a cached copy if available and log the failure to `sam_audit_log`.
 
 ### 4.16 Known Platform Constraints
 
@@ -368,8 +368,8 @@ The following limitations are structural and must be surfaced to administrators 
 - Input must be sanitised and output escaped at all boundary points.
 - Background jobs must be resilient to partial failure and resumable without loss of existing policy state.
 - Performance overhead must be defined as a percentile SLO (target: p95 added latency per request ≤ 5 ms under normal load), not as a per-request absolute value.
-- The `csp_audit_log` table must be append-only at the database level. No migration, admin action, or code path may issue `UPDATE` or `DELETE` against it.
-- Violation report retention must be configurable via `wp_csp_violation_retention_days` (default 90 days, `0` = keep forever).
+- The `sam_audit_log` table must be append-only at the database level. No migration, admin action, or code path may issue `UPDATE` or `DELETE` against it.
+- Violation report retention must be configurable via `wp_sam_violation_retention_days` (default 90 days, `0` = keep forever).
 - The plugin must not perform remote network calls during normal page rendering. All remote calls (Stripe, remote config) are confined to admin-initiated or cron-scheduled paths.
 - The violation report endpoint must apply per-surface rate limiting (500 reports per hour per surface) and `document-uri` origin validation before any database write, to protect against ingestion abuse.
 - Admin actions that modify policy state must be protected by WordPress capability checks (`manage_options` minimum) and nonce verification.
@@ -391,7 +391,7 @@ The following limitations are structural and must be surfaced to administrators 
 - `'report-sample'` is present in applicable fetch directives, and the `sample` field is populated in stored violation records for inline violations.
 - Trusted Types directives (premium) are only ever emitted in report-only mode regardless of surface enforcement state.
 - When `'strict-dynamic'` is active, host-based allowlist sources are absent from the emitted `script-src`.
-- All significant events are present in `csp_audit_log` with no gaps for activations, deactivations, scan runs, source approvals, mode changes, and override grants.
+- All significant events are present in `sam_audit_log` with no gaps for activations, deactivations, scan runs, source approvals, mode changes, and override grants.
 
 ---
 

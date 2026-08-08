@@ -116,6 +116,58 @@ class SchemaMigrationTest extends TestCase {
 		$this->assertSame( array(), $GLOBALS['_wpdb_queries'] );
 	}
 
+	public function test_migrate_v9_table_renames_renames_old_named_table_when_present(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array(
+			'wp_csp_scan_logs', // old csp_scan_logs exists
+			null,               // new sam_scan_logs does not exist -> rename fires
+			null,               // csp_entitlements does not exist
+			null,               // csp_processed_events does not exist
+			null,               // csp_audit_log does not exist
+			null,               // csp_policy_change_decisions does not exist
+			null,               // csp_policy_versions does not exist
+			null,               // csp_decision_rule_evaluations does not exist
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_v9_table_renames' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_queries'] );
+		$this->assertStringContainsString( 'RENAME TABLE wp_csp_scan_logs TO wp_sam_scan_logs', $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_migrate_v9_table_renames_skips_when_old_table_absent(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 7, null );
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_v9_table_renames' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_queries'] );
+	}
+
+	public function test_migrate_v9_option_renames_copies_old_value_to_new_key(): void {
+		$GLOBALS['_wp_options']['wp_csp_cron_hour'] = 7;
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_v9_option_renames' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( 7, get_option( 'wp_sam_cron_hour' ) );
+		$this->assertSame( 7, get_option( 'wp_csp_cron_hour' ), 'old key is left in place, not deleted' );
+	}
+
+	public function test_migrate_v9_option_renames_does_not_overwrite_existing_new_key(): void {
+		$GLOBALS['_wp_options']['wp_csp_cron_hour'] = 7;
+		$GLOBALS['_wp_options']['wp_sam_cron_hour'] = 3;
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_v9_option_renames' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( 3, get_option( 'wp_sam_cron_hour' ) );
+	}
+
 	public static function legacy_schema_version_provider(): array {
 		return array(
 			'v1' => array( '1' ),
