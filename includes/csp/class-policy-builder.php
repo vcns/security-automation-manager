@@ -29,12 +29,13 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Feature_Gate;
+use WP_SAM\Security\Header_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class Policy_Builder {
+class Policy_Builder extends Header_Builder {
 
 	public const DEFAULT_ENFORCE_HEADER     = 'Content-Security-Policy';
 	public const DEFAULT_REPORT_ONLY_HEADER = 'Content-Security-Policy-Report-Only';
@@ -55,8 +56,6 @@ class Policy_Builder {
 
 	private Feature_Gate $gate;
 
-	private bool $header_emitted = false;
-
 	/** @var callable|null */
 	private $hash_loader;
 
@@ -73,36 +72,16 @@ class Policy_Builder {
 		$this->source_loader = $source_loader;
 	}
 
-	// ── Bootstrap ─────────────────────────────────────────────────────────────
-
-	public function register(): void {
-		// send_headers fires before any output, ideal for emitting CSP.
-		add_action( 'send_headers', array( $this, 'emit_header' ) );
-		add_filter( 'wp_redirect', array( $this, 'emit_header_before_redirect' ), 1, 2 );
-	}
-
 	// ── Header emission ───────────────────────────────────────────────────────
 
-	public function emit_header(): void {
-		// Skip if headers already sent (e.g. a plugin flushed output early).
-		if ( $this->header_emitted || headers_sent() ) {
-			return;
-		}
+	protected function is_profile_active( array $profile ): bool {
+		return 'disabled' !== $profile['mode'];
+	}
 
-		if ( $this->is_conflict_probe_request() ) {
-			return;
-		}
-
-		$surface = $this->detect_surface();
-		$profile = $this->load_profile( $surface );
-
-		if ( null === $profile || 'disabled' === $profile['mode'] ) {
-			return;
-		}
-
+	protected function emit_profile_header( array $profile, string $surface ): bool {
 		$policy = $this->build_policy_string( $profile, $surface );
 		if ( empty( $policy ) ) {
-			return;
+			return false;
 		}
 
 		$is_report_only = ( 'report-only' === $profile['mode'] );
@@ -128,13 +107,7 @@ class Policy_Builder {
 		}
 
 		header( $header_name . ': ' . $policy );
-		$this->header_emitted = true;
-	}
-
-	public function emit_header_before_redirect( string $location, int $status = 302 ): string {
-		unset( $status );
-		$this->emit_header();
-		return $location;
+		return true;
 	}
 
 	public function get_policy_header_name( bool $is_report_only ): string {
@@ -144,34 +117,6 @@ class Policy_Builder {
 		}
 
 		return $is_report_only ? self::DEFAULT_REPORT_ONLY_HEADER : self::DEFAULT_ENFORCE_HEADER;
-	}
-
-	public static function sanitize_custom_policy_header_name( mixed $header_name ): string {
-		$header_name = trim( (string) $header_name );
-		if ( '' === $header_name ) {
-			return '';
-		}
-
-		if ( ! preg_match( "/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/", $header_name ) ) {
-			return '';
-		}
-
-		$blocked = array(
-			'connection',
-			'content-length',
-			'host',
-			'keep-alive',
-			'proxy-authenticate',
-			'proxy-authorization',
-			'set-cookie',
-			'set-cookie2',
-			'te',
-			'trailer',
-			'transfer-encoding',
-			'upgrade',
-		);
-
-		return in_array( strtolower( $header_name ), $blocked, true ) ? '' : $header_name;
 	}
 
 	public static function sanitize_reporting_transport( mixed $transport ): string {
@@ -189,11 +134,6 @@ class Policy_Builder {
 			self::REPORTING_TRANSPORT_API,
 			self::REPORTING_TRANSPORT_BOTH,
 		);
-	}
-
-	private function is_conflict_probe_request(): bool {
-		return isset( $_SERVER['HTTP_X_WP_SAM_PROBE'] )
-			&& '1' === (string) $_SERVER['HTTP_X_WP_SAM_PROBE'];
 	}
 
 	private function get_report_endpoint_url(): string {
@@ -373,41 +313,6 @@ class Policy_Builder {
 		}
 
 		return $directives;
-	}
-
-	// ── Surface detection ─────────────────────────────────────────────────────
-
-	private function detect_surface(): string {
-		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-			return 'api';
-		}
-
-		if ( isset( $GLOBALS['pagenow'] ) && 'wp-login.php' === $GLOBALS['pagenow'] ) {
-			return 'login';
-		}
-
-		$request_path = $this->get_request_path();
-		if ( preg_match( '#(?:^|/)wp-admin(?:/|$)#', $request_path ) ) {
-			return 'admin';
-		}
-		if ( preg_match( '#(?:^|/)wp-login\.php$#', $request_path ) ) {
-			return 'login';
-		}
-
-		if ( is_admin() ) {
-			return 'admin';
-		}
-		return 'frontend';
-	}
-
-	private function get_request_path(): string {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		if ( '' === $uri ) {
-			return '';
-		}
-
-		$path = wp_parse_url( $uri, PHP_URL_PATH );
-		return is_string( $path ) ? rtrim( $path, '/' ) : '';
 	}
 
 	// ── DB reads ──────────────────────────────────────────────────────────────
