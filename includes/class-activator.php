@@ -416,6 +416,8 @@ class Activator {
 		// 12. Per-surface profiles for pillars simple enough not to need CSP's
 		// directive/override/strict-dynamic shape (X-Frame-Options,
 		// X-Content-Type-Options, Referrer-Policy, and future pillars).
+		// payload is NOT NULL: writers must always store valid JSON, e.g. '{}'
+		// for a pillar with no configurable value (X-Content-Type-Options).
 		dbDelta(
 			"CREATE TABLE {$p}sam_pillar_profiles (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
