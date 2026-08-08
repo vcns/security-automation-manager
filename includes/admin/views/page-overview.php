@@ -19,6 +19,28 @@ $modes_by_surface = array();
 foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	$modes_by_surface[ $row['surface'] ] = $row['mode'];
 }
+
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$pillar_profiles_raw = $wpdb->get_results( "SELECT pillar, surface, enabled FROM {$wpdb->prefix}sam_pillar_profiles", ARRAY_A );
+$enabled_by_pillar   = array();
+foreach ( ! empty( $pillar_profiles_raw ) ? $pillar_profiles_raw : array() as $row ) {
+	$enabled_by_pillar[ $row['pillar'] ][ $row['surface'] ] = ! empty( $row['enabled'] );
+}
+
+$simple_pillars = array(
+	\WP_SAM\Security\X_Frame_Options_Builder::PILLAR_KEY => array(
+		'label' => __( 'X-Frame-Options', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-xfo',
+	),
+	\WP_SAM\Security\X_Content_Type_Options_Builder::PILLAR_KEY => array(
+		'label' => __( 'X-Content-Type-Options', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-xcto',
+	),
+	\WP_SAM\Security\Referrer_Policy_Builder::PILLAR_KEY => array(
+		'label' => __( 'Referrer-Policy', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-referrer-policy',
+	),
+);
 ?>
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Security Automation Manager', 'security-automation-manager' ); ?></h1>
@@ -53,14 +75,38 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 					</a>
 				</td>
 			</tr>
+			<?php foreach ( $simple_pillars as $pillar_key => $pillar ) : ?>
+				<tr>
+					<td>
+						<strong><?php echo esc_html( $pillar['label'] ); ?></strong>
+					</td>
+					<td>
+						<?php foreach ( $surfaces as $surface ) : ?>
+							<?php $on = $enabled_by_pillar[ $pillar_key ][ $surface ] ?? false; ?>
+							<span class="wp-sam-mode-badge mode-<?php echo esc_attr( $on ? 'enforce' : 'disabled' ); ?>">
+								<?php echo esc_html( ucfirst( $surface ) . ': ' . ( $on ? __( 'On', 'security-automation-manager' ) : __( 'Off', 'security-automation-manager' ) ) ); ?>
+							</span>
+						<?php endforeach; ?>
+					</td>
+					<td>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $pillar['page'] ) ); ?>">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: pillar label, e.g. "X-Frame-Options" */
+									__( 'Manage %s', 'security-automation-manager' ),
+									$pillar['label']
+								)
+							);
+							?>
+						</a>
+					</td>
+				</tr>
+			<?php endforeach; ?>
 		</tbody>
 	</table>
 
-	<p class="description" style="margin-top: 1.5em;">
-		<?php esc_html_e( 'Additional pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and others) are on the roadmap and will appear here once available.', 'security-automation-manager' ); ?>
-	</p>
-
-	<p>
+	<p style="margin-top: 1.5em;">
 		<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-policy-audit' ) ); ?>">
 			<?php esc_html_e( 'Policy Audit', 'security-automation-manager' ); ?>
 		</a>
