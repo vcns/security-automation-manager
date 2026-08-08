@@ -61,7 +61,7 @@ The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress'
 ## Getting Started
 
 1. Install and activate the plugin.
-2. Run an initial scan from the CSP Manager dashboard.
+2. Run an initial scan from Security Automation Manager -> CSP.
 3. Review and approve only the external sources your site actually requires.
 4. Reject or revert unwanted sources so the same fingerprint is suppressed from future proposals.
 5. Use the Policy Audit page to inspect why a proposal exists and what policy version resulted from decisions.
