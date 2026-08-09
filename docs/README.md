@@ -1,6 +1,6 @@
 # Documentation
 
-This directory contains the public help site and internal operating documentation for CSP Automation Manager.
+This directory contains the public help site and internal operating documentation for Security Automation Manager.
 
 ## Public Help Site
 

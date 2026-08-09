@@ -1,4 +1,4 @@
-=== CSP Automation Manager ===
+=== Security Automation Manager ===
 Contributors: vcns
 Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
@@ -8,19 +8,19 @@ Stable tag: 1.0.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Automates strict Content Security Policy rollout, violation reporting, source discovery, and policy-change review for WordPress.
+Automates strict HTTP security header rollout -- Content Security Policy, X-Frame-Options, X-Content-Type-Options, and Referrer-Policy -- with violation reporting, source discovery, and policy-change review for WordPress.
 
 == Description ==
 
-CSP Automation Manager helps site owners roll out strict Content Security Policy headers safely and incrementally.
+Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, and Referrer-Policy are simpler per-surface pillars alongside it.
 
-The plugin provides per-surface CSP profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, conflict detection for existing CSP emitters, and administrator-controlled rollout tools.
+The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other three pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
 
 == External services ==
 
 This WordPress.org build does not contact third-party services for plugin updates, licensing, checkout, telemetry, or remote product configuration.
 
-GitHub release builds are published separately for administrators who install from GitHub rather than WordPress.org. The GitHub-channel ZIP checks https://vcns.github.io/wp-updates/csp-automation-manager/update.json from administrator update contexts only, validates the advertised package host and SHA-256 checksum, and then lets WordPress perform the update. Define WP_CSP_DISABLE_AUTO_UPDATE as true in wp-config.php to prevent background auto-updates for the GitHub-channel package.
+GitHub release builds are published separately for administrators who install from GitHub rather than WordPress.org. The GitHub-channel ZIP checks https://vcns.github.io/wp-updates/csp-automation-manager/update.json from administrator update contexts only, validates the advertised package host and SHA-256 checksum, and then lets WordPress perform the update. Define WP_SAM_DISABLE_AUTO_UPDATE as true in wp-config.php to prevent background auto-updates for the GitHub-channel package.
 
 By default, the plugin emits CSP reporting headers that point browsers back to this WordPress site's own REST endpoint:
 

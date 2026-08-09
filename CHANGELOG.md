@@ -6,6 +6,12 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 
 ## [Unreleased]
 
+### Added
+
+- Renamed the plugin to Security Automation Manager: CSP becomes the first of several HTTP security-header pillars, with X-Frame-Options, X-Content-Type-Options, and Referrer-Policy joining it as simpler per-surface pillars (no report-only mode, discovery workflow, or automation for these three).
+- Added a top-level "Security Automation Manager" admin menu with a new Overview page summarizing every pillar's per-surface status, plus dedicated X-Frame-Options, X-Content-Type-Options, and Referrer-Policy pages. The CSP dashboard moves to a "CSP" submenu at its existing URL.
+- Added a shared `Header_Builder` envelope (hook registration, header-emission guard, conflict-probe suppression, surface detection) and a `sam_pillar_profiles` table so future pillars can reuse the same plumbing as CSP without duplicating it.
+
 ## [1.0.16] - 2026-08-04
 
 ### Added

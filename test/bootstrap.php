@@ -1,6 +1,6 @@
 <?php
 /**
- * PHPUnit bootstrap file for CSP Automation Manager unit tests.
+ * PHPUnit bootstrap file for Security Automation Manager unit tests.
  *
  * Defines plugin constants and stubs for WordPress globals and functions so
  * the plugin classes can be loaded and exercised without a WordPress install.

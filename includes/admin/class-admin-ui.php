@@ -3,12 +3,15 @@
  * WordPress Admin UI: menus, settings API, AJAX handlers.
  *
  * Registers a top-level "Security Automation Manager" menu with these pages:
- *   1. security-automation-manager             – Overview: per-pillar status summary
- *   2. security-automation-manager-dashboard   – CSP: surface profiles, source inventory,
+ *   1. security-automation-manager                  – Overview: per-pillar status summary
+ *   2. security-automation-manager-dashboard         – CSP: surface profiles, source inventory,
  *      violations, scan history, and settings (promotion gates, learning window, cron schedule,
  *      notify email), all as tabs on one page
- *   3. security-automation-manager-policy-audit – policy history, decisions, provenance
- *   4. security-automation-manager-readiness    – plugin-specific health checks and reset
+ *   3. security-automation-manager-xfo               – X-Frame-Options: per-surface DENY/SAMEORIGIN
+ *   4. security-automation-manager-xcto              – X-Content-Type-Options: per-surface on/off
+ *   5. security-automation-manager-referrer-policy   – Referrer-Policy: per-surface value picker
+ *   6. security-automation-manager-policy-audit      – policy history, decisions, provenance
+ *   7. security-automation-manager-readiness         – plugin-specific health checks and reset
  *
  * All form submissions are protected by check_admin_referer() and
  * current_user_can('manage_options').
@@ -24,6 +27,9 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Security\Referrer_Policy_Builder;
+use WP_SAM\Security\X_Content_Type_Options_Builder;
+use WP_SAM\Security\X_Frame_Options_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -57,6 +63,7 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_undo_source_decision', array( $this, 'ajax_undo_source_decision' ) );
 		add_action( 'wp_ajax_wp_sam_toggle_mode', array( $this, 'ajax_toggle_mode' ) );
 		add_action( 'wp_ajax_wp_sam_set_automation_mode', array( $this, 'ajax_set_automation_mode' ) );
+		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
 	}
 
 	// ── Menu registration ─────────────────────────────────────────────────────
@@ -88,6 +95,33 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-dashboard',
 			array( $this, 'render_dashboard' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'X-Frame-Options', 'security-automation-manager' ),
+			__( 'X-Frame-Options', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-xfo',
+			array( $this, 'render_x_frame_options' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'X-Content-Type-Options', 'security-automation-manager' ),
+			__( 'X-Content-Type-Options', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-xcto',
+			array( $this, 'render_x_content_type_options' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Referrer-Policy', 'security-automation-manager' ),
+			__( 'Referrer-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-referrer-policy',
+			array( $this, 'render_referrer_policy' )
 		);
 
 		add_submenu_page(
@@ -232,6 +266,9 @@ class Admin_UI {
 		return array(
 			'toplevel_page_security-automation-manager',
 			'security-automation-manager_page_security-automation-manager-dashboard',
+			'security-automation-manager_page_security-automation-manager-xfo',
+			'security-automation-manager_page_security-automation-manager-xcto',
+			'security-automation-manager_page_security-automation-manager-referrer-policy',
 			'security-automation-manager_page_security-automation-manager-policy-audit',
 			'security-automation-manager_page_security-automation-manager-readiness',
 		);
@@ -289,6 +326,63 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+	}
+
+	public function render_x_frame_options(): void {
+		$this->render_pillar_page(
+			X_Frame_Options_Builder::PILLAR_KEY,
+			__( 'X-Frame-Options', 'security-automation-manager' ),
+			'X-Frame-Options',
+			'<p>' . esc_html__( 'Controls whether this site may be embedded in a frame or iframe on another site, as a defense against clickjacking. CSP\'s frame-ancestors directive supersedes this header in browsers that support it; X-Frame-Options remains a fallback for older browsers that don\'t.', 'security-automation-manager' ) . '</p>',
+			array(
+				'DENY'       => __( 'DENY -- never allow framing', 'security-automation-manager' ),
+				'SAMEORIGIN' => __( 'SAMEORIGIN -- allow framing only by pages on this same site', 'security-automation-manager' ),
+			)
+		);
+	}
+
+	public function render_x_content_type_options(): void {
+		$this->render_pillar_page(
+			X_Content_Type_Options_Builder::PILLAR_KEY,
+			__( 'X-Content-Type-Options', 'security-automation-manager' ),
+			'X-Content-Type-Options',
+			'<p>' . esc_html__( 'Stops browsers from guessing ("MIME-sniffing") a response\'s content type away from what the server declared, closing off a class of content-sniffing attacks. nosniff is the only defined value for this header, so each surface is simply on or off.', 'security-automation-manager' ) . '</p>',
+			null
+		);
+	}
+
+	public function render_referrer_policy(): void {
+		$options = array();
+		foreach ( Referrer_Policy_Builder::VALID_VALUES as $value ) {
+			$options[ $value ] = Referrer_Policy_Builder::DEFAULT_VALUE === $value
+				? sprintf(
+					/* translators: %s: policy value token */
+					__( '%s (recommended)', 'security-automation-manager' ),
+					$value
+				)
+				: $value;
+		}
+
+		$this->render_pillar_page(
+			Referrer_Policy_Builder::PILLAR_KEY,
+			__( 'Referrer-Policy', 'security-automation-manager' ),
+			'Referrer-Policy',
+			'<p>' . esc_html__( 'Controls how much of this site\'s URL is sent as the Referer header when a user follows a link away from it. Sent as an HTTP header only -- this plugin does not inject a <meta name="referrer"> tag into page content.', 'security-automation-manager' ) . '</p>',
+			$options
+		);
+	}
+
+	/**
+	 * Shared renderer for the "simple" per-surface pillar pages -- see
+	 * includes/admin/views/page-pillar-simple.php for the shared template.
+	 *
+	 * @param array<string,string>|null $value_options value => label options, or null for no picker (e.g. X-Content-Type-Options).
+	 */
+	private function render_pillar_page( string $pillar_key, string $page_title, string $header_name, string $intro_html, ?array $value_options ): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-pillar-simple.php';
 	}
 
 	public function render_policy_audit(): void {
@@ -367,7 +461,7 @@ class Admin_UI {
 			printf(
 				'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> [%3$s] %4$s</p></div>',
 				esc_attr( $type ),
-				esc_html__( 'CSP Automation Manager:', 'security-automation-manager' ),
+				esc_html__( 'Security Automation Manager:', 'security-automation-manager' ),
 				esc_html( $notice['component'] . '/' . $notice['event'] ),
 				esc_html( $notice['detail'] )
 			);
@@ -402,7 +496,7 @@ class Admin_UI {
 			wp_kses(
 				sprintf(
 					/* translators: %s: URL to WordPress core Trac ticket */
-					__( '<strong>CSP Automation Manager:</strong> The wp-admin CSP surface is in <strong>enforce mode</strong>. WordPress core <a href="%s" target="_blank" rel="noopener">Trac #59446</a> is unresolved - some admin UI components may be blocked. Monitor violation reports before keeping enforce mode active.', 'security-automation-manager' ),
+					__( '<strong>Security Automation Manager:</strong> The wp-admin CSP surface is in <strong>enforce mode</strong>. WordPress core <a href="%s" target="_blank" rel="noopener">Trac #59446</a> is unresolved - some admin UI components may be blocked. Monitor violation reports before keeping enforce mode active.', 'security-automation-manager' ),
 					'https://core.trac.wordpress.org/ticket/59446'
 				),
 				array(
@@ -561,6 +655,71 @@ class Admin_UI {
 				'label' => Automation_Config::mode_label( $mode ),
 			)
 		);
+	}
+
+	// ── AJAX: simple pillar profiles ──────────────────────────────────────────
+
+	public function ajax_set_pillar_value(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$pillar  = sanitize_text_field( wp_unslash( $_POST['pillar'] ?? '' ) );
+		$surface = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
+		$enabled = ! empty( $_POST['enabled'] );
+		$value   = sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) );
+
+		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+		}
+
+		$sanitized_value = '';
+		switch ( $pillar ) {
+			case X_Content_Type_Options_Builder::PILLAR_KEY:
+				// No configurable value -- nosniff is the only defined value.
+				break;
+
+			case X_Frame_Options_Builder::PILLAR_KEY:
+				$sanitized_value = X_Frame_Options_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid X-Frame-Options value.', 'security-automation-manager' ) ) );
+				}
+				break;
+
+			case Referrer_Policy_Builder::PILLAR_KEY:
+				$sanitized_value = Referrer_Policy_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid Referrer-Policy value.', 'security-automation-manager' ) ) );
+				}
+				break;
+
+			default:
+				wp_send_json_error( array( 'message' => __( 'Invalid pillar.', 'security-automation-manager' ) ) );
+		}
+
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_pillar_profiles';
+		$now     = current_time( 'mysql', true );
+		$payload = wp_json_encode( array( 'value' => $sanitized_value ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"INSERT INTO {$table} (pillar, surface, enabled, payload, created_at, updated_at)
+				 VALUES (%s, %s, %d, %s, %s, %s)
+				 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), payload = VALUES(payload), updated_at = VALUES(updated_at)",
+				$pillar,
+				$surface,
+				$enabled ? 1 : 0,
+				$payload,
+				$now,
+				$now
+			)
+		);
+
+		wp_send_json_success();
 	}
 
 	// ── Promotion gate ────────────────────────────────────────────────────────
