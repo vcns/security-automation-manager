@@ -1,13 +1,13 @@
 <?php
 /**
- * Unit tests for WP_CSP\Admin\Admin_UI.
+ * Unit tests for WP_SAM\Admin\Admin_UI.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Admin\Admin_UI;
-use WP_CSP\Plugin;
+use WP_SAM\Admin\Admin_UI;
+use WP_SAM\Plugin;
 
 class AdminUITest extends TestCase {
 
@@ -26,9 +26,9 @@ class AdminUITest extends TestCase {
 
 		$this->assertArrayHasKey( 'settings', $links );
 		$this->assertArrayHasKey( 'reset', $links );
-		$this->assertStringContainsString( 'admin.php?page=csp-automation-manager-dashboard', $links['settings'] );
+		$this->assertStringContainsString( 'admin.php?page=security-automation-manager-dashboard', $links['settings'] );
 		$this->assertStringContainsString( 'tab=settings', $links['settings'] );
-		$this->assertStringContainsString( 'admin.php?page=csp-automation-manager-readiness#wp-csp-reset', $links['reset'] );
+		$this->assertStringContainsString( 'admin.php?page=security-automation-manager-readiness#wp-sam-reset', $links['reset'] );
 		$this->assertStringContainsString( 'Settings', $links['settings'] );
 		$this->assertStringContainsString( 'Reset', $links['reset'] );
 		$this->assertSame( 'settings', array_key_first( $links ) );
@@ -39,7 +39,7 @@ class AdminUITest extends TestCase {
 
 		$links = $ui->add_plugin_row_meta(
 			array( '<a href="https://example.com">Visit plugin site</a>' ),
-			plugin_basename( WP_CSP_FILE )
+			plugin_basename( WP_SAM_FILE )
 		);
 
 		$this->assertStringContainsString( 'WordPress.org package', implode( ' ', $links ) );
@@ -64,7 +64,7 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Proposed source', $view );
 		$this->assertStringContainsString( 'Policy version', $view );
 		$this->assertStringContainsString( "'Automation'", $view );
-		$this->assertStringContainsString( 'wp-csp-automation-mode', $view );
+		$this->assertStringContainsString( 'wp-sam-automation-mode', $view );
 		$this->assertStringNotContainsString( "'Strict-Dynamic'", $view );
 	}
 

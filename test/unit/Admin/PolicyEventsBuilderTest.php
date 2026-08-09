@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\Admin\Policy_Events_Builder.
+ * Unit tests for WP_SAM\Admin\Policy_Events_Builder.
  *
  * The wpdb stub's get_results() replays a per-call queue (_wpdb_get_results_queue),
  * so each test primes one entry per source query the fetch() call is expected to
@@ -10,7 +10,7 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Admin\Policy_Events_Builder;
+use WP_SAM\Admin\Policy_Events_Builder;
 
 class PolicyEventsBuilderTest extends TestCase {
 

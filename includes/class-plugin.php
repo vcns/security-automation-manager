@@ -9,19 +9,19 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP;
+namespace WP_SAM;
 
-use WP_CSP\Admin\Admin_UI;
-use WP_CSP\CSP\Conflict_Detector;
-use WP_CSP\CSP\Hash_Manager;
-use WP_CSP\CSP\Learning_Window;
-use WP_CSP\CSP\Nonce_Manager;
-use WP_CSP\CSP\Policy_Builder;
-use WP_CSP\CSP\Scheduler;
-use WP_CSP\CSP\Violation_Reporter;
-use WP_CSP\Modules\Audit_Log;
-use WP_CSP\Modules\Feature_Gate;
-use WP_CSP\Rest\Admin_Controller;
+use WP_SAM\Admin\Admin_UI;
+use WP_SAM\CSP\Conflict_Detector;
+use WP_SAM\CSP\Hash_Manager;
+use WP_SAM\CSP\Learning_Window;
+use WP_SAM\CSP\Nonce_Manager;
+use WP_SAM\CSP\Policy_Builder;
+use WP_SAM\CSP\Scheduler;
+use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Feature_Gate;
+use WP_SAM\Rest\Admin_Controller;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -66,20 +66,20 @@ final class Plugin {
 
 	private function load_textdomain(): void {
 		load_plugin_textdomain(
-			'csp-automation-manager',
+			'security-automation-manager',
 			false,
-			dirname( plugin_basename( WP_CSP_FILE ) ) . '/languages'
+			dirname( plugin_basename( WP_SAM_FILE ) ) . '/languages'
 		);
 	}
 
 	// ── DB migration gate ─────────────────────────────────────────────────────
 
 	private function maybe_upgrade_db(): void {
-		$installed = (int) get_option( 'wp_csp_db_version', 0 );
-		$verified  = (string) get_option( 'wp_csp_schema_verified_version', '' );
+		$installed = (int) get_option( 'wp_sam_db_version', 0 );
+		$verified  = (string) get_option( 'wp_sam_schema_verified_version', '' );
 		if (
-			$installed < (int) WP_CSP_DB_VERSION
-			|| (string) WP_CSP_DB_VERSION !== $verified
+			$installed < (int) WP_SAM_DB_VERSION
+			|| (string) WP_SAM_DB_VERSION !== $verified
 			|| ( is_admin() && ! empty( Activator::get_missing_table_names() ) )
 		) {
 			Activator::activate();
@@ -134,15 +134,21 @@ final class Plugin {
 
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers.
-		register_rest_route(
-			'csp-manager/v1',
-			'/report',
-			array(
-				'methods'             => \WP_REST_Server::CREATABLE,
-				'callback'            => array( new Violation_Reporter( $this->audit, $this->learning_window ), 'handle' ),
-				'permission_callback' => '__return_true',
-			)
+		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window );
+		$report_route_args  = array(
+			'methods'             => \WP_REST_Server::CREATABLE,
+			'callback'            => array( $violation_reporter, 'handle' ),
+			'permission_callback' => '__return_true',
 		);
+
+		register_rest_route( 'security-manager/v1', '/report', $report_route_args );
+
+		// Legacy alias: browsers holding a CSP header issued before the
+		// csp-manager/v1 -> security-manager/v1 rename still POST to the old
+		// URL until they receive a fresh policy. Keep this alongside the new
+		// route (not a redirect -- redirects on a report-uri are unreliable
+		// across browsers) for a couple of releases, then remove it.
+		register_rest_route( 'csp-manager/v1', '/report', $report_route_args );
 
 		( new Admin_Controller( $this->audit ) )->register_routes();
 	}

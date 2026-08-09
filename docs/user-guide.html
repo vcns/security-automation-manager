@@ -160,7 +160,7 @@
             <h3>Manual upload</h3>
             <ol class='steps'>
               <li>Extract the release ZIP locally.</li>
-              <li>Upload the <code>csp-automation-manager</code> folder to <code>/wp-content/plugins/</code>.</li>
+              <li>Upload the <code>security-automation-manager</code> folder to <code>/wp-content/plugins/</code>.</li>
               <li>Activate it from <strong>Plugins → Installed Plugins</strong>.</li>
             </ol>
           </article>
@@ -324,7 +324,7 @@
               <tr><td>Site breaks after enforce mode.</td><td>A required resource is not approved.</td><td>Return the affected surface to report-only. Review Violations, approve required narrow sources, then retest.</td></tr>
               <tr><td>Enforce button is blocked.</td><td>The promotion gate has not passed.</td><td>Check for approved inventory, recent violations, and temporary overrides.</td></tr>
               <tr><td>Manual scan finds little or nothing.</td><td>The activity is runtime behaviour rather than static HTML.</td><td>Browse the site in report-only mode and rely on violation reports for fetch, XHR, WebSocket, EventSource, and workers.</td></tr>
-              <tr><td>No violation reports arrive.</td><td>The public site URL differs from the WordPress REST URL, or the configured reporting server URL does not route back to the plugin endpoint.</td><td>Open Settings and either use the current site endpoint button or set the public HTTPS reporting URL that reaches <code>/wp-json/csp-manager/v1/report</code>.</td></tr>
+              <tr><td>No violation reports arrive.</td><td>The public site URL differs from the WordPress REST URL, or the configured reporting server URL does not route back to the plugin endpoint.</td><td>Open Settings and either use the current site endpoint button or set the public HTTPS reporting URL that reaches <code>/wp-json/security-manager/v1/report</code>.</td></tr>
               <tr><td>Repeated unknown host appears.</td><td>A plugin, theme, injected tag, or external script is generating it.</td><td>Trace the source owner before approval. Reject if not required.</td></tr>
             </tbody>
           </table>

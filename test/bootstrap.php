@@ -13,14 +13,14 @@ declare( strict_types=1 );
 
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
-define( 'WP_CSP_VERSION',        '1.0.16' );
-define( 'WP_CSP_DB_VERSION',     '8' );
-define( 'WP_CSP_FILE',           dirname( __DIR__ ) . '/csp-automation-manager.php' );
-define( 'WP_CSP_DIR',            dirname( __DIR__ ) . '/' );
-define( 'WP_CSP_URL',            'https://example.com/wp-content/plugins/csp-automation-manager/' );
-define( 'WP_CSP_PLUGIN_BASENAME', 'csp-automation-manager/csp-automation-manager.php' );
-define( 'WP_CSP_DISTRIBUTION_CHANNEL', 'wordpress-org' );
-define( 'WP_CSP_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json' );
+define( 'WP_SAM_VERSION',        '1.0.16' );
+define( 'WP_SAM_DB_VERSION',     '9' );
+define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
+define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
+define( 'WP_SAM_URL',            'https://example.com/wp-content/plugins/security-automation-manager/' );
+define( 'WP_SAM_PLUGIN_BASENAME', 'security-automation-manager/security-automation-manager.php' );
+define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'wordpress-org' );
+define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json' );
 define( 'HOUR_IN_SECONDS',       3600 );
 define( 'DAY_IN_SECONDS',        86400 );
 if ( ! defined( 'DNS_TXT' ) ) {
@@ -30,9 +30,9 @@ define( 'ARRAY_A',               'ARRAY_A' );
 define( 'ARRAY_N',               'ARRAY_N' );
 define( 'OBJECT',                'OBJECT' );
 
-// ── PSR-4 autoloader (mirrors csp-automation-manager.php) ─────────────────────────
+// ── PSR-4 autoloader (mirrors security-automation-manager.php) ─────────────────────────
 spl_autoload_register( static function ( string $class ): void {
-	$prefix = 'WP_CSP\\';
+	$prefix = 'WP_SAM\\';
 	if ( strncmp( $prefix, $class, strlen( $prefix ) ) !== 0 ) {
 		return;
 	}
@@ -40,14 +40,14 @@ spl_autoload_register( static function ( string $class ): void {
 	$parts    = explode( '\\', $relative );
 	$filename = 'class-' . strtolower( str_replace( '_', '-', (string) array_pop( $parts ) ) ) . '.php';
 	$subdir   = ! empty( $parts ) ? strtolower( implode( '/', $parts ) ) . '/' : '';
-	$file     = WP_CSP_DIR . 'includes/' . $subdir . $filename;
+	$file     = WP_SAM_DIR . 'includes/' . $subdir . $filename;
 	if ( ! is_readable( $file ) ) {
-		$file = WP_CSP_DIR . 'offline/' . $subdir . $filename;
+		$file = WP_SAM_DIR . 'offline/' . $subdir . $filename;
 	}
 	if ( is_readable( $file ) ) {
 		require $file;
 	} else {
-		trigger_error( "WP_CSP test autoloader: cannot resolve {$class}", E_USER_NOTICE );
+		trigger_error( "WP_SAM test autoloader: cannot resolve {$class}", E_USER_NOTICE );
 	}
 } );
 
@@ -327,7 +327,7 @@ if ( ! function_exists( 'admin_url' ) ) {
 
 if ( ! function_exists( 'plugin_basename' ) ) {
 	function plugin_basename( string $file ): string {
-		return 'csp-automation-manager/csp-automation-manager.php';
+		return 'security-automation-manager/security-automation-manager.php';
 	}
 }
 
@@ -651,7 +651,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wpdb_insert_result']      = 1;
 	$GLOBALS['_wpdb_update_result']      = 0;
 	$GLOBALS['wpdb']                     = new wpdb_stub();
-	$GLOBALS['_wp_csp_test_nonce']       = '';
+	$GLOBALS['_wp_sam_test_nonce']       = '';
 	$GLOBALS['_wp_rest_body']            = '';
 	$GLOBALS['_wp_rest_headers']         = [];
 	$GLOBALS['_wpdb_query_result']       = 1;
@@ -664,7 +664,7 @@ function wp_test_reset_globals(): void {
 	unset( $_SERVER['REQUEST_URI'] );
 	unset( $_SERVER['HTTP_HOST'] );
 	unset( $_SERVER['HTTP_X_FORWARDED_HOST'] );
-	unset( $_SERVER['HTTP_X_WP_CSP_PROBE'] );
+	unset( $_SERVER['HTTP_X_WP_SAM_PROBE'] );
 }
 
 // Initialise globals so classes loaded at parse time do not hit undefined array errors.

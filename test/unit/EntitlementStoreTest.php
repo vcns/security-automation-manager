@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\Modules\Entitlement_Store.
+ * Unit tests for WP_SAM\Modules\Entitlement_Store.
  *
  * DB interactions are exercised through the wpdb_stub configured in bootstrap.
  * HTTP calls in sync_from_worker() are exercised through the wp_remote_get stub.
@@ -9,8 +9,8 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Modules\Entitlement_Store;
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\Modules\Entitlement_Store;
+use WP_SAM\Modules\Audit_Log;
 
 class EntitlementStoreTest extends TestCase {
 

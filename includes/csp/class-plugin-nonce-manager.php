@@ -6,7 +6,7 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -16,7 +16,7 @@ final class Plugin_Nonce_Manager {
 	public static function get_instance_nonce(): string {
 		static $nonce = null;
 		if ( null === $nonce ) {
-			$plugin = \WP_CSP\Plugin::instance();
+			$plugin = \WP_SAM\Plugin::instance();
 			$nonce  = isset( $plugin->nonce_manager ) ? $plugin->nonce_manager->get_nonce() : '';
 		}
 		return $nonce;

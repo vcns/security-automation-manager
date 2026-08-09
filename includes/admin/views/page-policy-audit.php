@@ -2,7 +2,7 @@
 /**
  * Audit-first CSP policy view.
  *
- * @var \WP_CSP\Plugin $this Admin UI instance scope.
+ * @var \WP_SAM\Plugin $this Admin UI instance scope.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -12,27 +12,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 global $wpdb;
 
 $surfaces          = array( 'frontend', 'admin', 'login', 'api' );
-$automation_config = get_option( 'wp_csp_automation_config', array() );
-$versions_table    = $wpdb->prefix . 'csp_policy_versions';
-$decisions_table   = $wpdb->prefix . 'csp_policy_change_decisions';
+$automation_config = get_option( 'wp_sam_automation_config', array() );
+$versions_table    = $wpdb->prefix . 'sam_policy_versions';
+$decisions_table   = $wpdb->prefix . 'sam_policy_change_decisions';
 $pending_table     = $wpdb->prefix . 'csp_source_inventory';
 
 ?>
-<div class="wrap wp-csp-wrap">
-	<h1><?php esc_html_e( 'CSP Policy Audit', 'csp-automation-manager' ); ?></h1>
-	<p><?php esc_html_e( 'Inspect effective policies, decision provenance, pending review items, and policy version history.', 'csp-automation-manager' ); ?></p>
+<div class="wrap wp-sam-wrap">
+	<h1><?php esc_html_e( 'CSP Policy Audit', 'security-automation-manager' ); ?></h1>
+	<p><?php esc_html_e( 'Inspect effective policies, decision provenance, pending review items, and policy version history.', 'security-automation-manager' ); ?></p>
 
-	<h2><?php esc_html_e( 'Current Policy', 'csp-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-csp-audit-table">
+	<h2><?php esc_html_e( 'Current Policy', 'security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-audit-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Mode', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Automation', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Policy Version', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Pending', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'High Risk', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Effective Header', 'csp-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Automation', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Policy Version', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Pending', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'High Risk', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Effective Header', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -72,7 +72,7 @@ $pending_table     = $wpdb->prefix . 'csp_source_inventory';
 					<td><strong><?php echo esc_html( ucfirst( $surface ) ); ?></strong></td>
 					<td><?php echo esc_html( $profile['mode'] ?? 'unknown' ); ?></td>
 					<td><?php echo esc_html( $surface_config['mode'] ?? 'manual' ); ?></td>
-					<td><?php echo isset( $latest['version_number'] ) ? esc_html( (string) $latest['version_number'] ) : esc_html__( 'Not captured yet', 'csp-automation-manager' ); ?></td>
+					<td><?php echo isset( $latest['version_number'] ) ? esc_html( (string) $latest['version_number'] ) : esc_html__( 'Not captured yet', 'security-automation-manager' ); ?></td>
 					<td><?php echo esc_html( (string) $pending_count ); ?></td>
 					<td><?php echo esc_html( (string) $high_count ); ?></td>
 					<td><code><?php echo esc_html( $latest['effective_header'] ?? '' ); ?></code></td>
@@ -81,23 +81,23 @@ $pending_table     = $wpdb->prefix . 'csp_source_inventory';
 		</tbody>
 	</table>
 
-	<h2><?php esc_html_e( 'Pending Review Queue', 'csp-automation-manager' ); ?></h2>
+	<h2><?php esc_html_e( 'Pending Review Queue', 'security-automation-manager' ); ?></h2>
 	<?php
 	$pending = $wpdb->get_results(
 		"SELECT * FROM {$pending_table} WHERE approval_state = 'pending' ORDER BY FIELD(risk_level, 'critical', 'high', 'unknown', 'medium', 'low'), last_seen_at DESC LIMIT 50", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		ARRAY_A
 	);
 	?>
-	<table class="widefat striped wp-csp-audit-table">
+	<table class="widefat striped wp-sam-audit-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Directive', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Source', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Risk', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Evidence', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'First Seen', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Last Seen', 'csp-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Directive', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Source', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Risk', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Evidence', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'First Seen', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Last Seen', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -106,32 +106,32 @@ $pending_table     = $wpdb->prefix . 'csp_source_inventory';
 					<td><?php echo esc_html( $item['surface'] ); ?></td>
 					<td><code><?php echo esc_html( $item['directive'] ); ?></code></td>
 					<td><code><?php echo esc_html( $item['source_host'] ); ?></code></td>
-					<td><span class="wp-csp-risk-badge risk-<?php echo esc_attr( $item['risk_level'] ); ?>"><?php echo esc_html( ucfirst( $item['risk_level'] ) ); ?></span> <?php echo esc_html( $item['risk_reason'] ); ?></td>
+					<td><span class="wp-sam-risk-badge risk-<?php echo esc_attr( $item['risk_level'] ); ?>"><?php echo esc_html( ucfirst( $item['risk_level'] ) ); ?></span> <?php echo esc_html( $item['risk_reason'] ); ?></td>
 					<td><?php echo esc_html( (string) $item['evidence_count'] ); ?></td>
 					<td><?php echo esc_html( $item['first_seen_at'] ); ?></td>
 					<td><?php echo esc_html( $item['last_seen_at'] ); ?></td>
 				</tr>
 			<?php endforeach; ?>
 			<?php if ( empty( $pending ) ) : ?>
-				<tr><td colspan="7"><?php esc_html_e( 'No pending source proposals require review.', 'csp-automation-manager' ); ?></td></tr>
+				<tr><td colspan="7"><?php esc_html_e( 'No pending source proposals require review.', 'security-automation-manager' ); ?></td></tr>
 			<?php endif; ?>
 		</tbody>
 	</table>
 
-	<h2><?php esc_html_e( 'Recent Decisions', 'csp-automation-manager' ); ?></h2>
+	<h2><?php esc_html_e( 'Recent Decisions', 'security-automation-manager' ); ?></h2>
 	<?php $decisions = $wpdb->get_results( "SELECT * FROM {$decisions_table} ORDER BY created_at DESC LIMIT 50", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared ?>
-	<table class="widefat striped wp-csp-audit-table">
+	<table class="widefat striped wp-sam-audit-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'When', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Decision', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Actor', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Surface', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Directive', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Source', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Risk', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Engine', 'csp-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Policy Version', 'csp-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'When', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Decision', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Actor', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Directive', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Source', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Risk', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Engine', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Policy Version', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -143,13 +143,13 @@ $pending_table     = $wpdb->prefix . 'csp_source_inventory';
 					<td><?php echo esc_html( $decision['surface'] ); ?></td>
 					<td><code><?php echo esc_html( $decision['directive'] ); ?></code></td>
 					<td><code><?php echo esc_html( $decision['source_host'] ); ?></code></td>
-					<td><span class="wp-csp-risk-badge risk-<?php echo esc_attr( $decision['risk_level'] ); ?>"><?php echo esc_html( ucfirst( $decision['risk_level'] ) ); ?></span></td>
+					<td><span class="wp-sam-risk-badge risk-<?php echo esc_attr( $decision['risk_level'] ); ?>"><?php echo esc_html( ucfirst( $decision['risk_level'] ) ); ?></span></td>
 					<td><?php echo esc_html( $decision['decision_engine_version'] ?? '' ); ?></td>
 					<td><?php echo ! empty( $decision['policy_version_id'] ) ? esc_html( (string) $decision['policy_version_id'] ) : esc_html( '—' ); ?></td>
 				</tr>
 			<?php endforeach; ?>
 			<?php if ( empty( $decisions ) ) : ?>
-				<tr><td colspan="9"><?php esc_html_e( 'No decisions have been recorded yet.', 'csp-automation-manager' ); ?></td></tr>
+				<tr><td colspan="9"><?php esc_html_e( 'No decisions have been recorded yet.', 'security-automation-manager' ); ?></td></tr>
 			<?php endif; ?>
 		</tbody>
 	</table>

@@ -20,7 +20,7 @@ on:
       - 'readme.txt'
       - 'tools/lint-php.php'
       - 'uninstall.php'
-      - 'csp-automation-manager.php'
+      - 'security-automation-manager.php'
   workflow_dispatch:
 
 permissions:
@@ -87,20 +87,20 @@ jobs:
 
           php <<'PHP' > /tmp/plugin-version.env
           <?php
-          $plugin = file_get_contents('csp-automation-manager.php');
+          $plugin = file_get_contents('security-automation-manager.php');
           if (false === $plugin) {
-              fwrite(STDERR, "Unable to read csp-automation-manager.php\n");
+              fwrite(STDERR, "Unable to read security-automation-manager.php\n");
               exit(1);
           }
 
           preg_match('/^\s*\*\s+Version:\s*([^\r\n]+)/mi', $plugin, $header_matches);
-          preg_match("/define\(\s*'WP_CSP_VERSION'\s*,\s*'([^']+)'\s*\)/", $plugin, $constant_matches);
+          preg_match("/define\(\s*'WP_SAM_VERSION'\s*,\s*'([^']+)'\s*\)/", $plugin, $constant_matches);
 
           $header_version = trim($header_matches[1] ?? '');
           $constant_version = trim($constant_matches[1] ?? '');
 
           if ('' === $header_version || $header_version !== $constant_version) {
-              fwrite(STDERR, "Plugin header Version and WP_CSP_VERSION must match.\n");
+              fwrite(STDERR, "Plugin header Version and WP_SAM_VERSION must match.\n");
               fwrite(STDERR, "Header: {$header_version}\n");
               fwrite(STDERR, "Constant: {$constant_version}\n");
               exit(1);
@@ -152,18 +152,18 @@ jobs:
 
           VERSION="${{ steps.release_meta.outputs.version }}"
           TAG="${{ steps.release_meta.outputs.tag }}"
-          ZIP_FILENAME="csp-automation-manager-${TAG}.zip"
-          GITHUB_ZIP_FILENAME="csp-automation-manager-github-${TAG}.zip"
+          ZIP_FILENAME="security-automation-manager-${TAG}.zip"
+          GITHUB_ZIP_FILENAME="security-automation-manager-github-${TAG}.zip"
 
           rm -rf dist
-          mkdir -p dist/wporg/csp-automation-manager dist/github/csp-automation-manager
+          mkdir -p dist/wporg/security-automation-manager dist/github/security-automation-manager
 
-          rsync -a --delete --exclude-from='.distignore' ./ dist/wporg/csp-automation-manager/
-          rsync -a --delete --exclude-from='.distignore' ./ dist/github/csp-automation-manager/
+          rsync -a --delete --exclude-from='.distignore' ./ dist/wporg/security-automation-manager/
+          rsync -a --delete --exclude-from='.distignore' ./ dist/github/security-automation-manager/
 
-          rm -f dist/wporg/csp-automation-manager/includes/modules/class-github-update-checker.php
+          rm -f dist/wporg/security-automation-manager/includes/modules/class-github-update-checker.php
 
-          cat > dist/github/csp-automation-manager/includes/build-channel.php <<'PHP'
+          cat > dist/github/security-automation-manager/includes/build-channel.php <<'PHP'
           <?php
           /**
            * Generated build-channel marker for the GitHub release ZIP.
@@ -175,14 +175,14 @@ jobs:
             exit;
           }
 
-          if ( ! defined( 'WP_CSP_DISTRIBUTION_CHANNEL' ) ) {
-            define( 'WP_CSP_DISTRIBUTION_CHANNEL', 'github' );
+          if ( ! defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) ) {
+            define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'github' );
           }
           PHP
 
           python3 - <<'PY'
           from pathlib import Path
-          plugin = Path("dist/github/csp-automation-manager/csp-automation-manager.php")
+          plugin = Path("dist/github/security-automation-manager/security-automation-manager.php")
           contents = plugin.read_text()
           marker = " * Plugin URI:        https://github.com/vcns/csp-automation-manager\n"
           update = " * Update URI:        https://github.com/vcns/csp-automation-manager\n"
@@ -192,10 +192,10 @@ jobs:
           PY
 
           COMMIT_TIMESTAMP="$(git log -1 --format=%ct)"
-          find dist/wporg/csp-automation-manager dist/github/csp-automation-manager -exec touch -h -d "@${COMMIT_TIMESTAMP}" {} +
+          find dist/wporg/security-automation-manager dist/github/security-automation-manager -exec touch -h -d "@${COMMIT_TIMESTAMP}" {} +
 
-          ( cd dist/wporg && find csp-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${ZIP_FILENAME}" -@ )
-          ( cd dist/github && find csp-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${GITHUB_ZIP_FILENAME}" -@ )
+          ( cd dist/wporg && find security-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${ZIP_FILENAME}" -@ )
+          ( cd dist/github && find security-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${GITHUB_ZIP_FILENAME}" -@ )
 
           echo "zip_filename=${ZIP_FILENAME}" >> "${GITHUB_OUTPUT}"
           echo "github_zip_filename=${GITHUB_ZIP_FILENAME}" >> "${GITHUB_OUTPUT}"
@@ -209,25 +209,25 @@ jobs:
           GITHUB_ZIP="dist/${{ steps.build.outputs.github_zip_filename }}"
 
           for ZIP in "${WPORG_ZIP}" "${GITHUB_ZIP}"; do
-            unzip -l "${ZIP}" | grep -q 'csp-automation-manager/csp-automation-manager.php'
-            unzip -l "${ZIP}" | grep -q 'csp-automation-manager/uninstall.php'
-            unzip -l "${ZIP}" | grep -q 'csp-automation-manager/languages/index.php'
+            unzip -l "${ZIP}" | grep -q 'security-automation-manager/security-automation-manager.php'
+            unzip -l "${ZIP}" | grep -q 'security-automation-manager/uninstall.php'
+            unzip -l "${ZIP}" | grep -q 'security-automation-manager/languages/index.php'
           done
 
           if unzip -l "${WPORG_ZIP}" | grep -E 'class-github-update-checker\.php|includes/build-channel\.php'; then
             echo "WordPress.org ZIP contains GitHub-channel updater files." >&2
             exit 1
           fi
-          if unzip -p "${WPORG_ZIP}" csp-automation-manager/csp-automation-manager.php | grep -q 'Update URI:'; then
+          if unzip -p "${WPORG_ZIP}" security-automation-manager/security-automation-manager.php | grep -q 'Update URI:'; then
             echo "WordPress.org ZIP must not include the GitHub Update URI header." >&2
             exit 1
           fi
-          unzip -l "${GITHUB_ZIP}" | grep -q 'csp-automation-manager/includes/modules/class-github-update-checker.php'
-          unzip -l "${GITHUB_ZIP}" | grep -q 'csp-automation-manager/includes/build-channel.php'
-          unzip -p "${GITHUB_ZIP}" csp-automation-manager/csp-automation-manager.php | grep -q 'Update URI:'
+          unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/includes/modules/class-github-update-checker.php'
+          unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/includes/build-channel.php'
+          unzip -p "${GITHUB_ZIP}" security-automation-manager/security-automation-manager.php | grep -q 'Update URI:'
 
           for ZIP in "${WPORG_ZIP}" "${GITHUB_ZIP}"; do
-            if unzip -l "${ZIP}" | grep -E 'csp-automation-manager/(\.git|\.github|\.private_key|\.public_key|\.phpunit\.cache|cloudflare|docs|node_modules|offline|test|tools|vendor)/|csp-automation-manager/(\.distignore|\.git|code-review-findings\.json|COMMERCIAL_TERMS\.md|README\.md|RESEARCH\.md|SPECIFICATION\.md|TRADEMARK_POLICY\.md)$'; then
+            if unzip -l "${ZIP}" | grep -E 'security-automation-manager/(\.git|\.github|\.private_key|\.public_key|\.phpunit\.cache|cloudflare|docs|node_modules|offline|test|tools|vendor)/|security-automation-manager/(\.distignore|\.git|code-review-findings\.json|COMMERCIAL_TERMS\.md|README\.md|RESEARCH\.md|SPECIFICATION\.md|TRADEMARK_POLICY\.md)$'; then
               echo "Release ZIP contains development, private, documentation, or generated-only paths. Check .distignore." >&2
               exit 1
             fi
@@ -236,7 +236,7 @@ jobs:
       - name: Upload ZIP artifact
         uses: actions/upload-artifact@v7
         with:
-          name: csp-automation-manager-release-zip
+          name: security-automation-manager-release-zip
           path: dist/*.zip
           retention-days: 30
 
@@ -252,7 +252,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
-          name: csp-automation-manager-release-zip
+          name: security-automation-manager-release-zip
           path: dist/
 
       - name: Create or update GitHub Release
@@ -276,7 +276,7 @@ jobs:
           else
             gh release create "${TAG}" \
               --repo "${GITHUB_REPOSITORY}" \
-              --title "CSP Automation Manager ${TAG}" \
+              --title "Security Automation Manager ${TAG}" \
               --generate-notes \
               ${PRERELEASE_FLAG} \
               "dist/${ZIP_FILENAME}" \
@@ -295,7 +295,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
-          name: csp-automation-manager-release-zip
+          name: security-automation-manager-release-zip
           path: dist/
 
       - name: Prepare update feed
@@ -311,9 +311,14 @@ jobs:
 
           mkdir -p "${FEED_DIR}"
           cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/${GITHUB_ZIP_FILENAME}"
-          cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/csp-automation-manager-github-latest.zip"
+          cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/security-automation-manager-github-latest.zip"
           SHA256="$(sha256sum "${FEED_DIR}/${GITHUB_ZIP_FILENAME}" | awk '{print $1}')"
 
+          # NOTE: the update-feed publish path (vcns/wp-updates/csp-automation-manager/)
+          # intentionally still uses the pre-rename slug -- it must match the
+          # WP_SAM_UPDATE_MANIFEST_URL constant baked into already-installed
+          # GitHub-channel copies of the plugin, or they stop discovering new
+          # releases entirely. Migrate both together in a coordinated follow-up.
           python3 - <<PY
           import json
           version = "${VERSION}"
@@ -322,7 +327,11 @@ jobs:
           sha256 = "${SHA256}"
           update_url = "https://vcns.github.io/wp-updates/csp-automation-manager/" + zip_name
           data = {
-              "name": "CSP Automation Manager",
+              # NOTE: "name" is updated for the new branding, but "slug" intentionally
+              # stays the pre-rename value -- it must match Github_Update_Checker::SLUG
+              # in already-installed GitHub-channel copies, or their update check's
+              # slug-match validation rejects future releases. Migrate both together.
+              "name": "Security Automation Manager",
               "slug": "csp-automation-manager",
               "version": version,
               "author": "VCNS Tech Ltd",
@@ -335,7 +344,7 @@ jobs:
               "last_updated": last_updated,
               "homepage": "https://github.com/vcns/csp-automation-manager",
               "sections": {
-                  "description": "Strict Content Security Policy rollout, reporting, and decision review for WordPress.",
+                  "description": "Strict HTTP security header rollout, reporting, and decision review for WordPress.",
                   "changelog": "See https://github.com/vcns/csp-automation-manager/releases/tag/${TAG}"
               }
           }
@@ -346,14 +355,14 @@ jobs:
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>CSP Automation Manager Updates</title>
+            <title>Security Automation Manager Updates</title>
           </head>
           <body>
-            <h1>CSP Automation Manager</h1>
+            <h1>Security Automation Manager</h1>
             <p>Latest GitHub-channel release: <strong>{version}</strong> ({last_updated})</p>
             <ul>
               <li><a href="{zip_name}">Download GitHub-channel ZIP</a></li>
-              <li><a href="csp-automation-manager-github-latest.zip">Latest ZIP alias</a></li>
+              <li><a href="security-automation-manager-github-latest.zip">Latest ZIP alias</a></li>
               <li><a href="update.json">Update manifest</a></li>
             </ul>
           </body>
@@ -387,6 +396,8 @@ jobs:
             git -C "${WORKTREE}" remote add origin "${REMOTE_URL}"
           fi
 
+          # Deliberately still the pre-rename slug -- see the NOTE above where
+          # update_url is built; keep in lockstep with WP_SAM_UPDATE_MANIFEST_URL.
           mkdir -p "${WORKTREE}/csp-automation-manager"
           cp -R /tmp/pages/. "${WORKTREE}/csp-automation-manager/"
 
@@ -399,5 +410,5 @@ jobs:
             exit 0
           fi
 
-          git -C "${WORKTREE}" commit -m "csp-automation-manager ${GITHUB_REF_NAME}"
+          git -C "${WORKTREE}" commit -m "security-automation-manager ${GITHUB_REF_NAME}"
           git -C "${WORKTREE}" push origin gh-pages

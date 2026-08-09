@@ -1,14 +1,14 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Policy_Change_Manager.
+ * Unit tests for WP_SAM\CSP\Policy_Change_Manager.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Automation_Config;
-use WP_CSP\CSP\Policy_Change_Manager;
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Policy_Change_Manager;
+use WP_SAM\Modules\Audit_Log;
 
 class PolicyChangeManagerTest extends TestCase {
 
@@ -77,7 +77,7 @@ class PolicyChangeManagerTest extends TestCase {
 
 	public function test_eligible_source_is_auto_approved_when_surface_automation_is_enabled(): void {
 		update_option(
-			'wp_csp_automation_config',
+			'wp_sam_automation_config',
 			array(
 				'frontend' => array(
 					'mode'                           => Automation_Config::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL,
@@ -142,7 +142,7 @@ class PolicyChangeManagerTest extends TestCase {
 		$decision_rows = array_values(
 			array_filter(
 				$GLOBALS['_wpdb_inserted_rows'],
-				static fn( array $row ): bool => 'wp_csp_policy_change_decisions' === $row['table']
+				static fn( array $row ): bool => 'wp_sam_policy_change_decisions' === $row['table']
 			)
 		);
 
@@ -185,7 +185,7 @@ class PolicyChangeManagerTest extends TestCase {
 		$decision_rows = array_values(
 			array_filter(
 				$GLOBALS['_wpdb_inserted_rows'],
-				static fn( array $row ): bool => 'wp_csp_policy_change_decisions' === $row['table']
+				static fn( array $row ): bool => 'wp_sam_policy_change_decisions' === $row['table']
 			)
 		);
 
@@ -227,7 +227,7 @@ class PolicyChangeManagerTest extends TestCase {
 		$decision_rows = array_values(
 			array_filter(
 				$GLOBALS['_wpdb_inserted_rows'],
-				static fn( array $row ): bool => 'wp_csp_policy_change_decisions' === $row['table']
+				static fn( array $row ): bool => 'wp_sam_policy_change_decisions' === $row['table']
 			)
 		);
 
@@ -261,7 +261,7 @@ class PolicyChangeManagerTest extends TestCase {
 		$decision_rows = array_values(
 			array_filter(
 				$GLOBALS['_wpdb_inserted_rows'],
-				static fn( array $row ): bool => 'wp_csp_policy_change_decisions' === $row['table']
+				static fn( array $row ): bool => 'wp_sam_policy_change_decisions' === $row['table']
 			)
 		);
 

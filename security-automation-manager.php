@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name:       CSP Automation Manager
+ * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/csp-automation-manager
- * Description:       Automates strict Content Security Policy generation, enforcement, and violation analysis for WordPress.
+ * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
  * Version:           1.0.16
  * Requires at least: 6.4
  * Requires PHP:      8.1
@@ -10,7 +10,7 @@
  * Author URI:        https://vcns.tech
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       csp-automation-manager
+ * Text Domain:       security-automation-manager
  * Domain Path:       /languages
  */
 
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_CSP_VERSION', '1.0.16' );
+define( 'WP_SAM_VERSION', '1.0.16' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -38,33 +38,46 @@ define( 'WP_CSP_VERSION', '1.0.16' );
  * v8 -- adds last_seen_at and source_host indexes to csp_source_inventory, and an
  *        occurrence_count index to csp_violation_reports, for the sortable/filterable
  *        dashboard tables
+ * v9 -- renames shared/generic tables (csp_scan_logs, csp_entitlements,
+ *        csp_processed_events, csp_audit_log, csp_policy_change_decisions,
+ *        csp_policy_versions, csp_decision_rule_evaluations) to a sam_ prefix
+ *        ahead of multi-pillar support; CSP-owned tables (csp_policy_profiles,
+ *        csp_source_inventory, csp_hash_inventory, csp_violation_reports) are
+ *        unchanged. Existing installs are migrated via RENAME TABLE, not
+ *        create+copy+drop, so no data is lost.
  */
-define( 'WP_CSP_DB_VERSION', '8' );
+define( 'WP_SAM_DB_VERSION', '9' );
 
-define( 'WP_CSP_FILE', __FILE__ );
-define( 'WP_CSP_DIR', plugin_dir_path( __FILE__ ) );
-define( 'WP_CSP_URL', plugin_dir_url( __FILE__ ) );
-define( 'WP_CSP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define( 'WP_SAM_FILE', __FILE__ );
+define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );
+define( 'WP_SAM_URL', plugin_dir_url( __FILE__ ) );
+define( 'WP_SAM_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
-$wp_csp_build_channel = WP_CSP_DIR . 'includes/build-channel.php';
-if ( is_readable( $wp_csp_build_channel ) ) {
-	require $wp_csp_build_channel;
+$wp_sam_build_channel = WP_SAM_DIR . 'includes/build-channel.php';
+if ( is_readable( $wp_sam_build_channel ) ) {
+	require $wp_sam_build_channel;
 }
-unset( $wp_csp_build_channel );
+unset( $wp_sam_build_channel );
 
-if ( ! defined( 'WP_CSP_DISTRIBUTION_CHANNEL' ) ) {
-	define( 'WP_CSP_DISTRIBUTION_CHANNEL', 'wordpress-org' );
+if ( ! defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) ) {
+	define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'wordpress-org' );
 }
 
-if ( ! defined( 'WP_CSP_UPDATE_MANIFEST_URL' ) ) {
-	define( 'WP_CSP_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json' );
+if ( ! defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ) {
+	// NOTE: intentionally still points at the csp-automation-manager path on
+	// VCNS's update-manifest host. This is an external infrastructure
+	// contract (vcns.github.io/wp-updates/), not just an in-repo identifier --
+	// renaming it here would 404 update checks for existing GitHub-channel
+	// installs until the manifest host also migrates to a new path. Update
+	// this once that migration happens on the manifest-hosting side.
+	define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json' );
 }
 
 
 // ── PSR-4 autoloader ──────────────────────────────────────────────────────────
 spl_autoload_register(
 	static function ( string $class_name ): void {
-		$prefix = 'WP_CSP\\';
+		$prefix = 'WP_SAM\\';
 		if ( strncmp( $prefix, $class_name, strlen( $prefix ) ) !== 0 ) {
 			return;
 		}
@@ -74,14 +87,14 @@ spl_autoload_register(
 		$subdir   = ! empty( $parts ) ? strtolower( implode( '/', $parts ) ) . '/' : '';
 
 		// Public includes/ directory.
-		$file = WP_CSP_DIR . 'includes/' . $subdir . $filename;
+		$file = WP_SAM_DIR . 'includes/' . $subdir . $filename;
 		if ( is_readable( $file ) ) {
 			require $file;
 			return;
 		}
 
 		// offline/ directory: proprietary modules never committed to the repository.
-		$file = WP_CSP_DIR . 'offline/' . $subdir . $filename;
+		$file = WP_SAM_DIR . 'offline/' . $subdir . $filename;
 		if ( is_readable( $file ) ) {
 			require $file;
 		}
@@ -89,21 +102,21 @@ spl_autoload_register(
 );
 
 // ── Lifecycle hooks ───────────────────────────────────────────────────────────
-register_activation_hook( __FILE__, array( 'WP_CSP\\Activator', 'activate' ) );
-register_deactivation_hook( __FILE__, array( 'WP_CSP\\Deactivator', 'deactivate' ) );
+register_activation_hook( __FILE__, array( 'WP_SAM\\Activator', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'WP_SAM\\Deactivator', 'deactivate' ) );
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 add_action(
 	'plugins_loaded',
 	static function (): void {
-		WP_CSP\Plugin::instance()->init();
+		WP_SAM\Plugin::instance()->init();
 
 		if (
-			'github' === WP_CSP_DISTRIBUTION_CHANNEL
+			'github' === WP_SAM_DISTRIBUTION_CHANNEL
 			&& ( is_admin() || wp_doing_cron() )
-			&& is_readable( WP_CSP_DIR . 'includes/modules/class-github-update-checker.php' )
+			&& is_readable( WP_SAM_DIR . 'includes/modules/class-github-update-checker.php' )
 		) {
-			( new WP_CSP\Modules\Github_Update_Checker() )->register();
+			( new WP_SAM\Modules\Github_Update_Checker() )->register();
 		}
 	}
 );

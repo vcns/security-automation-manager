@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Violation_Reporter.
+ * Unit tests for WP_SAM\CSP\Violation_Reporter.
  *
  * Tests normalisation of both CSP Level 3 and Reporting API payloads,
  * deduplication fingerprint generation, rate limiting, and edge cases.
@@ -10,9 +10,9 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Learning_Window;
-use WP_CSP\CSP\Violation_Reporter;
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\CSP\Learning_Window;
+use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Modules\Audit_Log;
 
 class ViolationReporterTest extends TestCase {
 
@@ -73,13 +73,13 @@ class ViolationReporterTest extends TestCase {
 		// Still returns 204 — must not reveal rejection to the sender.
 		$this->assertSame( 204, $response->get_status() );
 		// Rate-limit transient must not be set (report was dropped before rate check).
-		$this->assertArrayNotHasKey( 'wp_csp_viol_rate_frontend', $GLOBALS['_wp_transients'] );
+		$this->assertArrayNotHasKey( 'wp_sam_viol_rate_frontend', $GLOBALS['_wp_transients'] );
 	}
 
 	// ── handle(): Rate limiting ────────────────────────────────────────────────
 
 	public function test_configured_report_endpoint_host_is_accepted_as_document_origin(): void {
-		update_option( 'wp_csp_report_endpoint_url', 'https://staging.example.net/wp-json/csp-manager/v1/report' );
+		update_option( 'wp_sam_report_endpoint_url', 'https://staging.example.net/wp-json/csp-manager/v1/report' );
 		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
 
 		$request = $this->make_request(
@@ -89,7 +89,7 @@ class ViolationReporterTest extends TestCase {
 		$this->reporter->handle( $request );
 
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
-		$this->assertArrayHasKey( 'wp_csp_viol_rate_frontend', $GLOBALS['_wp_transients'] );
+		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend', $GLOBALS['_wp_transients'] );
 	}
 
 	public function test_forwarded_host_is_accepted_as_document_origin(): void {
@@ -103,12 +103,12 @@ class ViolationReporterTest extends TestCase {
 		$this->reporter->handle( $request );
 
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
-		$this->assertArrayHasKey( 'wp_csp_viol_rate_frontend', $GLOBALS['_wp_transients'] );
+		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend', $GLOBALS['_wp_transients'] );
 	}
 
 	public function test_report_is_dropped_when_rate_limit_exceeded(): void {
 		$GLOBALS['_wp_rest_headers']['content-type']            = 'application/csp-report';
-		$GLOBALS['_wp_transients']['wp_csp_viol_rate_frontend'] = 500;
+		$GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend'] = 500;
 
 		$request = $this->make_request(
 			'{"csp-report":{"violated-directive":"script-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com"}}'
@@ -116,7 +116,7 @@ class ViolationReporterTest extends TestCase {
 
 		$this->reporter->handle( $request );
 
-		$this->assertSame( 500, $GLOBALS['_wp_transients']['wp_csp_viol_rate_frontend'] );
+		$this->assertSame( 500, $GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend'] );
 		$this->assertNull( $GLOBALS['_wpdb_last_operation'] );
 	}
 
@@ -402,7 +402,7 @@ class ViolationReporterTest extends TestCase {
 
 	private function make_request( string $body ): WP_REST_Request {
 		$GLOBALS['_wp_rest_body'] = $body;
-		return new WP_REST_Request( 'POST', '/csp-manager/v1/report' );
+		return new WP_REST_Request( 'POST', '/security-manager/v1/report' );
 	}
 
 	/**
@@ -436,7 +436,7 @@ class ViolationReporterTest extends TestCase {
 			protected function store_report( array $r ): void {
 				// Apply the rate-limit logic manually using the test cap.
 				$surface  = $this->call_surface( $r['document_uri'] ?? '' );
-				$rate_key = 'wp_csp_viol_rate_' . $surface;
+				$rate_key = 'wp_sam_viol_rate_' . $surface;
 				$count    = (int) get_transient( $rate_key );
 				if ( $count >= $this->cap ) {
 					return;

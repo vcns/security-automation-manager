@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
-        'name' => 'vcns/csp-automation-manager',
+        'name' => 'vcns/security-automation-manager',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '9947ababf8d19f582d4fc8dd863ef541cbe8c4a2',
+        'reference' => '91ab3bce878d3f0455ebd93f367cae8aee7c1dbc',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -289,10 +289,10 @@
             'aliases' => array(),
             'dev_requirement' => true,
         ),
-        'vcns/csp-automation-manager' => array(
+        'vcns/security-automation-manager' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '9947ababf8d19f582d4fc8dd863ef541cbe8c4a2',
+            'reference' => '91ab3bce878d3f0455ebd93f367cae8aee7c1dbc',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

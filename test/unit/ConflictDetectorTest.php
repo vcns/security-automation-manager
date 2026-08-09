@@ -1,13 +1,13 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Conflict_Detector.
+ * Unit tests for WP_SAM\CSP\Conflict_Detector.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Conflict_Detector;
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\CSP\Conflict_Detector;
+use WP_SAM\Modules\Audit_Log;
 
 class ConflictDetectorTest extends TestCase {
 
@@ -21,7 +21,7 @@ class ConflictDetectorTest extends TestCase {
 	}
 
 	public function test_scan_htaccess_detects_csp_header_directives(): void {
-		$path = tempnam( sys_get_temp_dir(), 'wp-csp-htaccess-' );
+		$path = tempnam( sys_get_temp_dir(), 'wp-sam-htaccess-' );
 		$this->assertIsString( $path );
 
 		try {
@@ -108,7 +108,7 @@ class ConflictDetectorTest extends TestCase {
 		$this->assertCount( 1, $GLOBALS['_wp_remote_head_requests'] );
 		$this->assertSame( 'https://example.com', $GLOBALS['_wp_remote_head_requests'][0]['url'] );
 		$this->assertSame( '1', $GLOBALS['_wp_remote_head_requests'][0]['args']['headers']['X-WP-CSP-Probe'] );
-		$this->assertSame( 1, $GLOBALS['_wp_transients']['wp_csp_conflict_probe_ran'] );
+		$this->assertSame( 1, $GLOBALS['_wp_transients']['wp_sam_conflict_probe_ran'] );
 	}
 
 	private function assertAuditDetailContains( string $needle ): void {

@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Hash_Manager.
+ * Unit tests for WP_SAM\CSP\Hash_Manager.
  *
  * Tests the hash computation, captured hash map, and retire_stale() guard.
  * Output buffering hooks are tested indirectly via flush_buffer() by calling
@@ -10,9 +10,9 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Hash_Manager;
-use WP_CSP\Modules\Audit_Log;
-use WP_CSP\Modules\Feature_Gate;
+use WP_SAM\CSP\Hash_Manager;
+use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Feature_Gate;
 
 class HashManagerTest extends TestCase {
 

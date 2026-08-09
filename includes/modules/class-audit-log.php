@@ -3,11 +3,11 @@
  * Write-only structured audit log.
  *
  * Writes lifecycle events to three destinations:
- *   1. csp_audit_log table — append-only, immutable record (R10). Never UPDATEd or DELETEd.
+ *   1. sam_audit_log table — append-only, immutable record (R10). Never UPDATEd or DELETEd.
  *   2. wp_options FIFO queue (max 20) — for transient admin notice display only.
  *   3. PHP error_log — for warnings and errors.
  *
- * Scan lifecycle records go to csp_scan_logs via start_scan() / finish_scan().
+ * Scan lifecycle records go to sam_scan_logs via start_scan() / finish_scan().
  * Keeps a bounded in-memory buffer for request-scoped debugging / test inspection.
  *
  * Severity levels: info | warning | error
@@ -15,7 +15,7 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\Modules;
+namespace WP_SAM\Modules;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -78,7 +78,7 @@ class Audit_Log {
 	public function start_scan( string $trigger_type ): int {
 		global $wpdb;
 		$wpdb->insert(
-			$wpdb->prefix . 'csp_scan_logs',
+			$wpdb->prefix . 'sam_scan_logs',
 			array(
 				'trigger_type' => $trigger_type,
 				'status'       => 'running',
@@ -95,7 +95,7 @@ class Audit_Log {
 	public function finish_scan( int $scan_id, array $results, string $status = 'completed' ): void {
 		global $wpdb;
 		$wpdb->update(
-			$wpdb->prefix . 'csp_scan_logs',
+			$wpdb->prefix . 'sam_scan_logs',
 			array(
 				'status'          => $status,
 				'sources_added'   => $results['sources_added'] ?? 0,
@@ -123,7 +123,7 @@ class Audit_Log {
 	// ── Immutable DB record ───────────────────────────────────────────────────
 
 	/**
-	 * Appends an event to the csp_audit_log table.
+	 * Appends an event to the sam_audit_log table.
 	 * This table is never UPDATE-d or DELETE-d — it is the permanent audit trail (R10).
 	 * Failures are silently swallowed so a DB hiccup never kills the request.
 	 */
@@ -134,7 +134,7 @@ class Audit_Log {
 		string $severity
 	): void {
 		global $wpdb;
-		$table = $wpdb->prefix . 'csp_audit_log';
+		$table = $wpdb->prefix . 'sam_audit_log';
 
 		// Guard: table may not exist yet on first activation before dbDelta runs.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -163,7 +163,7 @@ class Audit_Log {
 			return; // Only surface warnings and errors.
 		}
 
-		$notices = get_option( 'wp_csp_admin_notices', array() );
+		$notices = get_option( 'wp_sam_admin_notices', array() );
 		if ( ! is_array( $notices ) ) {
 			$notices = array();
 		}
@@ -175,6 +175,6 @@ class Audit_Log {
 			$notices = array_slice( $notices, -20 );
 		}
 
-		update_option( 'wp_csp_admin_notices', $notices, false );
+		update_option( 'wp_sam_admin_notices', $notices, false );
 	}
 }

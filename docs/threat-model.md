@@ -19,7 +19,7 @@ This document captures the trust boundaries, threat actors, and security-critica
 | Input | Validation applied |
 |---|---|
 | DNS TXT record | Used only to obtain the URL of the signed config payload; never executed |
-| HTTPS remote config JSON | Ed25519 signature verified with `WP_CSP_CONFIG_PUBLIC_KEY` before any field is consumed |
+| HTTPS remote config JSON | Ed25519 signature verified with `WP_SAM_CONFIG_PUBLIC_KEY` before any field is consumed |
 | Stripe webhooks | HMAC-SHA256 signature verified against `wp_csp_webhook_secret`; 5-minute timestamp replay window enforced |
 | Browser CSP violation reports | Content-Type enforced; `document-uri` hostname checked against `home_url()`; rate-limited at 500/hour per surface; deduplicated by SHA-256 fingerprint |
 | Crawled HTML (discovery scan) | External origins extracted from resource tags; never executed or auto-approved |
@@ -38,7 +38,7 @@ This document captures the trust boundaries, threat actors, and security-critica
 
 **Compromised delivery infrastructure** — DNS hijacking, TLS interception, or CDN compromise of the remote config origin. Mitigated by Ed25519 signature verification: a compromised delivery channel cannot forge a valid signature without the private key.
 
-**Malicious co-installed plugin** — a plugin could intercept `apply_filters()` calls. The three infrastructure constants (`WP_CSP_CONFIG_PUBLIC_KEY`, `WP_CSP_CONFIG_DNS_RECORD`, `WP_CSP_WORKER_URL`) are PHP constants, not WordPress options or filterable values. A plugin cannot redirect config fetches or alter the verification key at runtime.
+**Malicious co-installed plugin** — a plugin could intercept `apply_filters()` calls. The three infrastructure constants (`WP_SAM_CONFIG_PUBLIC_KEY`, `WP_SAM_CONFIG_DNS_RECORD`, `WP_SAM_WORKER_URL`) are PHP constants, not WordPress options or filterable values. A plugin cannot redirect config fetches or alter the verification key at runtime.
 
 **Stripe webhook replay** — a captured valid webhook event replayed later. Mitigated by the 5-minute timestamp window in `verify_signature()`.
 
@@ -56,7 +56,7 @@ The following must never be changed without a full security review:
 
 4. **Cross-origin violation reports are discarded silently.** Reports whose `document-uri` hostname does not match `home_url()` are dropped without revealing a rejection response, to avoid advertising the check to an attacker probing the endpoint.
 
-5. **Infrastructure constants are PHP constants, not filters.** `WP_CSP_CONFIG_PUBLIC_KEY`, `WP_CSP_CONFIG_DNS_RECORD`, and `WP_CSP_WORKER_URL` use `defined() || define()` so they can be overridden only in `wp-config.php` (server-level). Making them filterable would allow any plugin to redirect signature verification or config fetches to an attacker-controlled endpoint.
+5. **Infrastructure constants are PHP constants, not filters.** `WP_SAM_CONFIG_PUBLIC_KEY`, `WP_SAM_CONFIG_DNS_RECORD`, and `WP_SAM_WORKER_URL` use `defined() || define()` so they can be overridden only in `wp-config.php` (server-level). Making them filterable would allow any plugin to redirect signature verification or config fetches to an attacker-controlled endpoint.
 
 6. **Violation report fields are never auto-approved.** Discovered `blocked-uri` values are stored with `approval_state = 'pending'`. Only an explicit admin action via the REST API (capability-checked, nonce-validated) can change the state to `approved`.
 

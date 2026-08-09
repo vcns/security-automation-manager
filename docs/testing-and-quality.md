@@ -126,11 +126,11 @@ Current baseline:
 ### Policy audit and admin REST
 
 - load **CSP Manager -> Policy Audit** and confirm current policy, pending review, and recent decision tables render without warnings
-- `GET /wp-json/csp-manager/v1/admin/policies` as an unauthorised user must fail
-- `GET /wp-json/csp-manager/v1/admin/policies` as an administrator must return surface summaries
-- `GET /wp-json/csp-manager/v1/admin/reviews/pending` must list pending source proposals
-- `GET /wp-json/csp-manager/v1/admin/decisions` must support filters such as `surface`, `directive`, `state`, and `risk_level`
-- `GET /wp-json/csp-manager/v1/admin/policy-versions/{id}/diff` must return added/removed directives, added/removed values, and mode-change status
+- `GET /wp-json/security-manager/v1/admin/policies` as an unauthorised user must fail
+- `GET /wp-json/security-manager/v1/admin/policies` as an administrator must return surface summaries
+- `GET /wp-json/security-manager/v1/admin/reviews/pending` must list pending source proposals
+- `GET /wp-json/security-manager/v1/admin/decisions` must support filters such as `surface`, `directive`, `state`, and `risk_level`
+- `GET /wp-json/security-manager/v1/admin/policy-versions/{id}/diff` must return added/removed directives, added/removed values, and mode-change status
 
 ### Violation reporting
 
@@ -141,7 +141,7 @@ Current baseline:
 
 **Content-Type rejection:**
 
-- `POST` to `/wp-json/csp-manager/v1/report` with `Content-Type: text/plain`; response must be HTTP 400 with no row inserted
+- `POST` to `/wp-json/security-manager/v1/report` with `Content-Type: text/plain`; response must be HTTP 400 with no row inserted
 - `POST` with `Content-Type: application/xml`; response must be HTTP 400 with no row inserted
 - `POST` with `Content-Type: application/json` (legacy browser fallback); response must be accepted (HTTP 200)
 
@@ -185,11 +185,11 @@ Current baseline:
 
 Before tagging a release:
 
-- update version in `csp-automation-manager.php`
-- update `WP_CSP_DB_VERSION` constant if schema changed; update version table in `docs/database-schema.md`
+- update version in `security-automation-manager.php`
+- update `WP_SAM_DB_VERSION` constant if schema changed; update version table in `docs/database-schema.md`
 - update `readme.txt` stable tag if needed
 - update `CHANGELOG.md`
-- confirm the plugin header `Version`, `WP_CSP_VERSION`, `readme.txt` stable tag, and changelog release heading match
+- confirm the plugin header `Version`, `WP_SAM_VERSION`, `readme.txt` stable tag, and changelog release heading match
 - confirm the release workflow builds both the WordPress.org-safe ZIP and GitHub-channel ZIP from the same tag
 - confirm the GitHub-channel update manifest version, package URL, and SHA-256 checksum match the GitHub-channel ZIP
 - review public docs for accuracy

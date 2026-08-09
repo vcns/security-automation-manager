@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Nonce_Manager.
+ * Unit tests for WP_SAM\CSP\Nonce_Manager.
  *
  * Verifies nonce generation entropy, uniqueness, tag injection, and attribute
  * hook handling. Does not test register() because that calls add_action() which
@@ -10,8 +10,8 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Nonce_Manager;
-use WP_CSP\Modules\Feature_Gate;
+use WP_SAM\CSP\Nonce_Manager;
+use WP_SAM\Modules\Feature_Gate;
 
 class NonceManagerTest extends TestCase {
 

@@ -7,7 +7,7 @@
   <arg name="parallel" value="4"/>
   <arg name="extensions" value="php"/>
 
-  <file>csp-automation-manager.php</file>
+  <file>security-automation-manager.php</file>
   <file>uninstall.php</file>
   <file>includes</file>
 
@@ -42,7 +42,7 @@
   <rule ref="WordPress.WP.I18n">
     <properties>
       <property name="text_domain" type="array">
-        <element value="csp-automation-manager"/>
+        <element value="security-automation-manager"/>
       </property>
     </properties>
   </rule>

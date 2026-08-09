@@ -2,18 +2,19 @@
 
 ## Overview
 
-The plugin creates custom tables on activation. All table names are prefixed with the site's configured WordPress table prefix (default `wp_`). Tables are created and migrated via `dbDelta()` in `includes/class-activator.php`; the current schema version is tracked in the `wp_csp_db_version` option and compared against the `WP_CSP_DB_VERSION` constant on every boot.
+The plugin creates custom tables on activation. All table names are prefixed with the site's configured WordPress table prefix (default `wp_`). Tables are created and migrated via `dbDelta()` in `includes/class-activator.php`; the current schema version is tracked in the `wp_sam_db_version` option and compared against the `WP_SAM_DB_VERSION` constant on every boot.
 
 | Version | Change |
 |---------|--------|
 | v1 | Initial schema — seven tables |
 | v2 | `csp_policy_profiles` gains `override_expires_at`, `override_owner` |
 | v3 | `csp_violation_reports` gains `sample` column |
-| v4 | `csp_audit_log` append-only table added |
-| v5 | source proposal risk/decision metadata and `csp_policy_change_decisions` append-only ledger added |
+| v4 | `sam_audit_log` append-only table added (named `csp_audit_log` until v9) |
+| v5 | source proposal risk/decision metadata and `sam_policy_change_decisions` append-only ledger added (named `csp_policy_change_decisions` until v9) |
 | v6 | `csp_violation_reports` gains first/last reported roll-up timestamps and unique fingerprint upsert support |
 | v7 | decision provenance columns, policy version snapshots, deterministic rule evaluations, and manual automation defaults |
 | v8 | adds `last_seen_at` and `source_host` indexes to `csp_source_inventory`, and an `occurrence_count` index to `csp_violation_reports`, for the sortable/filterable dashboard tables |
+| v9 | renames the shared/generic tables (`csp_scan_logs`→`sam_scan_logs`, `csp_entitlements`→`sam_entitlements`, `csp_processed_events`→`sam_processed_events`, `csp_audit_log`→`sam_audit_log`, `csp_policy_change_decisions`→`sam_policy_change_decisions`, `csp_policy_versions`→`sam_policy_versions`, `csp_decision_rule_evaluations`→`sam_decision_rule_evaluations`) via `RENAME TABLE`, ahead of multi-pillar support. The four CSP-owned tables (`csp_policy_profiles`, `csp_source_inventory`, `csp_hash_inventory`, `csp_violation_reports`) are unchanged. |
 
 ## Table list
 
@@ -73,7 +74,7 @@ Operational notes:
 
 - discovery upserts rows by `(surface, directive, source_host)` rather than inserting duplicates
 - approval state is operator-controlled only; sources are never auto-approved
-- rejected and reverted fingerprints are suppressed by the latest matching row in `csp_policy_change_decisions`
+- rejected and reverted fingerprints are suppressed by the latest matching row in `sam_policy_change_decisions`
 - same-origin resources must not be stored as inventory rows
 - only `approved` rows are included in emitted CSP headers
 
@@ -135,13 +136,13 @@ Operational notes:
 - the endpoint validates `Content-Type` and rejects non-CSP payloads with HTTP 400
 - the endpoint validates that `document-uri` belongs to this site's origin; cross-origin reports are silently discarded (CSP reports are client-generated and spoofable)
 - duplicate reports (same fingerprint) increment `occurrence_count` rather than inserting new rows
-- rows are purged automatically after `wp_csp_violation_retention_days` days (default: 90) by the daily cron scan; set to `0` to disable purging
+- rows are purged automatically after `wp_sam_violation_retention_days` days (default: 90) by the daily cron scan; set to `0` to disable purging
 
 #### v6 roll-up columns and migration
 
 Schema v6 adds `first_reported_at` and `last_reported_at` to `csp_violation_reports`, backfills them from `reported_at`, collapses historic duplicate fingerprints, and converts `fingerprint` to a unique key where required. Duplicate reports increment `occurrence_count` and update the latest timestamp rather than inserting additional rows.
 
-### `csp_scan_logs`
+### `sam_scan_logs`
 
 Purpose:
 
@@ -166,7 +167,7 @@ Operational notes:
 - `diff_summary` and `warnings` should remain compact enough for admin rendering
 - a `running` row with no `completed_at` may indicate a stuck or killed cron job
 
-### `csp_entitlements`
+### `sam_entitlements`
 
 Purpose:
 
@@ -176,7 +177,7 @@ Key columns:
 
 - `id`
 - `site_identity` — truncated SHA-256 hash of the site URL; binds the entitlement to a specific WordPress install
-- `product_key` — identifies the premium product tier (e.g. `csp-automation-manager`)
+- `product_key` — identifies the premium product tier (e.g. `security-automation-manager`)
 - `tier` — `free`, `pro`
 - `status` — `active`, `revoked`, `expired`, `grace`
 - `stripe_customer_id`, `stripe_session_id`, `stripe_payment_intent_id`
@@ -194,7 +195,7 @@ Operational notes:
 - grace handling is based on `last_validated_at` plus the configured grace hours option
 - `stripe_session_id` is UNIQUE-constrained to prevent duplicate grants from webhook retries
 
-### `csp_processed_events`
+### `sam_processed_events`
 
 Purpose:
 
@@ -215,7 +216,7 @@ Operational notes:
 - before processing any webhook event, the handler checks this table and skips if the `stripe_event_id` is already present
 - outcome strings should remain stable to support log triage
 
-### `csp_audit_log`
+### `sam_audit_log`
 
 Purpose:
 
@@ -237,7 +238,7 @@ Operational notes:
 - `warning` and `error` events are additionally written to the PHP `error_log` and pushed to the admin notices FIFO queue (max 20 entries) for transient display
 - events are written before the associated action completes where possible, so that failures are always recorded
 
-### `csp_policy_change_decisions`
+### `sam_policy_change_decisions`
 
 Purpose:
 
@@ -271,7 +272,7 @@ Operational notes:
 - approving a previously rejected source or undoing a prior approval/rejection appends a new non-suppressing decision, making that action the latest decision
 - rejecting or reverting a source marks the source row denied and appends a suppressing decision
 
-### `csp_policy_versions`
+### `sam_policy_versions`
 
 Purpose:
 
@@ -295,7 +296,7 @@ Operational notes:
 - rollback must create a new policy version instead of deleting or rewriting prior versions
 - snapshots are used by the audit UI and REST API to show policy history and diffs
 
-### `csp_decision_rule_evaluations`
+### `sam_decision_rule_evaluations`
 
 Purpose:
 
@@ -326,12 +327,12 @@ The schema is intentionally loose and operational rather than deeply relational.
 Primary runtime relationships:
 
 - `csp_policy_profiles.surface` is joined logically with `csp_source_inventory.surface`, `csp_hash_inventory.surface`, and `csp_violation_reports.profile_surface`
-- `csp_entitlements.site_identity` represents the active licence state for the local install
-- `csp_processed_events.stripe_event_id` gates whether a Stripe event can mutate entitlements
-- `csp_audit_log` is not joined to other tables; it records events by component name
-- `csp_policy_change_decisions.decision_fingerprint` controls whether discovery or report learning may propose the same source again
-- `csp_policy_change_decisions.policy_version_id` links a decision to the resulting `csp_policy_versions` snapshot when applicable
-- `csp_decision_rule_evaluations.decision_id` links deterministic rule findings to final decisions
+- `sam_entitlements.site_identity` represents the active licence state for the local install
+- `sam_processed_events.stripe_event_id` gates whether a Stripe event can mutate entitlements
+- `sam_audit_log` is not joined to other tables; it records events by component name
+- `sam_policy_change_decisions.decision_fingerprint` controls whether discovery or report learning may propose the same source again
+- `sam_policy_change_decisions.policy_version_id` links a decision to the resulting `sam_policy_versions` snapshot when applicable
+- `sam_decision_rule_evaluations.decision_id` links deterministic rule findings to final decisions
 
 ## Index guidance
 
@@ -340,13 +341,13 @@ The following fields are indexed or uniquely constrained in the activation SQL:
 - `csp_source_inventory`: `surface`, `directive`, `approval_state`, `risk_level`, `last_seen_at`, `source_host`; UNIQUE on `(surface, directive, source_host)`
 - `csp_hash_inventory`: `surface`, `directive`, `status`; UNIQUE on `(directive, hash_value)`
 - `csp_violation_reports`: `profile_surface`, `violated_directive`, `fingerprint`, `reported_at`, `last_reported_at`, `occurrence_count`
-- `csp_scan_logs`: `status`, `trigger_type`
-- `csp_entitlements`: `site_identity`, `product_key`, `status`; UNIQUE on `stripe_session_id`
-- `csp_processed_events`: UNIQUE on `stripe_event_id`; index on `stripe_session_id`
-- `csp_audit_log`: `severity`, `created_at`
-- `csp_policy_change_decisions`: `decision_fingerprint`, `action`, `risk_level`, `suppression_active`, `created_at`
-- `csp_policy_versions`: UNIQUE on `(surface, version_number)`, indexes on `surface`, `previous_version_id`, `trigger_type/trigger_id`, `created_at`
-- `csp_decision_rule_evaluations`: `proposal_id`, `decision_id`, `rule_id`, `created_at`
+- `sam_scan_logs`: `status`, `trigger_type`
+- `sam_entitlements`: `site_identity`, `product_key`, `status`; UNIQUE on `stripe_session_id`
+- `sam_processed_events`: UNIQUE on `stripe_event_id`; index on `stripe_session_id`
+- `sam_audit_log`: `severity`, `created_at`
+- `sam_policy_change_decisions`: `decision_fingerprint`, `action`, `risk_level`, `suppression_active`, `created_at`
+- `sam_policy_versions`: UNIQUE on `(surface, version_number)`, indexes on `surface`, `previous_version_id`, `trigger_type/trigger_id`, `created_at`
+- `sam_decision_rule_evaluations`: `proposal_id`, `decision_id`, `rule_id`, `created_at`
 
 If performance issues appear under high violation volume, first review:
 
@@ -354,13 +355,13 @@ If performance issues appear under high violation volume, first review:
 - `csp_violation_reports(reported_at)` — used by the daily purge query
 - `csp_source_inventory(surface, approval_state)` — scanned on every header build
 - `csp_hash_inventory(surface, directive, status)` — scanned on every header build
-- `csp_entitlements(site_identity, product_key)` — checked on every feature gate call
+- `sam_entitlements(site_identity, product_key)` — checked on every feature gate call
 
 ## Migration rules
 
 Whenever schema changes are introduced:
 
-1. Increment `WP_CSP_DB_VERSION` in `csp-automation-manager.php`.
+1. Increment `WP_SAM_DB_VERSION` in `security-automation-manager.php`.
 2. Update the `CREATE TABLE` SQL in `includes/class-activator.php`. `dbDelta()` handles adding new columns and new tables; it cannot drop columns or change column types.
 3. Add explicit upgrade logic in `Plugin::maybe_upgrade_db()` for any change that `dbDelta()` cannot handle automatically.
 4. Update this document, the version table at the top of this file, and `CHANGELOG.md`.
@@ -372,7 +373,7 @@ Whenever schema changes are introduced:
 
 - all plugin tables are created if absent
 - default settings and default per-surface policy profiles are seeded
-- the `wp_csp_db_version` option is set to `WP_CSP_DB_VERSION`
+- the `wp_sam_db_version` option is set to `WP_SAM_DB_VERSION`
 
 ### Updated during runtime
 
@@ -381,15 +382,15 @@ Whenever schema changes are introduced:
 - violation reports are upserted from browser-submitted reports; old rows are purged by the daily cron
 - entitlements mutate through verified Stripe webhooks
 - processed events are appended per webhook receipt
-- `csp_audit_log` is appended to by all significant plugin operations; never mutated in place
-- `csp_policy_change_decisions` is appended to whenever an administrator approves, rejects, or reverts a source proposal
-- `csp_policy_versions` is appended to for approved and reverted source decisions
-- `csp_decision_rule_evaluations` is appended to for decision rule provenance
+- `sam_audit_log` is appended to by all significant plugin operations; never mutated in place
+- `sam_policy_change_decisions` is appended to whenever an administrator approves, rejects, or reverts a source proposal
+- `sam_policy_versions` is appended to for approved and reverted source decisions
+- `sam_decision_rule_evaluations` is appended to for decision rule provenance
 
 ### Removed on uninstall
 
 - all plugin tables are dropped
-- all `wp_csp_*` options are deleted
+- all `wp_sam_*` options are deleted
 - plugin transients are deleted
 - scheduled cron events are cleared
 
@@ -397,8 +398,8 @@ Whenever schema changes are introduced:
 
 | Risk | Mitigation |
 |------|-----------|
-| High-volume violation reports filling the table | Automatic purge of rows older than `wp_csp_violation_retention_days` days (default 90) runs after every daily cron scan. Per-surface transient rate limiting (500 reports/hour) throttles ingestion. |
+| High-volume violation reports filling the table | Automatic purge of rows older than `wp_sam_violation_retention_days` days (default 90) runs after every daily cron scan. Per-surface transient rate limiting (500 reports/hour) throttles ingestion. |
 | Large source inventories on plugin-heavy installs | Review and deny unnecessary pending sources regularly. Expired approved sources are flagged automatically. |
 | Stale entitlements if webhook setup is broken | Grace period allows continued access during transient Stripe outages; surfaced via audit log warnings. |
 | Stale remote config if DNS or HTTPS endpoint is neglected | Grace-copy fallback serves the last verified config until the grace TTL expires; audit log warning is emitted. |
-| Forbidden directives injected via overrides | `Policy_Builder::build_policy_string()` strips `plugin-types`, `block-all-mixed-content`, `navigate-to`, and `prefetch-src` from overrides at emit time and logs a warning to `csp_audit_log`. |
+| Forbidden directives injected via overrides | `Policy_Builder::build_policy_string()` strips `plugin-types`, `block-all-mixed-content`, `navigate-to`, and `prefetch-src` from overrides at emit time and logs a warning to `sam_audit_log`. |

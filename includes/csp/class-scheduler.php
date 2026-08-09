@@ -3,7 +3,7 @@
  * WP Cron integration for scheduled policy rescans.
  *
  * Implements §4.10 of the directive:
- *   - Registers the wp_csp_daily_scan hook.
+ *   - Registers the wp_sam_daily_scan hook.
  *   - Runs Discovery scan, Hash_Manager audit, and Policy_Builder diff.
  *   - Writes results to the scan log via Audit_Log.
  *   - Sends admin email notification on policy changes (optional).
@@ -11,10 +11,10 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
-use WP_CSP\Modules\Audit_Log;
-use WP_CSP\Modules\Feature_Gate;
+use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Feature_Gate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -31,7 +31,7 @@ class Scheduler {
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
 	public function register(): void {
-		add_action( 'wp_csp_daily_scan', array( $this, 'run_daily_scan' ) );
+		add_action( 'wp_sam_daily_scan', array( $this, 'run_daily_scan' ) );
 	}
 
 	// ── Scan runner ───────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ class Scheduler {
 		$scan_id = $this->audit->start_scan( 'scheduled' );
 
 		try {
-			$plugin   = \WP_CSP\Plugin::instance();
+			$plugin   = \WP_SAM\Plugin::instance();
 			$gate     = $plugin->gate;
 			$hash_mgr = $plugin->hash_manager;
 
@@ -87,7 +87,7 @@ class Scheduler {
 		$scan_id = $this->audit->start_scan( 'manual' );
 
 		try {
-			$plugin   = \WP_CSP\Plugin::instance();
+			$plugin   = \WP_SAM\Plugin::instance();
 			$gate     = $plugin->gate;
 			$hash_mgr = $plugin->hash_manager;
 
@@ -123,11 +123,11 @@ class Scheduler {
 	// ── Data retention ────────────────────────────────────────────────────────
 
 	/**
-	 * Purges violation reports older than wp_csp_violation_retention_days (default 90).
+	 * Purges violation reports older than wp_sam_violation_retention_days (default 90).
 	 * A value of 0 means keep forever. Runs after every daily cron scan (R10).
 	 */
 	private function purge_old_violations(): void {
-		$days = (int) get_option( 'wp_csp_violation_retention_days', 90 );
+		$days = (int) get_option( 'wp_sam_violation_retention_days', 90 );
 		if ( $days <= 0 ) {
 			return;
 		}
@@ -158,21 +158,21 @@ class Scheduler {
 		if ( empty( $results['policy_changed'] ) ) {
 			return;
 		}
-		$email = (string) get_option( 'wp_csp_notify_email', get_option( 'admin_email' ) );
+		$email = (string) get_option( 'wp_sam_notify_email', get_option( 'admin_email' ) );
 		if ( empty( $email ) || ! is_email( $email ) ) {
 			return;
 		}
 		$subject = sprintf(
 			/* translators: %s: site name */
-			__( '[%s] CSP Automation: policy changed after scheduled scan', 'csp-automation-manager' ),
+			__( '[%s] CSP Automation: policy changed after scheduled scan', 'security-automation-manager' ),
 			get_bloginfo( 'name' )
 		);
 		$message = sprintf(
 			/* translators: 1: sources added, 2: hashes removed */
-			__( "The scheduled CSP rescan completed.\n\nSources added: %1\$d\nHashes retired: %2\$d\n\nReview the dashboard: %3\$s", 'csp-automation-manager' ),
+			__( "The scheduled CSP rescan completed.\n\nSources added: %1\$d\nHashes retired: %2\$d\n\nReview the dashboard: %3\$s", 'security-automation-manager' ),
 			$results['sources_added'],
 			$results['hashes_removed'],
-			admin_url( 'admin.php?page=csp-automation-manager-dashboard' )
+			admin_url( 'admin.php?page=security-automation-manager-dashboard' )
 		);
 		wp_mail( $email, $subject, $message );
 	}

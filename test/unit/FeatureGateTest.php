@@ -1,12 +1,12 @@
 <?php
 /**
- * Unit tests for WP_CSP\Modules\Feature_Gate.
+ * Unit tests for WP_SAM\Modules\Feature_Gate.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Modules\Feature_Gate;
+use WP_SAM\Modules\Feature_Gate;
 
 class FeatureGateTest extends TestCase {
 

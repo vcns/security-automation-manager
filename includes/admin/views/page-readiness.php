@@ -9,49 +9,49 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$reset_result = sanitize_text_field( wp_unslash( $_GET['wp_csp_reset'] ?? '' ) );
+$reset_result = sanitize_text_field( wp_unslash( $_GET['wp_sam_reset'] ?? '' ) );
 $status_badge = static function ( string $status ): void {
 	$labels = array(
-		'pass'    => __( 'Pass', 'csp-automation-manager' ),
-		'warning' => __( 'Warning', 'csp-automation-manager' ),
-		'fail'    => __( 'Fail', 'csp-automation-manager' ),
+		'pass'    => __( 'Pass', 'security-automation-manager' ),
+		'warning' => __( 'Warning', 'security-automation-manager' ),
+		'fail'    => __( 'Fail', 'security-automation-manager' ),
 	);
-	$label  = $labels[ $status ] ?? __( 'Unknown', 'csp-automation-manager' );
+	$label  = $labels[ $status ] ?? __( 'Unknown', 'security-automation-manager' );
 
 	printf(
-		'<span class="wp-csp-readiness-badge status-%1$s">%2$s</span>',
+		'<span class="wp-sam-readiness-badge status-%1$s">%2$s</span>',
 		esc_attr( $status ),
 		esc_html( $label )
 	);
 };
 ?>
-<div class="wrap wp-csp-wrap">
-	<h1><?php esc_html_e( 'CSP Manager Readiness', 'csp-automation-manager' ); ?></h1>
+<div class="wrap wp-sam-wrap">
+	<h1><?php esc_html_e( 'CSP Manager Readiness', 'security-automation-manager' ); ?></h1>
 	<p class="description">
-		<?php esc_html_e( 'Plugin-specific checks for schema, runtime defaults, reporting configuration, and reset readiness.', 'csp-automation-manager' ); ?>
+		<?php esc_html_e( 'Plugin-specific checks for schema, runtime defaults, reporting configuration, and reset readiness.', 'security-automation-manager' ); ?>
 	</p>
 
 	<?php if ( 'success' === $reset_result ) : ?>
 		<div class="notice notice-success is-dismissible">
-			<p><?php esc_html_e( 'CSP Automation Manager data has been reset and default profiles have been reseeded.', 'csp-automation-manager' ); ?></p>
+			<p><?php esc_html_e( 'CSP Automation Manager data has been reset and default profiles have been reseeded.', 'security-automation-manager' ); ?></p>
 		</div>
 	<?php elseif ( 'partial' === $reset_result ) : ?>
 		<div class="notice notice-warning is-dismissible">
-			<p><?php esc_html_e( 'Reset completed, but one or more plugin tables could not be cleared. Review schema health below.', 'csp-automation-manager' ); ?></p>
+			<p><?php esc_html_e( 'Reset completed, but one or more plugin tables could not be cleared. Review schema health below.', 'security-automation-manager' ); ?></p>
 		</div>
 	<?php elseif ( 'failed' === $reset_result ) : ?>
 		<div class="notice notice-error is-dismissible">
-			<p><?php esc_html_e( 'Reset was not performed. Confirm the typed phrase and re-authenticate with your current WordPress password.', 'csp-automation-manager' ); ?></p>
+			<p><?php esc_html_e( 'Reset was not performed. Confirm the typed phrase and re-authenticate with your current WordPress password.', 'security-automation-manager' ); ?></p>
 		</div>
 	<?php endif; ?>
 
-	<h2><?php esc_html_e( 'Plugin and Database', 'csp-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-csp-readiness-table">
+	<h2><?php esc_html_e( 'Plugin and Database', 'security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Check', 'csp-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Value', 'csp-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'csp-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Check', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Value', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Status', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -65,13 +65,13 @@ $status_badge = static function ( string $status ): void {
 		</tbody>
 	</table>
 
-	<h2><?php esc_html_e( 'Schema Health', 'csp-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-csp-readiness-table">
+	<h2><?php esc_html_e( 'Schema Health', 'security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Table', 'csp-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Rows', 'csp-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'csp-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Table', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Rows', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Status', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -81,7 +81,7 @@ $status_badge = static function ( string $status ): void {
 					<td>
 						<?php
 						echo null === $item['rows']
-							? esc_html__( 'Missing', 'csp-automation-manager' )
+							? esc_html__( 'Missing', 'security-automation-manager' )
 							: esc_html( (string) $item['rows'] );
 						?>
 					</td>
@@ -91,13 +91,13 @@ $status_badge = static function ( string $status ): void {
 		</tbody>
 	</table>
 
-	<h2><?php esc_html_e( 'Operational Health', 'csp-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-csp-readiness-table">
+	<h2><?php esc_html_e( 'Operational Health', 'security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Check', 'csp-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Value', 'csp-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'csp-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Check', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Value', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Status', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -113,33 +113,33 @@ $status_badge = static function ( string $status ): void {
 
 	<hr>
 
-	<h2 id="wp-csp-reset"><?php esc_html_e( 'Reset Plugin Data', 'csp-automation-manager' ); ?></h2>
+	<h2 id="wp-sam-reset"><?php esc_html_e( 'Reset Plugin Data', 'security-automation-manager' ); ?></h2>
 	<p>
-		<?php esc_html_e( 'This clears CSP Automation Manager custom-table rows and plugin-owned runtime options, then reseeds the default policy profiles needed for a clean start.', 'csp-automation-manager' ); ?>
+		<?php esc_html_e( 'This clears CSP Automation Manager custom-table rows and plugin-owned runtime options, then reseeds the default policy profiles needed for a clean start.', 'security-automation-manager' ); ?>
 	</p>
-	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wp-csp-reset-form">
-		<?php wp_nonce_field( 'wp_csp_reset_data' ); ?>
-		<input type="hidden" name="action" value="wp_csp_reset_data">
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wp-sam-reset-form">
+		<?php wp_nonce_field( 'wp_sam_reset_data' ); ?>
+		<input type="hidden" name="action" value="wp_sam_reset_data">
 		<table class="form-table" role="presentation">
 			<tr>
 				<th scope="row">
-					<label for="wp_csp_current_password"><?php esc_html_e( 'Current password', 'csp-automation-manager' ); ?></label>
+					<label for="wp_sam_current_password"><?php esc_html_e( 'Current password', 'security-automation-manager' ); ?></label>
 				</th>
 				<td>
-					<input type="password" id="wp_csp_current_password" name="wp_csp_current_password" class="regular-text" autocomplete="current-password" required>
-					<p class="description"><?php esc_html_e( 'Required to re-authenticate the currently logged-in administrator before destructive reset.', 'csp-automation-manager' ); ?></p>
+					<input type="password" id="wp_sam_current_password" name="wp_sam_current_password" class="regular-text" autocomplete="current-password" required>
+					<p class="description"><?php esc_html_e( 'Required to re-authenticate the currently logged-in administrator before destructive reset.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row">
-					<label for="wp_csp_reset_confirmation"><?php esc_html_e( 'Confirmation', 'csp-automation-manager' ); ?></label>
+					<label for="wp_sam_reset_confirmation"><?php esc_html_e( 'Confirmation', 'security-automation-manager' ); ?></label>
 				</th>
 				<td>
-					<input type="text" id="wp_csp_reset_confirmation" name="wp_csp_reset_confirmation" class="regular-text" pattern="RESET CSP DATA" required>
-					<p class="description"><?php esc_html_e( 'Type RESET CSP DATA to start from a blank CSP canvas.', 'csp-automation-manager' ); ?></p>
+					<input type="text" id="wp_sam_reset_confirmation" name="wp_sam_reset_confirmation" class="regular-text" pattern="RESET CSP DATA" required>
+					<p class="description"><?php esc_html_e( 'Type RESET CSP DATA to start from a blank CSP canvas.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 		</table>
-		<?php submit_button( __( 'Reset CSP Data', 'csp-automation-manager' ), 'delete' ); ?>
+		<?php submit_button( __( 'Reset CSP Data', 'security-automation-manager' ), 'delete' ); ?>
 	</form>
 </div>

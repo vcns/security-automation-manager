@@ -1,48 +1,48 @@
 /**
- * CSP Automation Manager admin JavaScript.
- * Handles AJAX interactions on the CSP Manager admin pages.
+ * Security Automation Manager admin JavaScript.
+ * Handles AJAX interactions on the plugin's admin pages.
  */
-/* global wpCspAdmin, jQuery */
+/* global wpSamAdmin, jQuery */
 ( function ( $ ) {
 	'use strict';
 
-	$( '#wp-csp-manual-scan' ).on( 'click', function () {
+	$( '#wp-sam-manual-scan' ).on( 'click', function () {
 		const $btn    = $( this );
-		const $status = $( '#wp-csp-scan-status' );
+		const $status = $( '#wp-sam-scan-status' );
 
 		$btn.prop( 'disabled', true );
-		$status.text( wpCspAdmin.i18n.scanning ).show();
+		$status.text( wpSamAdmin.i18n.scanning ).show();
 
-		$.post( wpCspAdmin.ajaxUrl, {
-			action: 'wp_csp_manual_scan',
-			nonce:  wpCspAdmin.nonce,
+		$.post( wpSamAdmin.ajaxUrl, {
+			action: 'wp_sam_manual_scan',
+			nonce:  wpSamAdmin.nonce,
 		} )
 		.done( function ( res ) {
 			if ( res.success ) {
-				$status.text( wpCspAdmin.i18n.scanDone );
+				$status.text( wpSamAdmin.i18n.scanDone );
 				setTimeout( function () { location.reload(); }, 1500 );
 			} else {
-				$status.text( res.data.message || wpCspAdmin.i18n.scanError );
+				$status.text( res.data.message || wpSamAdmin.i18n.scanError );
 			}
 		} )
 		.fail( function () {
-			$status.text( wpCspAdmin.i18n.scanError );
+			$status.text( wpSamAdmin.i18n.scanError );
 		} )
 		.always( function () {
 			$btn.prop( 'disabled', false );
 		} );
 	} );
 
-	$( '.wp-csp-toggle-mode' ).on( 'click', function () {
+	$( '.wp-sam-toggle-mode' ).on( 'click', function () {
 		const $btn    = $( this );
 		const surface = $btn.data( 'surface' );
 		const mode    = $btn.data( 'mode' );
 
 		$btn.prop( 'disabled', true );
 
-		$.post( wpCspAdmin.ajaxUrl, {
-			action:  'wp_csp_toggle_mode',
-			nonce:   wpCspAdmin.nonce,
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:  'wp_sam_toggle_mode',
+			nonce:   wpSamAdmin.nonce,
 			surface: surface,
 			mode:    mode,
 		} )
@@ -60,7 +60,7 @@
 		} );
 	} );
 
-	$( '.wp-csp-automation-mode' ).on( 'change', function () {
+	$( '.wp-sam-automation-mode' ).on( 'change', function () {
 		const $select = $( this );
 		const surface = $select.data( 'surface' );
 		const mode    = $select.val();
@@ -68,9 +68,9 @@
 
 		$select.prop( 'disabled', true );
 
-		$.post( wpCspAdmin.ajaxUrl, {
-			action:  'wp_csp_set_automation_mode',
-			nonce:   wpCspAdmin.nonce,
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:  'wp_sam_set_automation_mode',
+			nonce:   wpSamAdmin.nonce,
 			surface: surface,
 			mode:    mode,
 		} )
@@ -107,7 +107,7 @@
 		}
 		if ( reason.trim() === '' ) {
 			// eslint-disable-next-line no-alert
-			alert( wpCspAdmin.i18n.reasonRequired || 'A decision reason is required.' );
+			alert( wpSamAdmin.i18n.reasonRequired || 'A decision reason is required.' );
 			return null;
 		}
 		return reason.trim();
@@ -116,26 +116,26 @@
 	function sourceActionsHtml( id, state, lastDecision ) {
 		const buttons = [];
 		if ( state === 'pending' || state === 'denied' ) {
-			buttons.push( '<button type="button" class="button button-small wp-csp-approve-source" data-id="' + id + '">Approve</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-approve-source" data-id="' + id + '">Approve</button>' );
 		}
 		if ( state === 'pending' || state === 'approved' ) {
-			buttons.push( '<button type="button" class="button button-small wp-csp-deny-source" data-id="' + id + '">Reject</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-deny-source" data-id="' + id + '">Reject</button>' );
 		}
 		if ( state === 'approved' ) {
-			buttons.push( '<button type="button" class="button button-small wp-csp-revert-source" data-id="' + id + '">Revert</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-revert-source" data-id="' + id + '">Revert</button>' );
 		}
 		if ( lastDecision === 'approved' || lastDecision === 'rejected' ) {
-			buttons.push( '<button type="button" class="button button-small wp-csp-undo-source-decision" data-id="' + id + '">Undo</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-undo-source-decision" data-id="' + id + '">Undo</button>' );
 		}
 		return buttons.join( ' ' );
 	}
 
 	function setSourceRowState( $row, id, state, label, lastDecision ) {
-		$row.find( '.wp-csp-state-badge' )
+		$row.find( '.wp-sam-state-badge' )
 			.removeClass( 'state-pending state-approved state-denied' )
 			.addClass( 'state-' + state )
 			.text( label );
-		$row.find( '.wp-csp-source-actions' ).html( sourceActionsHtml( id, state, lastDecision ) );
+		$row.find( '.wp-sam-source-actions' ).html( sourceActionsHtml( id, state, lastDecision ) );
 	}
 
 	function postSourceDecision( $btn, action, promptText, nextState, nextLabel, lastDecision ) {
@@ -147,9 +147,9 @@
 
 		$btn.prop( 'disabled', true );
 
-		$.post( wpCspAdmin.ajaxUrl, {
+		$.post( wpSamAdmin.ajaxUrl, {
 			action:    action,
-			nonce:     wpCspAdmin.nonce,
+			nonce:     wpSamAdmin.nonce,
 			source_id: id,
 			reason:    reason,
 		} )
@@ -168,24 +168,24 @@
 		.always( function () { $btn.prop( 'disabled', false ); } );
 	}
 
-	$( document ).on( 'click', '.wp-csp-approve-source', function () {
-		postSourceDecision( $( this ), 'wp_csp_approve_source', 'Why should this source be approved?', 'approved', 'Approved', 'approved' );
+	$( document ).on( 'click', '.wp-sam-approve-source', function () {
+		postSourceDecision( $( this ), 'wp_sam_approve_source', 'Why should this source be approved?', 'approved', 'Approved', 'approved' );
 	} );
 
-	$( document ).on( 'click', '.wp-csp-deny-source', function () {
-		postSourceDecision( $( this ), 'wp_csp_deny_source', 'Why should this source be rejected and suppressed?', 'denied', 'Denied', 'rejected' );
+	$( document ).on( 'click', '.wp-sam-deny-source', function () {
+		postSourceDecision( $( this ), 'wp_sam_deny_source', 'Why should this source be rejected and suppressed?', 'denied', 'Denied', 'rejected' );
 	} );
 
-	$( document ).on( 'click', '.wp-csp-revert-source', function () {
-		postSourceDecision( $( this ), 'wp_csp_revert_source', 'Why should this approved source be reverted and suppressed?', 'denied', 'Denied', 'reverted' );
+	$( document ).on( 'click', '.wp-sam-revert-source', function () {
+		postSourceDecision( $( this ), 'wp_sam_revert_source', 'Why should this approved source be reverted and suppressed?', 'denied', 'Denied', 'reverted' );
 	} );
 
-	$( document ).on( 'click', '.wp-csp-undo-source-decision', function () {
-		postSourceDecision( $( this ), 'wp_csp_undo_source_decision', 'Why should this decision be undone?', 'pending', 'Pending', 'undone' );
+	$( document ).on( 'click', '.wp-sam-undo-source-decision', function () {
+		postSourceDecision( $( this ), 'wp_sam_undo_source_decision', 'Why should this decision be undone?', 'pending', 'Pending', 'undone' );
 	} );
 
-	$( document ).on( 'click', '.wp-csp-use-current-report-endpoint', function () {
-		$( '#wp_csp_report_endpoint_url' )
+	$( document ).on( 'click', '.wp-sam-use-current-report-endpoint', function () {
+		$( '#wp_sam_report_endpoint_url' )
 			.val( $( this ).data( 'report-endpoint' ) || '' )
 			.trigger( 'change' );
 	} );

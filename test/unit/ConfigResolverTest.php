@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\Modules\Config_Resolver.
+ * Unit tests for WP_SAM\Modules\Config_Resolver.
  *
  * Tests the two-path URL resolution (DNS + fallback), stale cache behaviour,
  * signature bypass when sodium is unavailable, and expiry checking.
@@ -10,8 +10,8 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Modules\Audit_Log;
-use WP_CSP\Modules\Config_Resolver;
+use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Config_Resolver;
 
 class ConfigResolverTest extends TestCase {
 
@@ -53,14 +53,14 @@ class ConfigResolverTest extends TestCase {
 
 		$resolver->get();
 
-		$cached = get_transient( 'wp_csp_remote_config' );
+		$cached = get_transient( 'wp_sam_remote_config' );
 		$this->assertIsArray( $cached );
 		$this->assertSame( $config['version'], $cached['version'] );
 	}
 
 	public function test_second_call_returns_from_transient_without_fetch(): void {
 		$config = $this->valid_config();
-		set_transient( 'wp_csp_remote_config', $config );
+		set_transient( 'wp_sam_remote_config', $config );
 
 		// Resolver whose fetch would fail -- if it is called, the test fails.
 		$resolver = $this->make_resolver(
@@ -78,7 +78,7 @@ class ConfigResolverTest extends TestCase {
 
 	public function test_fallback_url_used_when_dns_unavailable(): void {
 		$config   = $this->valid_config();
-		update_option( 'wp_csp_config_fallback_url', 'https://fallback.example.com/config.json' );
+		update_option( 'wp_sam_config_fallback_url', 'https://fallback.example.com/config.json' );
 
 		$resolver = $this->make_resolver(
 			dns_url:    null,   // DNS returns nothing
@@ -93,7 +93,7 @@ class ConfigResolverTest extends TestCase {
 	}
 
 	public function test_invalid_fallback_url_is_rejected(): void {
-		update_option( 'wp_csp_config_fallback_url', 'http://insecure.example.com/config.json' );
+		update_option( 'wp_sam_config_fallback_url', 'http://insecure.example.com/config.json' );
 
 		$resolver = $this->make_resolver(
 			dns_url:    null,
@@ -108,7 +108,7 @@ class ConfigResolverTest extends TestCase {
 	}
 
 	public function test_empty_fallback_url_skips_fallback_path(): void {
-		update_option( 'wp_csp_config_fallback_url', '' );
+		update_option( 'wp_sam_config_fallback_url', '' );
 
 		$resolver = $this->make_resolver(
 			dns_url:    null,
@@ -125,7 +125,7 @@ class ConfigResolverTest extends TestCase {
 
 	public function test_stale_cache_returned_on_http_500(): void {
 		$stale = $this->valid_config( version: 'stale-1.0' );
-		set_transient( 'wp_csp_config_stale', $stale );
+		set_transient( 'wp_sam_config_stale', $stale );
 
 		$resolver = $this->make_resolver(
 			dns_url:    'https://config.example.com/config.json',
@@ -140,7 +140,7 @@ class ConfigResolverTest extends TestCase {
 
 	public function test_stale_cache_returned_on_malformed_json(): void {
 		$stale = $this->valid_config( version: 'stale-2.0' );
-		set_transient( 'wp_csp_config_stale', $stale );
+		set_transient( 'wp_sam_config_stale', $stale );
 
 		$resolver = $this->make_resolver(
 			dns_url:    'https://config.example.com/config.json',
@@ -169,7 +169,7 @@ class ConfigResolverTest extends TestCase {
 
 	public function test_expired_config_falls_back_to_stale(): void {
 		$stale = $this->valid_config( version: 'stale-3.0' );
-		set_transient( 'wp_csp_config_stale', $stale );
+		set_transient( 'wp_sam_config_stale', $stale );
 
 		$expired_config = $this->valid_config();
 		$expired_config['expires'] = '2000-01-01T00:00:00Z'; // past date
@@ -203,9 +203,9 @@ class ConfigResolverTest extends TestCase {
 	// ── get_price_id ──────────────────────────────────────────────────────────
 
 	public function test_get_price_id_returns_test_price_in_test_mode(): void {
-		update_option( 'wp_csp_stripe_mode', 'test' );
+		update_option( 'wp_sam_stripe_mode', 'test' );
 		$config = $this->valid_config();
-		set_transient( 'wp_csp_remote_config', $config );
+		set_transient( 'wp_sam_remote_config', $config );
 
 		$resolver = $this->make_resolver( dns_url: null, fetch_body: '', fetch_code: 200 );
 
@@ -215,9 +215,9 @@ class ConfigResolverTest extends TestCase {
 	}
 
 	public function test_get_price_id_returns_live_price_in_live_mode(): void {
-		update_option( 'wp_csp_stripe_mode', 'live' );
+		update_option( 'wp_sam_stripe_mode', 'live' );
 		$config = $this->valid_config();
-		set_transient( 'wp_csp_remote_config', $config );
+		set_transient( 'wp_sam_remote_config', $config );
 
 		$resolver = $this->make_resolver( dns_url: null, fetch_body: '', fetch_code: 200 );
 

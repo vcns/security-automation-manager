@@ -8,7 +8,7 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\Modules;
+namespace WP_SAM\Modules;
 
 use WP_Error;
 use stdClass;
@@ -22,11 +22,11 @@ final class Github_Update_Checker {
 	private const UPDATE_URL          = 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json';
 	private const UPDATE_HOST         = 'vcns.github.io';
 	private const UPDATE_PATH         = '/wp-updates/csp-automation-manager/';
-	private const CACHE_KEY           = 'wp_csp_github_update_info';
+	private const CACHE_KEY           = 'wp_sam_github_update_info';
 	private const SUCCESS_CACHE_TTL   = 12 * HOUR_IN_SECONDS;
 	private const FAILURE_CACHE_TTL   = HOUR_IN_SECONDS;
 	private const SLUG                = 'csp-automation-manager';
-	private const DISABLE_AUTO_UPDATE = 'WP_CSP_DISABLE_AUTO_UPDATE';
+	private const DISABLE_AUTO_UPDATE = 'WP_SAM_DISABLE_AUTO_UPDATE';
 
 	public function register(): void {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'inject_update' ) );
@@ -54,7 +54,7 @@ final class Github_Update_Checker {
 		$item               = new stdClass();
 		$item->id           = self::UPDATE_URL;
 		$item->slug         = self::SLUG;
-		$item->plugin       = WP_CSP_PLUGIN_BASENAME;
+		$item->plugin       = WP_SAM_PLUGIN_BASENAME;
 		$item->new_version  = $remote->version;
 		$item->url          = $remote->homepage ?? '';
 		$item->package      = $remote->download_url ?? '';
@@ -63,11 +63,11 @@ final class Github_Update_Checker {
 		$item->tested       = $remote->tested ?? '';
 		$item->requires_php = $remote->requires_php ?? '';
 
-		if ( version_compare( WP_CSP_VERSION, $remote->version, '<' ) ) {
-			$transient->response[ WP_CSP_PLUGIN_BASENAME ] = $item;
+		if ( version_compare( WP_SAM_VERSION, $remote->version, '<' ) ) {
+			$transient->response[ WP_SAM_PLUGIN_BASENAME ] = $item;
 		} else {
 			$item->package                                  = '';
-			$transient->no_update[ WP_CSP_PLUGIN_BASENAME ] = $item;
+			$transient->no_update[ WP_SAM_PLUGIN_BASENAME ] = $item;
 		}
 
 		return $transient;
@@ -78,25 +78,25 @@ final class Github_Update_Checker {
 			return $transient;
 		}
 
-		$offer = $transient->response[ WP_CSP_PLUGIN_BASENAME ] ?? null;
+		$offer = $transient->response[ WP_SAM_PLUGIN_BASENAME ] ?? null;
 		if ( ! is_object( $offer ) ) {
 			return $transient;
 		}
 
 		$offered_version = (string) ( $offer->new_version ?? '' );
-		if ( '' === $offered_version || version_compare( WP_CSP_VERSION, $offered_version, '<' ) ) {
+		if ( '' === $offered_version || version_compare( WP_SAM_VERSION, $offered_version, '<' ) ) {
 			return $transient;
 		}
 
-		unset( $transient->response[ WP_CSP_PLUGIN_BASENAME ] );
+		unset( $transient->response[ WP_SAM_PLUGIN_BASENAME ] );
 
 		if ( ! isset( $transient->no_update ) || ! is_array( $transient->no_update ) ) {
 			$transient->no_update = array();
 		}
 
-		$offer->new_version                             = WP_CSP_VERSION;
+		$offer->new_version                             = WP_SAM_VERSION;
 		$offer->package                                 = '';
-		$transient->no_update[ WP_CSP_PLUGIN_BASENAME ] = $offer;
+		$transient->no_update[ WP_SAM_PLUGIN_BASENAME ] = $offer;
 
 		return $transient;
 	}
@@ -148,7 +148,7 @@ final class Github_Update_Checker {
 	}
 
 	public function auto_update_gate( mixed $update, object $item ): mixed {
-		if ( ! isset( $item->plugin ) || WP_CSP_PLUGIN_BASENAME !== $item->plugin ) {
+		if ( ! isset( $item->plugin ) || WP_SAM_PLUGIN_BASENAME !== $item->plugin ) {
 			return $update;
 		}
 
@@ -168,15 +168,15 @@ final class Github_Update_Checker {
 
 		$remote = $this->get_remote_info();
 		if ( null === $remote || empty( $remote->download_url ) || $package !== $remote->download_url ) {
-			return new WP_Error( 'wp_csp_update_metadata_unavailable', 'CSP Automation Manager update metadata could not be verified.' );
+			return new WP_Error( 'wp_sam_update_metadata_unavailable', 'CSP Automation Manager update metadata could not be verified.' );
 		}
 
 		if ( empty( $remote->sha256 ) || ! $this->is_valid_sha256( (string) $remote->sha256 ) ) {
-			return new WP_Error( 'wp_csp_update_checksum_missing', 'CSP Automation Manager update package checksum is missing or invalid.' );
+			return new WP_Error( 'wp_sam_update_checksum_missing', 'CSP Automation Manager update package checksum is missing or invalid.' );
 		}
 
 		if ( ! function_exists( 'download_url' ) ) {
-			return new WP_Error( 'wp_csp_update_download_unavailable', 'WordPress package download support is unavailable.' );
+			return new WP_Error( 'wp_sam_update_download_unavailable', 'WordPress package download support is unavailable.' );
 		}
 
 		$file = download_url( $package, 300 );
@@ -190,7 +190,7 @@ final class Github_Update_Checker {
 				wp_delete_file( $file );
 			}
 
-			return new WP_Error( 'wp_csp_update_checksum_mismatch', 'CSP Automation Manager update package checksum verification failed.' );
+			return new WP_Error( 'wp_sam_update_checksum_mismatch', 'CSP Automation Manager update package checksum verification failed.' );
 		}
 
 		return $file;
@@ -203,10 +203,10 @@ final class Github_Update_Checker {
 		}
 
 		$response = wp_remote_get(
-			defined( 'WP_CSP_UPDATE_MANIFEST_URL' ) ? WP_CSP_UPDATE_MANIFEST_URL : self::UPDATE_URL,
+			defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ? WP_SAM_UPDATE_MANIFEST_URL : self::UPDATE_URL,
 			array(
 				'timeout'    => 10,
-				'user-agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; CSP-Automation-Manager/' . WP_CSP_VERSION . '; ' . get_bloginfo( 'url' ),
+				'user-agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; CSP-Automation-Manager/' . WP_SAM_VERSION . '; ' . get_bloginfo( 'url' ),
 			)
 		);
 
@@ -232,7 +232,7 @@ final class Github_Update_Checker {
 			}
 
 			if ( is_array( $transient->{$property} ) ) {
-				unset( $transient->{$property}[ WP_CSP_PLUGIN_BASENAME ] );
+				unset( $transient->{$property}[ WP_SAM_PLUGIN_BASENAME ] );
 			}
 		}
 	}
@@ -278,12 +278,12 @@ final class Github_Update_Checker {
 	}
 
 	private function is_plugin_update( array $hook_extra ): bool {
-		if ( isset( $hook_extra['plugin'] ) && WP_CSP_PLUGIN_BASENAME === $hook_extra['plugin'] ) {
+		if ( isset( $hook_extra['plugin'] ) && WP_SAM_PLUGIN_BASENAME === $hook_extra['plugin'] ) {
 			return true;
 		}
 
 		return isset( $hook_extra['plugins'] )
 			&& is_array( $hook_extra['plugins'] )
-			&& in_array( WP_CSP_PLUGIN_BASENAME, $hook_extra['plugins'], true );
+			&& in_array( WP_SAM_PLUGIN_BASENAME, $hook_extra['plugins'], true );
 	}
 }

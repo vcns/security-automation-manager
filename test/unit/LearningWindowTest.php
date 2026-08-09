@@ -1,12 +1,12 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Learning_Window.
+ * Unit tests for WP_SAM\CSP\Learning_Window.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Learning_Window;
+use WP_SAM\CSP\Learning_Window;
 
 class LearningWindowTest extends TestCase {
 

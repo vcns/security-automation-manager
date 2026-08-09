@@ -16,13 +16,13 @@ $tables = array(
 	'csp_source_inventory',
 	'csp_hash_inventory',
 	'csp_violation_reports',
-	'csp_scan_logs',
-	'csp_entitlements',
-	'csp_processed_events',
-	'csp_audit_log',
-	'csp_policy_change_decisions',
-	'csp_policy_versions',
-	'csp_decision_rule_evaluations',
+	'sam_scan_logs',
+	'sam_entitlements',
+	'sam_processed_events',
+	'sam_audit_log',
+	'sam_policy_change_decisions',
+	'sam_policy_versions',
+	'sam_decision_rule_evaluations',
 );
 
 foreach ( $tables as $table ) {
@@ -32,24 +32,24 @@ foreach ( $tables as $table ) {
 
 // ── Delete options ────────────────────────────────────────────────────────────
 $options = array(
-	'wp_csp_db_version',
-	'wp_csp_config_dns_domain',
-	'wp_csp_config_fallback_url',
-	'wp_csp_config_cache_ttl',
-	'wp_csp_config_grace_ttl',
-	'wp_csp_config_last_fetched',
-	'wp_csp_config_version',
-	'wp_csp_entitlement_grace_hours',
-	'wp_csp_enforce_gate_violation_window',
-	'wp_csp_cron_hour',
-	'wp_csp_notify_email',
-	'wp_csp_violation_retention_days',
-	'wp_csp_learning_window_hours',
-	'wp_csp_policy_header_name',
-	'wp_csp_schema_verified_version',
-	'wp_csp_last_material_change_at',
-	'wp_csp_automation_config',
-	'wp_csp_admin_notices',
+	'wp_sam_db_version',
+	'wp_sam_config_dns_domain',
+	'wp_sam_config_fallback_url',
+	'wp_sam_config_cache_ttl',
+	'wp_sam_config_grace_ttl',
+	'wp_sam_config_last_fetched',
+	'wp_sam_config_version',
+	'wp_sam_entitlement_grace_hours',
+	'wp_sam_enforce_gate_violation_window',
+	'wp_sam_cron_hour',
+	'wp_sam_notify_email',
+	'wp_sam_violation_retention_days',
+	'wp_sam_learning_window_hours',
+	'wp_sam_policy_header_name',
+	'wp_sam_schema_verified_version',
+	'wp_sam_last_material_change_at',
+	'wp_sam_automation_config',
+	'wp_sam_admin_notices',
 );
 
 foreach ( $options as $option ) {
@@ -57,9 +57,9 @@ foreach ( $options as $option ) {
 }
 
 // ── Remove transients ─────────────────────────────────────────────────────────
-delete_transient( 'wp_csp_remote_config' );
-delete_transient( 'wp_csp_config_stale' );
-delete_transient( 'wp_csp_conflict_probe_ran' );
+delete_transient( 'wp_sam_remote_config' );
+delete_transient( 'wp_sam_config_stale' );
+delete_transient( 'wp_sam_conflict_probe_ran' );
 
 // ── Clear scheduled hooks ─────────────────────────────────────────────────────
-wp_clear_scheduled_hook( 'wp_csp_daily_scan' );
+wp_clear_scheduled_hook( 'wp_sam_daily_scan' );

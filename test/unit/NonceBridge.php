@@ -1,6 +1,6 @@
 <?php
 /**
- * Test stub for WP_CSP\CSP\Plugin_Nonce_Manager.
+ * Test stub for WP_SAM\CSP\Plugin_Nonce_Manager.
  *
  * bootstrap.php requires this file at the end of its setup block, after
  * spl_autoload_register(). The class_exists() guard below (with the second
@@ -10,7 +10,7 @@
  * Plugin_Nonce_Manager before this require_once will load the real class and
  * silently bypass this stub.
  *
- * Because this stub is in the WP_CSP\CSP namespace it must have no code
+ * Because this stub is in the WP_SAM\CSP namespace it must have no code
  * outside the namespace block.
  *
  * The stub reads from a test global so PolicyBuilderTest can inject a nonce
@@ -19,12 +19,12 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
 if ( ! class_exists( Plugin_Nonce_Manager::class, false ) ) {
 	final class Plugin_Nonce_Manager {
 		public static function get_instance_nonce(): string {
-			return $GLOBALS['_wp_csp_test_nonce'] ?? '';
+			return $GLOBALS['_wp_sam_test_nonce'] ?? '';
 		}
 	}
 }

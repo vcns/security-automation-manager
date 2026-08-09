@@ -1,12 +1,12 @@
 <?php
 /**
- * Unit tests for WP_CSP\Admin\Table_Query.
+ * Unit tests for WP_SAM\Admin\Table_Query.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Admin\Table_Query;
+use WP_SAM\Admin\Table_Query;
 
 class TableQueryTest extends TestCase {
 

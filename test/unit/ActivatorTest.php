@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\Activator.
+ * Unit tests for WP_SAM\Activator.
  *
  * Focuses on the parts that can run without a real database:
  *   - Default options are seeded with correct keys and values.
@@ -14,7 +14,7 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Activator;
+use WP_SAM\Activator;
 
 class ActivatorTest extends TestCase {
 
@@ -27,66 +27,66 @@ class ActivatorTest extends TestCase {
 	public function test_activate_seeds_config_dns_domain_option(): void {
 		Activator::activate();
 
-		$this->assertSame( '', get_option( 'wp_csp_config_dns_domain' ) );
+		$this->assertSame( '', get_option( 'wp_sam_config_dns_domain' ) );
 	}
 
 	public function test_activate_seeds_config_cache_ttl_option(): void {
 		Activator::activate();
 
-		$this->assertSame( 3600, get_option( 'wp_csp_config_cache_ttl' ) );
+		$this->assertSame( 3600, get_option( 'wp_sam_config_cache_ttl' ) );
 	}
 
 	public function test_activate_seeds_violation_retention_days_option(): void {
 		Activator::activate();
 
-		$this->assertSame( 90, get_option( 'wp_csp_violation_retention_days' ) );
+		$this->assertSame( 90, get_option( 'wp_sam_violation_retention_days' ) );
 	}
 
 	public function test_activate_seeds_learning_window_option(): void {
 		Activator::activate();
 
-		$this->assertSame( 48, get_option( 'wp_csp_learning_window_hours' ) );
-		$this->assertNotEmpty( get_option( 'wp_csp_last_material_change_at' ) );
+		$this->assertSame( 48, get_option( 'wp_sam_learning_window_hours' ) );
+		$this->assertNotEmpty( get_option( 'wp_sam_last_material_change_at' ) );
 	}
 
 	public function test_activate_seeds_blank_report_endpoint_override(): void {
 		Activator::activate();
 
-		$this->assertSame( '', get_option( 'wp_csp_report_endpoint_url' ) );
+		$this->assertSame( '', get_option( 'wp_sam_report_endpoint_url' ) );
 	}
 
 	public function test_activate_seeds_direct_reporting_transport(): void {
 		Activator::activate();
 
-		$this->assertSame( 'report-uri', get_option( 'wp_csp_reporting_transport' ) );
+		$this->assertSame( 'report-uri', get_option( 'wp_sam_reporting_transport' ) );
 	}
 
 	public function test_activate_seeds_enforce_gate_violation_window_option(): void {
 		Activator::activate();
 
-		$this->assertSame( 24, get_option( 'wp_csp_enforce_gate_violation_window' ) );
+		$this->assertSame( 24, get_option( 'wp_sam_enforce_gate_violation_window' ) );
 	}
 
 	public function test_activate_seeds_cron_hour_default_of_two(): void {
 		Activator::activate();
 
-		$this->assertSame( 2, get_option( 'wp_csp_cron_hour' ) );
+		$this->assertSame( 2, get_option( 'wp_sam_cron_hour' ) );
 	}
 
 	public function test_activate_seeds_entitlement_grace_hours(): void {
 		Activator::activate();
 
-		$this->assertSame( 72, get_option( 'wp_csp_entitlement_grace_hours' ) );
+		$this->assertSame( 72, get_option( 'wp_sam_entitlement_grace_hours' ) );
 	}
 
 	public function test_activate_does_not_overwrite_existing_options(): void {
 		// Pre-seed a custom value.
-		update_option( 'wp_csp_cron_hour', 6 );
+		update_option( 'wp_sam_cron_hour', 6 );
 
 		Activator::activate();
 
 		// add_option() is a no-op when the option already exists.
-		$this->assertSame( 6, get_option( 'wp_csp_cron_hour' ) );
+		$this->assertSame( 6, get_option( 'wp_sam_cron_hour' ) );
 	}
 
 	// ── Cron scheduling ───────────────────────────────────────────────────────
@@ -94,17 +94,17 @@ class ActivatorTest extends TestCase {
 	public function test_activate_schedules_daily_scan_cron_event(): void {
 		Activator::activate();
 
-		$this->assertNotFalse( wp_next_scheduled( 'wp_csp_daily_scan' ) );
+		$this->assertNotFalse( wp_next_scheduled( 'wp_sam_daily_scan' ) );
 	}
 
 	public function test_activate_does_not_double_schedule_cron_event(): void {
 		// First activation schedules the event.
 		Activator::activate();
-		$first_timestamp = wp_next_scheduled( 'wp_csp_daily_scan' );
+		$first_timestamp = wp_next_scheduled( 'wp_sam_daily_scan' );
 
 		// Second activation must be a no-op (cron event already exists).
 		Activator::activate();
-		$second_timestamp = wp_next_scheduled( 'wp_csp_daily_scan' );
+		$second_timestamp = wp_next_scheduled( 'wp_sam_daily_scan' );
 
 		$this->assertSame( $first_timestamp, $second_timestamp );
 	}

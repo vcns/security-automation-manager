@@ -1,13 +1,13 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Decision_Engine.
+ * Unit tests for WP_SAM\CSP\Decision_Engine.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Automation_Config;
-use WP_CSP\CSP\Decision_Engine;
+use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Decision_Engine;
 
 class DecisionEngineTest extends TestCase {
 

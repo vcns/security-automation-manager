@@ -5,9 +5,9 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\Modules\Audit_Log;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -215,7 +215,7 @@ class Policy_Change_Manager {
 	public function is_suppressed( string $surface, string $directive, string $host ): bool {
 		global $wpdb;
 
-		$table       = $wpdb->prefix . 'csp_policy_change_decisions';
+		$table       = $wpdb->prefix . 'sam_policy_change_decisions';
 		$fingerprint = self::fingerprint( $surface, $directive, $host );
 
 		$latest = $wpdb->get_row(
@@ -401,7 +401,7 @@ class Policy_Change_Manager {
 		$reverted_decision_value       = $reverted_decision_id > 0 ? $reverted_decision_id : null;
 
 		$inserted = $wpdb->insert(
-			$wpdb->prefix . 'csp_policy_change_decisions',
+			$wpdb->prefix . 'sam_policy_change_decisions',
 			array(
 				'change_type'                => 'source',
 				'source_inventory_id'        => (int) ( $source['id'] ?? 0 ),
@@ -424,7 +424,7 @@ class Policy_Change_Manager {
 				'deterministic_result'       => wp_json_encode( $deterministic ),
 				'evidence_snapshot'          => wp_json_encode( $this->source_evidence_snapshot( $source ) ),
 				'reverted_decision_id'       => $reverted_decision_value,
-				'software_version'           => defined( 'WP_CSP_VERSION' ) ? WP_CSP_VERSION : '',
+				'software_version'           => defined( 'WP_SAM_VERSION' ) ? WP_SAM_VERSION : '',
 				'suppression_active'         => $suppress ? 1 : 0,
 				'created_at'                 => $now,
 			),
@@ -527,7 +527,7 @@ class Policy_Change_Manager {
 				continue;
 			}
 			$wpdb->insert(
-				$wpdb->prefix . 'csp_decision_rule_evaluations',
+				$wpdb->prefix . 'sam_decision_rule_evaluations',
 				array(
 					'proposal_id'       => $source_id,
 					'decision_id'       => $decision_id > 0 ? $decision_id : null,
@@ -553,7 +553,7 @@ class Policy_Change_Manager {
 	private function latest_decision_id( string $fingerprint ): int {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'csp_policy_change_decisions';
+		$table = $wpdb->prefix . 'sam_policy_change_decisions';
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

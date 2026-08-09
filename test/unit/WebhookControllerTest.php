@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for WP_CSP\Modules\Webhook_Controller.
+ * Unit tests for WP_SAM\Modules\Webhook_Controller.
  *
  * Tests HMAC-SHA256 signature verification, timestamp replay window,
  * idempotency guard, and entitlement grant dispatch.
@@ -12,10 +12,10 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\Modules\Audit_Log;
-use WP_CSP\Modules\Checkout_Service;
-use WP_CSP\Modules\Entitlement_Store;
-use WP_CSP\Modules\Webhook_Controller;
+use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Checkout_Service;
+use WP_SAM\Modules\Entitlement_Store;
+use WP_SAM\Modules\Webhook_Controller;
 
 // ── Minimal REST stubs ────────────────────────────────────────────────────────
 if ( ! class_exists( 'WP_REST_Request' ) ) {
@@ -41,7 +41,7 @@ class WebhookControllerTest extends TestCase {
 
 	protected function setUp(): void {
 		wp_test_reset_globals();
-		update_option( 'wp_csp_webhook_secret', $this->webhook_secret );
+		update_option( 'wp_sam_webhook_secret', $this->webhook_secret );
 
 		if (
 			! class_exists( Entitlement_Store::class )
@@ -233,7 +233,7 @@ class WebhookControllerTest extends TestCase {
 					return new WP_REST_Response( [ 'error' => 'bad_request' ], 400 );
 				}
 
-				$secret = (string) get_option( 'wp_csp_webhook_secret', '' );
+				$secret = (string) get_option( 'wp_sam_webhook_secret', '' );
 
 				$verify = new ReflectionMethod( $this, 'verify_signature' );
 				$verify->setAccessible( true );

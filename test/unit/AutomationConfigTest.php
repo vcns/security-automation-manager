@@ -1,12 +1,12 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Automation_Config.
+ * Unit tests for WP_SAM\CSP\Automation_Config.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Automation_Config;
+use WP_SAM\CSP\Automation_Config;
 
 class AutomationConfigTest extends TestCase {
 
@@ -25,7 +25,7 @@ class AutomationConfigTest extends TestCase {
 
 	public function test_invalid_mode_normalises_to_manual(): void {
 		update_option(
-			'wp_csp_automation_config',
+			'wp_sam_automation_config',
 			array(
 				'frontend' => array(
 					'mode'                   => 'reckless',
@@ -61,7 +61,7 @@ class AutomationConfigTest extends TestCase {
 
 	public function test_legacy_modes_normalise_to_new_approval_postures(): void {
 		update_option(
-			'wp_csp_automation_config',
+			'wp_sam_automation_config',
 			array(
 				'frontend' => array( 'mode' => 'conservative' ),
 				'admin'    => array( 'mode' => 'balanced' ),

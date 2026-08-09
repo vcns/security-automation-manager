@@ -22,14 +22,14 @@ Operational rules:
 
 Update all release-facing version locations together:
 
-- plugin header `Version` in `csp-automation-manager.php`
-- `WP_CSP_VERSION` constant
+- plugin header `Version` in `security-automation-manager.php`
+- `WP_SAM_VERSION` constant
 - `readme.txt` stable tag
 - `CHANGELOG.md`
 
 If schema changes are included, also update:
 
-- `WP_CSP_DB_VERSION`
+- `WP_SAM_DB_VERSION`
 - upgrade logic and schema docs
 
 ## Release Workflow
@@ -90,12 +90,12 @@ Typical mapping:
 
 Tagged releases generate two ready-to-install ZIP assets:
 
-- `csp-automation-manager-vX.Y.Z.zip` - WordPress.org-safe package; no GitHub updater files and no `Update URI` header
-- `csp-automation-manager-github-vX.Y.Z.zip` - GitHub-channel package; includes the GitHub release updater, a generated `includes/build-channel.php`, and an `Update URI` header
+- `security-automation-manager-vX.Y.Z.zip` - WordPress.org-safe package; no GitHub updater files and no `Update URI` header
+- `security-automation-manager-github-vX.Y.Z.zip` - GitHub-channel package; includes the GitHub release updater, a generated `includes/build-channel.php`, and an `Update URI` header
 
 The GitHub-channel package publishes update metadata to:
 
-- `https://vcns.github.io/wp-updates/csp-automation-manager/update.json`
+- `https://vcns.github.io/wp-updates/security-automation-manager/update.json`
 
 The manifest points to the versioned GitHub-channel ZIP and includes a SHA-256 checksum. The runtime updater validates the manifest slug, package host/path, HTTPS URL, version string, and checksum before allowing WordPress to install the package.
 

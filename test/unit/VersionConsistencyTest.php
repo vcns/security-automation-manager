@@ -12,8 +12,8 @@ class VersionConsistencyTest extends TestCase {
 	public function test_release_version_metadata_is_consistent(): void {
 		$root = dirname( __DIR__, 2 );
 
-		$plugin_version   = $this->extract_plugin_header_version( $root . '/csp-automation-manager.php' );
-		$constant_version = $this->extract_plugin_constant_version( $root . '/csp-automation-manager.php' );
+		$plugin_version   = $this->extract_plugin_header_version( $root . '/security-automation-manager.php' );
+		$constant_version = $this->extract_plugin_constant_version( $root . '/security-automation-manager.php' );
 		$stable_tag       = $this->extract_readme_stable_tag( $root . '/readme.txt' );
 		$changelog        = $this->extract_latest_changelog_release( $root . '/CHANGELOG.md' );
 
@@ -26,10 +26,14 @@ class VersionConsistencyTest extends TestCase {
 	public function test_release_workflow_builds_separate_update_channels(): void {
 		$workflow = $this->read_file( dirname( __DIR__, 2 ) . '/.github/workflows/release-package.yml' );
 
-		$this->assertStringContainsString( 'csp-automation-manager-${TAG}.zip', $workflow );
-		$this->assertStringContainsString( 'csp-automation-manager-github-${TAG}.zip', $workflow );
-		$this->assertStringContainsString( 'rm -f dist/wporg/csp-automation-manager/includes/modules/class-github-update-checker.php', $workflow );
-		$this->assertStringContainsString( 'WP_CSP_DISTRIBUTION_CHANNEL\', \'github', $workflow );
+		$this->assertStringContainsString( 'security-automation-manager-${TAG}.zip', $workflow );
+		$this->assertStringContainsString( 'security-automation-manager-github-${TAG}.zip', $workflow );
+		$this->assertStringContainsString( 'rm -f dist/wporg/security-automation-manager/includes/modules/class-github-update-checker.php', $workflow );
+		$this->assertStringContainsString( 'WP_SAM_DISTRIBUTION_CHANNEL\', \'github', $workflow );
+		// NOTE: the GitHub repo path and the update-feed publish path intentionally
+		// still use the pre-rename slug -- the actual GitHub repository has not
+		// been renamed (a separate, deliberately deferred decision), and the feed
+		// path must match Github_Update_Checker::SLUG in already-installed copies.
 		$this->assertStringContainsString( 'Update URI:        https://github.com/vcns/csp-automation-manager', $workflow );
 		$this->assertStringContainsString( 'https://vcns.github.io/wp-updates/csp-automation-manager/', $workflow );
 		$this->assertStringContainsString( 'WP_UPDATES_TOKEN', $workflow );
@@ -48,8 +52,8 @@ class VersionConsistencyTest extends TestCase {
 	private function extract_plugin_constant_version( string $file ): string {
 		$contents = $this->read_file( $file );
 
-		$this->assertMatchesRegularExpression( "/define\(\s*'WP_CSP_VERSION'\s*,\s*'([^']+)'\s*\)/", $contents );
-		preg_match( "/define\(\s*'WP_CSP_VERSION'\s*,\s*'([^']+)'\s*\)/", $contents, $matches );
+		$this->assertMatchesRegularExpression( "/define\(\s*'WP_SAM_VERSION'\s*,\s*'([^']+)'\s*\)/", $contents );
+		preg_match( "/define\(\s*'WP_SAM_VERSION'\s*,\s*'([^']+)'\s*\)/", $contents, $matches );
 
 		return trim( $matches[1] );
 	}

@@ -5,9 +5,9 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\Admin;
+namespace WP_SAM\Admin;
 
-use WP_CSP\Activator;
+use WP_SAM\Activator;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -53,9 +53,9 @@ class Data_Resetter {
 		}
 
 		if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
-			wp_clear_scheduled_hook( 'wp_csp_daily_scan' );
+			wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
 		} elseif ( function_exists( 'wp_unschedule_hook' ) ) {
-			wp_unschedule_hook( 'wp_csp_daily_scan' );
+			wp_unschedule_hook( 'wp_sam_daily_scan' );
 		}
 
 		Activator::activate();

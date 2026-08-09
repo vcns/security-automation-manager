@@ -3,22 +3,22 @@
  */
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */
-.wp-csp-wrap h1 {
+.wp-sam-wrap h1 {
 	margin-bottom: 0.5em;
 }
 
-.wp-csp-wrap .tab-content {
+.wp-sam-wrap .tab-content {
 	background: #fff;
 	border: 1px solid #ccd0d4;
 	border-top: 0;
 	padding: 16px;
 }
 
-.wp-csp-tab-wrapper .nav-tab {
+.wp-sam-tab-wrapper .nav-tab {
 	position: relative;
 }
 
-.wp-csp-tab-help {
+.wp-sam-tab-help {
 	margin: 0;
 	padding: 10px 12px;
 	background: #f6f7f7;
@@ -29,7 +29,7 @@
 }
 
 /* ── Mode badges ─────────────────────────────────────────────────────────── */
-.wp-csp-mode-badge {
+.wp-sam-mode-badge {
 	display: inline-block;
 	padding: 2px 8px;
 	border-radius: 3px;
@@ -55,7 +55,7 @@
 }
 
 /* ── State badges ────────────────────────────────────────────────────────── */
-.wp-csp-state-badge {
+.wp-sam-state-badge {
 	display: inline-block;
 	padding: 2px 8px;
 	border-radius: 3px;
@@ -76,7 +76,7 @@
 }
 
 /* Risk badges */
-.wp-csp-risk-badge {
+.wp-sam-risk-badge {
 	display: inline-block;
 	padding: 2px 8px;
 	border-radius: 3px;
@@ -100,14 +100,14 @@
 }
 
 /* ── Product cards ───────────────────────────────────────────────────────── */
-.wp-csp-product-cards {
+.wp-sam-product-cards {
 	display: flex;
 	gap: 20px;
 	flex-wrap: wrap;
 	margin-top: 1em;
 }
 
-.wp-csp-product-card {
+.wp-sam-product-card {
 	border: 1px solid #ccd0d4;
 	border-radius: 6px;
 	padding: 20px;
@@ -117,47 +117,47 @@
 	box-shadow: 0 1px 3px rgba(0,0,0,.05);
 }
 
-.wp-csp-product-card h3 {
+.wp-sam-product-card h3 {
 	margin-top: 0;
 	font-size: 1.2em;
 }
 
-.wp-csp-price {
+.wp-sam-price {
 	font-size: 2em;
 	font-weight: bold;
 	margin: 0 0 0.4em;
 }
 
 /* ── Scan status ─────────────────────────────────────────────────────────── */
-#wp-csp-scan-status {
+#wp-sam-scan-status {
 	color: #555;
 	font-style: italic;
 }
 
 /* ── Table tweaks ────────────────────────────────────────────────────────── */
-.wp-csp-wrap .widefat code {
+.wp-sam-wrap .widefat code {
 	font-size: 0.9em;
 	word-break: break-all;
 }
 
-.wp-csp-audit-table th {
+.wp-sam-audit-table th {
 	vertical-align: top;
 }
 
-.wp-csp-audit-table td {
+.wp-sam-audit-table td {
 	vertical-align: top;
 }
 
-.wp-csp-readiness-table {
+.wp-sam-readiness-table {
 	margin: 12px 0 24px;
 }
 
-.wp-csp-readiness-table th,
-.wp-csp-readiness-table td {
+.wp-sam-readiness-table th,
+.wp-sam-readiness-table td {
 	vertical-align: top;
 }
 
-.wp-csp-readiness-badge {
+.wp-sam-readiness-badge {
 	display: inline-block;
 	padding: 2px 8px;
 	border-radius: 3px;
@@ -165,30 +165,30 @@
 	font-weight: 600;
 }
 
-.wp-csp-readiness-badge.status-pass {
+.wp-sam-readiness-badge.status-pass {
 	background: #dafbe1;
 	border: 1px solid #a8d9b4;
 	color: #1a7f37;
 }
 
-.wp-csp-readiness-badge.status-warning {
+.wp-sam-readiness-badge.status-warning {
 	background: #fff8c5;
 	border: 1px solid #e0c04c;
 	color: #735c0f;
 }
 
-.wp-csp-readiness-badge.status-fail {
+.wp-sam-readiness-badge.status-fail {
 	background: #ffeef0;
 	border: 1px solid #f1aeb5;
 	color: #86181d;
 }
 
-.wp-csp-reset-form {
+.wp-sam-reset-form {
 	max-width: 760px;
 }
 
 /* ── Sortable column headers ─────────────────────────────────────────────── */
-.wp-csp-wrap .widefat th a {
+.wp-sam-wrap .widefat th a {
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
@@ -196,34 +196,34 @@
 	color: inherit;
 }
 
-.wp-csp-wrap .widefat th a:hover {
+.wp-sam-wrap .widefat th a:hover {
 	text-decoration: underline;
 }
 
-.wp-csp-wrap .widefat th .dashicons {
+.wp-sam-wrap .widefat th .dashicons {
 	width: 16px;
 	height: 16px;
 	font-size: 16px;
 }
 
 /* ── Filter forms ────────────────────────────────────────────────────────── */
-.wp-csp-filter-form label {
+.wp-sam-filter-form label {
 	display: inline-block;
 	margin: 0 16px 12px 0;
 	font-size: 0.9em;
 	vertical-align: top;
 }
 
-.wp-csp-filter-form label > * {
+.wp-sam-filter-form label > * {
 	display: block;
 	margin-top: 4px;
 }
 
-.wp-csp-filter-form select[multiple] {
+.wp-sam-filter-form select[multiple] {
 	min-width: 140px;
 }
 
-details.wp-csp-filter-form {
+details.wp-sam-filter-form {
 	border: 1px solid #ccd0d4;
 	border-radius: 4px;
 	padding: 8px 12px;
@@ -231,36 +231,36 @@ details.wp-csp-filter-form {
 	margin-bottom: 1em;
 }
 
-details.wp-csp-filter-form summary {
+details.wp-sam-filter-form summary {
 	cursor: pointer;
 	font-weight: 600;
 	padding: 4px 0;
 }
 
-details.wp-csp-filter-form form {
+details.wp-sam-filter-form form {
 	margin-top: 12px;
 }
 
 /* ── Violation metadata icon + popover ──────────────────────────────────── */
-.wp-csp-meta-icon {
+.wp-sam-meta-icon {
 	position: relative;
 	display: inline-block;
 	color: #787c82;
 	cursor: help;
 }
 
-.wp-csp-meta-icon:hover,
-.wp-csp-meta-icon:focus {
+.wp-sam-meta-icon:hover,
+.wp-sam-meta-icon:focus {
 	color: #2271b1;
 	outline: none;
 }
 
-.wp-csp-meta-icon--empty {
+.wp-sam-meta-icon--empty {
 	color: #dcdcde;
 	cursor: default;
 }
 
-.wp-csp-meta-popover {
+.wp-sam-meta-popover {
 	display: none;
 	position: absolute;
 	right: 0;
@@ -280,20 +280,20 @@ details.wp-csp-filter-form form {
 	line-height: 1.5;
 }
 
-.wp-csp-meta-icon:hover .wp-csp-meta-popover,
-.wp-csp-meta-icon:focus .wp-csp-meta-popover {
+.wp-sam-meta-icon:hover .wp-sam-meta-popover,
+.wp-sam-meta-icon:focus .wp-sam-meta-popover {
 	display: block;
 }
 
-.wp-csp-meta-row {
+.wp-sam-meta-row {
 	margin-bottom: 6px;
 }
 
-.wp-csp-meta-row:last-child {
+.wp-sam-meta-row:last-child {
 	margin-bottom: 0;
 }
 
-.wp-csp-meta-row code {
+.wp-sam-meta-row code {
 	display: block;
 	word-break: break-all;
 	white-space: normal;

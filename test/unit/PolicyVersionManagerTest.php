@@ -1,12 +1,12 @@
 <?php
 /**
- * Unit tests for WP_CSP\CSP\Policy_Version_Manager.
+ * Unit tests for WP_SAM\CSP\Policy_Version_Manager.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
-use WP_CSP\CSP\Policy_Version_Manager;
+use WP_SAM\CSP\Policy_Version_Manager;
 
 class PolicyVersionManagerTest extends TestCase {
 

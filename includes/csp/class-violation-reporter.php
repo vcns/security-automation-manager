@@ -14,9 +14,9 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\Modules\Audit_Log;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -57,7 +57,7 @@ class Violation_Reporter {
 	// ── REST handler ──────────────────────────────────────────────────────────
 
 	/**
-	 * Handles POST /csp-manager/v1/report
+	 * Handles POST /security-manager/v1/report (and the legacy /csp-manager/v1/report alias)
 	 * Accepts application/csp-report (legacy) and application/reports+json (Reporting API).
 	 * Rejects any other Content-Type — browsers must send one of these two (R10).
 	 */
@@ -180,7 +180,7 @@ class Violation_Reporter {
 		}
 
 		// Rate-limit check.
-		$rate_key = 'wp_csp_viol_rate_' . $surface;
+		$rate_key = 'wp_sam_viol_rate_' . $surface;
 		$count    = (int) get_transient( $rate_key );
 		if ( $count >= self::MAX_PER_HOUR_PER_SURFACE ) {
 			return;
@@ -345,7 +345,7 @@ class Violation_Reporter {
 		$urls = array(
 			home_url(),
 			get_site_url(),
-			(string) get_option( 'wp_csp_report_endpoint_url', '' ),
+			(string) get_option( 'wp_sam_report_endpoint_url', '' ),
 		);
 
 		$hosts = array();

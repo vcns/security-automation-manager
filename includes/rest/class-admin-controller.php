@@ -5,11 +5,11 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\Rest;
+namespace WP_SAM\Rest;
 
-use WP_CSP\CSP\Automation_Config;
-use WP_CSP\CSP\Policy_Version_Manager;
-use WP_CSP\Modules\Audit_Log;
+use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Policy_Version_Manager;
+use WP_SAM\Modules\Audit_Log;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -29,7 +29,7 @@ class Admin_Controller {
 
 	public function register_routes(): void {
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/policies',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -39,7 +39,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/policies/(?P<surface>[a-z-]+)/history',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -49,7 +49,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/policy-versions/(?P<id>\d+)',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -59,7 +59,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/policy-versions/(?P<id>\d+)/diff',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -69,7 +69,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/decisions',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -79,7 +79,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/decisions/(?P<id>\d+)',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -89,7 +89,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/reviews/pending',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -99,7 +99,7 @@ class Admin_Controller {
 		);
 
 		register_rest_route(
-			'csp-manager/v1',
+			'security-manager/v1',
 			'/admin/automation-config',
 			array(
 				array(
@@ -151,7 +151,7 @@ class Admin_Controller {
 			return new \WP_REST_Response( array( 'code' => 'invalid_surface' ), 400 );
 		}
 
-		$table = $wpdb->prefix . 'csp_policy_versions';
+		$table = $wpdb->prefix . 'sam_policy_versions';
 		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -191,7 +191,7 @@ class Admin_Controller {
 	public function search_decisions( \WP_REST_Request $request ): \WP_REST_Response {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'csp_policy_change_decisions';
+		$table = $wpdb->prefix . 'sam_policy_change_decisions';
 		$where = array( '1=1' );
 		$args  = array();
 
@@ -221,7 +221,7 @@ class Admin_Controller {
 	public function get_decision( \WP_REST_Request $request ): \WP_REST_Response {
 		global $wpdb;
 
-		$table    = $wpdb->prefix . 'csp_policy_change_decisions';
+		$table    = $wpdb->prefix . 'sam_policy_change_decisions';
 		$decision = $wpdb->get_row(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -235,7 +235,7 @@ class Admin_Controller {
 			return new \WP_REST_Response( array( 'code' => 'not_found' ), 404 );
 		}
 
-		$rule_table = $wpdb->prefix . 'csp_decision_rule_evaluations';
+		$rule_table = $wpdb->prefix . 'sam_decision_rule_evaluations';
 		$rules      = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

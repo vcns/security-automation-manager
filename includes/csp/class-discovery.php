@@ -25,10 +25,10 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
-use WP_CSP\Modules\Audit_Log;
-use WP_CSP\Modules\Feature_Gate;
+use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Feature_Gate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -83,7 +83,7 @@ class Discovery {
 			$url,
 			array(
 				'timeout'    => 20,
-				'user-agent' => 'WP-CSP-Discovery/' . WP_CSP_VERSION,
+				'user-agent' => 'WP-CSP-Discovery/' . WP_SAM_VERSION,
 				'sslverify'  => true,
 			)
 		);
@@ -259,7 +259,7 @@ class Discovery {
 			$css_url,
 			array(
 				'timeout'    => 10,
-				'user-agent' => 'WP-CSP-Discovery/' . WP_CSP_VERSION,
+				'user-agent' => 'WP-CSP-Discovery/' . WP_SAM_VERSION,
 				'sslverify'  => true,
 			)
 		);

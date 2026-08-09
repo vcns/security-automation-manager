@@ -5,7 +5,7 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP\CSP;
+namespace WP_SAM\CSP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

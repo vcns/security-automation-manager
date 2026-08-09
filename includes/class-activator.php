@@ -10,7 +10,7 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP;
+namespace WP_SAM;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -20,11 +20,36 @@ class Activator {
 
 	public static function activate(): void {
 		self::create_tables();
+		self::migrate_v9_option_renames();
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_initial_policy_versions();
 		self::schedule_events();
 		self::mark_schema_verified();
+	}
+
+	/**
+	 * Schema v9: migrates option values stored under the pre-rename wp_csp_
+	 * prefix to the new wp_sam_ prefix (e.g. wp_csp_automation_config ->
+	 * wp_sam_automation_config), so upgrading sites keep their configured
+	 * automation posture, report endpoint, cron hour, and other settings
+	 * instead of silently reverting to defaults. Copies the value and leaves
+	 * the old option in place (harmless leftover, not read by anything after
+	 * this migration); only copies when the new key isn't already set, so
+	 * this is safe to run on every activation.
+	 */
+	private static function migrate_v9_option_renames(): void {
+		foreach ( self::get_option_names() as $new_key ) {
+			$old_key = 'wp_csp_' . substr( $new_key, strlen( 'wp_sam_' ) );
+			if ( $old_key === $new_key || false !== get_option( $new_key, false ) ) {
+				continue;
+			}
+
+			$old_value = get_option( $old_key, false );
+			if ( false !== $old_value ) {
+				add_option( $new_key, $old_value );
+			}
+		}
 	}
 
 	public static function get_missing_table_names(): array {
@@ -47,46 +72,46 @@ class Activator {
 			'csp_source_inventory',
 			'csp_hash_inventory',
 			'csp_violation_reports',
-			'csp_scan_logs',
-			'csp_entitlements',
-			'csp_processed_events',
-			'csp_audit_log',
-			'csp_policy_change_decisions',
-			'csp_policy_versions',
-			'csp_decision_rule_evaluations',
+			'sam_scan_logs',
+			'sam_entitlements',
+			'sam_processed_events',
+			'sam_audit_log',
+			'sam_policy_change_decisions',
+			'sam_policy_versions',
+			'sam_decision_rule_evaluations',
 		);
 	}
 
 	public static function get_option_names(): array {
 		return array(
-			'wp_csp_db_version',
-			'wp_csp_config_dns_domain',
-			'wp_csp_config_fallback_url',
-			'wp_csp_config_cache_ttl',
-			'wp_csp_config_grace_ttl',
-			'wp_csp_config_last_fetched',
-			'wp_csp_config_version',
-			'wp_csp_entitlement_grace_hours',
-			'wp_csp_enforce_gate_violation_window',
-			'wp_csp_cron_hour',
-			'wp_csp_notify_email',
-			'wp_csp_violation_retention_days',
-			'wp_csp_learning_window_hours',
-			'wp_csp_policy_header_name',
-			'wp_csp_report_endpoint_url',
-			'wp_csp_reporting_transport',
-			'wp_csp_schema_verified_version',
-			'wp_csp_last_material_change_at',
-			'wp_csp_automation_config',
-			'wp_csp_admin_notices',
+			'wp_sam_db_version',
+			'wp_sam_config_dns_domain',
+			'wp_sam_config_fallback_url',
+			'wp_sam_config_cache_ttl',
+			'wp_sam_config_grace_ttl',
+			'wp_sam_config_last_fetched',
+			'wp_sam_config_version',
+			'wp_sam_entitlement_grace_hours',
+			'wp_sam_enforce_gate_violation_window',
+			'wp_sam_cron_hour',
+			'wp_sam_notify_email',
+			'wp_sam_violation_retention_days',
+			'wp_sam_learning_window_hours',
+			'wp_sam_policy_header_name',
+			'wp_sam_report_endpoint_url',
+			'wp_sam_reporting_transport',
+			'wp_sam_schema_verified_version',
+			'wp_sam_last_material_change_at',
+			'wp_sam_automation_config',
+			'wp_sam_admin_notices',
 		);
 	}
 
 	public static function get_transient_names(): array {
 		return array(
-			'wp_csp_remote_config',
-			'wp_csp_config_stale',
-			'wp_csp_conflict_probe_ran',
+			'wp_sam_remote_config',
+			'wp_sam_config_stale',
+			'wp_sam_conflict_probe_ran',
 		);
 	}
 
@@ -95,6 +120,8 @@ class Activator {
 	private static function create_tables(): void {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		self::migrate_v9_table_renames();
 
 		$cc = $wpdb->get_charset_collate();
 		$p  = $wpdb->prefix;
@@ -218,7 +245,7 @@ class Activator {
 
 		// 5. Scan / rescan run history
 		dbDelta(
-			"CREATE TABLE {$p}csp_scan_logs (
+			"CREATE TABLE {$p}sam_scan_logs (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   trigger_type varchar(16) NOT NULL,
   status varchar(16) NOT NULL DEFAULT 'running',
@@ -239,7 +266,7 @@ class Activator {
 
 		// 6. Legacy per-site entitlement compatibility records.
 		dbDelta(
-			"CREATE TABLE {$p}csp_entitlements (
+			"CREATE TABLE {$p}sam_entitlements (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   site_identity varchar(255) NOT NULL,
   product_key varchar(64) NOT NULL,
@@ -267,7 +294,7 @@ class Activator {
 
 		// 7. Legacy external event idempotency log.
 		dbDelta(
-			"CREATE TABLE {$p}csp_processed_events (
+			"CREATE TABLE {$p}sam_processed_events (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   stripe_event_id varchar(255) NOT NULL,
   stripe_session_id varchar(255) DEFAULT NULL,
@@ -284,7 +311,7 @@ class Activator {
 		// 8. Append-only structured audit log (R10).
 		// No UPDATE or DELETE is ever issued against this table — it is an immutable record.
 		dbDelta(
-			"CREATE TABLE {$p}csp_audit_log (
+			"CREATE TABLE {$p}sam_audit_log (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   component varchar(64) NOT NULL,
   event varchar(128) NOT NULL,
@@ -301,7 +328,7 @@ class Activator {
 		// 9. Append-only policy change decision ledger.
 		// v7 extends this with provenance fields; existing action/suppression semantics remain authoritative.
 		dbDelta(
-			"CREATE TABLE {$p}csp_policy_change_decisions (
+			"CREATE TABLE {$p}sam_policy_change_decisions (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   change_type varchar(32) NOT NULL DEFAULT 'source',
   source_inventory_id bigint(20) UNSIGNED DEFAULT NULL,
@@ -342,7 +369,7 @@ class Activator {
 
 		// 10. Immutable policy version snapshots per surface.
 		dbDelta(
-			"CREATE TABLE {$p}csp_policy_versions (
+			"CREATE TABLE {$p}sam_policy_versions (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   surface varchar(32) NOT NULL,
   version_number bigint(20) UNSIGNED NOT NULL,
@@ -365,7 +392,7 @@ class Activator {
 
 		// 11. Deterministic rule evaluation provenance.
 		dbDelta(
-			"CREATE TABLE {$p}csp_decision_rule_evaluations (
+			"CREATE TABLE {$p}sam_decision_rule_evaluations (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   proposal_id bigint(20) UNSIGNED DEFAULT NULL,
   decision_id bigint(20) UNSIGNED DEFAULT NULL,
@@ -385,7 +412,44 @@ class Activator {
 ) {$cc};"
 		);
 
-		update_option( 'wp_csp_db_version', WP_CSP_DB_VERSION );
+		update_option( 'wp_sam_db_version', WP_SAM_DB_VERSION );
+	}
+
+	/**
+	 * Schema v9: renames the shared/generic tables (scan logs, entitlements,
+	 * processed events, audit log, policy change decisions, policy versions,
+	 * decision rule evaluations) from a csp_ prefix to sam_, ahead of
+	 * multi-pillar support -- these tables have no CSP-specific columns and
+	 * will be shared by future header pillars. The four CSP-owned tables
+	 * (csp_policy_profiles, csp_source_inventory, csp_hash_inventory,
+	 * csp_violation_reports) are unaffected; they hold CSP's own data.
+	 *
+	 * Uses RENAME TABLE, not create+copy+drop, so existing decision history,
+	 * audit trail, and policy version snapshots are preserved intact. Safe to
+	 * call on every activation: a no-op once the old-named table is gone.
+	 */
+	private static function migrate_v9_table_renames(): void {
+		global $wpdb;
+
+		$renames = array(
+			'csp_scan_logs'                 => 'sam_scan_logs',
+			'csp_entitlements'              => 'sam_entitlements',
+			'csp_processed_events'          => 'sam_processed_events',
+			'csp_audit_log'                 => 'sam_audit_log',
+			'csp_policy_change_decisions'   => 'sam_policy_change_decisions',
+			'csp_policy_versions'           => 'sam_policy_versions',
+			'csp_decision_rule_evaluations' => 'sam_decision_rule_evaluations',
+		);
+
+		foreach ( $renames as $old_suffix => $new_suffix ) {
+			$old_table = $wpdb->prefix . $old_suffix;
+			$new_table = $wpdb->prefix . $new_suffix;
+
+			if ( self::table_exists( $old_table ) && ! self::table_exists( $new_table ) ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "RENAME TABLE {$old_table} TO {$new_table}" );
+			}
+		}
 	}
 
 	private static function migrate_violation_report_rollups(): void {
@@ -459,36 +523,36 @@ class Activator {
 
 	private static function set_default_options(): void {
 		$defaults = array(
-			'wp_csp_config_dns_domain'             => '',
+			'wp_sam_config_dns_domain'             => '',
 			// Fallback HTTPS URL used when DNS TXT lookup fails or dns_get_record
 			// is unavailable on the host. Must be a valid https:// URL pointing
 			// to a signed config JSON document. Leave empty to disable.
-			'wp_csp_config_fallback_url'           => '',
-			'wp_csp_config_cache_ttl'              => 3600,
-			'wp_csp_config_grace_ttl'              => 86400,
-			'wp_csp_entitlement_grace_hours'       => 72,
-			'wp_csp_cron_hour'                     => 2,
-			'wp_csp_notify_email'                  => get_option( 'admin_email' ),
+			'wp_sam_config_fallback_url'           => '',
+			'wp_sam_config_cache_ttl'              => 3600,
+			'wp_sam_config_grace_ttl'              => 86400,
+			'wp_sam_entitlement_grace_hours'       => 72,
+			'wp_sam_cron_hour'                     => 2,
+			'wp_sam_notify_email'                  => get_option( 'admin_email' ),
 			// Promotion gate: minimum hours without a high-severity violation
 			// before enforce mode is permitted. Default: 24 hours.
-			'wp_csp_enforce_gate_violation_window' => 24,
+			'wp_sam_enforce_gate_violation_window' => 24,
 			// Data retention: violation reports older than this many days are purged
 			// by the daily cron scan. 0 = keep forever (not recommended for busy sites).
-			'wp_csp_violation_retention_days'      => 90,
+			'wp_sam_violation_retention_days'      => 90,
 			// Report-endpoint learning closes after this many hours from the latest
 			// post, page, or plugin material change.
-			'wp_csp_learning_window_hours'         => 48,
-			// Blank uses rest_url( 'csp-manager/v1/report' ); set only when a
+			'wp_sam_learning_window_hours'         => 48,
+			// Blank uses rest_url( 'security-manager/v1/report' ); set only when a
 			// public proxy/CDN hostname must be advertised to browsers.
-			'wp_csp_report_endpoint_url'           => '',
+			'wp_sam_report_endpoint_url'           => '',
 			// Direct report-uri reporting is the default because it gives the
 			// fastest feedback loop for report-endpoint learning.
-			'wp_csp_reporting_transport'           => 'report-uri',
+			'wp_sam_reporting_transport'           => 'report-uri',
 			// Blank emits normal CSP headers. Set only when an edge proxy copies
 			// an origin-only policy header back to a browser-facing CSP header.
-			'wp_csp_policy_header_name'            => '',
-			'wp_csp_last_material_change_at'       => current_time( 'mysql', true ),
-			'wp_csp_automation_config'             => self::default_automation_config(),
+			'wp_sam_policy_header_name'            => '',
+			'wp_sam_last_material_change_at'       => current_time( 'mysql', true ),
+			'wp_sam_automation_config'             => self::default_automation_config(),
 		);
 
 		foreach ( $defaults as $key => $value ) {
@@ -557,13 +621,13 @@ class Activator {
 	}
 
 	private static function seed_initial_policy_versions(): void {
-		if ( ! class_exists( 'WP_CSP\CSP\Policy_Version_Manager' ) ) {
+		if ( ! class_exists( 'WP_SAM\CSP\Policy_Version_Manager' ) ) {
 			return;
 		}
 
 		global $wpdb;
-		$table   = $wpdb->prefix . 'csp_policy_versions';
-		$manager = new \WP_CSP\CSP\Policy_Version_Manager();
+		$table   = $wpdb->prefix . 'sam_policy_versions';
+		$manager = new \WP_SAM\CSP\Policy_Version_Manager();
 
 		if ( ! self::table_exists( $table ) ) {
 			return;
@@ -648,11 +712,11 @@ class Activator {
 	// ── WP Cron ───────────────────────────────────────────────────────────────
 
 	private static function schedule_events(): void {
-		$hook = 'wp_csp_daily_scan';
+		$hook = 'wp_sam_daily_scan';
 		if ( wp_next_scheduled( $hook ) ) {
 			return;
 		}
-		$hour      = max( 0, min( 23, (int) get_option( 'wp_csp_cron_hour', 2 ) ) );
+		$hour      = max( 0, min( 23, (int) get_option( 'wp_sam_cron_hour', 2 ) ) );
 		$now       = time();
 		$today     = mktime( $hour, 0, 0, (int) gmdate( 'n', $now ), (int) gmdate( 'j', $now ), (int) gmdate( 'Y', $now ) );
 		$first_run = ( $today > $now ) ? $today : $today + DAY_IN_SECONDS;
@@ -660,6 +724,6 @@ class Activator {
 	}
 
 	public static function mark_schema_verified(): void {
-		update_option( 'wp_csp_schema_verified_version', WP_CSP_DB_VERSION );
+		update_option( 'wp_sam_schema_verified_version', WP_SAM_DB_VERSION );
 	}
 }

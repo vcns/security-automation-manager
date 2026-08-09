@@ -6,7 +6,7 @@
 
 declare( strict_types=1 );
 
-namespace WP_CSP;
+namespace WP_SAM;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -15,6 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Deactivator {
 
 	public static function deactivate(): void {
-		wp_clear_scheduled_hook( 'wp_csp_daily_scan' );
+		wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
 	}
 }

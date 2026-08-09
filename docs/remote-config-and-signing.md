@@ -20,7 +20,7 @@ Never place any of the following in the remote config JSON or DNS TXT record:
 
 The plugin reads a DNS TXT record whose default constant is:
 
-- `_csp-config.csp-automation-manager.vcns.tech`
+- `_csp-config.security-automation-manager.vcns.tech`
 
 Expected TXT record format:
 
@@ -78,7 +78,7 @@ Verification flow:
 
 ### Public key
 
-- stored in the plugin constant `WP_CSP_CONFIG_PUBLIC_KEY`
+- stored in the plugin constant `WP_SAM_CONFIG_PUBLIC_KEY`
 - safe to ship with the plugin
 - must be replaced before production use
 
