@@ -39,6 +39,7 @@ final class Plugin {
 	// Nullable compatibility hooks for legacy or future optional integrations.
 	public ?object $config       = null;
 	public ?object $entitlements = null;
+	public ?object $checkout     = null;
 	public Feature_Gate $gate;
 	public Audit_Log $audit;
 	public Nonce_Manager $nonce_manager;
@@ -100,7 +101,22 @@ final class Plugin {
 	private function bootstrap(): void {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
-		// Feature gate is local-only in the WordPress.org build.
+
+		// Entitlement/config modules are only present in a private/commercial
+		// build (see offline/modules/ -- gitignored and excluded from every
+		// release ZIP this repo's CI produces). The WordPress.org and
+		// GitHub-channel builds never find these classes, so $config and
+		// $entitlements stay null and Feature_Gate runs in its free-tier
+		// posture, exactly as it does today.
+		if ( class_exists( \WP_SAM\Modules\Config_Resolver::class ) ) {
+			$this->config = new \WP_SAM\Modules\Config_Resolver( $this->audit );
+		}
+		if ( class_exists( \WP_SAM\Modules\Entitlement_Store::class ) ) {
+			$this->entitlements = new \WP_SAM\Modules\Entitlement_Store( $this->audit );
+		}
+		if ( class_exists( \WP_SAM\Modules\Checkout_Service::class ) && null !== $this->config && null !== $this->entitlements ) {
+			$this->checkout = new \WP_SAM\Modules\Checkout_Service( $this->config, $this->entitlements );
+		}
 		$this->gate                           = new Feature_Gate( $this->entitlements, $this->config );
 		$this->nonce_manager                  = new Nonce_Manager( $this->gate );
 		$this->policy_builder                 = new Policy_Builder( $this->gate );
@@ -150,7 +166,7 @@ final class Plugin {
 
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers.
-		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window );
+		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window, gate: $this->gate );
 		$report_route_args  = array(
 			'methods'             => \WP_REST_Server::CREATABLE,
 			'callback'            => array( $violation_reporter, 'handle' ),
@@ -166,6 +182,12 @@ final class Plugin {
 		// across browsers) for a couple of releases, then remove it.
 		register_rest_route( 'csp-manager/v1', '/report', $report_route_args );
 
-		( new Admin_Controller( $this->audit ) )->register_routes();
+		( new Admin_Controller( $this->audit, gate: $this->gate ) )->register_routes();
+
+		// Stripe webhook -- only registered in a private/commercial build
+		// where offline/modules/class-webhook-controller.php is present.
+		if ( class_exists( \WP_SAM\Modules\Webhook_Controller::class ) && null !== $this->entitlements && null !== $this->checkout ) {
+			( new \WP_SAM\Modules\Webhook_Controller( $this->entitlements, $this->audit, $this->checkout ) )->register_routes();
+		}
 	}
 }

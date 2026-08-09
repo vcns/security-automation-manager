@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Feature_Gate;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -48,10 +49,10 @@ class Violation_Reporter {
 	private ?Learning_Window $learning_window;
 	private Policy_Change_Manager $policy_changes;
 
-	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null ) {
+	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Feature_Gate $gate = null ) {
 		$this->audit           = $audit;
 		$this->learning_window = $learning_window;
-		$this->policy_changes  = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit );
+		$this->policy_changes  = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit, gate: $gate );
 	}
 
 	// ── REST handler ──────────────────────────────────────────────────────────

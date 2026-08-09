@@ -59,13 +59,18 @@ class Feature_Gate {
 
 	/**
 	 * Returns true if the current site may use the given feature.
+	 *
+	 * Features not in FREE_FEATURES require a paid entitlement -- this falls
+	 * through to is_pro(), which is always false when no Entitlement_Store
+	 * is present (the WordPress.org and GitHub-channel builds), and only
+	 * ever true for a site with a currently active paid entitlement.
 	 */
 	public function is_allowed( string $feature ): bool {
 		if ( in_array( $feature, self::FREE_FEATURES, true ) ) {
 			return true;
 		}
 
-		return false;
+		return $this->is_pro();
 	}
 
 	/**

@@ -7,6 +7,7 @@ declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\CSP\Automation_Config;
+use WP_SAM\Modules\Feature_Gate;
 
 class AutomationConfigTest extends TestCase {
 
@@ -69,11 +70,35 @@ class AutomationConfigTest extends TestCase {
 			)
 		);
 
+		// No gate injected -- free-tier default. "expert" maps to
+		// Fully Automatic, which is a paid feature, so it downgrades to
+		// the highest free posture instead of passing through unchanged.
 		$config = ( new Automation_Config() )->all();
 
 		$this->assertSame( Automation_Config::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL, $config['frontend']['mode'] );
 		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['admin']['mode'] );
-		$this->assertSame( Automation_Config::MODE_FULLY_AUTOMATIC, $config['login']['mode'] );
+		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['login']['mode'] );
+	}
+
+	// ── Fully Automatic gating ───────────────────────────────────────────────
+
+	public function test_fully_automatic_downgrades_to_high_approval_without_entitlement(): void {
+		$config = ( new Automation_Config() )->update_surface_mode( 'frontend', Automation_Config::MODE_FULLY_AUTOMATIC );
+
+		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['frontend']['mode'] );
+	}
+
+	public function test_fully_automatic_is_accepted_with_a_pro_entitlement(): void {
+		$entitlements = new class() {
+			public function get_for_site( string $product_key ): ?array {
+				return array( 'tier' => 'pro' );
+			}
+		};
+
+		$gate   = new Feature_Gate( $entitlements );
+		$config = ( new Automation_Config( $gate ) )->update_surface_mode( 'frontend', Automation_Config::MODE_FULLY_AUTOMATIC );
+
+		$this->assertSame( Automation_Config::MODE_FULLY_AUTOMATIC, $config['frontend']['mode'] );
 	}
 
 	public function test_dashboard_mode_update_seeds_change_cap_for_automatic_modes(): void {
