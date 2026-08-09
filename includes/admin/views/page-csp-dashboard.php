@@ -77,7 +77,7 @@ $scan_logs_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}sam_scan_logs
 $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 ?>
 <div class="wrap wp-sam-wrap">
-	<h1><?php esc_html_e( 'CSP Manager', 'security-automation-manager' ); ?></h1>
+	<h1><?php esc_html_e( 'CSP', 'security-automation-manager' ); ?></h1>
 
 	<!-- ── Top action bar ────────────────────────────────────────────────── -->
 	<p>

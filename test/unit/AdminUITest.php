@@ -80,6 +80,40 @@ class AdminUITest extends TestCase {
 		$this->assertSame( '', $ui->sanitize_policy_header_name( "X-Origin-CSP\r\nContent-Length" ) );
 	}
 
+	public function test_overview_view_renders_pillar_status_table(): void {
+		$view = file_get_contents( dirname( __DIR__, 2 ) . '/includes/admin/views/page-overview.php' );
+
+		$this->assertIsString( $view );
+		$this->assertStringContainsString( 'Security Automation Manager', $view );
+		$this->assertStringContainsString( 'Content Security Policy', $view );
+		$this->assertStringContainsString( 'security-automation-manager-dashboard', $view );
+		$this->assertStringContainsString( 'security-automation-manager-policy-audit', $view );
+		$this->assertStringContainsString( 'security-automation-manager-readiness', $view );
+	}
+
+	/**
+	 * WordPress derives a submenu's hook suffix from sanitize_title() of the
+	 * top-level menu's *title text*, not its slug -- since the top-level menu
+	 * title is now "Security Automation Manager" (not "CSP Manager"), every
+	 * submenu hook must carry that prefix, not the old "csp-manager_page_" one.
+	 */
+	public function test_plugin_page_hooks_use_new_top_level_title_prefix(): void {
+		$ui     = $this->make_admin_ui();
+		$method = new ReflectionMethod( Admin_UI::class, 'plugin_page_hooks' );
+		$method->setAccessible( true );
+
+		$hooks = $method->invoke( $ui );
+
+		$this->assertContains( 'toplevel_page_security-automation-manager', $hooks );
+		foreach ( $hooks as $hook ) {
+			if ( 'toplevel_page_security-automation-manager' === $hook ) {
+				continue;
+			}
+			$this->assertStringStartsWith( 'security-automation-manager_page_', $hook );
+			$this->assertStringNotContainsString( 'csp-manager_page_', $hook );
+		}
+	}
+
 	private function make_admin_ui(): Admin_UI {
 		$reflection = new ReflectionClass( Plugin::class );
 

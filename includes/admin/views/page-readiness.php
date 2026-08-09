@@ -26,7 +26,7 @@ $status_badge = static function ( string $status ): void {
 };
 ?>
 <div class="wrap wp-sam-wrap">
-	<h1><?php esc_html_e( 'CSP Manager Readiness', 'security-automation-manager' ); ?></h1>
+	<h1><?php esc_html_e( 'Readiness', 'security-automation-manager' ); ?></h1>
 	<p class="description">
 		<?php esc_html_e( 'Plugin-specific checks for schema, runtime defaults, reporting configuration, and reset readiness.', 'security-automation-manager' ); ?>
 	</p>

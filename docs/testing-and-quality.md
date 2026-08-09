@@ -125,7 +125,7 @@ Current baseline:
 
 ### Policy audit and admin REST
 
-- load **CSP Manager -> Policy Audit** and confirm current policy, pending review, and recent decision tables render without warnings
+- load **Security Automation Manager -> Policy Audit** and confirm current policy, pending review, and recent decision tables render without warnings
 - `GET /wp-json/security-manager/v1/admin/policies` as an unauthorised user must fail
 - `GET /wp-json/security-manager/v1/admin/policies` as an administrator must return surface summaries
 - `GET /wp-json/security-manager/v1/admin/reviews/pending` must list pending source proposals

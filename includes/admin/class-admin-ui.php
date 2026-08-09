@@ -2,12 +2,13 @@
 /**
  * WordPress Admin UI: menus, settings API, AJAX handlers.
  *
- * Registers admin pages:
- *   1. security-automation-manager-dashboard    – CSP Manager: surface profiles, source inventory,
+ * Registers a top-level "Security Automation Manager" menu with these pages:
+ *   1. security-automation-manager             – Overview: per-pillar status summary
+ *   2. security-automation-manager-dashboard   – CSP: surface profiles, source inventory,
  *      violations, scan history, and settings (promotion gates, learning window, cron schedule,
  *      notify email), all as tabs on one page
- *   2. security-automation-manager-policy-audit – policy history, decisions, provenance
- *   3. security-automation-manager-readiness    – plugin-specific health checks and reset
+ *   3. security-automation-manager-policy-audit – policy history, decisions, provenance
+ *   4. security-automation-manager-readiness    – plugin-specific health checks and reset
  *
  * All form submissions are protected by check_admin_referer() and
  * current_user_can('manage_options').
@@ -62,26 +63,35 @@ class Admin_UI {
 
 	public function add_menu_pages(): void {
 		add_menu_page(
-			__( 'CSP Manager', 'security-automation-manager' ),
-			__( 'CSP Manager', 'security-automation-manager' ),
+			__( 'Security Automation Manager', 'security-automation-manager' ),
+			__( 'Security Automation Manager', 'security-automation-manager' ),
 			'manage_options',
-			'security-automation-manager-dashboard',
-			array( $this, 'render_dashboard' ),
+			'security-automation-manager',
+			array( $this, 'render_overview' ),
 			'dashicons-shield',
 			80
 		);
 
 		add_submenu_page(
-			'security-automation-manager-dashboard',
-			__( 'CSP Manager', 'security-automation-manager' ),
-			__( 'CSP Manager', 'security-automation-manager' ),
+			'security-automation-manager',
+			__( 'Overview', 'security-automation-manager' ),
+			__( 'Overview', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager',
+			array( $this, 'render_overview' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'CSP', 'security-automation-manager' ),
+			__( 'CSP', 'security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-dashboard',
 			array( $this, 'render_dashboard' )
 		);
 
 		add_submenu_page(
-			'security-automation-manager-dashboard',
+			'security-automation-manager',
 			__( 'Policy Audit', 'security-automation-manager' ),
 			__( 'Policy Audit', 'security-automation-manager' ),
 			'manage_options',
@@ -90,7 +100,7 @@ class Admin_UI {
 		);
 
 		add_submenu_page(
-			'security-automation-manager-dashboard',
+			'security-automation-manager',
 			__( 'Readiness', 'security-automation-manager' ),
 			__( 'Readiness', 'security-automation-manager' ),
 			'manage_options',
@@ -212,12 +222,18 @@ class Admin_UI {
 	/**
 	 * Admin-page hook suffixes this plugin registers, shared by enqueue_assets()
 	 * and filter_admin_footer_text() so the list only lives in one place.
+	 *
+	 * WordPress derives a submenu's hook suffix from sanitize_title() of the
+	 * top-level menu's title text, not its slug -- since the top-level menu
+	 * title is "Security Automation Manager", every submenu hook is prefixed
+	 * "security-automation-manager_page_".
 	 */
 	private function plugin_page_hooks(): array {
 		return array(
-			'toplevel_page_security-automation-manager-dashboard',
-			'csp-manager_page_security-automation-manager-policy-audit',
-			'csp-manager_page_security-automation-manager-readiness',
+			'toplevel_page_security-automation-manager',
+			'security-automation-manager_page_security-automation-manager-dashboard',
+			'security-automation-manager_page_security-automation-manager-policy-audit',
+			'security-automation-manager_page_security-automation-manager-readiness',
 		);
 	}
 
@@ -260,6 +276,13 @@ class Admin_UI {
 	}
 
 	// ── Page renderers ────────────────────────────────────────────────────────
+
+	public function render_overview(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-overview.php';
+	}
 
 	public function render_dashboard(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {

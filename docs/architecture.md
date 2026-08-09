@@ -178,7 +178,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 
 ### 6. Policy audit flow
 
-1. Administrators open **CSP Manager -> Policy Audit**.
+1. Administrators open **Security Automation Manager -> Policy Audit**.
 2. The current surface summary shows CSP mode, automation mode, latest policy version, pending proposal count, unresolved high-risk count, and the latest captured header.
 3. The For Review queue lists pending proposals with surface, directive, source, risk, evidence count, first seen, and last seen.
 4. Recent decisions show actor, state, surface, directive, source, risk, decision-engine version, and linked policy version.
@@ -186,7 +186,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 
 ### 7. Readiness and reset flow
 
-1. Administrators open **CSP Manager -> Readiness**.
+1. Administrators open **Security Automation Manager -> Readiness**.
 2. `Readiness_Checker` reports plugin version, installed schema version, expected custom tables, plugin-owned row counts, reporting endpoint validity, policy header emission mode, scheduled scan status, policy-profile presence, policy-version snapshot presence, and automation posture.
 3. The Installed Plugins row exposes **Settings** and **Reset** action links; Reset opens the readiness page at the destructive reset panel.
 4. Reset requires `manage_options`, a valid WordPress nonce, the current logged-in administrator's password, and the typed phrase `RESET CSP DATA`.
