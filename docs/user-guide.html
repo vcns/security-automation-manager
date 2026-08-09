@@ -44,6 +44,7 @@
       <a href='#approval-workflow'>Approvals</a>
       <a href='#enforcement'>Enforcement</a>
       <a href='#after-changes'>After changes</a>
+      <a href='#other-pillars'>Other pillars</a>
       <a href='#troubleshooting'>Troubleshooting</a>
       <a href='#glossary'>Glossary</a>
     </nav>
@@ -312,6 +313,35 @@
         </div>
       </section>
 
+      <section id='other-pillars' class='section'>
+        <p class='section-label'>Other pillars</p>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.</h2>
+        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. The other four pillars don't work that way. Each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. There's no report-only mode, no discovery workflow, and no automation for any of them.</p>
+        <div class='table-wrap'>
+          <table>
+            <thead>
+              <tr><th>Pillar</th><th>Admin location</th><th>What you configure</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>X-Frame-Options</td><td><strong>Security Automation Manager -> X-Frame-Options</strong></td><td>Per surface: DENY, SAMEORIGIN, or leave the header unsent. CSP's <code>frame-ancestors</code> directive supersedes this header in browsers that support it; this is a fallback for browsers that don't.</td></tr>
+              <tr><td>X-Content-Type-Options</td><td><strong>Security Automation Manager -> X-Content-Type-Options</strong></td><td>Per surface: on or off. <code>nosniff</code> is the only defined value, so there's nothing else to choose.</td></tr>
+              <tr><td>Referrer-Policy</td><td><strong>Security Automation Manager -> Referrer-Policy</strong></td><td>Per surface: one of the eight standard tokens. <code>strict-origin-when-cross-origin</code> is the recommended default and is pre-selected.</td></tr>
+              <tr><td>Permissions-Policy</td><td><strong>Security Automation Manager -> Permissions-Policy</strong></td><td>Per surface, per browser feature (geolocation, camera, microphone, fullscreen, payment, usb, autoplay): None, Self, or All. A feature left at its default isn't mentioned in the header, so the browser's own default policy applies to it.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class='callout-stack'>
+          <div class='callout'>
+            <h3>Nothing to roll out</h3>
+            <p>Because these headers are either sent exactly as configured or not sent at all, there's no equivalent of report-only mode to reason about. If a change causes unexpected behaviour, undo it the same way you made it: change the value back in the admin page.</p>
+          </div>
+          <div class='warning-callout'>
+            <h3>Test after changing X-Frame-Options or Permissions-Policy</h3>
+            <p>DENY on X-Frame-Options stops the site being framed anywhere, including by tools you may rely on (page builders with a preview iframe, some caching or testing services). Setting a Permissions-Policy feature to None disables it even where a plugin genuinely needs it (e.g. a booking widget that uses geolocation). Check the relevant page still works after changing either.</p>
+          </div>
+        </div>
+      </section>
+
       <section id='troubleshooting' class='section'>
         <p class='section-label'>Troubleshooting</p>
         <h2>Common faults and what to check.</h2>
@@ -326,6 +356,8 @@
               <tr><td>Manual scan finds little or nothing.</td><td>The activity is runtime behaviour rather than static HTML.</td><td>Browse the site in report-only mode and rely on violation reports for fetch, XHR, WebSocket, EventSource, and workers.</td></tr>
               <tr><td>No violation reports arrive.</td><td>The public site URL differs from the WordPress REST URL, or the configured reporting server URL does not route back to the plugin endpoint.</td><td>Open Settings and either use the current site endpoint button or set the public HTTPS reporting URL that reaches <code>/wp-json/security-manager/v1/report</code>.</td></tr>
               <tr><td>Repeated unknown host appears.</td><td>A plugin, theme, injected tag, or external script is generating it.</td><td>Trace the source owner before approval. Reject if not required.</td></tr>
+              <tr><td>A page can no longer be embedded in an iframe elsewhere.</td><td>X-Frame-Options is set to DENY or SAMEORIGIN for that surface.</td><td>Open <strong>Security Automation Manager -> X-Frame-Options</strong> and relax or disable it for the affected surface.</td></tr>
+              <tr><td>A feature (camera, geolocation, and similar) stopped working for a plugin.</td><td>Permissions-Policy is set to None for that feature on that surface.</td><td>Open <strong>Security Automation Manager -> Permissions-Policy</strong> and set the feature to Self or All for the affected surface.</td></tr>
             </tbody>
           </table>
         </div>
