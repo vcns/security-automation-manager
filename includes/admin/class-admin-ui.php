@@ -10,8 +10,9 @@
  *   3. security-automation-manager-xfo               – X-Frame-Options: per-surface DENY/SAMEORIGIN
  *   4. security-automation-manager-xcto              – X-Content-Type-Options: per-surface on/off
  *   5. security-automation-manager-referrer-policy   – Referrer-Policy: per-surface value picker
- *   6. security-automation-manager-policy-audit      – policy history, decisions, provenance
- *   7. security-automation-manager-readiness         – plugin-specific health checks and reset
+ *   6. security-automation-manager-permissions-policy – Permissions-Policy: per-surface, per-directive picker
+ *   7. security-automation-manager-policy-audit      – policy history, decisions, provenance
+ *   8. security-automation-manager-readiness         – plugin-specific health checks and reset
  *
  * All form submissions are protected by check_admin_referer() and
  * current_user_can('manage_options').
@@ -27,6 +28,7 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
@@ -64,6 +66,7 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_toggle_mode', array( $this, 'ajax_toggle_mode' ) );
 		add_action( 'wp_ajax_wp_sam_set_automation_mode', array( $this, 'ajax_set_automation_mode' ) );
 		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
+		add_action( 'wp_ajax_wp_sam_set_permissions_policy_directive', array( $this, 'ajax_set_permissions_policy_directive' ) );
 	}
 
 	// ── Menu registration ─────────────────────────────────────────────────────
@@ -122,6 +125,15 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-referrer-policy',
 			array( $this, 'render_referrer_policy' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Permissions-Policy', 'security-automation-manager' ),
+			__( 'Permissions-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-permissions-policy',
+			array( $this, 'render_permissions_policy' )
 		);
 
 		add_submenu_page(
@@ -269,6 +281,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-xfo',
 			'security-automation-manager_page_security-automation-manager-xcto',
 			'security-automation-manager_page_security-automation-manager-referrer-policy',
+			'security-automation-manager_page_security-automation-manager-permissions-policy',
 			'security-automation-manager_page_security-automation-manager-policy-audit',
 			'security-automation-manager_page_security-automation-manager-readiness',
 		);
@@ -370,6 +383,13 @@ class Admin_UI {
 			'<p>' . esc_html__( 'Controls how much of this site\'s URL is sent as the Referer header when a user follows a link away from it. Sent as an HTTP header only -- this plugin does not inject a <meta name="referrer"> tag into page content.', 'security-automation-manager' ) . '</p>',
 			$options
 		);
+	}
+
+	public function render_permissions_policy(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-permissions-policy.php';
 	}
 
 	/**
@@ -711,6 +731,73 @@ class Admin_UI {
 				 VALUES (%s, %s, %d, %s, %s, %s)
 				 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), payload = VALUES(payload), updated_at = VALUES(updated_at)",
 				$pillar,
+				$surface,
+				$enabled ? 1 : 0,
+				$payload,
+				$now,
+				$now
+			)
+		);
+
+		wp_send_json_success();
+	}
+
+	/**
+	 * Permissions-Policy has multiple independently-configurable directives
+	 * per surface (a directive => allowlist-token map in payload), unlike
+	 * the other simple pillars' single scalar value -- so it can't share
+	 * ajax_set_pillar_value(), which always overwrites the whole payload.
+	 * This does a read-modify-write: load the existing directive map for
+	 * the surface, apply at most one directive change (if any was sent),
+	 * and persist the current enabled state alongside it.
+	 */
+	public function ajax_set_permissions_policy_directive(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$surface   = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
+		$directive = sanitize_text_field( wp_unslash( $_POST['directive'] ?? '' ) );
+		$value     = sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) );
+		$enabled   = ! empty( $_POST['enabled'] );
+
+		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_pillar_profiles';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$existing_payload = $wpdb->get_var( $wpdb->prepare( "SELECT payload FROM {$table} WHERE pillar = %s AND surface = %s LIMIT 1", Permissions_Policy_Builder::PILLAR_KEY, $surface ) );
+		$directives       = Permissions_Policy_Builder::extract_directives( array( 'payload' => (string) $existing_payload ) );
+
+		if ( '' !== $directive ) {
+			if ( ! in_array( $directive, Permissions_Policy_Builder::KNOWN_DIRECTIVES, true ) ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid directive.', 'security-automation-manager' ) ) );
+			}
+
+			$sanitized_token = Permissions_Policy_Builder::sanitize_token( $value );
+			if ( '' === $sanitized_token ) {
+				unset( $directives[ $directive ] ); // "(browser default)" -- stop emitting this directive.
+			} else {
+				$directives[ $directive ] = $sanitized_token;
+			}
+		}
+
+		$table   = $wpdb->prefix . 'sam_pillar_profiles';
+		$now     = current_time( 'mysql', true );
+		$payload = wp_json_encode( array( 'directives' => $directives ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"INSERT INTO {$table} (pillar, surface, enabled, payload, created_at, updated_at)
+				 VALUES (%s, %s, %d, %s, %s, %s)
+				 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), payload = VALUES(payload), updated_at = VALUES(updated_at)",
+				Permissions_Policy_Builder::PILLAR_KEY,
 				$surface,
 				$enabled ? 1 : 0,
 				$payload,

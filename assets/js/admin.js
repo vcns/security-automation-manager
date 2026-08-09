@@ -219,4 +219,35 @@
 	$( document ).on( 'change', '.wp-sam-pillar-enabled, .wp-sam-pillar-value', function () {
 		postPillarValue( $( this ) );
 	} );
+
+	function postPermissionsPolicyChange( $control ) {
+		const $row      = $control.closest( 'tr' );
+		const surface   = $row.find( '.wp-sam-permissions-policy-enabled' ).data( 'surface' );
+		const enabled   = $row.find( '.wp-sam-permissions-policy-enabled' ).is( ':checked' );
+		const isSelect  = $control.hasClass( 'wp-sam-permissions-policy-directive' );
+		const directive = isSelect ? $control.data( 'directive' ) : '';
+		const value     = isSelect ? $control.val() : '';
+
+		$row.find( '.wp-sam-permissions-policy-enabled, .wp-sam-permissions-policy-directive' ).prop( 'disabled', true );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:    'wp_sam_set_permissions_policy_directive',
+			nonce:     wpSamAdmin.nonce,
+			surface:   surface,
+			enabled:   enabled ? '1' : '',
+			directive: directive,
+			value:     value,
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to save.' );
+		} )
+		.always( function () {
+			$row.find( '.wp-sam-permissions-policy-enabled, .wp-sam-permissions-policy-directive' ).prop( 'disabled', false );
+		} );
+	}
+
+	$( document ).on( 'change', '.wp-sam-permissions-policy-enabled, .wp-sam-permissions-policy-directive', function () {
+		postPermissionsPolicyChange( $( this ) );
+	} );
 } )( jQuery );
