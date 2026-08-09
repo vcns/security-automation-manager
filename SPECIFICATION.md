@@ -1,6 +1,6 @@
 # Functional Requirement Specification
 
-## Plugin: WordPress CSP Automation Manager
+## Plugin: Security Automation Manager
 
 **Version:** 0.3  
 **Date:** 7 June 2026  
