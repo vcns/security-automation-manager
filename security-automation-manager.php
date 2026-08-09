@@ -45,8 +45,13 @@ define( 'WP_SAM_VERSION', '1.0.16' );
  *        csp_source_inventory, csp_hash_inventory, csp_violation_reports) are
  *        unchanged. Existing installs are migrated via RENAME TABLE, not
  *        create+copy+drop, so no data is lost.
+ * v10 -- adds sam_pillar_profiles, a shared per-surface profile table for
+ *        header pillars simple enough not to need CSP's directive/override/
+ *        strict-dynamic shape (X-Frame-Options, X-Content-Type-Options,
+ *        Referrer-Policy, and future pillars). Starts empty; nothing reads
+ *        or writes it until those pillars ship.
  */
-define( 'WP_SAM_DB_VERSION', '9' );
+define( 'WP_SAM_DB_VERSION', '10' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

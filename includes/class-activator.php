@@ -79,6 +79,7 @@ class Activator {
 			'sam_policy_change_decisions',
 			'sam_policy_versions',
 			'sam_decision_rule_evaluations',
+			'sam_pillar_profiles',
 		);
 	}
 
@@ -409,6 +410,27 @@ class Activator {
   KEY decision_id (decision_id),
   KEY rule_id (rule_id),
   KEY created_at (created_at)
+) {$cc};"
+		);
+
+		// 12. Per-surface profiles for pillars simple enough not to need CSP's
+		// directive/override/strict-dynamic shape (X-Frame-Options,
+		// X-Content-Type-Options, Referrer-Policy, and future pillars).
+		// payload is NOT NULL: writers must always store valid JSON, e.g. '{}'
+		// for a pillar with no configurable value (X-Content-Type-Options).
+		dbDelta(
+			"CREATE TABLE {$p}sam_pillar_profiles (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  pillar varchar(32) NOT NULL,
+  surface varchar(32) NOT NULL,
+  enabled tinyint(1) NOT NULL DEFAULT 0,
+  payload longtext NOT NULL,
+  override_expires_at datetime DEFAULT NULL,
+  override_owner varchar(255) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY pillar_surface (pillar, surface)
 ) {$cc};"
 		);
 
