@@ -189,4 +189,34 @@
 			.val( $( this ).data( 'report-endpoint' ) || '' )
 			.trigger( 'change' );
 	} );
+
+	function postPillarValue( $control ) {
+		const $row     = $control.closest( 'tr' );
+		const pillar   = $control.data( 'pillar' );
+		const surface  = $control.data( 'surface' );
+		const enabled  = $row.find( '.wp-sam-pillar-enabled' ).is( ':checked' );
+		const value    = $row.find( '.wp-sam-pillar-value' ).val() || '';
+
+		$row.find( '.wp-sam-pillar-enabled, .wp-sam-pillar-value' ).prop( 'disabled', true );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:  'wp_sam_set_pillar_value',
+			nonce:   wpSamAdmin.nonce,
+			pillar:  pillar,
+			surface: surface,
+			enabled: enabled ? '1' : '',
+			value:   value,
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to save.' );
+		} )
+		.always( function () {
+			$row.find( '.wp-sam-pillar-enabled, .wp-sam-pillar-value' ).prop( 'disabled', false );
+		} );
+	}
+
+	$( document ).on( 'change', '.wp-sam-pillar-enabled, .wp-sam-pillar-value', function () {
+		postPillarValue( $( this ) );
+	} );
 } )( jQuery );

@@ -22,6 +22,9 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
+use WP_SAM\Security\Referrer_Policy_Builder;
+use WP_SAM\Security\X_Content_Type_Options_Builder;
+use WP_SAM\Security\X_Frame_Options_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -39,6 +42,9 @@ final class Plugin {
 	public Audit_Log $audit;
 	public Nonce_Manager $nonce_manager;
 	public Policy_Builder $policy_builder;
+	public X_Frame_Options_Builder $x_frame_options_builder;
+	public X_Content_Type_Options_Builder $x_content_type_options_builder;
+	public Referrer_Policy_Builder $referrer_policy_builder;
 	private Learning_Window $learning_window;
 
 	/**
@@ -93,19 +99,25 @@ final class Plugin {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
 		// Feature gate is local-only in the WordPress.org build.
-		$this->gate            = new Feature_Gate( $this->entitlements, $this->config );
-		$this->nonce_manager   = new Nonce_Manager( $this->gate );
-		$this->policy_builder  = new Policy_Builder( $this->gate );
-		$this->learning_window = new Learning_Window();
+		$this->gate                           = new Feature_Gate( $this->entitlements, $this->config );
+		$this->nonce_manager                  = new Nonce_Manager( $this->gate );
+		$this->policy_builder                 = new Policy_Builder( $this->gate );
+		$this->x_frame_options_builder        = new X_Frame_Options_Builder();
+		$this->x_content_type_options_builder = new X_Content_Type_Options_Builder();
+		$this->referrer_policy_builder        = new Referrer_Policy_Builder();
+		$this->learning_window                = new Learning_Window();
 
 		// Hash manager: instantiated here so Scheduler can read captured_hashes
 		// after the request-time buffer pass, and so the public property is
 		// always available to other modules.
 		$this->hash_manager = new Hash_Manager( $this->audit, $this->gate );
 
-		// Register CSP header emission on all request types.
+		// Register CSP and simple pillar header emission on all request types.
 		$this->nonce_manager->register();
 		$this->policy_builder->register();
+		$this->x_frame_options_builder->register();
+		$this->x_content_type_options_builder->register();
+		$this->referrer_policy_builder->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already
