@@ -98,6 +98,19 @@ class TableQueryTest extends TestCase {
 		$this->assertCount( 2, $fragment['args'] );
 	}
 
+	// ── equals_where() ──────────────────────────────────────────────────────────
+
+	public function test_equals_where_returns_null_for_blank_value(): void {
+		$this->assertNull( Table_Query::equals_where( 'surface', '  ' ) );
+	}
+
+	public function test_equals_where_builds_fragment(): void {
+		$fragment = Table_Query::equals_where( 'surface', 'frontend' );
+
+		$this->assertSame( 'surface = %s', $fragment['sql'] );
+		$this->assertSame( array( 'frontend' ), $fragment['args'] );
+	}
+
 	// ── like_where() ─────────────────────────────────────────────────────────────
 
 	public function test_like_where_returns_null_for_blank_term(): void {
@@ -146,6 +159,22 @@ class TableQueryTest extends TestCase {
 
 		$this->assertSame( 'reported_at >= %s', $fragment['sql'] );
 		$this->assertSame( array( '2026-01-01 00:00:00' ), $fragment['args'] );
+	}
+
+	public function test_date_range_where_accepts_datetime_local_format(): void {
+		$fragment = Table_Query::date_range_where( 'reported_at', '2026-01-01T09:30', '2026-01-31T17:45' );
+
+		$this->assertSame( array( '2026-01-01 09:30:00', '2026-01-31 17:45:00' ), $fragment['args'] );
+	}
+
+	public function test_date_range_where_accepts_mixed_date_and_datetime_bounds(): void {
+		$fragment = Table_Query::date_range_where( 'reported_at', '2026-01-01', '2026-01-31T17:45' );
+
+		$this->assertSame( array( '2026-01-01 00:00:00', '2026-01-31 17:45:00' ), $fragment['args'] );
+	}
+
+	public function test_date_range_where_rejects_malformed_datetime(): void {
+		$this->assertNull( Table_Query::date_range_where( 'reported_at', '2026-01-01T9:3', '' ) );
 	}
 
 	// ── multi_param() / text_param() / int_param() ──────────────────────────────
