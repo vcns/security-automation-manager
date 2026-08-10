@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-10
+
 ### Added
 
 - Added full-dataset sorting and per-column filtering (multi-select, free-text, numeric, date-range) to the Violations, For Review, and Policy Changes tables, replacing plain unsortable pagination.
