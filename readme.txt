@@ -14,7 +14,7 @@ Automates strict HTTP security header rollout -- Content Security Policy, X-Fram
 
 Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy are simpler per-surface pillars alongside it.
 
-The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other four pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
+The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other five pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
 
 == External services ==
 

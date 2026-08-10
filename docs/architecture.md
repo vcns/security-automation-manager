@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Security Automation Manager is a WordPress plugin that helps site owners roll out strict HTTP security headers without maintaining the policy by hand. Content Security Policy is its most capable pillar -- combining local discovery and policy management with optional entitlement-gated premium capabilities -- with simpler per-surface pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy) alongside it. Billing and account management are expected to move through VCNS licensing services rather than being owned by the CSP runtime.
+Security Automation Manager is a WordPress plugin that helps site owners roll out strict HTTP security headers without maintaining the policy by hand. Content Security Policy is its most capable pillar -- combining local discovery and policy management with optional entitlement-gated premium capabilities -- with simpler per-surface pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security) alongside it. Billing and account management are expected to move through VCNS licensing services rather than being owned by the CSP runtime.
 
 ## Primary design principles
 
@@ -85,8 +85,9 @@ Responsibilities:
 - **X-Content-Type-Options** (`X_Content_Type_Options_Builder`) -- per-surface on/off. `nosniff` is the only defined value, so there is nothing to configure beyond enabling it.
 - **Referrer-Policy** (`Referrer_Policy_Builder`) -- per-surface value from the eight standard tokens, defaulting to `strict-origin-when-cross-origin`. HTTP header only; no `<meta name="referrer">` injection.
 - **Permissions-Policy** (`Permissions_Policy_Builder`) -- the first pillar with multiple independently-configurable directives per surface, rather than a single scalar value: `payload` holds a directive-name => allowlist-token map (a starter set of seven directives -- `geolocation`, `camera`, `microphone`, `fullscreen`, `payment`, `usb`, `autoplay` -- not the full ~30-directive registry). Each directive is `none` (`()`), `self` (`(self)`), or `all` (`(*)`); free-text origin lists are deliberately not offered in v1, to avoid reopening the header-injection sanitization surface CSP already solves for source hosts. A directive absent from the map is simply not emitted, so the browser's own default applies to that feature.
+- **Strict-Transport-Security** (`Strict_Transport_Security_Builder`) -- per-surface `max-age`, `includeSubDomains`, and `preload`. The one pillar with real lock-in risk: browsers cache `max-age` and refuse plain-HTTP connections for that long regardless of what the header says afterward, and there's no report-only variant to rehearse a rollout with, so this builder enforces two guardrails the admin UI alone can't be trusted for -- the header is only ever emitted over an HTTPS request (`is_ssl()`), and `preload` is silently dropped unless the stored `max-age`/`includeSubDomains` combination already meets hstspreload.org's submission minimum (`max-age >= 31536000` and `includeSubDomains` present).
 
-None of these four pillars have a report-only mode, a discovery workflow, or Decision Engine wiring -- each header is either sent exactly as configured, or not sent at all. `Permissions-Policy-Report-Only` exists only in draft form with minimal real browser support, so even the pillar closest in shape to CSP still skips it. `sam_pillar_profiles` and `Automation_Config`/`Decision_Engine`/`Policy_Change_Manager` remain unconnected until a future pillar actually needs discovery or risk-scoring for its allowlists.
+None of these five pillars have a report-only mode, a discovery workflow, or Decision Engine wiring -- each header is either sent exactly as configured, or not sent at all. `Permissions-Policy-Report-Only` exists only in draft form with minimal real browser support, so even the pillar closest in shape to CSP still skips it. `sam_pillar_profiles` and `Automation_Config`/`Decision_Engine`/`Policy_Change_Manager` remain unconnected until a future pillar actually needs discovery or risk-scoring for its allowlists.
 
 ### Entitlement and payment runtime
 
@@ -109,7 +110,7 @@ Responsibilities:
 
 Responsibilities:
 
-- render the Overview, CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Violations, Scan Log, and Settings tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, policy audit, and readiness pages
+- render the Overview, CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and readiness pages
 - support full-dataset sorting and per-column filtering on the Violations, For Review, and Policy Changes tables, plus a per-row metadata popover on Violations (document URI, source file, line/column, referrer, user agent, captured data-URI payload)
 - support source review and mode switching
 - trigger scans and config refreshes
@@ -194,11 +195,10 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 
 ### 6. Policy audit flow
 
-1. Administrators open **Security Automation Manager -> Policy Audit**.
+1. Administrators open **Security Automation Manager -> CSP -> Policy Audit** (a tab on the CSP page, not a separate top-level menu item -- it's CSP-specific content).
 2. The current surface summary shows CSP mode, automation mode, latest policy version, pending proposal count, unresolved high-risk count, and the latest captured header.
-3. The For Review queue lists pending proposals with surface, directive, source, risk, evidence count, first seen, and last seen.
-4. Recent decisions show actor, state, surface, directive, source, risk, decision-engine version, and linked policy version.
-5. Privileged REST endpoints under `/wp-json/security-manager/v1/admin/*` expose policy history, policy diffs, decisions, pending reviews, and automation configuration for richer future UI workflows.
+3. The pending review queue lives on the adjacent For Review tab (surface, directive, source, risk, evidence count, first seen, last seen); the full decision ledger lives on the Policy Changes tab (actor, state, surface, directive, source, risk, decision-engine version, linked policy version) -- Policy Audit itself only shows the at-a-glance summary, not either underlying list.
+4. Privileged REST endpoints under `/wp-json/security-manager/v1/admin/*` expose policy history, policy diffs, decisions, pending reviews, and automation configuration for richer future UI workflows.
 
 ### 7. Readiness and reset flow
 

@@ -16,7 +16,7 @@ global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'start-here';
-$allowed_tabs = array( 'start-here', 'profiles', 'sources', 'policy-changes', 'violations', 'scan-log', 'settings' );
+$allowed_tabs = array( 'start-here', 'profiles', 'sources', 'policy-changes', 'policy-audit', 'violations', 'scan-log', 'settings' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'start-here';
 }
@@ -38,6 +38,10 @@ $tab_help = array(
 	'policy-changes' => array(
 		'label'       => __( 'Policy Changes', 'security-automation-manager' ),
 		'description' => __( 'Inspect policy activity across discovered proposals, administrator or automation decisions, and immutable policy snapshots.', 'security-automation-manager' ),
+	),
+	'policy-audit'   => array(
+		'label'       => __( 'Policy Audit', 'security-automation-manager' ),
+		'description' => __( 'At-a-glance effective policy for every surface: mode, automation level, policy version, and pending/high-risk counts. For the pending review queue see For Review, and for the full decision ledger see Policy Changes.', 'security-automation-manager' ),
 	),
 	'violations'     => array(
 		'label'       => __( 'Violations', 'security-automation-manager' ),
@@ -133,7 +137,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Review.', 'security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'Every discovered source lands in For Review with a risk rating and a reason. Approve the ones that belong, reject the ones that don\'t — every decision needs a short reason and is written to a permanent decision ledger (visible on the Policy Audit page). Depending on the Automation Level you\'ve set for a surface, low-risk sources can be approved automatically instead of waiting on you; see Configuration below.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Every discovered source lands in For Review with a risk rating and a reason. Approve the ones that belong, reject the ones that don\'t — every decision needs a short reason and is written to a permanent decision ledger (visible on the Policy Changes tab). Depending on the Automation Level you\'ve set for a surface, low-risk sources can be approved automatically instead of waiting on you; see Configuration below.', 'security-automation-manager' ); ?>
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Manual promotion to enforce mode.', 'security-automation-manager' ); ?></strong>
@@ -155,7 +159,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<?php esc_html_e( 'The Readiness page (in the sidebar) runs plugin and database health checks — schema integrity, table health, and operational checks — and, separately, offers a destructive full data reset if you need to start over.', 'security-automation-manager' ); ?>
 	</p>
 	<p class="description">
-		<?php esc_html_e( 'The Policy Audit page (in the sidebar) shows the current effective policy for every surface, the pending review queue, and the full, immutable decision ledger — who approved, rejected, or reverted each source, and why.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'The Policy Audit tab above shows the current effective policy for every surface at a glance — mode, automation level, policy version, and pending/high-risk counts. For the pending review queue see For Review, and for the full, immutable decision ledger — who approved, rejected, or reverted each source, and why — see Policy Changes.', 'security-automation-manager' ); ?>
 	</p>
 
 	<?php elseif ( 'profiles' === $tab ) : ?>
@@ -793,6 +797,68 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 	</table>
 
 		<?php echo Table_Query::pagination( $pc_page_num, $pc_pages, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+
+	<?php elseif ( 'policy-audit' === $tab ) : ?>
+	<!-- ── Policy Audit tab ───────────────────────────────────────────────── -->
+		<?php
+		$audit_versions_table = $wpdb->prefix . 'sam_policy_versions';
+		$audit_pending_table  = $wpdb->prefix . 'csp_source_inventory';
+		$profiles_by_surface  = array_column( $profiles, null, 'surface' );
+		?>
+	<table class="widefat striped wp-sam-audit-table">
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Automation', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Policy Version', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Pending', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'High Risk', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Effective Header', 'security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( $surfaces as $surface ) : ?>
+				<?php
+				$audit_latest = $wpdb->get_row(
+					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT * FROM {$audit_versions_table} WHERE surface = %s ORDER BY version_number DESC LIMIT 1",
+						$surface
+					),
+					ARRAY_A
+				);
+				$audit_pending_count = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT COUNT(*) FROM {$audit_pending_table} WHERE surface = %s AND approval_state = 'pending'",
+						$surface
+					)
+				);
+				$audit_high_count = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT COUNT(*) FROM {$audit_pending_table} WHERE surface = %s AND approval_state = 'pending' AND risk_level IN ('critical','high','unknown')",
+						$surface
+					)
+				);
+				$audit_profile = $profiles_by_surface[ $surface ] ?? array();
+				?>
+				<tr>
+					<td><strong><?php echo esc_html( ucfirst( $surface ) ); ?></strong></td>
+					<td><?php echo esc_html( $audit_profile['mode'] ?? 'unknown' ); ?></td>
+					<td><?php echo esc_html( $automation_config[ $surface ]['mode'] ?? 'manual' ); ?></td>
+					<td><?php echo isset( $audit_latest['version_number'] ) ? esc_html( (string) $audit_latest['version_number'] ) : esc_html__( 'Not captured yet', 'security-automation-manager' ); ?></td>
+					<td><?php echo esc_html( (string) $audit_pending_count ); ?></td>
+					<td><?php echo esc_html( (string) $audit_high_count ); ?></td>
+					<td><code><?php echo esc_html( $audit_latest['effective_header'] ?? '' ); ?></code></td>
+				</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+	<p class="description" style="margin-top:1em">
+		<?php esc_html_e( 'For the pending review queue, see For Review. For the full, immutable decision ledger -- who approved, rejected, or reverted each source, and why -- see Policy Changes.', 'security-automation-manager' ); ?>
+	</p>
 
 	<?php elseif ( 'violations' === $tab ) : ?>
 	<!-- ── Violations tab ─────────────────────────────────────────────────── -->
