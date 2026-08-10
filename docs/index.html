@@ -16,7 +16,7 @@
       <div class='hero-copy'>
         <p class='eyebrow'>Security Automation Manager</p>
         <h1>Practical security-header help for WordPress administrators.</h1>
-        <p class='lede'>This help site explains what the plugin does, how to roll out Content Security Policy safely, how to read the dashboard, how to decide which CSP changes should be approved, and how to configure the simpler X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy pillars alongside it.</p>
+        <p class='lede'>This help site explains what the plugin does, how to roll out Content Security Policy safely, how to read the dashboard, how to decide which CSP changes should be approved, and how to configure the nine simpler per-surface header pillars alongside it.</p>
         <div class='hero-actions'>
           <a class='button primary' href='user-guide.html'>Read the user guide</a>
           <a class='button secondary' href='faq.html'>Open the FAQ</a>
@@ -27,7 +27,7 @@
         <h2>At a glance</h2>
         <ul>
           <li>WordPress 6.4+ and PHP 8.1+</li>
-          <li>Five pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy</li>
+          <li>Ten pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies</li>
           <li>Per-surface policies for frontend, admin, login, and API</li>
           <li>Report-only rollout before CSP enforcement</li>
           <li>Nonce injection for WordPress-managed scripts</li>
@@ -89,8 +89,8 @@
 
       <section id='pillars' class='section'>
         <p class='section-label'>Pillars</p>
-        <h2>Six headers, one dashboard.</h2>
-        <p>Configuration, reporting, and the decision engine are shared plumbing. Content Security Policy is the most capable pillar built on top of it; the other five are simpler per-surface toggles with no learning curve of their own.</p>
+        <h2>Ten headers, one dashboard.</h2>
+        <p>Configuration, reporting, and the decision engine are shared plumbing. Content Security Policy is the most capable pillar built on top of it; the other nine are simpler per-surface toggles with no learning curve of their own.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>Content Security Policy</h3>
@@ -116,8 +116,24 @@
             <h3>Strict-Transport-Security</h3>
             <p>Per surface, choose a Max-Age, whether to include subdomains, and whether to opt into browser preload lists. Only ever sent over HTTPS requests.</p>
           </article>
+          <article class='card'>
+            <h3>Cross-Origin-Resource-Policy</h3>
+            <p>Per surface, choose Same-Site, Same-Origin, or Cross-Origin. Controls which other sites may load this site's own resources.</p>
+          </article>
+          <article class='card'>
+            <h3>Cross-Origin-Opener-Policy</h3>
+            <p>Per surface, choose Unsafe-None, Same-Origin, or Same-Origin-Allow-Popups. Isolates this site's browsing context from cross-origin windows.</p>
+          </article>
+          <article class='card'>
+            <h3>Cross-Origin-Embedder-Policy</h3>
+            <p>Per surface, choose Unsafe-None, Require-Corp, or Credentialless. Blocks cross-origin subresources that don't explicitly opt in.</p>
+          </article>
+          <article class='card'>
+            <h3>X-Permitted-Cross-Domain-Policies</h3>
+            <p>Per surface, choose None, Master-Only, By-Content-Type, or All. A legacy Flash/Acrobat-era header; None is almost always correct.</p>
+          </article>
         </div>
-        <div class='diagram' aria-label='CSP workflow compared to the other five pillars'>
+        <div class='diagram' aria-label='CSP workflow compared to the other nine pillars'>
           <div class='mermaid'>
 flowchart LR
     subgraph CSP["Content Security Policy"]
@@ -127,14 +143,14 @@ flowchart LR
         C3 --> C4["Promotion gate"]
         C4 --> C5["Enforce"]
     end
-    subgraph Simple["X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security"]
+    subgraph Simple["X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies"]
         direction TB
         S1["Admin picks a value"] --> S2["Header sent on the next request"]
     end
           </div>
         </div>
         <div class='callout'>
-          <h3>Why these five are simpler than CSP</h3>
+          <h3>Why these nine are simpler than CSP</h3>
           <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself. Strict-Transport-Security is the one exception worth a second look: browsers cache its Max-Age, so a change doesn't undo itself the moment you revert the setting -- see the user guide for details.</p>
         </div>
       </section>
@@ -185,7 +201,7 @@ flowchart LR
             <p>The promotion gate blocks enforce mode until the surface has approved inventory and no recent violation activity inside the configured window.</p>
           </article>
         </div>
-        <p class='section-note'>Steps 3 to 6 are CSP-specific. The other five pillars only do step 1 (initialise) and step 2 (emit) -- there's no evidence, approval, or promotion step for them.</p>
+        <p class='section-note'>Steps 3 to 6 are CSP-specific. The other nine pillars only do step 1 (initialise) and step 2 (emit) -- there's no evidence, approval, or promotion step for them.</p>
       </section>
 
       <section id='learning-curve' class='section'>

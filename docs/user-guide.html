@@ -4,7 +4,7 @@
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1.0'>
   <title>User Guide | Security Automation Manager</title>
-  <meta name='description' content='Complete administrator guide to Security Automation Manager: CSP rollout, the five simpler header pillars, automation tiers, installation, and troubleshooting.'>
+  <meta name='description' content='Complete administrator guide to Security Automation Manager: CSP rollout, the nine simpler header pillars, automation tiers, installation, and troubleshooting.'>
   <link rel='preconnect' href='https://fonts.googleapis.com'>
   <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
   <link href='https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&display=swap' rel='stylesheet'>
@@ -16,7 +16,7 @@
       <div class='hero-copy'>
         <p class='eyebrow'>User guide</p>
         <h1>The complete administrator's guide to Security Automation Manager.</h1>
-        <p class='lede'>Roll out Content Security Policy as a controlled workflow, configure the five simpler header pillars alongside it, and understand which automation is free and which requires a subscription.</p>
+        <p class='lede'>Roll out Content Security Policy as a controlled workflow, configure the nine simpler header pillars alongside it, and understand which automation is free and which requires a subscription.</p>
         <div class='hero-actions'>
           <a class='button primary' href='index.html'>Back to help home</a>
           <a class='button secondary' href='faq.html'>Open the FAQ</a>
@@ -26,7 +26,7 @@
         <h2>Read this first</h2>
         <ul>
           <li>Use staging where practical.</li>
-          <li>Start CSP in report-only mode; the other five pillars take effect immediately.</li>
+          <li>Start CSP in report-only mode; the other nine pillars take effect immediately.</li>
           <li>Browse real user journeys before enforcing CSP.</li>
           <li>Approve only sources with a clear purpose.</li>
           <li>Fully Automatic mode is the only paid feature; everything else is free.</li>
@@ -65,7 +65,7 @@
           </ul>
         </div>
         <div class='sidebar-group'>
-          <h3>The other five pillars</h3>
+          <h3>The other nine pillars</h3>
           <ul>
             <li><a href='#other-pillars'>X-Frame-Options and more</a></li>
             <li><a href='#content-rewrites'>Content rewrite protections</a></li>
@@ -101,7 +101,7 @@
             <li>Review the Violations tab and approve only required sources.</li>
             <li>Wait for the configured violation-free window before enforcing a surface.</li>
           </ol>
-          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other five pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security) don't have a rollout workflow at all -- see <a href='#other-pillars'>the other five pillars</a> below.</p>
+          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other nine pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies) don't have a rollout workflow at all -- see <a href='#other-pillars'>the other nine pillars</a> below.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -114,15 +114,15 @@
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/admin-overview-page.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for all six pillars.' loading='lazy'>
+          <img src='images/admin-overview-page.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for all ten pillars.' loading='lazy'>
           <figcaption>The Overview page (<strong>Security Automation Manager -> Overview</strong>) -- the front door after activation, showing every pillar's per-surface status at a glance.</figcaption>
         </figure>
       </section>
 
       <section id='how-it-works' class='section'>
         <p class='section-label'>How it works</p>
-        <h2>Six pillars, one dashboard.</h2>
-        <p>Security Automation Manager automates rollout of six HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other five pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect.</p>
+        <h2>Ten pillars, one dashboard.</h2>
+        <p>Security Automation Manager automates rollout of ten HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other nine pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect.</p>
         <div class='diagram' aria-label='Admin menu structure diagram'>
           <div class='mermaid'>
 flowchart TD
@@ -143,6 +143,10 @@ flowchart TD
     Menu --> HSTS["Strict-Transport-Security"]
     Menu --> RTP["Reverse Tabnabbing"]
     Menu --> EXT["External Scripts"]
+    Menu --> CORP["Cross-Origin-Resource-Policy"]
+    Menu --> XPCDP["X-Permitted-Cross-Domain-Policies"]
+    Menu --> COOP["Cross-Origin-Opener-Policy"]
+    Menu --> COEP["Cross-Origin-Embedder-Policy"]
     Menu --> RD["Readiness"]
           </div>
         </div>
@@ -162,7 +166,7 @@ flowchart TD
           </article>
           <article class='card'>
             <h3>4. Emit each header</h3>
-            <p>The CSP policy builder combines the surface profile, approved sources, active hashes, reporting endpoint, and per-request nonces. The other five pillars emit their configured value directly, per surface.</p>
+            <p>The CSP policy builder combines the surface profile, approved sources, active hashes, reporting endpoint, and per-request nonces. The other nine pillars emit their configured value directly, per surface.</p>
           </article>
           <article class='card'>
             <h3>5. Promote one surface (CSP only)</h3>
@@ -193,10 +197,10 @@ flowchart TD
       <section id='concepts' class='section'>
         <p class='section-label'>Core concepts</p>
         <h2>The terms you need to understand.</h2>
-        <p class='section-note'>Most of these terms are specific to CSP -- the other five pillars don't have report-only modes, promotion gates, or suppression, because they don't need them.</p>
+        <p class='section-note'>Most of these terms are specific to CSP -- the other nine pillars don't have report-only modes, promotion gates, or suppression, because they don't need them.</p>
         <div class='definition-grid'>
           <div><h3>Surface</h3><p>A part of the site with its own policy. Every pillar uses the same four: frontend, admin, login, and API.</p></div>
-          <div><h3>Pillar</h3><p>One of the six HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security.</p></div>
+          <div><h3>Pillar</h3><p>One of the ten HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies.</p></div>
           <div><h3>Report-only mode</h3><p>CSP-only. The browser reports what would have been blocked. It does not block the resource.</p></div>
           <div><h3>Enforce mode</h3><p>CSP-only. The browser blocks resources that are not allowed by the policy.</p></div>
           <div><h3>Directive</h3><p>A CSP rule area, such as <code>script-src</code>, <code>img-src</code>, <code>connect-src</code>, or <code>form-action</code>.</p></div>
@@ -381,7 +385,7 @@ flowchart TD
           <p class='section-label'>Ongoing use</p>
           <h2>Use the plugin after normal site changes.</h2>
           <p>CSP is not a one-off task. WordPress sites change when plugins update, themes change, tracking tags are added, forms are altered, payment integrations change, or content editors embed third-party resources.</p>
-          <p>After meaningful changes, run a manual scan and use report-only evidence before adding new approvals. Keep the policy narrow and documented. The other five pillars need no ongoing attention once set -- revisit them only if the site's framing, referrer, or browser-feature needs change. Strict-Transport-Security is the one exception worth remembering: raising its Max-Age is easy to revisit, but browsers that already cached a long Max-Age keep enforcing HTTPS-only for that long even after you lower or remove the setting.</p>
+          <p>After meaningful changes, run a manual scan and use report-only evidence before adding new approvals. Keep the policy narrow and documented. The other nine pillars need no ongoing attention once set -- revisit them only if the site's framing, referrer, cross-origin, or browser-feature needs change. Strict-Transport-Security is one exception worth remembering: raising its Max-Age is easy to revisit, but browsers that already cached a long Max-Age keep enforcing HTTPS-only for that long even after you lower or remove the setting. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the other exception: revisit them whenever a new third-party embed, popup-based login, or payment flow is added to the site, since either header can silently break one that used to work.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -396,9 +400,9 @@ flowchart TD
       </section>
 
       <section id='other-pillars' class='section'>
-        <p class='section-label'>The other five pillars</p>
-        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security.</h2>
-        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. The other five pillars don't work that way. Each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. There's no report-only mode, no discovery workflow, and no automation for any of them.</p>
+        <p class='section-label'>The other nine pillars</p>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and the four cross-origin/legacy headers.</h2>
+        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. The other nine pillars don't work that way. Each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. There's no report-only mode, no discovery workflow, and no automation for any of them.</p>
         <div class='table-wrap'>
           <table>
             <thead>
@@ -410,6 +414,10 @@ flowchart TD
               <tr><td>Referrer-Policy</td><td><strong>Security Automation Manager -> Referrer-Policy</strong></td><td>Per surface: one of the eight standard tokens. <code>strict-origin-when-cross-origin</code> is the recommended default and is pre-selected.</td></tr>
               <tr><td>Permissions-Policy</td><td><strong>Security Automation Manager -> Permissions-Policy</strong></td><td>Per surface, per browser feature (geolocation, camera, microphone, fullscreen, payment, usb, autoplay): None, Self, or All. A feature left at its default isn't mentioned in the header, so the browser's own default policy applies to it.</td></tr>
               <tr><td>Strict-Transport-Security</td><td><strong>Security Automation Manager -> Strict-Transport-Security</strong></td><td>Per surface: Max-Age, Include Subdomains, and Preload. Only sent over HTTPS requests. Preload can't be selected until Max-Age is at least 1 year and Include Subdomains is on -- the minimum hstspreload.org requires for submission.</td></tr>
+              <tr><td>Cross-Origin-Resource-Policy</td><td><strong>Security Automation Manager -> Cross-Origin-Resource-Policy</strong></td><td>Per surface: Same-Site, Same-Origin, or Cross-Origin. Controls which other sites may load this site's own resources cross-origin. Low risk -- it doesn't affect what this site can embed from elsewhere.</td></tr>
+              <tr><td>Cross-Origin-Opener-Policy</td><td><strong>Security Automation Manager -> Cross-Origin-Opener-Policy</strong></td><td>Per surface: Unsafe-None, Same-Origin, or Same-Origin-Allow-Popups. Isolates this site's browsing context from cross-origin windows it opens or is opened by.</td></tr>
+              <tr><td>Cross-Origin-Embedder-Policy</td><td><strong>Security Automation Manager -> Cross-Origin-Embedder-Policy</strong></td><td>Per surface: Unsafe-None, Require-Corp, or Credentialless. Blocks cross-origin subresources that don't explicitly opt in via CORP or CORS.</td></tr>
+              <tr><td>X-Permitted-Cross-Domain-Policies</td><td><strong>Security Automation Manager -> X-Permitted-Cross-Domain-Policies</strong></td><td>Per surface: None, Master-Only, By-Content-Type, or All. A legacy Flash/Acrobat-era header; None is almost always correct for a modern site.</td></tr>
             </tbody>
           </table>
         </div>
@@ -426,12 +434,16 @@ flowchart TD
             <h3>Strict-Transport-Security is sticky -- unlike the others</h3>
             <p>Once a browser receives this header, it remembers Max-Age and refuses plain-HTTP connections to this site for that long, even if you disable the header afterward -- browsers that already cached the policy don't find out you changed your mind until it naturally expires. Start with a short Max-Age while confirming every surface, subdomain, and asset genuinely works over HTTPS, then increase it once confident. Preload goes further still: once a domain is on browsers' built-in preload lists, removal can take months, so treat it as a one-way door.</p>
           </div>
+          <div class='warning-callout'>
+            <h3>Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy carry real breakage risk</h3>
+            <p>Setting Cross-Origin-Opener-Policy to Same-Origin severs <code>window.opener</code> access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO login and payment flows many sites depend on. Same-Origin-Allow-Popups keeps isolation while still permitting those popups to hold a restricted opener reference, and is what most sites that need popups actually want. Cross-Origin-Embedder-Policy's Require-Corp is stricter still: it blocks any cross-origin subresource (fonts, embeds, ad tags, CDN-hosted assets) that doesn't explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS, and most third-party embeds don't opt in by default -- so enabling it carelessly can silently break unrelated page content rather than produce an obvious error. Credentialless is usually the safer enforcing value for Cross-Origin-Embedder-Policy. Both headers are only actually needed for sites that require cross-origin isolation (features like <code>SharedArrayBuffer</code> or high-resolution timers); most WordPress sites don't need either at Same-Origin/Require-Corp strength. The admin pages for both show this same warning above the picker.</p>
+          </div>
         </div>
         <figure class='screenshot'>
           <img src='images/permissions-policy-page.png' alt='WordPress admin screenshot of the Permissions-Policy page, showing the per-surface, per-feature None/Self/All picker.' loading='lazy'>
-          <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most configurable of the five simple pillars.</figcaption>
+          <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most configurable of the nine simple pillars.</figcaption>
         </figure>
-        <p class='section-note'>All five pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
+        <p class='section-note'>All nine pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
       </section>
 
       <section id='content-rewrites' class='section'>
@@ -513,7 +525,7 @@ flowchart TD
           </div>
           <div class='callout'>
             <h3>Upgrading</h3>
-            <p>Where an upgrade path is available in your build, an <strong>Upgrade</strong> button appears next to the automation setting on the CSP Settings tab, alongside a billing-interval choice (monthly or annual), and starts a checkout flow for a recurring subscription. Every other feature described in this guide -- all six pillars, three of the four automation modes, discovery, violation reporting, and policy-change review -- is free and local regardless of subscription status.</p>
+            <p>Where an upgrade path is available in your build, an <strong>Upgrade</strong> button appears next to the automation setting on the CSP Settings tab, alongside a billing-interval choice (monthly or annual), and starts a checkout flow for a recurring subscription. Every other feature described in this guide -- all ten pillars, three of the four automation modes, discovery, violation reporting, and policy-change review -- is free and local regardless of subscription status.</p>
           </div>
         </div>
       </section>

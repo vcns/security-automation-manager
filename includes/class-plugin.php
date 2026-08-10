@@ -22,6 +22,9 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
+use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
+use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
+use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
@@ -29,6 +32,7 @@ use WP_SAM\Security\Reverse_Tabnabbing_Builder;
 use WP_SAM\Security\Strict_Transport_Security_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
+use WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -54,6 +58,10 @@ final class Plugin {
 	public Strict_Transport_Security_Builder $strict_transport_security_builder;
 	public Reverse_Tabnabbing_Builder $reverse_tabnabbing_builder;
 	public Dependency_Governance_Builder $dependency_governance_builder;
+	public Cross_Origin_Resource_Policy_Builder $cross_origin_resource_policy_builder;
+	public X_Permitted_Cross_Domain_Policies_Builder $x_permitted_cross_domain_policies_builder;
+	public Cross_Origin_Opener_Policy_Builder $cross_origin_opener_policy_builder;
+	public Cross_Origin_Embedder_Policy_Builder $cross_origin_embedder_policy_builder;
 	private Learning_Window $learning_window;
 
 	/**
@@ -123,17 +131,21 @@ final class Plugin {
 		if ( class_exists( \WP_SAM\Modules\Checkout_Service::class ) && null !== $this->config && null !== $this->entitlements ) {
 			$this->checkout = new \WP_SAM\Modules\Checkout_Service( $this->config, $this->entitlements );
 		}
-		$this->gate                              = new Feature_Gate( $this->entitlements, $this->config );
-		$this->nonce_manager                     = new Nonce_Manager( $this->gate );
-		$this->policy_builder                    = new Policy_Builder( $this->gate );
-		$this->x_frame_options_builder           = new X_Frame_Options_Builder();
-		$this->x_content_type_options_builder    = new X_Content_Type_Options_Builder();
-		$this->referrer_policy_builder           = new Referrer_Policy_Builder();
-		$this->permissions_policy_builder        = new Permissions_Policy_Builder();
-		$this->strict_transport_security_builder = new Strict_Transport_Security_Builder();
-		$this->reverse_tabnabbing_builder        = new Reverse_Tabnabbing_Builder();
-		$this->dependency_governance_builder     = new Dependency_Governance_Builder();
-		$this->learning_window                   = new Learning_Window();
+		$this->gate                                      = new Feature_Gate( $this->entitlements, $this->config );
+		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
+		$this->policy_builder                            = new Policy_Builder( $this->gate );
+		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
+		$this->x_content_type_options_builder            = new X_Content_Type_Options_Builder();
+		$this->referrer_policy_builder                   = new Referrer_Policy_Builder();
+		$this->permissions_policy_builder                = new Permissions_Policy_Builder();
+		$this->strict_transport_security_builder         = new Strict_Transport_Security_Builder();
+		$this->reverse_tabnabbing_builder                = new Reverse_Tabnabbing_Builder();
+		$this->dependency_governance_builder             = new Dependency_Governance_Builder();
+		$this->cross_origin_resource_policy_builder      = new Cross_Origin_Resource_Policy_Builder();
+		$this->x_permitted_cross_domain_policies_builder = new X_Permitted_Cross_Domain_Policies_Builder();
+		$this->cross_origin_opener_policy_builder        = new Cross_Origin_Opener_Policy_Builder();
+		$this->cross_origin_embedder_policy_builder      = new Cross_Origin_Embedder_Policy_Builder();
+		$this->learning_window                           = new Learning_Window();
 
 		// Hash manager: instantiated here so Scheduler can read captured_hashes
 		// after the request-time buffer pass, and so the public property is
@@ -150,6 +162,10 @@ final class Plugin {
 		$this->strict_transport_security_builder->register();
 		$this->reverse_tabnabbing_builder->register();
 		$this->dependency_governance_builder->register();
+		$this->cross_origin_resource_policy_builder->register();
+		$this->x_permitted_cross_domain_policies_builder->register();
+		$this->cross_origin_opener_policy_builder->register();
+		$this->cross_origin_embedder_policy_builder->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already

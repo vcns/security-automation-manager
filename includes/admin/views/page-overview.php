@@ -56,6 +56,22 @@ $simple_pillars = array(
 		'label' => __( 'External Scripts', 'security-automation-manager' ),
 		'page'  => 'security-automation-manager-external-scripts',
 	),
+	\WP_SAM\Security\Cross_Origin_Resource_Policy_Builder::PILLAR_KEY => array(
+		'label' => __( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-corp',
+	),
+	\WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY => array(
+		'label' => __( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-xpcdp',
+	),
+	\WP_SAM\Security\Cross_Origin_Opener_Policy_Builder::PILLAR_KEY => array(
+		'label' => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-coop',
+	),
+	\WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY => array(
+		'label' => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-coep',
+	),
 );
 ?>
 <div class="wrap wp-sam-wrap">

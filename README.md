@@ -1,6 +1,6 @@
 # Security Automation Manager
 
-Security Automation Manager is a WordPress plugin that automates rollout of strict HTTP security headers. Content Security Policy (CSP) is its most capable pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security as simpler per-surface pillars alongside it.
+Security Automation Manager is a WordPress plugin that automates rollout of strict HTTP security headers. Content Security Policy (CSP) is its most capable pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies as simpler per-surface pillars alongside it.
 
 ## Features
 
@@ -39,8 +39,12 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Referrer-Policy: per-surface value from the eight standard tokens, defaulting to `strict-origin-when-cross-origin`
 - Permissions-Policy: per-surface, per-directive picker (`none` / `self` / `all`) across a starter set of seven browser features (geolocation, camera, microphone, fullscreen, payment, usb, autoplay)
 - Strict-Transport-Security: per-surface `max-age`, `includeSubDomains`, and `preload`. Only ever sent over HTTPS, and `preload` stays off until `max-age` and `includeSubDomains` already meet hstspreload.org's submission minimum -- this header is sticky (browsers cache it), so it warrants more care than the other four
+- Cross-Origin-Resource-Policy: per-surface `same-site` / `same-origin` / `cross-origin`, controlling which sites may load this site's own resources cross-origin. Low risk -- it only restricts who can embed this site's content, not what this site can embed
+- Cross-Origin-Opener-Policy: per-surface `unsafe-none` / `same-origin` / `same-origin-allow-popups`, isolating this site's browsing context from cross-origin windows it opens or is opened by. `same-origin` severs `window.opener` access from any cross-origin popup, including popup-based OAuth/SSO flows -- `same-origin-allow-popups` is the safer choice for sites that rely on those
+- Cross-Origin-Embedder-Policy: per-surface `unsafe-none` / `require-corp` / `credentialless`, the highest-risk pillar this plugin manages. `require-corp` blocks any cross-origin subresource (fonts, embeds, ad tags) that doesn't explicitly opt in via CORP or CORS -- most third-party embeds don't, so enabling this carelessly can silently break unrelated page content. Only actually needed for sites that require cross-origin isolation (`SharedArrayBuffer`, high-resolution timers); most WordPress sites do not
+- X-Permitted-Cross-Domain-Policies: per-surface `none` / `master-only` / `by-content-type` / `all`, a legacy Flash/Acrobat-era header controlling cross-domain policy file loading. `none` is almost always correct for a modern site
 
-These five pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
+These nine pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
 
 **Content rewrite protections**
 

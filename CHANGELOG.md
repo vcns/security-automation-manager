@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [Unreleased]
+
+### Added
+
+- Added Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies as four new simple pillars (per-surface value picker, same shape as X-Frame-Options and Referrer-Policy). Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy carry real breakage risk -- COOP's `same-origin` can sever `window.opener` access from popup-based OAuth/SSO flows, and COEP's `require-corp` blocks any cross-origin subresource lacking an explicit CORP/CORS opt-in -- so their admin pages show a prominent warning notice above the picker. Cross-Origin-Resource-Policy and X-Permitted-Cross-Domain-Policies are low-risk by comparison. None of the four have a report-only mode, discovery workflow, or automation, matching every other simple pillar.
+
 ## [2.1.2] - 2026-08-10
 
 ### Fixed
