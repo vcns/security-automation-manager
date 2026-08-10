@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.1.2] - 2026-08-10
+
+### Fixed
+
+- Fixed silent AJAX save failures across the per-surface toggle/dropdown autosave controls for X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Reverse Tabnabbing, and External Scripts. `postPillarValue()`, `postHstsChange()`, `postDependencyMode()`, and `postPermissionsPolicyChange()` in `assets/js/admin.js` only handled `.fail()` (a network-level failure) and never inspected the response body -- but WordPress returns HTTP 200 for a real success, a `check_ajax_referer()` nonce failure (body `"-1"`), and a `wp_send_json_error()` validation error alike, so all three looked identical to the JS: the control silently re-enabled as if saved, with nothing actually written. A new shared `reportAjaxFailure()` helper now checks `res.success` in `.done()` for all five of these autosave handlers (the sixth, `postDependencyClassification()`, already did this correctly and now reuses the same helper) and surfaces the real error message instead of swallowing it.
+
 ## [2.1.1] - 2026-08-10
 
 ### Fixed
