@@ -21,6 +21,7 @@ class Activator {
 	public static function activate(): void {
 		self::create_tables();
 		self::migrate_v9_option_renames();
+		self::migrate_remove_fenced_frame_src_directive();
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_initial_policy_versions();
@@ -49,6 +50,40 @@ class Activator {
 			if ( false !== $old_value ) {
 				add_option( $new_key, $old_value );
 			}
+		}
+	}
+
+	/**
+	 * Schema v12: fenced-frame-src is no longer part of default_directives() --
+	 * it's an experimental Privacy Sandbox directive, not the CSP living
+	 * standard, and real-world CSP linters commonly flag it as "should not be
+	 * used". default_directives() only affects newly-seeded profiles, so a
+	 * site whose csp_policy_profiles rows were seeded before this change would
+	 * otherwise keep emitting it forever. Strips the key from every existing
+	 * profile's stored directives JSON; a no-op for a profile that already had
+	 * it removed. Runs after create_tables() in activate(), so the table is
+	 * always present by the time this executes -- no existence guard needed.
+	 */
+	private static function migrate_remove_fenced_frame_src_directive(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_policy_profiles';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( "SELECT id, directives FROM {$table}", ARRAY_A );
+		foreach ( ! empty( $rows ) ? $rows : array() as $row ) {
+			$directives = json_decode( (string) $row['directives'], true );
+			if ( ! is_array( $directives ) || ! array_key_exists( 'fenced-frame-src', $directives ) ) {
+				continue;
+			}
+
+			unset( $directives['fenced-frame-src'] );
+			$wpdb->update(
+				$table,
+				array( 'directives' => wp_json_encode( $directives ) ),
+				array( 'id' => (int) $row['id'] ),
+				array( '%s' ),
+				array( '%d' )
+			);
 		}
 	}
 
@@ -138,6 +173,7 @@ class Activator {
   directives longtext NOT NULL,
   overrides longtext NOT NULL,
   strict_dynamic tinyint(1) NOT NULL DEFAULT 0,
+  trusted_types tinyint(1) NOT NULL DEFAULT 0,
   override_expires_at datetime DEFAULT NULL,
   override_owner varchar(255) DEFAULT NULL,
   created_at datetime NOT NULL,
@@ -659,12 +695,13 @@ class Activator {
 						'directives'          => wp_json_encode( self::default_directives( $surface ) ),
 						'overrides'           => wp_json_encode( array() ),
 						'strict_dynamic'      => 0,
+						'trusted_types'       => 0,
 						'override_expires_at' => null,
 						'override_owner'      => null,
 						'created_at'          => $now,
 						'updated_at'          => $now,
 					),
-					array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
+					array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' )
 				);
 			}
 		}
@@ -735,8 +772,11 @@ class Activator {
 			// Boolean directive (empty array = valueless). Does NOT replace HSTS (RFC 6797).
 			// Skipped on the api surface (REST responses have no navigable resources).
 			// Not emitted on api surface — handled below.
-			// fenced-frame-src: experimental Privacy Sandbox directive; 'none' is safe.
-			'fenced-frame-src'          => array( "'none'" ),
+			// fenced-frame-src is deliberately NOT a default: it's an experimental
+			// Privacy Sandbox directive, not part of the CSP living standard, and
+			// third-party CSP linters commonly flag it as "should not be used" --
+			// removed after real-world scan feedback (see migrate_remove_fenced_frame_src_directive()
+			// below, which strips it from profiles seeded before this change).
 			// sandbox: null = disabled. Set to an array of allow-* flags to enable.
 			// Ignored by browsers in CSP-Report-Only mode and in <meta http-equiv>.
 			'sandbox'                   => null,

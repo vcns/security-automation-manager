@@ -148,18 +148,19 @@ Responsibilities:
 2. Script and inline-script attributes receive the nonce through WordPress 6.4+ hooks, with legacy fallback filters for broader compatibility.
 3. `Policy_Builder` identifies the current surface: `frontend`, `admin`, `login`, or `api`. REST requests use the API surface, `wp-admin` request paths use the admin surface even on redirects or 404 responses, and `wp-login.php` paths use the login surface.
 4. The relevant profile is loaded from the database.
-5. Approved sources and active hashes are merged into the directive set.
+5. Approved sources and active hashes are merged into the directive set. Each approved host source is prefixed with its captured scheme (`source_scheme`, default `https`) rather than emitted bare -- a scheme-less CSP source matches that host on any scheme, including plain HTTP.
 6. Forbidden or deprecated directives (`plugin-types`, `block-all-mixed-content`, `navigate-to`, `prefetch-src`) are stripped from overrides; any stripped directive is logged to `sam_audit_log` at `warning` severity.
 7. If enabled and licensed, `'strict-dynamic'` is appended to `script-src`; approved host sources are suppressed from `script-src` at this point (browsers silently ignore host allowlists when `strict-dynamic` is present — CSP3 §8.2).
 8. `sandbox` is skipped if null or if the profile is in report-only mode (CSP spec — `sandbox` is ignored in `Content-Security-Policy-Report-Only`).
-9. Trusted Types directives (`require-trusted-types-for`, `trusted-types`) are skipped when their arrays are empty; when enabled they are always emitted as report-only regardless of surface mode.
-10. The reporting endpoint is resolved from `wp_sam_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'security-manager/v1/report' )`.
-11. The CSP includes `report-uri <report_uri>` by default so browser reports are delivered directly and promptly to the local learning endpoint.
-12. If `wp_sam_reporting_transport` is set to `both` or `report-to`, two additional Reporting API headers are emitted before the CSP header:
+9. `upgrade-insecure-requests` is skipped if the profile is in report-only mode -- browsers ignore it there too, same rationale as `sandbox`.
+10. The per-surface Trusted Types toggle (Profiles tab) sets `require-trusted-types-for 'script'` when enabled. Trusted Types directives (`require-trusted-types-for`, `trusted-types`) are each skipped independently when empty; when `require-trusted-types-for` is enabled it is always emitted as report-only regardless of surface mode. `trusted-types` is stripped on its own whenever empty, so enabling the toggle alone never emits a bare, valueless `trusted-types` token.
+11. The reporting endpoint is resolved from `wp_sam_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'security-manager/v1/report' )`.
+12. The CSP includes `report-uri <report_uri>` by default so browser reports are delivered directly and promptly to the local learning endpoint.
+13. If `wp_sam_reporting_transport` is set to `both` or `report-to`, two additional Reporting API headers are emitted before the CSP header:
     - `Reporting-Endpoints: csp-endpoint="<report_uri>"` — Structured Fields Dictionary (RFC 9651); required for browsers to honour `report-to csp-endpoint` in the CSP
     - `Report-To: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"<report_uri>"}]}` — deprecated JSON format retained as a legacy fallback for pre-Reporting-API browsers
-13. The policy header name is resolved from `wp_sam_policy_header_name`. Blank emits the normal mode-aware `Content-Security-Policy-Report-Only` or `Content-Security-Policy` header. A validated custom value emits the exact origin header name for a proxy to copy back into the browser-facing CSP header.
-14. The CSP or CSP-Report-Only policy value is emitted via `send_headers`.
+14. The policy header name is resolved from `wp_sam_policy_header_name`. Blank emits the normal mode-aware `Content-Security-Policy-Report-Only` or `Content-Security-Policy` header. A validated custom value emits the exact origin header name for a proxy to copy back into the browser-facing CSP header.
+15. The CSP or CSP-Report-Only policy value is emitted via `send_headers`.
 
 ### Conflict detection
 

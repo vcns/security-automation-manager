@@ -80,6 +80,7 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_revert_source', array( $this, 'ajax_revert_source' ) );
 		add_action( 'wp_ajax_wp_sam_undo_source_decision', array( $this, 'ajax_undo_source_decision' ) );
 		add_action( 'wp_ajax_wp_sam_toggle_mode', array( $this, 'ajax_toggle_mode' ) );
+		add_action( 'wp_ajax_wp_sam_set_trusted_types', array( $this, 'ajax_set_trusted_types' ) );
 		add_action( 'wp_ajax_wp_sam_set_automation_mode', array( $this, 'ajax_set_automation_mode' ) );
 		add_action( 'wp_ajax_wp_sam_create_checkout_session', array( $this, 'ajax_create_checkout_session' ) );
 		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
@@ -815,6 +816,33 @@ class Admin_UI {
 			),
 			array( 'surface' => $surface ),
 			array( '%s', '%s' ),
+			array( '%s' )
+		);
+		wp_send_json_success();
+	}
+
+	public function ajax_set_trusted_types(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$surface = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
+		$enabled = ! empty( $_POST['enabled'] );
+
+		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+		}
+
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix . 'csp_policy_profiles',
+			array(
+				'trusted_types' => $enabled ? 1 : 0,
+				'updated_at'    => current_time( 'mysql', true ),
+			),
+			array( 'surface' => $surface ),
+			array( '%d', '%s' ),
 			array( '%s' )
 		);
 		wp_send_json_success();

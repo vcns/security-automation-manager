@@ -244,6 +244,11 @@ class Policy_Builder extends Header_Builder {
 		// Append approved source hosts from inventory.
 		// FIX: use sanitize_text_field() not esc_attr() -- esc_attr() encodes
 		// characters such as & that are invalid in HTTP header values.
+		// FIX: prefix each host with its captured scheme (source_scheme, default
+		// https) instead of emitting a bare host. A scheme-less CSP source token
+		// matches that host on any scheme, including plain http; source_scheme
+		// was already captured and stored at proposal time but never read back
+		// out here, so every approved source silently lost its scheme.
 		$sources = $this->load_approved_sources( $surface );
 		foreach ( $sources as $src ) {
 			$dir = $src['directive'];
@@ -251,7 +256,12 @@ class Policy_Builder extends Header_Builder {
 				continue; // host allowlists ignored when strict-dynamic is present
 			}
 			if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
-				$directives[ $dir ][] = sanitize_text_field( $src['source_host'] );
+				$host   = sanitize_text_field( (string) $src['source_host'] );
+				$scheme = strtolower( sanitize_text_field( (string) ( $src['source_scheme'] ?? '' ) ) );
+				if ( '' === $scheme ) {
+					$scheme = 'https';
+				}
+				$directives[ $dir ][] = "{$scheme}://{$host}";
 			}
 		}
 
@@ -262,13 +272,36 @@ class Policy_Builder extends Header_Builder {
 			unset( $directives['sandbox'] );
 		}
 
+		// upgrade-insecure-requests has no effect on a policy delivered via the
+		// Content-Security-Policy-Report-Only header -- browsers ignore it there,
+		// same as sandbox above. Strip it in report-only mode rather than emit a
+		// directive that does nothing and reads as misleading noise to an admin
+		// or a CSP linter reviewing the header.
+		if ( $is_report_only ) {
+			unset( $directives['upgrade-insecure-requests'] );
+		}
+
+		// The per-surface Trusted Types toggle (Profiles tab) sets require-trusted-types-for
+		// 'script' -- the one value this plugin's admin UI actually offers. An admin
+		// wanting named policies or 'default'/'*' can still reach them via overrides.
+		if ( ! empty( $profile['trusted_types'] ) ) {
+			$directives['require-trusted-types-for'] = array( "'script'" );
+		}
+
 		// Trusted Types directives (require-trusted-types-for, trusted-types) are disabled
 		// when their value list is empty. When enabled they are always emitted as report-only
 		// regardless of surface mode (Chromium-strong; Baseline widely available ~2028).
 		$trusted_types_enabled = ! empty( $directives['require-trusted-types-for'] )
 			&& is_array( $directives['require-trusted-types-for'] );
 		if ( ! $trusted_types_enabled ) {
-			unset( $directives['require-trusted-types-for'], $directives['trusted-types'] );
+			unset( $directives['require-trusted-types-for'] );
+		}
+		// trusted-types is independent of require-trusted-types-for and stripped
+		// on its own empty check: emitting it with no policy names is at best
+		// meaningless and at worst reads as "trusted-types 'none'" -- neither is
+		// what an admin who only enabled require-trusted-types-for intended.
+		if ( empty( $directives['trusted-types'] ) || ! is_array( $directives['trusted-types'] ) ) {
+			unset( $directives['trusted-types'] );
 		}
 
 		// Append direct reporting by default. Reporting API is opt-in because some
@@ -355,7 +388,7 @@ class Policy_Builder extends Header_Builder {
 		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT directive, source_host FROM {$table} WHERE surface = %s AND approval_state = 'approved'",
+				"SELECT directive, source_host, source_scheme FROM {$table} WHERE surface = %s AND approval_state = 'approved'",
 				$surface
 			),
 			ARRAY_A
