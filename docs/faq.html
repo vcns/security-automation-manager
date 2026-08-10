@@ -15,8 +15,8 @@
     <header class='hero compact-hero'>
       <div class='hero-copy'>
         <p class='eyebrow'>FAQ</p>
-        <h1>Questions before using CSP on a live WordPress site.</h1>
-        <p class='lede'>These answers are written for administrators who need practical guidance, not CSP theory alone.</p>
+        <h1>Questions before rolling out security headers on a live WordPress site.</h1>
+        <p class='lede'>These answers are written for administrators who need practical guidance across all five pillars, not CSP theory alone.</p>
         <div class='hero-actions'>
           <a class='button primary' href='index.html'>Back to help home</a>
           <a class='button secondary' href='user-guide.html'>Read the user guide</a>
@@ -34,19 +34,44 @@
       </aside>
     </header>
 
-    <nav class='section-nav' aria-label='FAQ sections'>
-      <a href='#general'>General</a>
-      <a href='#rollout'>Rollout</a>
-      <a href='#approvals'>Approvals</a>
-      <a href='#violations'>Violations</a>
-      <a href='#other-pillars'>Other pillars</a>
-      <a href='#compatibility'>Compatibility</a>
-      <a href='#wordpress-org'>WordPress.org build</a>
-      <a href='#privacy'>Privacy</a>
-      <a href='#troubleshooting'>Troubleshooting</a>
-    </nav>
+    <div class='content-shell'>
+      <nav class='sidebar' aria-label='FAQ navigation'>
+        <div class='sidebar-group'>
+          <h3>Site</h3>
+          <ul>
+            <li><a href='index.html'>Home</a></li>
+            <li><a href='user-guide.html'>User guide</a></li>
+            <li><a href='faq.html' aria-current='page'>FAQ</a></li>
+            <li><a href='https://github.com/vcns/security-automation-manager'>Repository</a></li>
+          </ul>
+        </div>
+        <div class='sidebar-group'>
+          <h3>CSP</h3>
+          <ul>
+            <li><a href='#general'>General</a></li>
+            <li><a href='#rollout'>Rollout</a></li>
+            <li><a href='#approvals'>Approvals</a></li>
+            <li><a href='#violations'>Violations</a></li>
+          </ul>
+        </div>
+        <div class='sidebar-group'>
+          <h3>Other pillars</h3>
+          <ul>
+            <li><a href='#other-pillars'>Other pillars</a></li>
+          </ul>
+        </div>
+        <div class='sidebar-group'>
+          <h3>Product &amp; compatibility</h3>
+          <ul>
+            <li><a href='#compatibility'>Compatibility</a></li>
+            <li><a href='#wordpress-org'>WordPress.org build &amp; pricing</a></li>
+            <li><a href='#privacy'>Privacy</a></li>
+            <li><a href='#troubleshooting'>Troubleshooting</a></li>
+          </ul>
+        </div>
+      </nav>
 
-    <main>
+      <main>
       <section id='general' class='section'>
         <p class='section-label'>General</p>
         <h2>Product basics.</h2>
@@ -250,20 +275,24 @@
       </section>
 
       <section id='wordpress-org' class='section'>
-        <p class='section-label'>WordPress.org build</p>
-        <h2>Local features and guideline posture.</h2>
+        <p class='section-label'>WordPress.org build &amp; pricing</p>
+        <h2>What's free, what's paid, and the guideline posture.</h2>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Does the plugin work without payment?</h3>
-            <p>Yes. All features shipped in the WordPress.org package are available locally without payment or remote entitlement checks.</p>
+            <p>Mostly, yes. All five pillars, CSP's report-only rollout, discovery, violation reporting, policy-change review, and three of the four CSP automation modes (Manual, Automatic with medium+high approvals, Automatic with high approvals only) are free in every build, with no payment or remote entitlement checks. The exception is <strong>Fully Automatic</strong> CSP mode -- zero-review auto-apply -- which requires an active subscription. See the user guide's <a href='user-guide.html#automation-tiers'>Automation tiers</a> section.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What happens if I select Fully Automatic without a subscription?</h3>
+            <p>The surface is quietly kept on Automatic (high approvals only) instead -- it doesn't fail, error, or partially apply. The Settings tab marks the option "(requires upgrade)" and, where a checkout flow is available in your build, shows an Upgrade button.</p>
           </article>
           <article class='faq-item'>
             <h3>Does the plugin use a custom update endpoint?</h3>
-            <p>No. The WordPress.org package does not poll a third-party update manifest or install updates from outside the WordPress.org update system.</p>
+            <p>The WordPress.org package does not poll a third-party update manifest or install updates from outside the WordPress.org update system. A separate GitHub-channel build does, for administrators who install from GitHub instead.</p>
           </article>
           <article class='faq-item'>
             <h3>Does the plugin contact a licensing service?</h3>
-            <p>No. The WordPress.org package does not contact third-party services for licensing, checkout, telemetry, or remote product configuration.</p>
+            <p>Only if you use the Upgrade button to start a checkout for Fully Automatic mode, and only where that flow is available in your build. Nothing else described on this site contacts a third-party service for licensing, telemetry, or remote product configuration.</p>
           </article>
           <article class='faq-item'>
             <h3>Are CSP reports sent to VCNS or another provider?</h3>
@@ -271,7 +300,7 @@
           </article>
           <article class='faq-item'>
             <h3>Are new CSP sources applied automatically?</h3>
-            <p>No. New sources remain pending until an administrator approves them.</p>
+            <p>Only if you've turned on one of the three free automatic modes, or the paid Fully Automatic mode -- and only within that mode's risk ceiling. On the default Manual mode, no.</p>
           </article>
           <article class='faq-item'>
             <h3>Does manual automation mode change policy on its own?</h3>
@@ -294,7 +323,7 @@
           </article>
           <article class='faq-item'>
             <h3>What leaves the site?</h3>
-            <p>The WordPress.org package keeps CSP operation local. It does not contact third-party services for plugin updates, licensing, checkout, telemetry, or remote product configuration.</p>
+            <p>The WordPress.org package keeps CSP operation local and does not contact third-party services for plugin updates, telemetry, or remote product configuration. The only outbound call anywhere in the product is the Upgrade checkout flow for Fully Automatic mode, and only when an administrator deliberately starts it.</p>
           </article>
         </div>
       </section>
@@ -321,7 +350,8 @@
           </article>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
 
     <footer class='site-footer'>
       <p>Security Automation Manager FAQ</p>
