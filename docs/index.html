@@ -234,11 +234,13 @@ flowchart LR
           <h2>Where to look in the WordPress admin.</h2>
           <p>Open <strong>Security Automation Manager</strong> in the WordPress admin. The top-level Overview page shows every pillar's per-surface status at a glance, with a link into each one. For CSP specifically, go to <strong>Security Automation Manager -> CSP</strong> -- that dashboard is split into tabs that match the product workflow.</p>
           <ul class='bullets'>
+            <li><strong>Start Here:</strong> a short guide to the report-only, learning-window, and enforce-promotion workflow -- the default landing tab.</li>
             <li><strong>Profiles:</strong> see each surface and switch between report-only, enforce, and disabled.</li>
-            <li><strong>For Review:</strong> review discovered hosts, risk, state, evidence count, and last-seen time.</li>
-            <li><strong>Policy Changes:</strong> review the activity timeline for proposals, decisions, actors, policy snapshots, reversions, undo actions, and suppressions.</li>
-            <li><strong>Violations:</strong> inspect browser-reported blocked resources and occurrence counts.</li>
+            <li><strong>For Review:</strong> review discovered hosts, risk, state, evidence count, and last-seen time. Sortable and filterable across the full dataset, not just the current page.</li>
+            <li><strong>Policy Changes:</strong> review the activity timeline for proposals, decisions, actors, policy snapshots, reversions, undo actions, and suppressions. Also sortable and filterable.</li>
+            <li><strong>Violations:</strong> inspect browser-reported blocked resources and occurrence counts, sortable and filterable, with a metadata popover per row showing document URI, source file, line/column, referrer, user agent, and any captured payload.</li>
             <li><strong>Scan Log:</strong> check manual and scheduled scan results.</li>
+            <li><strong>Settings:</strong> promotion gates, deterministic automation, reporting endpoint learning, and scan schedule.</li>
           </ul>
         </div>
         <div class='callout-stack'>
