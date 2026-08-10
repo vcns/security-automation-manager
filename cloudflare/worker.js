@@ -29,17 +29,24 @@
  *   id      = "<your-namespace-id>"
  *
  * Store the recurring Stripe Price IDs (created in the Stripe dashboard as
- * Products with a recurring monthly/annual Price each) under these KV keys:
+ * a single Product with a recurring monthly/annual Price each) under these
+ * KV keys -- Price IDs may rotate (e.g. a seasonal promotion), so they stay
+ * in KV for no-deploy updates:
  *
  *   STRIPE_TEST_PRICE_ID_MONTHLY   price_...
  *   STRIPE_TEST_PRICE_ID_ANNUAL    price_...
  *   STRIPE_LIVE_PRICE_ID_MONTHLY   price_...
  *   STRIPE_LIVE_PRICE_ID_ANNUAL    price_...
  *
+ * The Product ID each of those Prices belongs to is NOT stored in KV --
+ * a Product ID never changes once created, so it's a hardcoded constant
+ * below (PRODUCT_ID) instead of another moving KV part. Fill in the two
+ * real prod_... values there before this is live.
+ *
  * ── Stripe Webhook Registration ───────────────────────────────────────────────
  * Register two webhook endpoints in your Stripe dashboard:
- *   Test: https://config.csp-automation-manager.vcns.tech/webhook?mode=test
- *   Live: https://config.csp-automation-manager.vcns.tech/webhook?mode=live
+ *   Test: https://wp-sam.vcns.tech/webhook?mode=test
+ *   Live: https://wp-sam.vcns.tech/webhook?mode=live
  * Events: checkout.session.completed, checkout.session.async_payment_succeeded
  *
  * NOTE: checkout is subscription mode (recurring monthly/annual), but this
@@ -49,6 +56,15 @@
  * customer.subscription.deleted and invoice.payment_failed if/when
  * automatic revocation on cancellation/lapse is needed.
  */
+
+// ── Stripe Product IDs ──────────────────────────────────────────────────────
+// Stable for the life of the product -- never rotated, so hardcoded here
+// rather than in KV. Both the monthly and annual Price for a mode belong to
+// the same Product, so there's one ID per mode, not one per interval.
+const PRODUCT_ID = {
+  test: "prod_REPLACE_WITH_TEST_PRODUCT_ID",
+  live: "prod_REPLACE_WITH_LIVE_PRODUCT_ID",
+};
 
 // ── Signed product config ─────────────────────────────────────────────────────
 // Signature is computed over this object (excluding the signature field) using
@@ -139,6 +155,18 @@ async function stripePost(path, params, secretKey) {
       "Stripe-Version": "2024-06-20",
     },
     body: new URLSearchParams(params).toString(),
+  });
+  return { status: res.status, data: await res.json() };
+}
+
+async function stripeGet(path, params, secretKey) {
+  const qs  = new URLSearchParams(params).toString();
+  const res = await fetch(`https://api.stripe.com/v1${path}${qs ? `?${qs}` : ""}`, {
+    method: "GET",
+    headers: {
+      "Authorization":  `Bearer ${secretKey}`,
+      "Stripe-Version": "2024-06-20",
+    },
   });
   return { status: res.status, data: await res.json() };
 }
@@ -246,20 +274,43 @@ async function handleWebhook(request, env) {
       const productKey   = session.metadata?.product_key;
 
       if (siteIdentity && productKey && env.ENTITLEMENTS) {
-        await env.ENTITLEMENTS.put(
-          `entitlement:${siteIdentity}`,
-          JSON.stringify({
-            product_key:            productKey,
-            tier:                   "pro",
-            status:                 "active",
-            interval:               session.metadata?.interval || null,
-            granted_at:             new Date().toISOString(),
-            stripe_session_id:      session.id            || null,
-            stripe_customer_id:     session.customer       || null,
-            stripe_subscription_id: session.subscription   || null,
-            stripe_payment_intent:  session.payment_intent || null,
-          })
+        // Metadata is set by our own /checkout handler, but the session
+        // itself is the only thing Stripe actually attests to -- confirm
+        // what was paid for by asking Stripe directly, rather than trusting
+        // metadata alone. A mismatch here means the price used for this
+        // session doesn't belong to the product we expect (misconfigured
+        // KV, or a price left over from a different product), and the
+        // entitlement is not granted.
+        const secretKey         = mode === "live" ? env.STRIPE_LIVE_SECRET_KEY : env.STRIPE_TEST_SECRET_KEY;
+        const expectedProductId = PRODUCT_ID[mode];
+
+        const { status: liStatus, data: lineItems } = await stripeGet(
+          `/checkout/sessions/${session.id}/line_items`,
+          { "expand[]": "data.price.product" },
+          secretKey
         );
+
+        const actualProductId = liStatus === 200
+          ? lineItems?.data?.[0]?.price?.product?.id || lineItems?.data?.[0]?.price?.product || null
+          : null;
+
+        if (expectedProductId && actualProductId === expectedProductId) {
+          await env.ENTITLEMENTS.put(
+            `entitlement:${siteIdentity}`,
+            JSON.stringify({
+              product_key:            productKey,
+              tier:                   "pro",
+              status:                 "active",
+              interval:               session.metadata?.interval || null,
+              granted_at:             new Date().toISOString(),
+              stripe_session_id:      session.id            || null,
+              stripe_customer_id:     session.customer       || null,
+              stripe_subscription_id: session.subscription   || null,
+              stripe_payment_intent:  session.payment_intent || null,
+              stripe_product_id:      actualProductId,
+            })
+          );
+        }
       }
     }
   }

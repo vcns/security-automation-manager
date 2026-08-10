@@ -1,4 +1,4 @@
-name       = "csp-automation-manager"
+name       = "wp-sam"
 main       = "worker.js"
 compatibility_date = "2024-06-20"
 
@@ -16,7 +16,7 @@ id         = "03b094a33d484daabb04ad4336e12382"
 # ── Routes ────────────────────────────────────────────────────────────────────
 # Uncomment and adjust if using a custom domain:
 # [[routes]]
-# pattern = "config.csp-automation-manager.vcns.tech/*"
+# pattern = "wp-sam.vcns.tech/*"
 # zone_name = "vcns.tech"
 
 # ── Secrets (never put values here — use `wrangler secret put` or dashboard) ──
