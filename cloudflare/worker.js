@@ -30,15 +30,18 @@
  *
  * Store the recurring Stripe Price IDs (created in the Stripe dashboard as
  * a single Product with a recurring monthly/annual Price each) under these
- * KV keys, plus that Product's own ID so the webhook can verify a completed
- * session actually paid for the expected product, not just trust metadata:
+ * KV keys -- Price IDs may rotate (e.g. a seasonal promotion), so they stay
+ * in KV for no-deploy updates:
  *
  *   STRIPE_TEST_PRICE_ID_MONTHLY   price_...
  *   STRIPE_TEST_PRICE_ID_ANNUAL    price_...
- *   STRIPE_TEST_PRODUCT_ID         prod_...
  *   STRIPE_LIVE_PRICE_ID_MONTHLY   price_...
  *   STRIPE_LIVE_PRICE_ID_ANNUAL    price_...
- *   STRIPE_LIVE_PRODUCT_ID         prod_...
+ *
+ * The Product ID each of those Prices belongs to is NOT stored in KV --
+ * a Product ID never changes once created, so it's a hardcoded constant
+ * below (PRODUCT_ID) instead of another moving KV part. Fill in the two
+ * real prod_... values there before this is live.
  *
  * ── Stripe Webhook Registration ───────────────────────────────────────────────
  * Register two webhook endpoints in your Stripe dashboard:
@@ -53,6 +56,15 @@
  * customer.subscription.deleted and invoice.payment_failed if/when
  * automatic revocation on cancellation/lapse is needed.
  */
+
+// ── Stripe Product IDs ──────────────────────────────────────────────────────
+// Stable for the life of the product -- never rotated, so hardcoded here
+// rather than in KV. Both the monthly and annual Price for a mode belong to
+// the same Product, so there's one ID per mode, not one per interval.
+const PRODUCT_ID = {
+  test: "prod_REPLACE_WITH_TEST_PRODUCT_ID",
+  live: "prod_REPLACE_WITH_LIVE_PRODUCT_ID",
+};
 
 // ── Signed product config ─────────────────────────────────────────────────────
 // Signature is computed over this object (excluding the signature field) using
@@ -269,8 +281,8 @@ async function handleWebhook(request, env) {
         // session doesn't belong to the product we expect (misconfigured
         // KV, or a price left over from a different product), and the
         // entitlement is not granted.
-        const secretKey        = mode === "live" ? env.STRIPE_LIVE_SECRET_KEY : env.STRIPE_TEST_SECRET_KEY;
-        const expectedProductId = await env.ENTITLEMENTS.get(mode === "live" ? "STRIPE_LIVE_PRODUCT_ID" : "STRIPE_TEST_PRODUCT_ID");
+        const secretKey         = mode === "live" ? env.STRIPE_LIVE_SECRET_KEY : env.STRIPE_TEST_SECRET_KEY;
+        const expectedProductId = PRODUCT_ID[mode];
 
         const { status: liStatus, data: lineItems } = await stripeGet(
           `/checkout/sessions/${session.id}/line_items`,
