@@ -22,8 +22,10 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
+use WP_SAM\Security\Dependency_Governance_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
+use WP_SAM\Security\Reverse_Tabnabbing_Builder;
 use WP_SAM\Security\Strict_Transport_Security_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
@@ -50,6 +52,8 @@ final class Plugin {
 	public Referrer_Policy_Builder $referrer_policy_builder;
 	public Permissions_Policy_Builder $permissions_policy_builder;
 	public Strict_Transport_Security_Builder $strict_transport_security_builder;
+	public Reverse_Tabnabbing_Builder $reverse_tabnabbing_builder;
+	public Dependency_Governance_Builder $dependency_governance_builder;
 	private Learning_Window $learning_window;
 
 	/**
@@ -127,6 +131,8 @@ final class Plugin {
 		$this->referrer_policy_builder           = new Referrer_Policy_Builder();
 		$this->permissions_policy_builder        = new Permissions_Policy_Builder();
 		$this->strict_transport_security_builder = new Strict_Transport_Security_Builder();
+		$this->reverse_tabnabbing_builder        = new Reverse_Tabnabbing_Builder();
+		$this->dependency_governance_builder     = new Dependency_Governance_Builder();
 		$this->learning_window                   = new Learning_Window();
 
 		// Hash manager: instantiated here so Scheduler can read captured_hashes
@@ -142,6 +148,8 @@ final class Plugin {
 		$this->referrer_policy_builder->register();
 		$this->permissions_policy_builder->register();
 		$this->strict_transport_security_builder->register();
+		$this->reverse_tabnabbing_builder->register();
+		$this->dependency_governance_builder->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already

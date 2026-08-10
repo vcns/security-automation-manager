@@ -54,6 +54,7 @@
           <ul>
             <li><a href='#start-here'>Start here</a></li>
             <li><a href='#pillars'>Pillars</a></li>
+            <li><a href='#content-rewrites'>Content rewrite protections</a></li>
             <li><a href='#how-it-works'>How it works</a></li>
             <li><a href='#learning-curve'>Learning curve</a></li>
             <li><a href='#rollout-plan'>Rollout plan</a></li>
@@ -136,6 +137,23 @@ flowchart LR
           <h3>Why these five are simpler than CSP</h3>
           <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself. Strict-Transport-Security is the one exception worth a second look: browsers cache its Max-Age, so a change doesn't undo itself the moment you revert the setting -- see the user guide for details.</p>
         </div>
+      </section>
+
+      <section id='content-rewrites' class='section'>
+        <p class='section-label'>Content rewrite protections</p>
+        <h2>Two more, beyond the headers.</h2>
+        <p>Reverse Tabnabbing and External Scripts aren't header pillars -- they rewrite the rendered page itself, both free, both fail-open on any uncertainty.</p>
+        <div class='card-grid'>
+          <article class='card'>
+            <h3>Reverse Tabnabbing</h3>
+            <p>Adds <code>rel="noopener"</code> to <code>target="_blank"</code> links missing it, closing a <code>window.opener</code> phishing gap. Purely additive -- never breaks a link.</p>
+          </article>
+          <article class='card'>
+            <h3>External Scripts</h3>
+            <p>Inventories third-party script/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity -- report-only by default, matching CSP's own philosophy.</p>
+          </article>
+        </div>
+        <p class='section-note'>Full details, including why SRI hashes are never fetched or fabricated, are in the <a href='user-guide.html#content-rewrites'>user guide</a>.</p>
       </section>
 
       <section id='how-it-works' class='section'>

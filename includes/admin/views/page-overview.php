@@ -48,6 +48,14 @@ $simple_pillars = array(
 		'label' => __( 'Strict-Transport-Security', 'security-automation-manager' ),
 		'page'  => 'security-automation-manager-hsts',
 	),
+	\WP_SAM\Security\Reverse_Tabnabbing_Builder::PILLAR_KEY => array(
+		'label' => __( 'Reverse Tabnabbing Protection', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-reverse-tabnabbing',
+	),
+	\WP_SAM\Security\Dependency_Governance_Builder::PILLAR_KEY => array(
+		'label' => __( 'External Scripts', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-external-scripts',
+	),
 );
 ?>
 <div class="wrap wp-sam-wrap">

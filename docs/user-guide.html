@@ -68,6 +68,7 @@
           <h3>The other five pillars</h3>
           <ul>
             <li><a href='#other-pillars'>X-Frame-Options and more</a></li>
+            <li><a href='#content-rewrites'>Content rewrite protections</a></li>
           </ul>
         </div>
         <div class='sidebar-group'>
@@ -140,10 +141,12 @@ flowchart TD
     Menu --> RP["Referrer-Policy"]
     Menu --> PP["Permissions-Policy"]
     Menu --> HSTS["Strict-Transport-Security"]
+    Menu --> RTP["Reverse Tabnabbing"]
+    Menu --> EXT["External Scripts"]
     Menu --> RD["Readiness"]
           </div>
         </div>
-        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the eight-tab dashboard described in the rest of this section.</p>
+        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the eight-tab dashboard described in the rest of this section. Reverse Tabnabbing and External Scripts aren't header pillars at all -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>1. Initialise safely</h3>
@@ -429,6 +432,34 @@ flowchart TD
           <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most configurable of the five simple pillars.</figcaption>
         </figure>
         <p class='section-note'>All five pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
+      </section>
+
+      <section id='content-rewrites' class='section'>
+        <p class='section-label'>Content rewrite protections</p>
+        <h2>Reverse Tabnabbing and External Scripts.</h2>
+        <p>These two aren't header pillars -- they rewrite the rendered page itself. Both are free, both only ever act on a successful, non-streamed HTML response (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests), and both fail open: any parsing uncertainty leaves the original page untouched rather than risk breaking it.</p>
+        <div class='table-wrap'>
+          <table>
+            <thead>
+              <tr><th>Protection</th><th>Admin location</th><th>What it does</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Reverse Tabnabbing</td><td><strong>Security Automation Manager -> Reverse Tabnabbing</strong></td><td>Per surface: on or off. Adds <code>rel="noopener"</code> to any <code>target="_blank"</code> link missing <code>noopener</code>/<code>noreferrer</code>, closing off <code>window.opener</code> access a new tab could otherwise use to redirect the original tab to a phishing page. Purely additive -- it never removes anything or breaks a link.</td></tr>
+              <tr><td>External Scripts</td><td><strong>Security Automation Manager -> External Scripts</strong></td><td>Per surface: on/off plus Report-only or Enforce mode. Inventories third-party <code>&lt;script&gt;</code>/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity (SRI).</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>External Scripts follows the same report-first shape as CSP: a newly discovered origin is always <strong>Unclassified</strong> -- never blocked by default. Report mode (the default) only builds the inventory. Enforce mode still only ever removes an origin you explicitly marked <strong>Blocked</strong>, or an <strong>Approved -- immutable</strong> origin whose SRI hash no longer matches what the page actually served.</p>
+        <div class='callout-stack'>
+          <div class='warning-callout'>
+            <h3>This plugin never fabricates an SRI hash</h3>
+            <p>"Approved -- immutable" only ever compares against a hash you paste in yourself -- from a local copy of the file you already trust, or the vendor's own published hash -- never one this plugin computes by fetching the remote URL itself. If a provider's script changes behind a stable URL (common for tag managers, analytics, and similar mutable services), classify it <strong>Approved -- mutable provider</strong> instead; SRI genuinely doesn't apply there.</p>
+          </div>
+          <div class='callout'>
+            <h3>Only the origin is stored</h3>
+            <p>The inventory records scheme and host only -- never a path or query string -- so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
+          </div>
+        </div>
       </section>
 
       <section id='automation-tiers' class='section'>

@@ -58,6 +58,7 @@
           <h3>Other pillars</h3>
           <ul>
             <li><a href='#other-pillars'>Other pillars</a></li>
+            <li><a href='#content-rewrites'>Content rewrite protections</a></li>
           </ul>
         </div>
         <div class='sidebar-group'>
@@ -78,7 +79,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What does Security Automation Manager do?</h3>
-            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below.</p>
+            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below. Reverse Tabnabbing and External Scripts round it out as two further protections that rewrite the page itself rather than emit a header; see <a href='#content-rewrites'>Content rewrite protections</a>.</p>
           </article>
           <article class='faq-item'>
             <h3>Who is it for?</h3>
@@ -247,6 +248,33 @@
           <article class='faq-item'>
             <h3>I changed a value and nothing seems different. What now?</h3>
             <p>Check you changed the correct surface -- frontend, admin, login, and API are configured independently, the same as CSP. Then confirm with your browser's network inspector that the header is present on a fresh request; some caching layers can serve a stale response with the old header until the cache clears.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id='content-rewrites' class='section'>
+        <p class='section-label'>Content rewrite protections</p>
+        <h2>Reverse Tabnabbing and External Scripts.</h2>
+        <div class='faq-list'>
+          <article class='faq-item'>
+            <h3>How are these different from the header pillars?</h3>
+            <p>They rewrite the rendered HTML response instead of adding a header. Both are free, both only act on a successful, non-streamed HTML page response (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests), and both fail open -- any parsing uncertainty leaves the page completely untouched.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Can Reverse Tabnabbing break a link?</h3>
+            <p>No. It only ever adds <code>rel="noopener"</code> to a <code>target="_blank"</code> link that doesn't already have <code>noopener</code> or <code>noreferrer</code> -- every other attribute, and any other <code>rel</code> tokens, are left exactly as they were.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Will enabling External Scripts break my analytics or embeds?</h3>
+            <p>Not by default. A newly discovered script or stylesheet origin is always classified Unclassified, never Blocked -- and Report mode, the default, never removes anything at all, it only builds the inventory. Even Enforce mode only ever removes an origin you explicitly marked Blocked, or an Approved-immutable origin whose SRI hash no longer matches.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does this plugin generate Subresource Integrity hashes for me?</h3>
+            <p>No, and deliberately so. Computing a hash by fetching the remote URL would defeat the point of SRI -- if the origin were compromised, the plugin would just hash and trust the tampered file. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What's stored in the External Scripts inventory?</h3>
+            <p>Only the origin -- scheme and host, e.g. <code>https://cdn.example.com</code> -- never a path or query string, so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
           </article>
         </div>
       </section>
