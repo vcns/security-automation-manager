@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.1.1] - 2026-08-10
+
+### Fixed
+
+- Fixed a fatal error on the External Scripts admin page: `Call to undefined method WP_SAM\Admin\Table_Query::equals_where()`. The published 2.1.0 GitHub release was built from a commit where `page-external-scripts.php` (merged as part of the External Scripts pillar) called `equals_where()` before the PR that actually added that method to `Table_Query` had been merged -- an artifact of resolving several long-open, out-of-order pull requests. `main` had carried the fix since the `equals_where()` PR merged; this release exists purely to publish a working build. No other code changes.
+
 ## [2.1.0] - 2026-08-10
 
 ### Added

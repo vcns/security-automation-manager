@@ -252,4 +252,47 @@ class TableQueryTest extends TestCase {
 		$this->assertStringNotContainsString( 'Next', $html );
 		$this->assertStringContainsString( 'v_paged=2', $html );
 	}
+
+	// ── Regression guard: every Table_Query::method() call site must resolve ────
+	//
+	// This is exactly the failure mode behind the 2.1.0 hotfix: a view file
+	// (page-external-scripts.php) called Table_Query::equals_where() while that
+	// method existed only on a different, not-yet-merged branch. php -l and
+	// PHPUnit's own test suite both stayed green, because nothing actually
+	// *executed* that call path -- a missing method on a dynamically-resolved
+	// static call is a runtime error, not a lint error. This scans every PHP
+	// file under includes/ for `Table_Query::identifier(` call sites and
+	// asserts each identifier really is a callable public static method.
+
+	public function test_every_table_query_call_site_resolves_to_a_real_method(): void {
+		$root  = dirname( __DIR__, 3 );
+		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $root . '/includes', FilesystemIterator::SKIP_DOTS ) );
+
+		$reflection      = new ReflectionClass( Table_Query::class );
+		$defined_methods = array();
+		foreach ( $reflection->getMethods( ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_STATIC ) as $method ) {
+			$defined_methods[ $method->getName() ] = true;
+		}
+
+		$missing = array();
+		foreach ( $files as $file ) {
+			if ( 'php' !== $file->getExtension() ) {
+				continue;
+			}
+
+			$contents = file_get_contents( $file->getPathname() );
+			if ( false === $contents || ! str_contains( $contents, 'Table_Query::' ) ) {
+				continue;
+			}
+
+			preg_match_all( '/Table_Query::([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/', $contents, $matches );
+			foreach ( $matches[1] as $called_method ) {
+				if ( ! isset( $defined_methods[ $called_method ] ) ) {
+					$missing[] = $called_method . ' in ' . str_replace( $root . '/', '', $file->getPathname() );
+				}
+			}
+		}
+
+		$this->assertSame( array(), array_unique( $missing ), 'Every Table_Query:: call site must resolve to a real public static method.' );
+	}
 }
