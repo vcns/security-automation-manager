@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.1.1
+Stable tag: 2.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,10 @@ Reports received by this plugin are validated and stored in this site's WordPres
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
 == Changelog ==
+
+= 2.1.2 =
+
+* Fixes silent AJAX save failures: the per-surface toggle/dropdown autosave handlers for X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Reverse Tabnabbing, and External Scripts did not check the AJAX response body, so a nonce failure or server-side validation error looked identical to success -- the control silently re-enabled with nothing actually saved. Failures now surface a clear error message instead of being swallowed.
 
 = 2.1.1 =
 

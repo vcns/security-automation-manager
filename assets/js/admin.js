@@ -100,6 +100,22 @@
 		$( this ).data( 'previous', $( this ).val() );
 	} );
 
+	/**
+	 * WordPress returns HTTP 200 for a real success, a check_ajax_referer()
+	 * nonce failure (body "-1"), and a wp_send_json_error() validation error
+	 * alike -- none of those are network failures jQuery's .fail() catches.
+	 * Autosave handlers below must inspect the response body in .done()
+	 * rather than assuming HTTP 200 means saved, or a failure silently
+	 * re-enables the control with nothing actually written.
+	 */
+	function reportAjaxFailure( res ) {
+		if ( res && true === res.success ) {
+			return;
+		}
+		// eslint-disable-next-line no-alert
+		alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+	}
+
 	function requiredReason( promptText ) {
 		const reason = window.prompt( promptText, '' );
 		if ( reason === null ) {
@@ -207,6 +223,7 @@
 			enabled: enabled ? '1' : '',
 			value:   value,
 		} )
+		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
 			alert( 'Failed to save.' );
@@ -238,6 +255,7 @@
 			directive: directive,
 			value:     value,
 		} )
+		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
 			alert( 'Failed to save.' );
@@ -287,6 +305,7 @@
 			include_subdomains:   includeSubdomains ? '1' : '',
 			preload:              preload ? '1' : '',
 		} )
+		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
 			alert( 'Failed to save.' );
@@ -316,6 +335,7 @@
 			enabled: enabled ? '1' : '',
 			mode:    mode,
 		} )
+		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
 			alert( 'Failed to save.' );
@@ -346,12 +366,7 @@
 			classification:  classification,
 			expected_sri:    expectedSri,
 		} )
-		.done( function ( res ) {
-			if ( ! res.success ) {
-				// eslint-disable-next-line no-alert
-				alert( ( res.data && res.data.message ) || 'Failed to save.' );
-			}
-		} )
+		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
 			alert( 'Failed to save.' );
