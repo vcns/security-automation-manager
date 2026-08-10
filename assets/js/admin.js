@@ -252,15 +252,17 @@
 	} );
 
 	$( document ).on( 'click', '#wp-sam-upgrade-button', function () {
-		const $button = $( this );
-		const $status = $( '#wp-sam-upgrade-status' );
+		const $button   = $( this );
+		const $status   = $( '#wp-sam-upgrade-status' );
+		const interval  = $( '#wp-sam-upgrade-interval' ).val() || 'monthly';
 
 		$button.prop( 'disabled', true );
 		$status.text( wpSamAdmin.i18n.upgradeStarting || 'Starting checkout…' );
 
 		$.post( wpSamAdmin.ajaxUrl, {
-			action: 'wp_sam_create_checkout_session',
-			nonce:  wpSamAdmin.nonce,
+			action:   'wp_sam_create_checkout_session',
+			nonce:    wpSamAdmin.nonce,
+			interval: interval,
 		} )
 		.done( function ( res ) {
 			if ( res.success && res.data.url ) {

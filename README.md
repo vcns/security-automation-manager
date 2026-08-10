@@ -90,7 +90,7 @@ Automation defaults to `Manual` for every surface. Administrators may explicitly
 - `Manual` -- free
 - `Automatic (with medium+high approvals)` -- free
 - `Automatic (with high approvals only)` -- free
-- `Fully Automatic` -- requires an active subscription; without one, a surface selecting it is kept on `Automatic (with high approvals only)` instead
+- `Fully Automatic` -- requires an active subscription (£1.99/month or £19.99/year, billed via Stripe Checkout); without one, a surface selecting it is kept on `Automatic (with high approvals only)` instead
 
 Automatic approvals are bounded by deterministic risk rules, hard exclusions, configured directive/scheme limits, evidence requirements, and per-run caps. Automatic decisions record `automation_engine` provenance and can be undone without rewriting history.
 

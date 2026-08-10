@@ -28,11 +28,26 @@
  *   binding = "ENTITLEMENTS"
  *   id      = "<your-namespace-id>"
  *
+ * Store the recurring Stripe Price IDs (created in the Stripe dashboard as
+ * Products with a recurring monthly/annual Price each) under these KV keys:
+ *
+ *   STRIPE_TEST_PRICE_ID_MONTHLY   price_...
+ *   STRIPE_TEST_PRICE_ID_ANNUAL    price_...
+ *   STRIPE_LIVE_PRICE_ID_MONTHLY   price_...
+ *   STRIPE_LIVE_PRICE_ID_ANNUAL    price_...
+ *
  * ── Stripe Webhook Registration ───────────────────────────────────────────────
  * Register two webhook endpoints in your Stripe dashboard:
  *   Test: https://config.csp-automation-manager.vcns.tech/webhook?mode=test
  *   Live: https://config.csp-automation-manager.vcns.tech/webhook?mode=live
  * Events: checkout.session.completed, checkout.session.async_payment_succeeded
+ *
+ * NOTE: checkout is subscription mode (recurring monthly/annual), but this
+ * worker does not yet handle subscription lifecycle events (cancellation,
+ * payment failure, renewal). An entitlement granted here stays "active" in
+ * KV until something explicitly revokes it -- also register
+ * customer.subscription.deleted and invoice.payment_failed if/when
+ * automatic revocation on cancellation/lapse is needed.
  */
 
 // ── Signed product config ─────────────────────────────────────────────────────
@@ -47,10 +62,11 @@ const CONFIG = {
   products: {
     "csp-automation-manager": {
       name: "CSP Automation Manager",
-      amount: 1299,
+      // Display-only -- the actual charge is always resolved server-side
+      // from KV (see the KV Namespace note above), never from client input.
+      amount_monthly: 199,
+      amount_annual:  1999,
       currency: "gbp",
-      // Price IDs are stored in KV (STRIPE_TEST_PRICE_ID / STRIPE_LIVE_PRICE_ID)
-      // so they can be rotated without re-signing this config.
       features: ["*"]
     }
   },
@@ -150,7 +166,7 @@ async function handleCheckout(request, env) {
     return jsonResponse({ error: "invalid_json" }, 400);
   }
 
-  const { site_identity, product_key = "csp-automation-manager", success_url, cancel_url } = body;
+  const { site_identity, product_key = "csp-automation-manager", interval = "monthly", success_url, cancel_url } = body;
 
   if (!site_identity || !success_url || !cancel_url) {
     return jsonResponse({ error: "missing_fields" }, 400);
@@ -161,6 +177,9 @@ async function handleCheckout(request, env) {
   if (!success_url.startsWith("https://") || !cancel_url.startsWith("https://")) {
     return jsonResponse({ error: "urls_must_be_https" }, 400);
   }
+  if (interval !== "monthly" && interval !== "annual") {
+    return jsonResponse({ error: "invalid_interval" }, 400);
+  }
 
   const mode      = env.STRIPE_MODE || "test";
   const secretKey = mode === "live" ? env.STRIPE_LIVE_SECRET_KEY : env.STRIPE_TEST_SECRET_KEY;
@@ -169,18 +188,20 @@ async function handleCheckout(request, env) {
   const product = CONFIG.products[product_key];
   if (!product) return jsonResponse({ error: "unknown_product" }, 400);
 
-  const kvKey   = mode === "live" ? "STRIPE_LIVE_PRICE_ID" : "STRIPE_TEST_PRICE_ID";
+  const intervalSuffix = interval === "annual" ? "ANNUAL" : "MONTHLY";
+  const kvKey   = `STRIPE_${mode === "live" ? "LIVE" : "TEST"}_PRICE_ID_${intervalSuffix}`;
   const priceId = await env.ENTITLEMENTS.get(kvKey);
   if (!priceId) return jsonResponse({ error: "price_not_configured" }, 503);
 
   const params = {
-    "mode":                    "payment",
+    "mode":                    "subscription",
     "line_items[0][price]":    priceId,
     "line_items[0][quantity]": "1",
     "success_url":             success_url,
     "cancel_url":              cancel_url,
     "metadata[site_identity]": site_identity,
     "metadata[product_key]":   product_key,
+    "metadata[interval]":      interval,
   };
   if (CONFIG.checkout_policy?.allow_promotion_codes)      params.allow_promotion_codes      = "true";
   if (CONFIG.checkout_policy?.billing_address_collection) params.billing_address_collection = CONFIG.checkout_policy.billing_address_collection;
@@ -231,9 +252,11 @@ async function handleWebhook(request, env) {
             product_key:            productKey,
             tier:                   "pro",
             status:                 "active",
+            interval:               session.metadata?.interval || null,
             granted_at:             new Date().toISOString(),
-            stripe_session_id:      session.id         || null,
-            stripe_customer_id:     session.customer   || null,
+            stripe_session_id:      session.id            || null,
+            stripe_customer_id:     session.customer       || null,
+            stripe_subscription_id: session.subscription   || null,
             stripe_payment_intent:  session.payment_intent || null,
           })
         );

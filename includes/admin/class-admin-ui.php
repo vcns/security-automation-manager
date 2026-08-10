@@ -721,10 +721,16 @@ class Admin_UI {
 			);
 		}
 
+		$interval = sanitize_text_field( wp_unslash( $_POST['interval'] ?? 'monthly' ) );
+		if ( ! in_array( $interval, array( 'monthly', 'annual' ), true ) ) {
+			$interval = 'monthly';
+		}
+
 		$session = $this->plugin->checkout->create_session(
 			'csp-automation-manager',
 			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=success' ),
-			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=cancelled' )
+			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=cancelled' ),
+			$interval
 		);
 
 		if ( is_wp_error( $session ) ) {
