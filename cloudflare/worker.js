@@ -38,8 +38,8 @@
  *
  * ── Stripe Webhook Registration ───────────────────────────────────────────────
  * Register two webhook endpoints in your Stripe dashboard:
- *   Test: https://config.csp-automation-manager.vcns.tech/webhook?mode=test
- *   Live: https://config.csp-automation-manager.vcns.tech/webhook?mode=live
+ *   Test: https://wp-sam.vcns.tech/webhook?mode=test
+ *   Live: https://wp-sam.vcns.tech/webhook?mode=live
  * Events: checkout.session.completed, checkout.session.async_payment_succeeded
  *
  * NOTE: checkout is subscription mode (recurring monthly/annual), but this

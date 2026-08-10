@@ -16,6 +16,8 @@ Security Automation Manager helps site owners roll out strict HTTP security head
 
 The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other four pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
 
+Every pillar and three of the four CSP automation modes are free. The exception is Fully Automatic mode (zero-review auto-apply of deterministic policy changes), which requires an active subscription: £1.99/month or £19.99/year.
+
 == External services ==
 
 This WordPress.org build does not contact third-party services for plugin updates, licensing, checkout, telemetry, or remote product configuration.

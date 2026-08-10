@@ -90,15 +90,15 @@ None of these four pillars have a report-only mode, a discovery workflow, or Dec
 
 ### Entitlement and payment runtime
 
-`includes/modules/*`
+`offline/modules/*` (`Config_Resolver`, `Checkout_Service`, `Webhook_Controller`, `Entitlement_Store`) -- gitignored, never bundled into a WordPress.org or GitHub-channel release ZIP. `Feature_Gate` (`includes/modules/class-feature-gate.php`) is the only always-shipped piece; it accepts these as optional dependencies and runs in a free-only posture when they're absent, which is the case for every distributed build today.
 
 Responsibilities:
 
-- fetch remote premium-product configuration
-- initiate account-management or checkout flows when configured
-- verify Stripe webhook signatures
-- store local entitlements
-- gate premium features (`strict_dynamic`, `trusted_types`, `multi_surface_scan`)
+- `Config_Resolver`: fetch and Ed25519-verify the signed remote product config from `https://wp-sam.vcns.tech/`, with transient caching and stale-cache fallback
+- `Checkout_Service`: start a Stripe Checkout session (subscription mode) via `https://wp-sam.vcns.tech/checkout` for the selected billing interval (monthly £1.99 / annual £19.99)
+- `Webhook_Controller`: verify Stripe webhook signatures and grant entitlements on `checkout.session.completed`
+- `Entitlement_Store`: read/write local entitlement rows, falling back to `https://wp-sam.vcns.tech/entitlement` when none exists locally
+- `Feature_Gate`: gates exactly one feature -- `fully_automatic` -- behind an active entitlement; everything else is free regardless of entitlement state
 - provide structured operational logging (append-only DB audit trail via `Audit_Log`)
 
 ### Admin runtime
