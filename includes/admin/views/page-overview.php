@@ -44,6 +44,18 @@ $simple_pillars = array(
 		'label' => __( 'Permissions-Policy', 'security-automation-manager' ),
 		'page'  => 'security-automation-manager-permissions-policy',
 	),
+	\WP_SAM\Security\Strict_Transport_Security_Builder::PILLAR_KEY => array(
+		'label' => __( 'Strict-Transport-Security', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-hsts',
+	),
+	\WP_SAM\Security\Reverse_Tabnabbing_Builder::PILLAR_KEY => array(
+		'label' => __( 'Reverse Tabnabbing Protection', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-reverse-tabnabbing',
+	),
+	\WP_SAM\Security\Dependency_Governance_Builder::PILLAR_KEY => array(
+		'label' => __( 'External Scripts', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-external-scripts',
+	),
 );
 ?>
 <div class="wrap wp-sam-wrap">
@@ -111,7 +123,7 @@ $simple_pillars = array(
 	</table>
 
 	<p style="margin-top: 1.5em;">
-		<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-policy-audit' ) ); ?>">
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=policy-audit' ) ); ?>">
 			<?php esc_html_e( 'Policy Audit', 'security-automation-manager' ); ?>
 		</a>
 		&nbsp;|&nbsp;

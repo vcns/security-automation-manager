@@ -80,6 +80,7 @@ class Activator {
 			'sam_policy_versions',
 			'sam_decision_rule_evaluations',
 			'sam_pillar_profiles',
+			'sam_dependency_inventory',
 		);
 	}
 
@@ -431,6 +432,33 @@ class Activator {
   updated_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY pillar_surface (pillar, surface)
+) {$cc};"
+		);
+
+		// 13. Passive inventory of third-party <script src> / <link rel=stylesheet>
+		// origins observed on real page loads (never a dedicated crawl or extra
+		// request). Only the origin (scheme+host) is ever stored -- no path, no
+		// query string. classification defaults to 'unclassified': a fresh
+		// discovery is neither trusted nor blocked until an administrator
+		// decides, matching this plugin's report-first philosophy everywhere
+		// else. expected_sri is admin-supplied only -- this plugin never
+		// fetches a remote resource to compute a hash itself.
+		dbDelta(
+			"CREATE TABLE {$p}sam_dependency_inventory (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  surface varchar(32) NOT NULL,
+  resource_type varchar(16) NOT NULL,
+  origin varchar(255) NOT NULL,
+  classification varchar(32) NOT NULL DEFAULT 'unclassified',
+  expected_sri varchar(128) DEFAULT NULL,
+  evidence_count bigint(20) UNSIGNED NOT NULL DEFAULT 1,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY surface_type_origin (surface, resource_type, origin),
+  KEY classification (classification)
 ) {$cc};"
 		);
 

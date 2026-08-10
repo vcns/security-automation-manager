@@ -4,17 +4,17 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Automates strict HTTP security header rollout -- Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy -- with violation reporting, source discovery, and policy-change review for WordPress.
+Automates strict HTTP security header rollout -- Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security -- plus Reverse Tabnabbing Protection and third-party script/stylesheet governance with Subresource Integrity, with violation reporting, source discovery, and policy-change review for WordPress.
 
 == Description ==
 
-Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy are simpler per-surface pillars alongside it.
+Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it. Reverse Tabnabbing Protection and External Scripts round it out as two further protections that rewrite the rendered page itself rather than emit a header.
 
-The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other four pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation.
+The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other five pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation. External Scripts follows the same report-first philosophy as CSP: a freshly discovered third-party origin is always unclassified, never blocked, until an administrator decides.
 
 == External services ==
 
@@ -40,6 +40,16 @@ Reports received by this plugin are validated and stored in this site's WordPres
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
 == Changelog ==
+
+= 2.1.0 =
+
+* Adds Strict-Transport-Security (HSTS) as a sixth pillar: per-surface Max-Age, Include Subdomains, and Preload. Only ever sent over HTTPS; Preload cannot be enabled until Max-Age and Include Subdomains already meet hstspreload.org's submission minimum.
+* Adds Reverse Tabnabbing Protection: per-surface, adds rel="noopener" to target="_blank" links missing noopener/noreferrer.
+* Adds External Scripts: passively inventories third-party script/stylesheet origins from real page loads, lets an administrator classify each one, and supports Subresource Integrity. Report mode (the default) never removes anything; a freshly discovered origin is always unclassified, never blocked by default.
+* Reworks the Violations and For Review filter panels to match Policy Changes' collapsible layout; Surface is now a single-select combobox and Directive is free-text search.
+* Moves Policy Audit from a standalone top-level admin page into a tab on the CSP dashboard.
+* Makes the Fully Automatic upgrade call-to-action more prominent on the CSP Settings tab.
+* Sets Fully Automatic subscription pricing at £1.99/month or £19.99/year with a recurring Stripe subscription and a billing-interval choice.
 
 = 2.0.0 =
 

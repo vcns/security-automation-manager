@@ -4,11 +4,13 @@
  * X-Frame-Options / X-Content-Type-Options / Referrer-Policy and others
  * to follow).
  *
- * Owns hook registration, the header_emitted/headers_sent() guard, the
- * internal conflict-probe suppression, and surface detection. Each pillar
- * subclass owns its own storage (load_profile()), its own "should this
- * surface get a header at all" rule (is_profile_active()), and the actual
- * header name/value construction (emit_profile_header()).
+ * Owns hook registration and the header_emitted/headers_sent() guard.
+ * Conflict-probe suppression and surface detection live one level up, in
+ * Request_Surface, shared with Content_Rewriter (body-rewriting components
+ * like reverse-tabnabbing and dependency governance). Each pillar subclass
+ * owns its own storage (load_profile()), its own "should this surface get a
+ * header at all" rule (is_profile_active()), and the actual header
+ * name/value construction (emit_profile_header()).
  */
 
 declare( strict_types=1 );
@@ -19,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-abstract class Header_Builder {
+abstract class Header_Builder extends Request_Surface {
 
 	protected bool $header_emitted = false;
 
@@ -80,53 +82,6 @@ abstract class Header_Builder {
 	 * later hook fire (send_headers, then wp_redirect) can retry.
 	 */
 	abstract protected function emit_profile_header( array $profile, string $surface ): bool;
-
-	// ── Conflict-probe suppression ───────────────────────────────────────────
-
-	/**
-	 * Conflict_Detector issues an internal request carrying this header to
-	 * see what security headers other plugins/web-server config are already
-	 * sending, without this plugin's own header masking the result.
-	 */
-	protected function is_conflict_probe_request(): bool {
-		return isset( $_SERVER['HTTP_X_WP_SAM_PROBE'] )
-			&& '1' === (string) $_SERVER['HTTP_X_WP_SAM_PROBE'];
-	}
-
-	// ── Surface detection ─────────────────────────────────────────────────────
-
-	protected function detect_surface(): string {
-		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-			return 'api';
-		}
-
-		if ( isset( $GLOBALS['pagenow'] ) && 'wp-login.php' === $GLOBALS['pagenow'] ) {
-			return 'login';
-		}
-
-		$request_path = $this->get_request_path();
-		if ( preg_match( '#(?:^|/)wp-admin(?:/|$)#', $request_path ) ) {
-			return 'admin';
-		}
-		if ( preg_match( '#(?:^|/)wp-login\.php$#', $request_path ) ) {
-			return 'login';
-		}
-
-		if ( is_admin() ) {
-			return 'admin';
-		}
-		return 'frontend';
-	}
-
-	protected function get_request_path(): string {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		if ( '' === $uri ) {
-			return '';
-		}
-
-		$path = wp_parse_url( $uri, PHP_URL_PATH );
-		return is_string( $path ) ? rtrim( $path, '/' ) : '';
-	}
 
 	// ── Custom header-name override ─────────────────────────────────────────
 

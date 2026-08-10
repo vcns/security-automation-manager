@@ -87,7 +87,10 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Security Automation Manager', $view );
 		$this->assertStringContainsString( 'Content Security Policy', $view );
 		$this->assertStringContainsString( 'security-automation-manager-dashboard', $view );
-		$this->assertStringContainsString( 'security-automation-manager-policy-audit', $view );
+		$this->assertStringContainsString( 'tab=policy-audit', $view );
+		$this->assertStringContainsString( 'security-automation-manager-hsts', $view );
+		$this->assertStringContainsString( 'security-automation-manager-reverse-tabnabbing', $view );
+		$this->assertStringContainsString( 'security-automation-manager-external-scripts', $view );
 		$this->assertStringContainsString( 'security-automation-manager-readiness', $view );
 	}
 
@@ -105,6 +108,10 @@ class AdminUITest extends TestCase {
 		$hooks = $method->invoke( $ui );
 
 		$this->assertContains( 'toplevel_page_security-automation-manager', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-hsts', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-reverse-tabnabbing', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-external-scripts', $hooks );
+		$this->assertNotContains( 'security-automation-manager_page_security-automation-manager-policy-audit', $hooks );
 		foreach ( $hooks as $hook ) {
 			if ( 'toplevel_page_security-automation-manager' === $hook ) {
 				continue;

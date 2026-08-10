@@ -54,6 +54,7 @@
           <ul>
             <li><a href='#start-here'>Start here</a></li>
             <li><a href='#pillars'>Pillars</a></li>
+            <li><a href='#content-rewrites'>Content rewrite protections</a></li>
             <li><a href='#how-it-works'>How it works</a></li>
             <li><a href='#learning-curve'>Learning curve</a></li>
             <li><a href='#rollout-plan'>Rollout plan</a></li>
@@ -88,8 +89,8 @@
 
       <section id='pillars' class='section'>
         <p class='section-label'>Pillars</p>
-        <h2>Five headers, one dashboard.</h2>
-        <p>Configuration, reporting, and the decision engine are shared plumbing. Content Security Policy is the most capable pillar built on top of it; the other four are simpler per-surface toggles with no learning curve of their own.</p>
+        <h2>Six headers, one dashboard.</h2>
+        <p>Configuration, reporting, and the decision engine are shared plumbing. Content Security Policy is the most capable pillar built on top of it; the other five are simpler per-surface toggles with no learning curve of their own.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>Content Security Policy</h3>
@@ -111,8 +112,12 @@
             <h3>Permissions-Policy</h3>
             <p>Per surface, per browser feature (camera, geolocation, and similar). Choose None, Self, or All for each one covered.</p>
           </article>
+          <article class='card'>
+            <h3>Strict-Transport-Security</h3>
+            <p>Per surface, choose a Max-Age, whether to include subdomains, and whether to opt into browser preload lists. Only ever sent over HTTPS requests.</p>
+          </article>
         </div>
-        <div class='diagram' aria-label='CSP workflow compared to the other four pillars'>
+        <div class='diagram' aria-label='CSP workflow compared to the other five pillars'>
           <div class='mermaid'>
 flowchart LR
     subgraph CSP["Content Security Policy"]
@@ -122,16 +127,33 @@ flowchart LR
         C3 --> C4["Promotion gate"]
         C4 --> C5["Enforce"]
     end
-    subgraph Simple["X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy"]
+    subgraph Simple["X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security"]
         direction TB
         S1["Admin picks a value"] --> S2["Header sent on the next request"]
     end
           </div>
         </div>
         <div class='callout'>
-          <h3>Why these four are simpler than CSP</h3>
-          <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself.</p>
+          <h3>Why these five are simpler than CSP</h3>
+          <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself. Strict-Transport-Security is the one exception worth a second look: browsers cache its Max-Age, so a change doesn't undo itself the moment you revert the setting -- see the user guide for details.</p>
         </div>
+      </section>
+
+      <section id='content-rewrites' class='section'>
+        <p class='section-label'>Content rewrite protections</p>
+        <h2>Two more, beyond the headers.</h2>
+        <p>Reverse Tabnabbing and External Scripts aren't header pillars -- they rewrite the rendered page itself, both free, both fail-open on any uncertainty.</p>
+        <div class='card-grid'>
+          <article class='card'>
+            <h3>Reverse Tabnabbing</h3>
+            <p>Adds <code>rel="noopener"</code> to <code>target="_blank"</code> links missing it, closing a <code>window.opener</code> phishing gap. Purely additive -- never breaks a link.</p>
+          </article>
+          <article class='card'>
+            <h3>External Scripts</h3>
+            <p>Inventories third-party script/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity -- report-only by default, matching CSP's own philosophy.</p>
+          </article>
+        </div>
+        <p class='section-note'>Full details, including why SRI hashes are never fetched or fabricated, are in the <a href='user-guide.html#content-rewrites'>user guide</a>.</p>
       </section>
 
       <section id='how-it-works' class='section'>
@@ -163,7 +185,7 @@ flowchart LR
             <p>The promotion gate blocks enforce mode until the surface has approved inventory and no recent violation activity inside the configured window.</p>
           </article>
         </div>
-        <p class='section-note'>Steps 3 to 6 are CSP-specific. The other four pillars only do step 1 (initialise) and step 2 (emit) -- there's no evidence, approval, or promotion step for them.</p>
+        <p class='section-note'>Steps 3 to 6 are CSP-specific. The other five pillars only do step 1 (initialise) and step 2 (emit) -- there's no evidence, approval, or promotion step for them.</p>
       </section>
 
       <section id='learning-curve' class='section'>
