@@ -251,12 +251,12 @@
 		postPermissionsPolicyChange( $( this ) );
 	} );
 
-	$( document ).on( 'click', '#wp-sam-upgrade-button', function () {
-		const $button   = $( this );
-		const $status   = $( '#wp-sam-upgrade-status' );
-		const interval  = $( '#wp-sam-upgrade-interval' ).val() || 'monthly';
+	$( document ).on( 'click', '.wp-sam-upgrade-button', function () {
+		const $button  = $( this );
+		const $status  = $( '#wp-sam-upgrade-status' );
+		const interval = $button.data( 'interval' ) || 'monthly';
 
-		$button.prop( 'disabled', true );
+		$( '.wp-sam-upgrade-button' ).prop( 'disabled', true );
 		$status.text( wpSamAdmin.i18n.upgradeStarting || 'Starting checkout…' );
 
 		$.post( wpSamAdmin.ajaxUrl, {
@@ -270,11 +270,11 @@
 				return;
 			}
 			$status.text( ( res.data && res.data.message ) || 'Unable to start checkout.' );
-			$button.prop( 'disabled', false );
+			$( '.wp-sam-upgrade-button' ).prop( 'disabled', false );
 		} )
 		.fail( function () {
 			$status.text( 'Unable to start checkout.' );
-			$button.prop( 'disabled', false );
+			$( '.wp-sam-upgrade-button' ).prop( 'disabled', false );
 		} );
 	} );
 } )( jQuery );

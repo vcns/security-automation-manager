@@ -105,6 +105,18 @@ final class Table_Query {
 		);
 	}
 
+	public static function equals_where( string $column, string $raw_value ): ?array {
+		$value = trim( $raw_value );
+		if ( '' === $value ) {
+			return null;
+		}
+
+		return array(
+			'sql'  => "{$column} = %s",
+			'args' => array( $value ),
+		);
+	}
+
 	public static function like_where( \wpdb $wpdb, string $column, string $raw_term ): ?array {
 		$term = trim( $raw_term );
 		if ( '' === $term ) {
@@ -128,21 +140,26 @@ final class Table_Query {
 		);
 	}
 
-	/** Validates Y-m-d inputs; returns a combined fragment for whichever bound(s) are present. */
+	/**
+	 * Validates Y-m-d or datetime-local (Y-m-dTH:i) inputs; returns a combined
+	 * fragment for whichever bound(s) are present. A bare date defaults to the
+	 * start/end of that day, matching the previous date-only behaviour; a
+	 * datetime-local value is used at minute precision as given.
+	 */
 	public static function date_range_where( string $column, string $raw_from, string $raw_to ): ?array {
 		$fragments = array();
 		$args      = array();
 
-		$from = self::normalise_date( $raw_from );
+		$from = self::normalise_datetime( $raw_from, '00:00:00' );
 		if ( null !== $from ) {
 			$fragments[] = "{$column} >= %s";
-			$args[]      = $from . ' 00:00:00';
+			$args[]      = $from;
 		}
 
-		$to = self::normalise_date( $raw_to );
+		$to = self::normalise_datetime( $raw_to, '23:59:59' );
 		if ( null !== $to ) {
 			$fragments[] = "{$column} <= %s";
-			$args[]      = $to . ' 23:59:59';
+			$args[]      = $to;
 		}
 
 		if ( empty( $fragments ) ) {
@@ -155,13 +172,26 @@ final class Table_Query {
 		);
 	}
 
-	private static function normalise_date( string $raw ): ?string {
+	/**
+	 * Accepts `Y-m-d` (defaults to $default_time) or the native `datetime-local`
+	 * format `Y-m-d\TH:i` (defaults seconds to :00). Returns a MySQL
+	 * `Y-m-d H:i:s` string, or null when $raw doesn't match either shape.
+	 */
+	private static function normalise_datetime( string $raw, string $default_time ): ?string {
 		$raw = trim( $raw );
-		if ( '' === $raw || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw ) ) {
+		if ( '' === $raw ) {
 			return null;
 		}
 
-		return $raw;
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2})$/', $raw, $m ) ) {
+			return $m[1] . ' ' . $default_time;
+		}
+
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(:\d{2})?$/', $raw, $m ) ) {
+			return $m[1] . ' ' . $m[2] . ( $m[3] ?? ':00' );
+		}
+
+		return null;
 	}
 
 	// ── Rendering ────────────────────────────────────────────────────────────────

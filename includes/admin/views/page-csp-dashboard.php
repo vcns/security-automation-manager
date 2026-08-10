@@ -16,7 +16,7 @@ global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'start-here';
-$allowed_tabs = array( 'start-here', 'profiles', 'sources', 'policy-changes', 'violations', 'scan-log', 'settings' );
+$allowed_tabs = array( 'start-here', 'profiles', 'violations', 'sources', 'policy-changes', 'scan-log', 'settings' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'start-here';
 }
@@ -31,6 +31,10 @@ $tab_help = array(
 		'label'       => __( 'Profiles', 'security-automation-manager' ),
 		'description' => __( 'Configure the CSP mode for each site surface. Use report-only while learning, enforce only after the surface is stable, or disabled when this plugin should not emit CSP for that surface.', 'security-automation-manager' ),
 	),
+	'violations'     => array(
+		'label'       => __( 'Violations', 'security-automation-manager' ),
+		'description' => __( 'Review browser-submitted CSP reports. Use these reports to identify required sources before promoting a surface from report-only to enforce mode.', 'security-automation-manager' ),
+	),
 	'sources'        => array(
 		'label'       => __( 'For Review', 'security-automation-manager' ),
 		'description' => __( 'Review discovered source candidates and decide whether each source belongs in the policy. Discovery adds review items; approvals, rejections, reversions, and undo actions require a reason and are written to the decision ledger.', 'security-automation-manager' ),
@@ -38,10 +42,6 @@ $tab_help = array(
 	'policy-changes' => array(
 		'label'       => __( 'Policy Changes', 'security-automation-manager' ),
 		'description' => __( 'Inspect policy activity across discovered proposals, administrator or automation decisions, and immutable policy snapshots.', 'security-automation-manager' ),
-	),
-	'violations'     => array(
-		'label'       => __( 'Violations', 'security-automation-manager' ),
-		'description' => __( 'Review browser-submitted CSP reports. Use these reports to identify required sources before promoting a surface from report-only to enforce mode.', 'security-automation-manager' ),
 	),
 	'scan-log'       => array(
 		'label'       => __( 'Scan Log', 'security-automation-manager' ),
@@ -214,6 +214,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					</option>
 					<?php endforeach; ?>
 				</select>
+				<?php if ( ! $wp_sam_is_pro ) : ?>
+				<br /><a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-upgrade' ) ); ?>" style="font-size:0.85em;"><?php esc_html_e( 'Upgrade to unlock →', 'security-automation-manager' ); ?></a>
+				<?php endif; ?>
 			</td>
 			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>
 			<td>
@@ -239,28 +242,24 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 	<?php elseif ( 'sources' === $tab ) : ?>
 	<!-- ── Sources tab ────────────────────────────────────────────────────── -->
 		<?php
-		$src_surface      = Table_Query::multi_param( 'src_surface' );
+		$src_surface      = Table_Query::text_param( 'src_surface' );
 		$src_state        = Table_Query::multi_param( 'src_state' );
 		$src_risk         = Table_Query::multi_param( 'src_risk' );
-		$src_directive    = Table_Query::multi_param( 'src_directive' );
+		$src_directive    = Table_Query::text_param( 'src_directive' );
 		$src_host         = Table_Query::text_param( 'src_host' );
 		$src_evidence_min = Table_Query::int_param( 'src_evidence_min' );
 		$src_seen_from    = Table_Query::text_param( 'src_seen_from' );
 		$src_seen_to      = Table_Query::text_param( 'src_seen_to' );
 		$src_id           = Table_Query::int_param( 'src_id' );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- No user input; only $wpdb->prefix used in query.
-		$src_directive_options = $wpdb->get_col( "SELECT DISTINCT directive FROM {$wpdb->prefix}csp_source_inventory ORDER BY directive" );
-		$src_directive_options = ! empty( $src_directive_options ) ? $src_directive_options : array();
-
 		$src_where = array( '1=1' );
 		$src_args  = array();
 		foreach (
 			array(
-				Table_Query::multi_select_where( 'surface', $src_surface ),
+				Table_Query::equals_where( 'surface', $src_surface ),
 				Table_Query::multi_select_where( 'approval_state', $src_state ),
 				Table_Query::multi_select_where( 'risk_level', $src_risk ),
-				Table_Query::multi_select_where( 'directive', $src_directive ),
+				Table_Query::like_where( $wpdb, 'directive', $src_directive ),
 				Table_Query::like_where( $wpdb, 'source_host', $src_host ),
 				Table_Query::numeric_gte_where( 'evidence_count', $src_evidence_min ),
 				Table_Query::date_range_where( 'last_seen_at', $src_seen_from, $src_seen_to ),
@@ -357,63 +356,63 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$sources_raw = $wpdb->get_results( $data_sql, ARRAY_A );
 		$sources     = ! empty( $sources_raw ) ? $sources_raw : array();
 		?>
-	<form method="get" action="" class="wp-sam-filter-form">
-		<input type="hidden" name="page" value="security-automation-manager-dashboard" />
-		<input type="hidden" name="tab"  value="sources" />
-		<label>
-			<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
-			<select name="src_surface[]" multiple size="4">
-				<?php foreach ( $surfaces as $s ) : ?>
-				<option value="<?php echo esc_attr( $s ); ?>" <?php echo in_array( $s, $src_surface, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'State', 'security-automation-manager' ); ?>
-			<select name="src_state[]" multiple size="3">
-				<?php foreach ( array( 'pending', 'approved', 'denied' ) as $st ) : ?>
-				<option value="<?php echo esc_attr( $st ); ?>" <?php echo in_array( $st, $src_state, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $st ) ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'Risk', 'security-automation-manager' ); ?>
-			<select name="src_risk[]" multiple size="3">
-				<?php foreach ( array( 'high', 'medium', 'low' ) as $risk ) : ?>
-				<option value="<?php echo esc_attr( $risk ); ?>" <?php echo in_array( $risk, $src_risk, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $risk ) ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'Directive', 'security-automation-manager' ); ?>
-			<select name="src_directive[]" multiple size="4">
-				<?php foreach ( $src_directive_options as $d ) : ?>
-				<option value="<?php echo esc_attr( $d ); ?>" <?php echo in_array( $d, $src_directive, true ) ? 'selected' : ''; ?>><?php echo esc_html( $d ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'Host contains', 'security-automation-manager' ); ?>
-			<input type="text" name="src_host" value="<?php echo esc_attr( $src_host ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'ID', 'security-automation-manager' ); ?>
-			<input type="number" min="1" name="src_id" style="width:80px" value="<?php echo esc_attr( null !== $src_id ? (string) $src_id : '' ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'Evidence at least', 'security-automation-manager' ); ?>
-			<input type="number" min="0" name="src_evidence_min" style="width:80px" value="<?php echo esc_attr( null !== $src_evidence_min ? (string) $src_evidence_min : '' ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'Last seen from', 'security-automation-manager' ); ?>
-			<input type="date" name="src_seen_from" value="<?php echo esc_attr( $src_seen_from ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'to', 'security-automation-manager' ); ?>
-			<input type="date" name="src_seen_to" value="<?php echo esc_attr( $src_seen_to ); ?>" />
-		</label>
-		<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_sources', false ); ?>
-	</form>
+	<details class="wp-sam-filter-form">
+		<summary><?php esc_html_e( 'Filters', 'security-automation-manager' ); ?></summary>
+		<form method="get" action="">
+			<input type="hidden" name="page" value="security-automation-manager-dashboard" />
+			<input type="hidden" name="tab"  value="sources" />
+			<label>
+				<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
+				<select name="src_surface">
+					<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
+					<?php foreach ( $surfaces as $s ) : ?>
+					<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $src_surface, $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<?php esc_html_e( 'State', 'security-automation-manager' ); ?>
+				<select name="src_state[]" multiple size="3">
+					<?php foreach ( array( 'pending', 'approved', 'denied' ) as $st ) : ?>
+					<option value="<?php echo esc_attr( $st ); ?>" <?php echo in_array( $st, $src_state, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $st ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<?php esc_html_e( 'Risk', 'security-automation-manager' ); ?>
+				<select name="src_risk[]" multiple size="3">
+					<?php foreach ( array( 'high', 'medium', 'low' ) as $risk ) : ?>
+					<option value="<?php echo esc_attr( $risk ); ?>" <?php echo in_array( $risk, $src_risk, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $risk ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<?php esc_html_e( 'Directive', 'security-automation-manager' ); ?>
+				<input type="text" name="src_directive" placeholder="<?php esc_attr_e( 'e.g. script-src', 'security-automation-manager' ); ?>" value="<?php echo esc_attr( $src_directive ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Host contains', 'security-automation-manager' ); ?>
+				<input type="text" name="src_host" value="<?php echo esc_attr( $src_host ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'ID', 'security-automation-manager' ); ?>
+				<input type="number" min="1" name="src_id" style="width:80px" value="<?php echo esc_attr( null !== $src_id ? (string) $src_id : '' ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Evidence at least', 'security-automation-manager' ); ?>
+				<input type="number" min="0" name="src_evidence_min" style="width:80px" value="<?php echo esc_attr( null !== $src_evidence_min ? (string) $src_evidence_min : '' ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Last seen from', 'security-automation-manager' ); ?>
+				<input type="datetime-local" name="src_seen_from" value="<?php echo esc_attr( $src_seen_from ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'to', 'security-automation-manager' ); ?>
+				<input type="datetime-local" name="src_seen_to" value="<?php echo esc_attr( $src_seen_to ); ?>" />
+			</label>
+			<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_sources', false ); ?>
+		</form>
+	</details>
 
 	<table class="widefat fixed striped" style="margin-top:1em">
 		<thead>
@@ -802,25 +801,19 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			$report_endpoint_url = rest_url( 'security-manager/v1/report' );
 		}
 
-		$v_surface     = Table_Query::multi_param( 'v_surface' );
-		$v_directive   = Table_Query::multi_param( 'v_directive' );
-		$v_disposition = Table_Query::multi_param( 'v_disposition' );
-		$v_blocked     = Table_Query::text_param( 'v_blocked' );
-		$v_occ_min     = Table_Query::int_param( 'v_occ_min' );
-		$v_seen_from   = Table_Query::text_param( 'v_seen_from' );
-		$v_seen_to     = Table_Query::text_param( 'v_seen_to' );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- No user input; only $wpdb->prefix used in query.
-		$v_directive_options = $wpdb->get_col( "SELECT DISTINCT violated_directive FROM {$wpdb->prefix}csp_violation_reports ORDER BY violated_directive" );
-		$v_directive_options = ! empty( $v_directive_options ) ? $v_directive_options : array();
+		$v_surface   = Table_Query::text_param( 'v_surface' );
+		$v_directive = Table_Query::text_param( 'v_directive' );
+		$v_blocked   = Table_Query::text_param( 'v_blocked' );
+		$v_occ_min   = Table_Query::int_param( 'v_occ_min' );
+		$v_seen_from = Table_Query::text_param( 'v_seen_from' );
+		$v_seen_to   = Table_Query::text_param( 'v_seen_to' );
 
 		$viol_where = array( '1=1' );
 		$viol_args  = array();
 		foreach (
 			array(
-				Table_Query::multi_select_where( 'profile_surface', $v_surface ),
-				Table_Query::multi_select_where( 'violated_directive', $v_directive ),
-				Table_Query::multi_select_where( 'disposition', $v_disposition ),
+				Table_Query::equals_where( 'profile_surface', $v_surface ),
+				Table_Query::like_where( $wpdb, 'violated_directive', $v_directive ),
 				Table_Query::like_where( $wpdb, 'blocked_uri', $v_blocked ),
 				Table_Query::numeric_gte_where( 'occurrence_count', $v_occ_min ),
 				Table_Query::date_range_where( 'reported_at', $v_seen_from, $v_seen_to ),
@@ -869,16 +862,15 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 
 		$viol_state_args = array_filter(
 			array(
-				'tab'           => 'violations',
-				'sort'          => $viol_sort['key'],
-				'dir'           => strtolower( $viol_sort['dir'] ),
-				'v_surface'     => $v_surface,
-				'v_directive'   => $v_directive,
-				'v_disposition' => $v_disposition,
-				'v_blocked'     => $v_blocked,
-				'v_occ_min'     => $v_occ_min,
-				'v_seen_from'   => $v_seen_from,
-				'v_seen_to'     => $v_seen_to,
+				'tab'         => 'violations',
+				'sort'        => $viol_sort['key'],
+				'dir'         => strtolower( $viol_sort['dir'] ),
+				'v_surface'   => $v_surface,
+				'v_directive' => $v_directive,
+				'v_blocked'   => $v_blocked,
+				'v_occ_min'   => $v_occ_min,
+				'v_seen_from' => $v_seen_from,
+				'v_seen_to'   => $v_seen_to,
 			)
 		);
 
@@ -902,51 +894,43 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$violations_raw = $wpdb->get_results( $viol_data_sql, ARRAY_A );
 		$violations     = ! empty( $violations_raw ) ? $violations_raw : array();
 		?>
-	<form method="get" action="" class="wp-sam-filter-form">
-		<input type="hidden" name="page" value="security-automation-manager-dashboard" />
-		<input type="hidden" name="tab" value="violations" />
-		<label>
-			<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
-			<select name="v_surface[]" multiple size="4">
-				<?php foreach ( $surfaces as $s ) : ?>
-				<option value="<?php echo esc_attr( $s ); ?>" <?php echo in_array( $s, $v_surface, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'Directive', 'security-automation-manager' ); ?>
-			<select name="v_directive[]" multiple size="4">
-				<?php foreach ( $v_directive_options as $d ) : ?>
-				<option value="<?php echo esc_attr( $d ); ?>" <?php echo in_array( $d, $v_directive, true ) ? 'selected' : ''; ?>><?php echo esc_html( $d ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'Disposition', 'security-automation-manager' ); ?>
-			<select name="v_disposition[]" multiple size="2">
-				<?php foreach ( array( 'report', 'enforce' ) as $d ) : ?>
-				<option value="<?php echo esc_attr( $d ); ?>" <?php echo in_array( $d, $v_disposition, true ) ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $d ) ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</label>
-		<label>
-			<?php esc_html_e( 'Blocked URI contains', 'security-automation-manager' ); ?>
-			<input type="text" name="v_blocked" value="<?php echo esc_attr( $v_blocked ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'Occurrences at least', 'security-automation-manager' ); ?>
-			<input type="number" min="0" name="v_occ_min" style="width:80px" value="<?php echo esc_attr( null !== $v_occ_min ? (string) $v_occ_min : '' ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'Last seen from', 'security-automation-manager' ); ?>
-			<input type="date" name="v_seen_from" value="<?php echo esc_attr( $v_seen_from ); ?>" />
-		</label>
-		<label>
-			<?php esc_html_e( 'to', 'security-automation-manager' ); ?>
-			<input type="date" name="v_seen_to" value="<?php echo esc_attr( $v_seen_to ); ?>" />
-		</label>
-		<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_violations', false ); ?>
-	</form>
+	<details class="wp-sam-filter-form">
+		<summary><?php esc_html_e( 'Filters', 'security-automation-manager' ); ?></summary>
+		<form method="get" action="">
+			<input type="hidden" name="page" value="security-automation-manager-dashboard" />
+			<input type="hidden" name="tab" value="violations" />
+			<label>
+				<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
+				<select name="v_surface">
+					<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
+					<?php foreach ( $surfaces as $s ) : ?>
+					<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $v_surface, $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<?php esc_html_e( 'Directive', 'security-automation-manager' ); ?>
+				<input type="text" name="v_directive" placeholder="<?php esc_attr_e( 'e.g. script-src', 'security-automation-manager' ); ?>" value="<?php echo esc_attr( $v_directive ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Blocked URI contains', 'security-automation-manager' ); ?>
+				<input type="text" name="v_blocked" value="<?php echo esc_attr( $v_blocked ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Occurrences at least', 'security-automation-manager' ); ?>
+				<input type="number" min="0" name="v_occ_min" style="width:80px" value="<?php echo esc_attr( null !== $v_occ_min ? (string) $v_occ_min : '' ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Last seen from', 'security-automation-manager' ); ?>
+				<input type="datetime-local" name="v_seen_from" value="<?php echo esc_attr( $v_seen_from ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'to', 'security-automation-manager' ); ?>
+				<input type="datetime-local" name="v_seen_to" value="<?php echo esc_attr( $v_seen_to ); ?>" />
+			</label>
+			<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_violations', false ); ?>
+		</form>
+	</details>
 	<table class="widefat fixed striped" style="margin-top:1em">
 		<thead>
 			<tr>
@@ -1127,18 +1111,27 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<?php esc_html_e( 'Configure how far the deterministic engine may go without administrator approval. Manual mode remains the default; hard-excluded, critical, unknown, and insufficient-evidence proposals always require review.', 'security-automation-manager' ); ?>
 		</p>
 		<?php if ( ! $wp_sam_is_pro ) : ?>
-		<p class="description">
-			<?php esc_html_e( 'Fully Automatic mode (zero-review auto-apply) requires a paid subscription: £1.99/month or £19.99/year.', 'security-automation-manager' ); ?>
+		<div id="wp-sam-upgrade" class="notice notice-info inline" style="padding:16px 20px;margin:1em 0;">
+			<h3 style="margin-top:0;"><?php esc_html_e( 'Unlock Fully Automatic', 'security-automation-manager' ); ?></h3>
+			<p><?php esc_html_e( 'Fully Automatic auto-applies low, medium, and high-risk proposals within the hard safety exclusions the deterministic engine already enforces -- zero manual review. Every other automation mode, and every other pillar, stays free.', 'security-automation-manager' ); ?></p>
 			<?php if ( null !== $this->plugin->checkout ) : ?>
-			<label for="wp-sam-upgrade-interval" class="screen-reader-text"><?php esc_html_e( 'Billing interval', 'security-automation-manager' ); ?></label>
-			<select id="wp-sam-upgrade-interval">
-				<option value="monthly"><?php esc_html_e( 'Monthly — £1.99/mo', 'security-automation-manager' ); ?></option>
-				<option value="annual"><?php esc_html_e( 'Annual — £19.99/yr', 'security-automation-manager' ); ?></option>
-			</select>
-			<button type="button" class="button button-secondary" id="wp-sam-upgrade-button"><?php esc_html_e( 'Upgrade', 'security-automation-manager' ); ?></button>
-			<span id="wp-sam-upgrade-status" role="status"></span>
+			<div class="wp-sam-product-cards">
+				<div class="wp-sam-product-card">
+					<h3><?php esc_html_e( 'Monthly', 'security-automation-manager' ); ?></h3>
+					<p class="wp-sam-price">&pound;1.99<span style="font-size:0.4em;font-weight:normal;">/mo</span></p>
+					<button type="button" class="button button-primary wp-sam-upgrade-button" data-interval="monthly"><?php esc_html_e( 'Subscribe monthly', 'security-automation-manager' ); ?></button>
+				</div>
+				<div class="wp-sam-product-card">
+					<h3><?php esc_html_e( 'Annual', 'security-automation-manager' ); ?></h3>
+					<p class="wp-sam-price">&pound;19.99<span style="font-size:0.4em;font-weight:normal;">/yr</span></p>
+					<button type="button" class="button button-primary wp-sam-upgrade-button" data-interval="annual"><?php esc_html_e( 'Subscribe annually', 'security-automation-manager' ); ?></button>
+				</div>
+			</div>
+			<p><span id="wp-sam-upgrade-status" role="status"></span></p>
+			<?php else : ?>
+			<p class="description"><?php esc_html_e( 'Upgrading is not available in this build of the plugin.', 'security-automation-manager' ); ?></p>
 			<?php endif; ?>
-		</p>
+		</div>
 		<?php endif; ?>
 		<table class="widefat striped" role="presentation">
 			<thead>
