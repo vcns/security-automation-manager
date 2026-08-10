@@ -29,12 +29,16 @@
  *   id      = "<your-namespace-id>"
  *
  * Store the recurring Stripe Price IDs (created in the Stripe dashboard as
- * Products with a recurring monthly/annual Price each) under these KV keys:
+ * a single Product with a recurring monthly/annual Price each) under these
+ * KV keys, plus that Product's own ID so the webhook can verify a completed
+ * session actually paid for the expected product, not just trust metadata:
  *
  *   STRIPE_TEST_PRICE_ID_MONTHLY   price_...
  *   STRIPE_TEST_PRICE_ID_ANNUAL    price_...
+ *   STRIPE_TEST_PRODUCT_ID         prod_...
  *   STRIPE_LIVE_PRICE_ID_MONTHLY   price_...
  *   STRIPE_LIVE_PRICE_ID_ANNUAL    price_...
+ *   STRIPE_LIVE_PRODUCT_ID         prod_...
  *
  * ── Stripe Webhook Registration ───────────────────────────────────────────────
  * Register two webhook endpoints in your Stripe dashboard:
@@ -143,6 +147,18 @@ async function stripePost(path, params, secretKey) {
   return { status: res.status, data: await res.json() };
 }
 
+async function stripeGet(path, params, secretKey) {
+  const qs  = new URLSearchParams(params).toString();
+  const res = await fetch(`https://api.stripe.com/v1${path}${qs ? `?${qs}` : ""}`, {
+    method: "GET",
+    headers: {
+      "Authorization":  `Bearer ${secretKey}`,
+      "Stripe-Version": "2024-06-20",
+    },
+  });
+  return { status: res.status, data: await res.json() };
+}
+
 // ── Route: GET / ──────────────────────────────────────────────────────────────
 
 function handleConfig() {
@@ -246,20 +262,43 @@ async function handleWebhook(request, env) {
       const productKey   = session.metadata?.product_key;
 
       if (siteIdentity && productKey && env.ENTITLEMENTS) {
-        await env.ENTITLEMENTS.put(
-          `entitlement:${siteIdentity}`,
-          JSON.stringify({
-            product_key:            productKey,
-            tier:                   "pro",
-            status:                 "active",
-            interval:               session.metadata?.interval || null,
-            granted_at:             new Date().toISOString(),
-            stripe_session_id:      session.id            || null,
-            stripe_customer_id:     session.customer       || null,
-            stripe_subscription_id: session.subscription   || null,
-            stripe_payment_intent:  session.payment_intent || null,
-          })
+        // Metadata is set by our own /checkout handler, but the session
+        // itself is the only thing Stripe actually attests to -- confirm
+        // what was paid for by asking Stripe directly, rather than trusting
+        // metadata alone. A mismatch here means the price used for this
+        // session doesn't belong to the product we expect (misconfigured
+        // KV, or a price left over from a different product), and the
+        // entitlement is not granted.
+        const secretKey        = mode === "live" ? env.STRIPE_LIVE_SECRET_KEY : env.STRIPE_TEST_SECRET_KEY;
+        const expectedProductId = await env.ENTITLEMENTS.get(mode === "live" ? "STRIPE_LIVE_PRODUCT_ID" : "STRIPE_TEST_PRODUCT_ID");
+
+        const { status: liStatus, data: lineItems } = await stripeGet(
+          `/checkout/sessions/${session.id}/line_items`,
+          { "expand[]": "data.price.product" },
+          secretKey
         );
+
+        const actualProductId = liStatus === 200
+          ? lineItems?.data?.[0]?.price?.product?.id || lineItems?.data?.[0]?.price?.product || null
+          : null;
+
+        if (expectedProductId && actualProductId === expectedProductId) {
+          await env.ENTITLEMENTS.put(
+            `entitlement:${siteIdentity}`,
+            JSON.stringify({
+              product_key:            productKey,
+              tier:                   "pro",
+              status:                 "active",
+              interval:               session.metadata?.interval || null,
+              granted_at:             new Date().toISOString(),
+              stripe_session_id:      session.id            || null,
+              stripe_customer_id:     session.customer       || null,
+              stripe_subscription_id: session.subscription   || null,
+              stripe_payment_intent:  session.payment_intent || null,
+              stripe_product_id:      actualProductId,
+            })
+          );
+        }
       }
     }
   }
