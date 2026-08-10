@@ -16,7 +16,7 @@
       <div class='hero-copy'>
         <p class='eyebrow'>FAQ</p>
         <h1>Questions before rolling out security headers on a live WordPress site.</h1>
-        <p class='lede'>These answers are written for administrators who need practical guidance across all five pillars, not CSP theory alone.</p>
+        <p class='lede'>These answers are written for administrators who need practical guidance across all six pillars, not CSP theory alone.</p>
         <div class='hero-actions'>
           <a class='button primary' href='index.html'>Back to help home</a>
           <a class='button secondary' href='user-guide.html'>Read the user guide</a>
@@ -58,6 +58,7 @@
           <h3>Other pillars</h3>
           <ul>
             <li><a href='#other-pillars'>Other pillars</a></li>
+            <li><a href='#content-rewrites'>Content rewrite protections</a></li>
           </ul>
         </div>
         <div class='sidebar-group'>
@@ -78,7 +79,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What does Security Automation Manager do?</h3>
-            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below.</p>
+            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below. Reverse Tabnabbing and External Scripts round it out as two further protections that rewrite the page itself rather than emit a header; see <a href='#content-rewrites'>Content rewrite protections</a>.</p>
           </article>
           <article class='faq-item'>
             <h3>Who is it for?</h3>
@@ -214,19 +215,19 @@
 
       <section id='other-pillars' class='section'>
         <p class='section-label'>Other pillars</p>
-        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.</h2>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security.</h2>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What other headers does the plugin manage besides CSP?</h3>
-            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy. Each is configured per surface (frontend, admin, login, API) from its own page under the Security Automation Manager top-level menu.</p>
+            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security. Each is configured per surface (frontend, admin, login, API) from its own page under the Security Automation Manager top-level menu.</p>
           </article>
           <article class='faq-item'>
-            <h3>Do these four pillars have a report-only mode like CSP?</h3>
+            <h3>Do these five pillars have a report-only mode like CSP?</h3>
             <p>No. None of them do. Each header is either sent exactly as configured, or not sent at all -- there's no intermediate learning state to roll through.</p>
           </article>
           <article class='faq-item'>
             <h3>Why don't they have a discovery workflow or automation like CSP does?</h3>
-            <p>They're single-value or small-allowlist headers with nothing to discover: there's no equivalent of "external sources this page happens to load." CSP's discovery, risk-scoring, and approval workflow exist because a CSP policy has to enumerate every legitimate external host; these four pillars don't.</p>
+            <p>They're single-value or small-allowlist headers with nothing to discover: there's no equivalent of "external sources this page happens to load." CSP's discovery, risk-scoring, and approval workflow exist because a CSP policy has to enumerate every legitimate external host; these five pillars don't.</p>
           </article>
           <article class='faq-item'>
             <h3>Does X-Frame-Options duplicate CSP's frame-ancestors directive?</h3>
@@ -237,8 +238,43 @@
             <p>The plugin ships a starter set of seven commonly-restricted features (geolocation, camera, microphone, fullscreen, payment, usb, autoplay) rather than the full W3C registry, and offers None, Self, or All rather than free-text origin lists -- deliberately narrower in scope than CSP's source model.</p>
           </article>
           <article class='faq-item'>
+            <h3>Is Strict-Transport-Security as safe to toggle as the other pillars?</h3>
+            <p>Not quite -- it's the one exception. Browsers cache the Max-Age you send and keep refusing plain-HTTP connections for that long even after you lower or remove the setting, and there's no report-only mode to rehearse a rollout with first. Start with a short Max-Age, confirm every surface and subdomain genuinely works over HTTPS, then increase it. Preload is even less reversible: once a domain is on browsers' built-in preload lists, removal can take months, so this plugin won't let you enable it until Max-Age and Include Subdomains already meet hstspreload.org's submission minimum.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Why doesn't Strict-Transport-Security do anything on my staging site?</h3>
+            <p>This header is only ever sent over an HTTPS request. If a surface is still served over plain HTTP, enabling HSTS for it has no effect -- sending the header over HTTP would be meaningless to browsers and would misrepresent the site as HTTPS-only before it actually is.</p>
+          </article>
+          <article class='faq-item'>
             <h3>I changed a value and nothing seems different. What now?</h3>
             <p>Check you changed the correct surface -- frontend, admin, login, and API are configured independently, the same as CSP. Then confirm with your browser's network inspector that the header is present on a fresh request; some caching layers can serve a stale response with the old header until the cache clears.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id='content-rewrites' class='section'>
+        <p class='section-label'>Content rewrite protections</p>
+        <h2>Reverse Tabnabbing and External Scripts.</h2>
+        <div class='faq-list'>
+          <article class='faq-item'>
+            <h3>How are these different from the header pillars?</h3>
+            <p>They rewrite the rendered HTML response instead of adding a header. Both are free, both only act on a successful, non-streamed HTML page response (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests), and both fail open -- any parsing uncertainty leaves the page completely untouched.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Can Reverse Tabnabbing break a link?</h3>
+            <p>No. It only ever adds <code>rel="noopener"</code> to a <code>target="_blank"</code> link that doesn't already have <code>noopener</code> or <code>noreferrer</code> -- every other attribute, and any other <code>rel</code> tokens, are left exactly as they were.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Will enabling External Scripts break my analytics or embeds?</h3>
+            <p>Not by default. A newly discovered script or stylesheet origin is always classified Unclassified, never Blocked -- and Report mode, the default, never removes anything at all, it only builds the inventory. Even Enforce mode only ever removes an origin you explicitly marked Blocked, or an Approved-immutable origin whose SRI hash no longer matches.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does this plugin generate Subresource Integrity hashes for me?</h3>
+            <p>No, and deliberately so. Computing a hash by fetching the remote URL would defeat the point of SRI -- if the origin were compromised, the plugin would just hash and trust the tampered file. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What's stored in the External Scripts inventory?</h3>
+            <p>Only the origin -- scheme and host, e.g. <code>https://cdn.example.com</code> -- never a path or query string, so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
           </article>
         </div>
       </section>
@@ -280,7 +316,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Does the plugin work without payment?</h3>
-            <p>Mostly, yes. All five pillars, CSP's report-only rollout, discovery, violation reporting, policy-change review, and three of the four CSP automation modes (Manual, Automatic with medium+high approvals, Automatic with high approvals only) are free in every build, with no payment or remote entitlement checks. The exception is <strong>Fully Automatic</strong> CSP mode -- zero-review auto-apply -- which requires an active subscription: <strong>£1.99/month or £19.99/year</strong>. See the user guide's <a href='user-guide.html#automation-tiers'>Automation tiers</a> section.</p>
+            <p>Mostly, yes. All six pillars, CSP's report-only rollout, discovery, violation reporting, policy-change review, and three of the four CSP automation modes (Manual, Automatic with medium+high approvals, Automatic with high approvals only) are free in every build, with no payment or remote entitlement checks. The exception is <strong>Fully Automatic</strong> CSP mode -- zero-review auto-apply -- which requires an active subscription: <strong>£1.99/month or £19.99/year</strong>. See the user guide's <a href='user-guide.html#automation-tiers'>Automation tiers</a> section.</p>
           </article>
           <article class='faq-item'>
             <h3>What happens if I select Fully Automatic without a subscription?</h3>

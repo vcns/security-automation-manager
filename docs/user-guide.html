@@ -4,7 +4,7 @@
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1.0'>
   <title>User Guide | Security Automation Manager</title>
-  <meta name='description' content='Complete administrator guide to Security Automation Manager: CSP rollout, the four simpler header pillars, automation tiers, installation, and troubleshooting.'>
+  <meta name='description' content='Complete administrator guide to Security Automation Manager: CSP rollout, the five simpler header pillars, automation tiers, installation, and troubleshooting.'>
   <link rel='preconnect' href='https://fonts.googleapis.com'>
   <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
   <link href='https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&display=swap' rel='stylesheet'>
@@ -16,7 +16,7 @@
       <div class='hero-copy'>
         <p class='eyebrow'>User guide</p>
         <h1>The complete administrator's guide to Security Automation Manager.</h1>
-        <p class='lede'>Roll out Content Security Policy as a controlled workflow, configure the four simpler header pillars alongside it, and understand which automation is free and which requires a subscription.</p>
+        <p class='lede'>Roll out Content Security Policy as a controlled workflow, configure the five simpler header pillars alongside it, and understand which automation is free and which requires a subscription.</p>
         <div class='hero-actions'>
           <a class='button primary' href='index.html'>Back to help home</a>
           <a class='button secondary' href='faq.html'>Open the FAQ</a>
@@ -26,7 +26,7 @@
         <h2>Read this first</h2>
         <ul>
           <li>Use staging where practical.</li>
-          <li>Start CSP in report-only mode; the other four pillars take effect immediately.</li>
+          <li>Start CSP in report-only mode; the other five pillars take effect immediately.</li>
           <li>Browse real user journeys before enforcing CSP.</li>
           <li>Approve only sources with a clear purpose.</li>
           <li>Fully Automatic mode is the only paid feature; everything else is free.</li>
@@ -65,9 +65,10 @@
           </ul>
         </div>
         <div class='sidebar-group'>
-          <h3>The other four pillars</h3>
+          <h3>The other five pillars</h3>
           <ul>
             <li><a href='#other-pillars'>X-Frame-Options and more</a></li>
+            <li><a href='#content-rewrites'>Content rewrite protections</a></li>
           </ul>
         </div>
         <div class='sidebar-group'>
@@ -100,7 +101,7 @@
             <li>Review the Violations tab and approve only required sources.</li>
             <li>Wait for the configured violation-free window before enforcing a surface.</li>
           </ol>
-          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other four pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) don't have a rollout workflow at all -- see <a href='#other-pillars'>the other four pillars</a> below.</p>
+          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other five pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security) don't have a rollout workflow at all -- see <a href='#other-pillars'>the other five pillars</a> below.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -113,15 +114,15 @@
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/admin-overview-page.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for all five pillars.' loading='lazy'>
+          <img src='images/admin-overview-page.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for all six pillars.' loading='lazy'>
           <figcaption>The Overview page (<strong>Security Automation Manager -> Overview</strong>) -- the front door after activation, showing every pillar's per-surface status at a glance.</figcaption>
         </figure>
       </section>
 
       <section id='how-it-works' class='section'>
         <p class='section-label'>How it works</p>
-        <h2>Five pillars, one dashboard.</h2>
-        <p>Security Automation Manager automates rollout of five HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other four pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect.</p>
+        <h2>Six pillars, one dashboard.</h2>
+        <p>Security Automation Manager automates rollout of six HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other five pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect.</p>
         <div class='diagram' aria-label='Admin menu structure diagram'>
           <div class='mermaid'>
 flowchart TD
@@ -131,6 +132,7 @@ flowchart TD
     CSP --> T2["Profiles"]
     CSP --> T3["For Review"]
     CSP --> T4["Policy Changes"]
+    CSP --> T4b["Policy Audit"]
     CSP --> T5["Violations"]
     CSP --> T6["Scan Log"]
     CSP --> T7["Settings"]
@@ -138,11 +140,13 @@ flowchart TD
     Menu --> XCTO["X-Content-Type-Options"]
     Menu --> RP["Referrer-Policy"]
     Menu --> PP["Permissions-Policy"]
-    Menu --> PA["Policy Audit"]
+    Menu --> HSTS["Strict-Transport-Security"]
+    Menu --> RTP["Reverse Tabnabbing"]
+    Menu --> EXT["External Scripts"]
     Menu --> RD["Readiness"]
           </div>
         </div>
-        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the seven-tab dashboard described in the rest of this section.</p>
+        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the eight-tab dashboard described in the rest of this section. Reverse Tabnabbing and External Scripts aren't header pillars at all -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>1. Initialise safely</h3>
@@ -158,7 +162,7 @@ flowchart TD
           </article>
           <article class='card'>
             <h3>4. Emit each header</h3>
-            <p>The CSP policy builder combines the surface profile, approved sources, active hashes, reporting endpoint, and per-request nonces. The other four pillars emit their configured value directly, per surface.</p>
+            <p>The CSP policy builder combines the surface profile, approved sources, active hashes, reporting endpoint, and per-request nonces. The other five pillars emit their configured value directly, per surface.</p>
           </article>
           <article class='card'>
             <h3>5. Promote one surface (CSP only)</h3>
@@ -189,10 +193,10 @@ flowchart TD
       <section id='concepts' class='section'>
         <p class='section-label'>Core concepts</p>
         <h2>The terms you need to understand.</h2>
-        <p class='section-note'>Most of these terms are specific to CSP -- the other four pillars don't have report-only modes, promotion gates, or suppression, because they don't need them.</p>
+        <p class='section-note'>Most of these terms are specific to CSP -- the other five pillars don't have report-only modes, promotion gates, or suppression, because they don't need them.</p>
         <div class='definition-grid'>
           <div><h3>Surface</h3><p>A part of the site with its own policy. Every pillar uses the same four: frontend, admin, login, and API.</p></div>
-          <div><h3>Pillar</h3><p>One of the five HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.</p></div>
+          <div><h3>Pillar</h3><p>One of the six HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security.</p></div>
           <div><h3>Report-only mode</h3><p>CSP-only. The browser reports what would have been blocked. It does not block the resource.</p></div>
           <div><h3>Enforce mode</h3><p>CSP-only. The browser blocks resources that are not allowed by the policy.</p></div>
           <div><h3>Directive</h3><p>A CSP rule area, such as <code>script-src</code>, <code>img-src</code>, <code>connect-src</code>, or <code>form-action</code>.</p></div>
@@ -377,7 +381,7 @@ flowchart TD
           <p class='section-label'>Ongoing use</p>
           <h2>Use the plugin after normal site changes.</h2>
           <p>CSP is not a one-off task. WordPress sites change when plugins update, themes change, tracking tags are added, forms are altered, payment integrations change, or content editors embed third-party resources.</p>
-          <p>After meaningful changes, run a manual scan and use report-only evidence before adding new approvals. Keep the policy narrow and documented. The other four pillars need no ongoing attention once set -- revisit them only if the site's framing, referrer, or browser-feature needs change.</p>
+          <p>After meaningful changes, run a manual scan and use report-only evidence before adding new approvals. Keep the policy narrow and documented. The other five pillars need no ongoing attention once set -- revisit them only if the site's framing, referrer, or browser-feature needs change. Strict-Transport-Security is the one exception worth remembering: raising its Max-Age is easy to revisit, but browsers that already cached a long Max-Age keep enforcing HTTPS-only for that long even after you lower or remove the setting.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -392,9 +396,9 @@ flowchart TD
       </section>
 
       <section id='other-pillars' class='section'>
-        <p class='section-label'>The other four pillars</p>
-        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.</h2>
-        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. The other four pillars don't work that way. Each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. There's no report-only mode, no discovery workflow, and no automation for any of them.</p>
+        <p class='section-label'>The other five pillars</p>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security.</h2>
+        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. The other five pillars don't work that way. Each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. There's no report-only mode, no discovery workflow, and no automation for any of them.</p>
         <div class='table-wrap'>
           <table>
             <thead>
@@ -405,6 +409,7 @@ flowchart TD
               <tr><td>X-Content-Type-Options</td><td><strong>Security Automation Manager -> X-Content-Type-Options</strong></td><td>Per surface: on or off. <code>nosniff</code> is the only defined value, so there's nothing else to choose.</td></tr>
               <tr><td>Referrer-Policy</td><td><strong>Security Automation Manager -> Referrer-Policy</strong></td><td>Per surface: one of the eight standard tokens. <code>strict-origin-when-cross-origin</code> is the recommended default and is pre-selected.</td></tr>
               <tr><td>Permissions-Policy</td><td><strong>Security Automation Manager -> Permissions-Policy</strong></td><td>Per surface, per browser feature (geolocation, camera, microphone, fullscreen, payment, usb, autoplay): None, Self, or All. A feature left at its default isn't mentioned in the header, so the browser's own default policy applies to it.</td></tr>
+              <tr><td>Strict-Transport-Security</td><td><strong>Security Automation Manager -> Strict-Transport-Security</strong></td><td>Per surface: Max-Age, Include Subdomains, and Preload. Only sent over HTTPS requests. Preload can't be selected until Max-Age is at least 1 year and Include Subdomains is on -- the minimum hstspreload.org requires for submission.</td></tr>
             </tbody>
           </table>
         </div>
@@ -417,12 +422,44 @@ flowchart TD
             <h3>Test after changing X-Frame-Options or Permissions-Policy</h3>
             <p>DENY on X-Frame-Options stops the site being framed anywhere, including by tools you may rely on (page builders with a preview iframe, some caching or testing services). Setting a Permissions-Policy feature to None disables it even where a plugin genuinely needs it (e.g. a booking widget that uses geolocation). Check the relevant page still works after changing either.</p>
           </div>
+          <div class='warning-callout'>
+            <h3>Strict-Transport-Security is sticky -- unlike the others</h3>
+            <p>Once a browser receives this header, it remembers Max-Age and refuses plain-HTTP connections to this site for that long, even if you disable the header afterward -- browsers that already cached the policy don't find out you changed your mind until it naturally expires. Start with a short Max-Age while confirming every surface, subdomain, and asset genuinely works over HTTPS, then increase it once confident. Preload goes further still: once a domain is on browsers' built-in preload lists, removal can take months, so treat it as a one-way door.</p>
+          </div>
         </div>
         <figure class='screenshot'>
           <img src='images/permissions-policy-page.png' alt='WordPress admin screenshot of the Permissions-Policy page, showing the per-surface, per-feature None/Self/All picker.' loading='lazy'>
-          <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most complex of the four simple pillars.</figcaption>
+          <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most configurable of the five simple pillars.</figcaption>
         </figure>
-        <p class='section-note'>All four pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
+        <p class='section-note'>All five pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
+      </section>
+
+      <section id='content-rewrites' class='section'>
+        <p class='section-label'>Content rewrite protections</p>
+        <h2>Reverse Tabnabbing and External Scripts.</h2>
+        <p>These two aren't header pillars -- they rewrite the rendered page itself. Both are free, both only ever act on a successful, non-streamed HTML response (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests), and both fail open: any parsing uncertainty leaves the original page untouched rather than risk breaking it.</p>
+        <div class='table-wrap'>
+          <table>
+            <thead>
+              <tr><th>Protection</th><th>Admin location</th><th>What it does</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Reverse Tabnabbing</td><td><strong>Security Automation Manager -> Reverse Tabnabbing</strong></td><td>Per surface: on or off. Adds <code>rel="noopener"</code> to any <code>target="_blank"</code> link missing <code>noopener</code>/<code>noreferrer</code>, closing off <code>window.opener</code> access a new tab could otherwise use to redirect the original tab to a phishing page. Purely additive -- it never removes anything or breaks a link.</td></tr>
+              <tr><td>External Scripts</td><td><strong>Security Automation Manager -> External Scripts</strong></td><td>Per surface: on/off plus Report-only or Enforce mode. Inventories third-party <code>&lt;script&gt;</code>/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity (SRI).</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>External Scripts follows the same report-first shape as CSP: a newly discovered origin is always <strong>Unclassified</strong> -- never blocked by default. Report mode (the default) only builds the inventory. Enforce mode still only ever removes an origin you explicitly marked <strong>Blocked</strong>, or an <strong>Approved -- immutable</strong> origin whose SRI hash no longer matches what the page actually served.</p>
+        <div class='callout-stack'>
+          <div class='warning-callout'>
+            <h3>This plugin never fabricates an SRI hash</h3>
+            <p>"Approved -- immutable" only ever compares against a hash you paste in yourself -- from a local copy of the file you already trust, or the vendor's own published hash -- never one this plugin computes by fetching the remote URL itself. If a provider's script changes behind a stable URL (common for tag managers, analytics, and similar mutable services), classify it <strong>Approved -- mutable provider</strong> instead; SRI genuinely doesn't apply there.</p>
+          </div>
+          <div class='callout'>
+            <h3>Only the origin is stored</h3>
+            <p>The inventory records scheme and host only -- never a path or query string -- so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
+          </div>
+        </div>
       </section>
 
       <section id='automation-tiers' class='section'>
@@ -476,7 +513,7 @@ flowchart TD
           </div>
           <div class='callout'>
             <h3>Upgrading</h3>
-            <p>Where an upgrade path is available in your build, an <strong>Upgrade</strong> button appears next to the automation setting on the CSP Settings tab, alongside a billing-interval choice (monthly or annual), and starts a checkout flow for a recurring subscription. Every other feature described in this guide -- all five pillars, three of the four automation modes, discovery, violation reporting, and policy-change review -- is free and local regardless of subscription status.</p>
+            <p>Where an upgrade path is available in your build, an <strong>Upgrade</strong> button appears next to the automation setting on the CSP Settings tab, alongside a billing-interval choice (monthly or annual), and starts a checkout flow for a recurring subscription. Every other feature described in this guide -- all six pillars, three of the four automation modes, discovery, violation reporting, and policy-change review -- is free and local regardless of subscription status.</p>
           </div>
         </div>
       </section>

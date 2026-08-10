@@ -4,11 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
-## [Unreleased]
+## [2.1.0] - 2026-08-10
+
+### Added
+
+- Added Strict-Transport-Security (HSTS) as a sixth pillar: per-surface Max-Age, Include Subdomains, and Preload. Unlike the other simple pillars, this header is only ever emitted over an HTTPS request, and Preload cannot be enabled until Max-Age and Include Subdomains already meet hstspreload.org's submission minimum (Max-Age >= 1 year, Include Subdomains on) -- guardrails against a header that, once cached by a browser, cannot be walked back the way the other pillars can.
+- Added Reverse Tabnabbing Protection: per-surface, adds `rel="noopener"` to `target="_blank"` links missing `noopener`/`noreferrer`, closing a `window.opener` phishing gap. A content rewrite rather than a header, built on a new shared `Content_Rewriter` base (`includes/security/class-content-rewriter.php`) alongside the existing header-pillar envelope.
+- Added External Scripts: passively inventories third-party `<script>`/`<link rel="stylesheet">` origins from real page loads (no dedicated crawl, origin only -- never a path or query string), lets an administrator classify each one, and supports Subresource Integrity. A freshly discovered origin is always `unclassified`, never `prohibited` -- report mode (the default) never removes anything, and even enforce mode only ever removes an origin explicitly marked Blocked or an "immutable" origin whose administrator-declared SRI hash no longer matches. SRI hashes are never fetched or computed by the plugin, only compared against what the administrator already trusts and typed in.
 
 ### Changed
 
 - Set Fully Automatic subscription pricing at £1.99/month or £19.99/year. Checkout now creates a recurring Stripe subscription (previously a one-time payment) and the Upgrade control lets the administrator choose the billing interval before starting checkout.
+- Moved Policy Audit from a standalone top-level admin page into a tab on the CSP dashboard (it was always CSP-specific content). The pending review queue and full decision ledger it used to duplicate now live only on the adjacent For Review and Policy Changes tabs; Policy Audit itself keeps just the at-a-glance current-policy summary.
 
 ## [2.0.0] - 2026-08-10
 

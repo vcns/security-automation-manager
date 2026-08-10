@@ -26,7 +26,7 @@ plugin, and capture at a consistent browser width (1280px is what the site's
 
 | Filename | Used in | What to show |
 |---|---|---|
-| `admin-overview-page.png` | user-guide.html | **Overview** page: per-pillar status table for all five pillars. |
+| `admin-overview-page.png` | user-guide.html | **Overview** page: per-pillar status table for all six pillars. |
 | `admin-menu-structure.png` | index.html | The WordPress admin left-hand nav with the **Security Automation Manager** top-level menu expanded, showing all 8 submenu items. |
 | `csp-profiles-tab.png` | user-guide.html | **CSP -> Profiles** tab: per-surface mode selector, ideally with at least one surface not on Manual. |
 | `csp-for-review-tab.png` | user-guide.html | **CSP -> For Review** tab with at least a few pending sources visible (run a manual scan against a real site first so the table isn't empty). |

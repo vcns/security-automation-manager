@@ -13,7 +13,7 @@ declare( strict_types=1 );
 
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
-define( 'WP_SAM_VERSION',        '2.0.0' );
+define( 'WP_SAM_VERSION',        '2.1.0' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -319,6 +319,12 @@ if ( ! function_exists( 'get_home_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'site_url' ) ) {
+	function site_url( string $path = '', string $scheme = '' ): string {
+		return home_url( $path, $scheme );
+	}
+}
+
 if ( ! function_exists( 'admin_url' ) ) {
 	function admin_url( string $path = '', string $scheme = 'admin' ): string {
 		return 'https://example.com/wp-admin/' . ltrim( $path, '/' );
@@ -348,6 +354,12 @@ if ( ! function_exists( 'get_bloginfo' ) ) {
 if ( ! function_exists( 'is_admin' ) ) {
 	function is_admin(): bool {
 		return $GLOBALS['_wp_is_admin'] ?? false;
+	}
+}
+
+if ( ! function_exists( 'is_ssl' ) ) {
+	function is_ssl(): bool {
+		return $GLOBALS['_wp_is_ssl'] ?? false;
 	}
 }
 
@@ -638,6 +650,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_remote_head_response'] = null;
 	$GLOBALS['_wp_remote_head_requests'] = [];
 	$GLOBALS['_wp_is_admin']             = false;
+	$GLOBALS['_wp_is_ssl']               = false;
 	$GLOBALS['_wp_doing_cron']           = false;
 	$GLOBALS['_wp_cron']                 = [];
 	$GLOBALS['_wp_current_user_can']     = [];

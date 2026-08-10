@@ -1,6 +1,6 @@
 # Security Automation Manager
 
-Security Automation Manager is a WordPress plugin that automates rollout of strict HTTP security headers. Content Security Policy (CSP) is its most capable pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, and Referrer-Policy as simpler per-surface pillars alongside it.
+Security Automation Manager is a WordPress plugin that automates rollout of strict HTTP security headers. Content Security Policy (CSP) is its most capable pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security as simpler per-surface pillars alongside it.
 
 ## Features
 
@@ -23,7 +23,7 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Risk-ranked CSP change proposals with reason-required approve, reject, revert, and undo decisions
 - Revert-and-suppress workflow so a reversed source is not proposed again automatically
 - Policy version snapshots, policy diffs, decision provenance, and deterministic rule findings
-- Policy Audit admin view and privileged admin REST endpoints for current policy, pending reviews, decisions, history, and manual automation configuration
+- Policy Audit tab (on the CSP page) and privileged admin REST endpoints for current policy, pending reviews, decisions, history, and manual automation configuration
 - Readiness admin view for plugin-specific schema and runtime checks, with an authenticated reset flow that clears CSP data and disables header emission until rollout is restarted
 - Automation configuration scaffold that defaults every surface to `manual`; no proposal is auto-approved on install or upgrade
 - Multi-surface scan support
@@ -38,10 +38,18 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - X-Content-Type-Options: per-surface on/off (`nosniff`)
 - Referrer-Policy: per-surface value from the eight standard tokens, defaulting to `strict-origin-when-cross-origin`
 - Permissions-Policy: per-surface, per-directive picker (`none` / `self` / `all`) across a starter set of seven browser features (geolocation, camera, microphone, fullscreen, payment, usb, autoplay)
+- Strict-Transport-Security: per-surface `max-age`, `includeSubDomains`, and `preload`. Only ever sent over HTTPS, and `preload` stays off until `max-age` and `includeSubDomains` already meet hstspreload.org's submission minimum -- this header is sticky (browsers cache it), so it warrants more care than the other four
 
-These four pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
+These five pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
 
-Every pillar and three of the four CSP automation modes are available locally without payment, remote entitlement checks, or third-party licensing calls. The exception is Fully Automatic CSP mode, which requires an active subscription -- see Automation Posture below.
+**Content rewrite protections**
+
+Two further protections rewrite the rendered HTML body itself rather than emit a header, sharing a `Content_Rewriter` envelope (request/response eligibility, buffering, fail-open on any uncertainty) alongside the header pillars' own `Header_Builder` envelope:
+
+- Reverse Tabnabbing Protection: per-surface, adds `rel="noopener"` to `target="_blank"` links missing `noopener`/`noreferrer`, closing off `window.opener` access a new tab could otherwise use to redirect the original tab to a phishing page. Purely additive -- it never blocks or breaks a link.
+- External Scripts: passively inventories third-party `<script>`/`<link rel="stylesheet">` origins observed on real page loads (no dedicated crawl, origin only -- never a path or query string), lets an administrator classify each one (Unclassified / Approved-immutable with SRI / Approved-mutable provider / Exception / Blocked), and supports Subresource Integrity. A freshly discovered origin is always `unclassified`, matching this plugin's report-first philosophy -- report mode (the default) never removes anything, and even enforce mode only ever removes an origin explicitly marked Blocked or an "immutable" origin whose SRI hash no longer matches what the page served. SRI hashes are never fetched or computed by the plugin -- only compared against a hash the administrator already trusts and typed in.
+
+Every pillar, both content rewrite protections, and three of the four CSP automation modes are available locally without payment, remote entitlement checks, or third-party licensing calls. The exception is Fully Automatic CSP mode, which requires an active subscription -- see Automation Posture below.
 
 ## Requirements
 
@@ -77,7 +85,7 @@ The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress'
 3. Run an initial scan from the Profiles tab.
 4. Review and approve only the external sources your site actually requires from the For Review tab.
 5. Reject or revert unwanted sources so the same fingerprint is suppressed from future proposals.
-6. Use the Policy Audit page to inspect why a proposal exists and what policy version resulted from decisions.
+6. Use the Policy Audit tab to inspect why a proposal exists and what policy version resulted from decisions.
 7. Use the Readiness page when validating schema health or deliberately resetting CSP data for a clean rollout attempt.
 8. After a reset, re-enable the required surfaces in report-only mode when you are ready to restart rollout.
 9. Stay in report-only mode until violations are understood.

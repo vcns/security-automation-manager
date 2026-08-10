@@ -11,8 +11,13 @@
  *   4. security-automation-manager-xcto              – X-Content-Type-Options: per-surface on/off
  *   5. security-automation-manager-referrer-policy   – Referrer-Policy: per-surface value picker
  *   6. security-automation-manager-permissions-policy – Permissions-Policy: per-surface, per-directive picker
- *   7. security-automation-manager-policy-audit      – policy history, decisions, provenance
- *   8. security-automation-manager-readiness         – plugin-specific health checks and reset
+ *   7. security-automation-manager-hsts              – Strict-Transport-Security: per-surface max-age/includeSubDomains/preload
+ *   8. security-automation-manager-reverse-tabnabbing – Reverse Tabnabbing: per-surface on/off, rel=noopener injection
+ *   9. security-automation-manager-external-scripts  – External Scripts: third-party script/stylesheet inventory, SRI, enforcement
+ *  10. security-automation-manager-readiness         – plugin-specific health checks and reset
+ *
+ * Policy Audit (effective policy, decisions, provenance) is a tab on the CSP
+ * page (2), not a separate top-level page -- it's CSP-specific content.
  *
  * All form submissions are protected by check_admin_referer() and
  * current_user_can('manage_options').
@@ -28,8 +33,11 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Security\Dependency_Governance_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
+use WP_SAM\Security\Reverse_Tabnabbing_Builder;
+use WP_SAM\Security\Strict_Transport_Security_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
 
@@ -68,6 +76,9 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_create_checkout_session', array( $this, 'ajax_create_checkout_session' ) );
 		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
 		add_action( 'wp_ajax_wp_sam_set_permissions_policy_directive', array( $this, 'ajax_set_permissions_policy_directive' ) );
+		add_action( 'wp_ajax_wp_sam_set_hsts', array( $this, 'ajax_set_hsts' ) );
+		add_action( 'wp_ajax_wp_sam_set_dependency_mode', array( $this, 'ajax_set_dependency_mode' ) );
+		add_action( 'wp_ajax_wp_sam_classify_dependency', array( $this, 'ajax_classify_dependency' ) );
 	}
 
 	// ── Menu registration ─────────────────────────────────────────────────────
@@ -139,11 +150,29 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Policy Audit', 'security-automation-manager' ),
-			__( 'Policy Audit', 'security-automation-manager' ),
+			__( 'Strict-Transport-Security', 'security-automation-manager' ),
+			__( 'HSTS', 'security-automation-manager' ),
 			'manage_options',
-			'security-automation-manager-policy-audit',
-			array( $this, 'render_policy_audit' )
+			'security-automation-manager-hsts',
+			array( $this, 'render_hsts' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Reverse Tabnabbing Protection', 'security-automation-manager' ),
+			__( 'Reverse Tabnabbing', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-reverse-tabnabbing',
+			array( $this, 'render_reverse_tabnabbing' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'External Scripts', 'security-automation-manager' ),
+			__( 'External Scripts', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-external-scripts',
+			array( $this, 'render_external_scripts' )
 		);
 
 		add_submenu_page(
@@ -298,7 +327,9 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-xcto',
 			'security-automation-manager_page_security-automation-manager-referrer-policy',
 			'security-automation-manager_page_security-automation-manager-permissions-policy',
-			'security-automation-manager_page_security-automation-manager-policy-audit',
+			'security-automation-manager_page_security-automation-manager-hsts',
+			'security-automation-manager_page_security-automation-manager-reverse-tabnabbing',
+			'security-automation-manager_page_security-automation-manager-external-scripts',
 			'security-automation-manager_page_security-automation-manager-readiness',
 		);
 	}
@@ -422,11 +453,25 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-pillar-simple.php';
 	}
 
-	public function render_policy_audit(): void {
+	public function render_hsts(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
 		}
-		require WP_SAM_DIR . 'includes/admin/views/page-policy-audit.php';
+		require WP_SAM_DIR . 'includes/admin/views/page-hsts.php';
+	}
+
+	public function render_reverse_tabnabbing(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-reverse-tabnabbing.php';
+	}
+
+	public function render_external_scripts(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-external-scripts.php';
 	}
 
 	public function render_readiness(): void {
@@ -763,6 +808,10 @@ class Admin_UI {
 				// No configurable value -- nosniff is the only defined value.
 				break;
 
+			case Reverse_Tabnabbing_Builder::PILLAR_KEY:
+				// No configurable value -- rel=noopener is either injected or it isn't.
+				break;
+
 			case X_Frame_Options_Builder::PILLAR_KEY:
 				$sanitized_value = X_Frame_Options_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
@@ -867,6 +916,157 @@ class Admin_UI {
 				$now,
 				$now
 			)
+		);
+
+		wp_send_json_success();
+	}
+
+	/**
+	 * HSTS has three independently-configurable fields per surface
+	 * (max-age, includeSubDomains, preload), unlike the other simple
+	 * pillars' single scalar value -- so it can't share ajax_set_pillar_value().
+	 * preload is re-validated server-side against the same eligibility rule
+	 * the admin view uses to disable the checkbox client-side, since a
+	 * disabled control is only a UI hint, not enforcement.
+	 */
+	public function ajax_set_hsts(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$surface            = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
+		$enabled            = ! empty( $_POST['enabled'] );
+		$max_age            = Strict_Transport_Security_Builder::sanitize_max_age( wp_unslash( $_POST['max_age'] ?? Strict_Transport_Security_Builder::DEFAULT_MAX_AGE ) );
+		$include_subdomains = ! empty( $_POST['include_subdomains'] );
+		$preload            = ! empty( $_POST['preload'] ) && Strict_Transport_Security_Builder::preload_eligible( $max_age, $include_subdomains );
+
+		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+		}
+
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_pillar_profiles';
+		$now     = current_time( 'mysql', true );
+		$payload = wp_json_encode(
+			array(
+				'max_age'            => $max_age,
+				'include_subdomains' => $include_subdomains,
+				'preload'            => $preload,
+			)
+		);
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"INSERT INTO {$table} (pillar, surface, enabled, payload, created_at, updated_at)
+				 VALUES (%s, %s, %d, %s, %s, %s)
+				 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), payload = VALUES(payload), updated_at = VALUES(updated_at)",
+				Strict_Transport_Security_Builder::PILLAR_KEY,
+				$surface,
+				$enabled ? 1 : 0,
+				$payload,
+				$now,
+				$now
+			)
+		);
+
+		wp_send_json_success(
+			array(
+				'preload_eligible' => Strict_Transport_Security_Builder::preload_eligible( $max_age, $include_subdomains ),
+				'preload'          => $preload,
+			)
+		);
+	}
+
+	// ── AJAX: dependency governance ───────────────────────────────────────────
+
+	public function ajax_set_dependency_mode(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$surface = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
+		$enabled = ! empty( $_POST['enabled'] );
+		$mode    = sanitize_text_field( wp_unslash( $_POST['mode'] ?? 'report' ) );
+		$mode    = 'enforce' === $mode ? 'enforce' : 'report';
+
+		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+		}
+
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_pillar_profiles';
+		$now     = current_time( 'mysql', true );
+		$payload = wp_json_encode( array( 'mode' => $mode ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"INSERT INTO {$table} (pillar, surface, enabled, payload, created_at, updated_at)
+				 VALUES (%s, %s, %d, %s, %s, %s)
+				 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), payload = VALUES(payload), updated_at = VALUES(updated_at)",
+				Dependency_Governance_Builder::PILLAR_KEY,
+				$surface,
+				$enabled ? 1 : 0,
+				$payload,
+				$now,
+				$now
+			)
+		);
+
+		wp_send_json_success();
+	}
+
+	/**
+	 * Classifies one discovered origin, and -- only for 'immutable_pinned' --
+	 * records the administrator's own expected SRI hash. expected_sri is
+	 * never computed here or anywhere else in this plugin: it is only ever
+	 * what the administrator explicitly typed or pasted in, matching what
+	 * they already trust from elsewhere (a local copy of the file, or the
+	 * vendor's own published hash).
+	 */
+	public function ajax_classify_dependency(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$id             = (int) ( $_POST['id'] ?? 0 );
+		$classification = sanitize_text_field( wp_unslash( $_POST['classification'] ?? '' ) );
+		$expected_sri   = sanitize_text_field( wp_unslash( $_POST['expected_sri'] ?? '' ) );
+
+		if ( $id <= 0 ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'security-automation-manager' ) ) );
+		}
+
+		if ( ! in_array( $classification, Dependency_Governance_Builder::CLASSIFICATIONS, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid classification.', 'security-automation-manager' ) ) );
+		}
+
+		$sanitized_sri = null;
+		if ( 'immutable_pinned' === $classification && '' !== trim( $expected_sri ) ) {
+			if ( ! preg_match( '/^sha(256|384|512)-[A-Za-z0-9+\/]+=*$/', trim( $expected_sri ) ) ) {
+				wp_send_json_error( array( 'message' => __( 'Expected SRI hash must look like sha256-…, sha384-… or sha512-… (base64).', 'security-automation-manager' ) ) );
+			}
+			$sanitized_sri = trim( $expected_sri );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_dependency_inventory';
+		$wpdb->update(
+			$table,
+			array(
+				'classification' => $classification,
+				'expected_sri'   => $sanitized_sri,
+				'updated_at'     => current_time( 'mysql', true ),
+			),
+			array( 'id' => $id ),
+			array( '%s', '%s', '%s' ),
+			array( '%d' )
 		);
 
 		wp_send_json_success();
