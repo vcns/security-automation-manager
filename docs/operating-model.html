@@ -86,14 +86,11 @@ sequenceDiagram
     participant DB as WordPress database
     participant Browser as Browser
     participant Report as CSP report endpoint
-    participant Worker as Remote config and licensing
     participant Scheduler as Daily scheduler
 
     Admin->>WP: Install and activate plugin
     WP->>DB: Create CSP tables and seed report-only profiles
-    WP->>Worker: Fetch signed product config and entitlement metadata
-    Worker-->>WP: Return public metadata and entitlement response
-    Note over WP,Worker: Stripe secrets stay in remote licensing infrastructure
+    Note over WP,DB: Activation is entirely local -- no remote calls of any kind
 
     WP->>Browser: Emit report-only CSP header for each surface
     WP->>Browser: Add per-request nonces to managed scripts and styles

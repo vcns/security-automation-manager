@@ -403,6 +403,38 @@ main {
   margin-bottom: 0.45rem;
 }
 
+.screenshot {
+  margin: 0 0 1.5rem;
+  padding: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.screenshot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 120px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+
+.screenshot figcaption {
+  padding: 0.6rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.diagram {
+  padding: 1rem;
+  margin: 0 0 1.5rem;
+  overflow-x: auto;
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -559,7 +591,9 @@ tr:last-child td {
   .warning-callout,
   .decision-card,
   .faq-item,
-  .sidebar {
+  .sidebar,
+  .screenshot,
+  .diagram {
     border-radius: 0;
   }
 

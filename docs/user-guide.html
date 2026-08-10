@@ -112,12 +112,37 @@
             <p>Do not approve every host just to clear the table. That turns CSP into a long allowlist with little value.</p>
           </div>
         </div>
+        <figure class='screenshot'>
+          <img src='images/admin-overview-page.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for all five pillars.' loading='lazy'>
+          <figcaption>The Overview page (<strong>Security Automation Manager -> Overview</strong>) -- the front door after activation, showing every pillar's per-surface status at a glance.</figcaption>
+        </figure>
       </section>
 
       <section id='how-it-works' class='section'>
         <p class='section-label'>How it works</p>
         <h2>Five pillars, one dashboard.</h2>
         <p>Security Automation Manager automates rollout of five HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other four pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect.</p>
+        <div class='diagram' aria-label='Admin menu structure diagram'>
+          <div class='mermaid'>
+flowchart TD
+    Menu["Security Automation Manager"] --> Overview["Overview<br/><small>per-pillar status</small>"]
+    Menu --> CSP["CSP<br/><small>tabbed dashboard</small>"]
+    CSP --> T1["Start Here"]
+    CSP --> T2["Profiles"]
+    CSP --> T3["For Review"]
+    CSP --> T4["Policy Changes"]
+    CSP --> T5["Violations"]
+    CSP --> T6["Scan Log"]
+    CSP --> T7["Settings"]
+    Menu --> XFO["X-Frame-Options"]
+    Menu --> XCTO["X-Content-Type-Options"]
+    Menu --> RP["Referrer-Policy"]
+    Menu --> PP["Permissions-Policy"]
+    Menu --> PA["Policy Audit"]
+    Menu --> RD["Readiness"]
+          </div>
+        </div>
+        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the seven-tab dashboard described in the rest of this section.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>1. Initialise safely</h3>
@@ -155,6 +180,10 @@
             <a class='button tertiary' href='operating-model.html' target='_blank' rel='noopener'>Open full operating model diagram</a>
           </div>
         </div>
+        <figure class='screenshot'>
+          <img src='images/csp-profiles-tab.png' alt='WordPress admin screenshot of the CSP Profiles tab, showing per-surface mode selectors and status.' loading='lazy'>
+          <figcaption>The CSP Profiles tab (<strong>Security Automation Manager -> CSP -> Profiles</strong>), where each surface's mode is set.</figcaption>
+        </figure>
       </section>
 
       <section id='concepts' class='section'>
@@ -246,6 +275,10 @@
             <p>Plugin activation, plugin deactivation, plugin upgrade, page changes, and post changes reopen the learning window. Use that window to collect new runtime evidence.</p>
           </div>
         </div>
+        <figure class='screenshot'>
+          <img src='images/csp-for-review-tab.png' alt='WordPress admin screenshot of the CSP For Review tab, listing pending discovered sources with risk, state, and evidence count.' loading='lazy'>
+          <figcaption>The For Review tab (<strong>Security Automation Manager -> CSP -> For Review</strong>), listing pending sources awaiting a decision.</figcaption>
+        </figure>
       </section>
 
       <section id='approval-workflow' class='section'>
@@ -285,6 +318,10 @@
           <h3>Decision reasons</h3>
           <p>Decision reasons are required for approvals, rejections, reversions, and undo actions. Use short reasons such as required for checkout, theme font CDN, unknown host, or legacy tag removed. Reasons make the policy change ledger useful during later reviews.</p>
         </div>
+        <figure class='screenshot'>
+          <img src='images/csp-policy-changes-tab.png' alt='WordPress admin screenshot of the CSP Policy Changes tab, showing the decision ledger with actors, reasons, and timestamps.' loading='lazy'>
+          <figcaption>The Policy Changes tab (<strong>Security Automation Manager -> CSP -> Policy Changes</strong>), the append-only decision ledger.</figcaption>
+        </figure>
       </section>
 
       <section id='enforcement' class='section'>
@@ -381,6 +418,10 @@
             <p>DENY on X-Frame-Options stops the site being framed anywhere, including by tools you may rely on (page builders with a preview iframe, some caching or testing services). Setting a Permissions-Policy feature to None disables it even where a plugin genuinely needs it (e.g. a booking widget that uses geolocation). Check the relevant page still works after changing either.</p>
           </div>
         </div>
+        <figure class='screenshot'>
+          <img src='images/permissions-policy-page.png' alt='WordPress admin screenshot of the Permissions-Policy page, showing the per-surface, per-feature None/Self/All picker.' loading='lazy'>
+          <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most complex of the four simple pillars.</figcaption>
+        </figure>
         <p class='section-note'>All four pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
       </section>
 
@@ -406,6 +447,28 @@
             <p>Low, medium, and high-risk proposals are all approved automatically within the deterministic engine's hard safety exclusions. Nothing below that ceiling waits for a human. Requires an active subscription.</p>
           </article>
         </div>
+        <div class='diagram' aria-label='Automation tier decision flowchart'>
+          <div class='mermaid'>
+flowchart TD
+    A["New source proposal"] --> B{"Surface's automation mode"}
+    B -->|"Manual"| C["Stays pending"]
+    B -->|"Auto: medium+high approvals"| D{"Risk = low?"}
+    D -->|"Yes"| E["Auto-approved"]
+    D -->|"No"| C
+    B -->|"Auto: high approvals only"| F{"Risk = low or medium?"}
+    F -->|"Yes"| E
+    F -->|"No"| C
+    B -->|"Fully Automatic selected"| G{"Active subscription?"}
+    G -->|"Yes"| H{"Risk = low, medium, or high?"}
+    H -->|"Yes"| E
+    H -->|"No"| C
+    G -->|"No -- treated as High approvals only"| F
+          </div>
+        </div>
+        <figure class='screenshot'>
+          <img src='images/csp-settings-automation-upgrade.png' alt='WordPress admin screenshot of the CSP Settings tab, Deterministic Automation table, showing the Fully Automatic option marked (requires upgrade) next to an Upgrade button.' loading='lazy'>
+          <figcaption>The Deterministic Automation table on the Settings tab, with Fully Automatic marked "(requires upgrade)" and the Upgrade button that starts checkout where available.</figcaption>
+        </figure>
         <div class='callout-stack'>
           <div class='callout'>
             <h3>What happens without a subscription</h3>
@@ -465,5 +528,14 @@
       <p><a href='index.html'>Help home</a> · <a href='faq.html'>FAQ</a> · <a href='https://github.com/vcns/security-automation-manager'>Repository</a></p>
     </footer>
   </div>
+  <script type='module'>
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      securityLevel: 'strict'
+    });
+  </script>
 </body>
 </html>
