@@ -112,6 +112,22 @@
             <p>Per surface, per browser feature (camera, geolocation, and similar). Choose None, Self, or All for each one covered.</p>
           </article>
         </div>
+        <div class='diagram' aria-label='CSP workflow compared to the other four pillars'>
+          <div class='mermaid'>
+flowchart LR
+    subgraph CSP["Content Security Policy"]
+        direction TB
+        C1["Report-only"] --> C2["Discover & learn"]
+        C2 --> C3["Admin approval"]
+        C3 --> C4["Promotion gate"]
+        C4 --> C5["Enforce"]
+    end
+    subgraph Simple["X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy"]
+        direction TB
+        S1["Admin picks a value"] --> S2["Header sent on the next request"]
+    end
+          </div>
+        </div>
         <div class='callout'>
           <h3>Why these four are simpler than CSP</h3>
           <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself.</p>
@@ -239,6 +255,10 @@
             <p>Use <strong>Security Automation Manager -> CSP -> Settings -> Deterministic Automation</strong> to move a surface out of manual mode and set a per-run automatic-change limit.</p>
           </div>
         </div>
+        <figure class='screenshot'>
+          <img src='images/admin-menu-structure.png' alt='WordPress admin left-hand navigation showing the Security Automation Manager top-level menu with all eight submenus expanded.' loading='lazy'>
+          <figcaption>The Security Automation Manager admin menu, showing every pillar and the CSP dashboard's tabs.</figcaption>
+        </figure>
       </section>
 
       <section id='decisions' class='section'>
@@ -329,5 +349,14 @@
       <p><a href='https://github.com/vcns/security-automation-manager'>Repository</a> · <a href='https://vcns.github.io/security-automation-manager/'>GitHub Pages</a></p>
     </footer>
   </div>
+  <script type='module'>
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      securityLevel: 'strict'
+    });
+  </script>
 </body>
 </html>
