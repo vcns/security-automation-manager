@@ -170,6 +170,50 @@ class SchemaMigrationTest extends TestCase {
 		$this->assertSame( 3, get_option( 'wp_sam_cron_hour' ) );
 	}
 
+	public function test_migrate_remove_fenced_frame_src_directive_strips_key_from_existing_profile(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'         => 5,
+				'directives' => wp_json_encode( array( 'default-src' => array( "'none'" ), 'fenced-frame-src' => array( "'none'" ) ) ),
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_remove_fenced_frame_src_directive' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
+		$updated = json_decode( (string) $GLOBALS['_wpdb_updated_rows'][0]['data']['directives'], true );
+		$this->assertArrayNotHasKey( 'fenced-frame-src', $updated );
+		$this->assertArrayHasKey( 'default-src', $updated, 'other directives must be preserved' );
+		$this->assertSame( array( 'id' => 5 ), $GLOBALS['_wpdb_updated_rows'][0]['where'] );
+	}
+
+	public function test_migrate_remove_fenced_frame_src_directive_skips_profiles_without_the_key(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'         => 5,
+				'directives' => wp_json_encode( array( 'default-src' => array( "'none'" ) ) ),
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_remove_fenced_frame_src_directive' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
+	public function test_migrate_remove_fenced_frame_src_directive_handles_no_profiles_gracefully(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_remove_fenced_frame_src_directive' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
 	public static function legacy_schema_version_provider(): array {
 		return array(
 			'v1' => array( '1' ),

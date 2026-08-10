@@ -175,6 +175,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Automation', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Trusted Types', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Last Updated', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Actions', 'security-automation-manager' ); ?></th>
 			</tr>
@@ -222,6 +223,20 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				<br /><a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-upgrade' ) ); ?>" style="font-size:0.85em;"><?php esc_html_e( 'Upgrade to unlock →', 'security-automation-manager' ); ?></a>
 				<?php endif; ?>
 			</td>
+			<td>
+				<label>
+					<input
+						type="checkbox"
+						class="wp-sam-trusted-types-toggle"
+						data-surface="<?php echo esc_attr( $profile['surface'] ); ?>"
+						<?php checked( ! empty( $profile['trusted_types'] ) ); ?>
+					/>
+					<?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?>
+				</label>
+				<p class="description" style="margin:4px 0 0;">
+					<?php esc_html_e( 'Sends require-trusted-types-for \'script\', always report-only regardless of surface mode.', 'security-automation-manager' ); ?>
+				</p>
+			</td>
 			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>
 			<td>
 				<?php foreach ( array( 'report-only', 'enforce', 'disabled' ) as $m ) : ?>
@@ -238,7 +253,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</tr>
 		<?php endforeach; ?>
 		<?php if ( empty( $profiles ) ) : ?>
-		<tr><td colspan="5"><?php esc_html_e( 'No profiles found. Deactivate and reactivate the plugin to seed defaults.', 'security-automation-manager' ); ?></td></tr>
+		<tr><td colspan="6"><?php esc_html_e( 'No profiles found. Deactivate and reactivate the plugin to seed defaults.', 'security-automation-manager' ); ?></td></tr>
 		<?php endif; ?>
 		</tbody>
 	</table>
@@ -997,7 +1012,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_violations', false ); ?>
 		</form>
 	</details>
-	<table class="widefat fixed striped" style="margin-top:1em">
+	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php

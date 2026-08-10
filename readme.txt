@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.2.0
+Stable tag: 2.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,15 @@ Reports received by this plugin are validated and stored in this site's WordPres
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
 == Changelog ==
+
+= 2.3.0 =
+
+* Adds a per-surface Trusted Types toggle to the CSP Profiles tab: sends require-trusted-types-for 'script' when enabled, always report-only regardless of surface mode.
+* Fixes approved CSP source hosts being emitted without a scheme prefix (e.g. img-src cdn.example.com instead of img-src https://cdn.example.com). Flagged by a third-party CSP linter as a "missing protocol" finding.
+* Fixes upgrade-insecure-requests being emitted in report-only mode, where browsers ignore it entirely.
+* Removes fenced-frame-src from the default CSP directive set (experimental, not part of the CSP living standard, commonly flagged by CSP linters). Existing profiles are migrated automatically on upgrade.
+* Fixes a possible bare, valueless trusted-types token leaking into the header.
+* Fixes Violations table column widths on the CSP dashboard so Blocked URI fills the available space instead of all columns splitting evenly.
 
 = 2.2.0 =
 

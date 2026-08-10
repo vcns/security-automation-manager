@@ -286,11 +286,35 @@ class PolicyBuilderTest extends TestCase {
 		$policy = $this->build_with_approved_sources(
 			$profile,
 			'frontend',
-			[ [ 'directive' => 'frame-src', 'source_host' => 'www.google.com' ] ]
+			[ [ 'directive' => 'frame-src', 'source_host' => 'www.google.com', 'source_scheme' => 'https' ] ]
 		);
 
-		$this->assertStringContainsString( 'frame-src www.google.com', $policy );
-		$this->assertStringNotContainsString( "frame-src 'none' www.google.com", $policy );
+		$this->assertStringContainsString( 'frame-src https://www.google.com', $policy );
+		$this->assertStringNotContainsString( "frame-src 'none' https://www.google.com", $policy );
+	}
+
+	// ── approved source scheme prefix (missing-protocol fix) ──────────────────
+
+	public function test_build_prefixes_approved_source_with_its_stored_scheme(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'connect-src' => [] ] );
+
+		$policy = $this->build_with_approved_sources( $profile, 'frontend', [
+			[ 'directive' => 'connect-src', 'source_host' => 'api.example.com', 'source_scheme' => 'wss' ],
+		] );
+
+		$this->assertStringContainsString( 'wss://api.example.com', $policy );
+	}
+
+	public function test_build_defaults_approved_source_scheme_to_https_when_absent(): void {
+		// Rows from before the scheme column was read back out (or a stub missing
+		// the key entirely) must not silently emit a bare, scheme-less host.
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [] ] );
+
+		$policy = $this->build_with_approved_sources( $profile, 'frontend', [
+			[ 'directive' => 'img-src', 'source_host' => 'cdn.example.com' ],
+		] );
+
+		$this->assertStringContainsString( 'img-src https://cdn.example.com', $policy );
 	}
 
 	public function test_build_output_has_semicolon_separated_directive_format(): void {
@@ -352,6 +376,71 @@ class PolicyBuilderTest extends TestCase {
 		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
 
 		$this->assertStringContainsString( "object-src 'none'", $policy );
+	}
+
+	// ── upgrade-insecure-requests report-only stripping ────────────────────────
+
+	public function test_build_strips_upgrade_insecure_requests_in_report_only_mode(): void {
+		$profile = [
+			'mode'           => 'report-only',
+			'directives'     => wp_json_encode( [
+				'default-src'                => [ "'none'" ],
+				'upgrade-insecure-requests'  => [],
+			] ),
+			'overrides'      => wp_json_encode( [] ),
+			'strict_dynamic' => 0,
+		];
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringNotContainsString( 'upgrade-insecure-requests', $policy );
+	}
+
+	public function test_build_keeps_upgrade_insecure_requests_in_enforce_mode(): void {
+		$profile = $this->make_profile( [
+			'default-src'               => [ "'none'" ],
+			'upgrade-insecure-requests' => [],
+		] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( 'upgrade-insecure-requests', $policy );
+	}
+
+	// ── Trusted Types per-surface toggle ────────────────────────────────────────
+
+	public function test_build_emits_require_trusted_types_for_script_when_toggle_enabled(): void {
+		$profile                    = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
+		$profile['trusted_types']   = 1;
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "require-trusted-types-for 'script'", $policy );
+	}
+
+	public function test_build_omits_require_trusted_types_for_when_toggle_disabled(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringNotContainsString( 'require-trusted-types-for', $policy );
+	}
+
+	public function test_build_never_emits_bare_trusted_types_directive(): void {
+		// trusted-types with an empty value list would serialise to the bare
+		// token "trusted-types", which is meaningless (at best) or reads as
+		// "allow no policies" (at worst) -- neither is what enabling the
+		// require-trusted-types-for toggle alone should produce.
+		$profile                  = $this->make_profile( [ 'default-src' => [ "'none'" ], 'trusted-types' => [] ] );
+		$profile['trusted_types'] = 1;
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		// "trusted-types" as its own directive token must not appear -- but
+		// "require-trusted-types-for" legitimately contains the same substring,
+		// so match on a directive boundary rather than a plain substring check.
+		$this->assertDoesNotMatchRegularExpression( '/(^|;\s*)trusted-types(\s|;|$)/', $policy );
+		$this->assertStringContainsString( "require-trusted-types-for 'script'", $policy );
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────────

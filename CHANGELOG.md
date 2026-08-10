@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.3.0] - 2026-08-10
+
+### Added
+
+- Added a per-surface Trusted Types toggle to the CSP Profiles tab: sends `require-trusted-types-for 'script'` when enabled, always report-only regardless of surface mode, closing off DOM-based XSS injection sinks. The directive was already scaffolded in the policy builder but had no admin control to actually enable it until now.
+
+### Fixed
+
+- Fixed approved CSP source hosts being emitted without a scheme prefix (e.g. `img-src cdn.example.com` instead of `img-src https://cdn.example.com`). `source_scheme` was captured and stored at proposal time but never read back out when building the policy string, so every approved source matched its host on any scheme, including plain HTTP. Flagged by a third-party CSP linter as a "missing protocol" finding across `connect-src`, `frame-src`, `img-src`, and `script-src-elem`.
+- Fixed `upgrade-insecure-requests` being emitted in report-only mode, where browsers ignore it entirely (the directive has no effect under `Content-Security-Policy-Report-Only`, same as `sandbox`). Now stripped dynamically in report-only mode instead of always being present.
+- Removed `fenced-frame-src` from the default CSP directive set. It's an experimental Privacy Sandbox directive, not part of the CSP living standard, and real-world CSP linters commonly flag it as "should not be used" -- removed after live scan feedback. A new activation-time migration strips it from already-seeded profiles on upgrading sites, not just new installs.
+- Fixed a `trusted-types` directive with no configured policy names being able to leak into the header as a bare, valueless token if `require-trusted-types-for` was ever enabled without also configuring `trusted-types`. Now stripped independently whenever empty.
+- Fixed the Violations table column widths on the CSP dashboard: Surface, Directive, Occurrences, Last Seen, Disposition, and Details now have fixed widths, and Blocked URI absorbs the remaining space (still auto-wrapping) instead of all seven columns splitting evenly.
+
 ## [2.2.0] - 2026-08-10
 
 ### Added

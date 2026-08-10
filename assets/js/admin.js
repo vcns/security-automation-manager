@@ -60,6 +60,34 @@
 		} );
 	} );
 
+	$( '.wp-sam-trusted-types-toggle' ).on( 'change', function () {
+		const $checkbox = $( this );
+		const surface   = $checkbox.data( 'surface' );
+		const enabled   = $checkbox.is( ':checked' );
+
+		$checkbox.prop( 'disabled', true );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:  'wp_sam_set_trusted_types',
+			nonce:   wpSamAdmin.nonce,
+			surface: surface,
+			enabled: enabled ? 1 : 0,
+		} )
+		.done( function ( res ) {
+			if ( ! res || true !== res.success ) {
+				$checkbox.prop( 'checked', ! enabled );
+				// eslint-disable-next-line no-alert
+				alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+			}
+		} )
+		.fail( function () {
+			$checkbox.prop( 'checked', ! enabled );
+		} )
+		.always( function () {
+			$checkbox.prop( 'disabled', false );
+		} );
+	} );
+
 	$( '.wp-sam-automation-mode' ).on( 'change', function () {
 		const $select = $( this );
 		const surface = $select.data( 'surface' );

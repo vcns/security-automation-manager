@@ -7,7 +7,7 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 **Content Security Policy**
 
 - Per-surface CSP profiles for `frontend`, `admin`, `login`, and `api`
-- Strict defaults across CSP directives, including `upgrade-insecure-requests`, `child-src`, `fenced-frame-src`, and the `sandbox` document directive
+- Strict defaults across CSP directives, including `upgrade-insecure-requests`, `child-src`, and the `sandbox` document directive
 - `report-sample` support in fetch directives so inline snippets can appear in violation reports
 - Direct `report-uri` browser reporting by default, with optional Reporting API headers
 - Configurable origin policy header name for Cloudflare, CDN, and reverse-proxy deployments
@@ -28,7 +28,7 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Automation configuration scaffold that defaults every surface to `manual`; no proposal is auto-approved on install or upgrade
 - Multi-surface scan support
 - `strict-dynamic` with automatic host-source suppression
-- Trusted Types directives, report-only by default
+- Per-surface Trusted Types toggle (Profiles tab): sends `require-trusted-types-for 'script'`, always report-only regardless of surface mode
 - Conflict detection for competing CSP headers from `.htaccess`, server config, or other security-header plugins
 - Scheduled rescans with audit logging
 
