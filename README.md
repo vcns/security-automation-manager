@@ -58,7 +58,7 @@ Once published to WordPress.org:
 ### Install from GitHub Releases
 
 Tagged releases publish ready-to-install ZIPs to the
-[Releases page](https://github.com/vcns/csp-automation-manager/releases).
+[Releases page](https://github.com/vcns/security-automation-manager/releases).
 
 1. Download `security-automation-manager-github-vX.Y.Z.zip` from the release assets when installing from GitHub.
 2. In WordPress go to **Plugins -> Add New Plugin -> Upload Plugin**.
@@ -127,7 +127,7 @@ The plugin keeps operational data local to WordPress.
 
 The repository also publishes a public help site from the `docs/` directory:
 
-- https://vcns.github.io/csp-automation-manager/
+- https://vcns.github.io/security-automation-manager/
 
 ## Development And Release Flow
 

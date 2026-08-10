@@ -29,7 +29,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$item = $result->response[ WP_SAM_PLUGIN_BASENAME ] ?? null;
 		$this->assertIsObject( $item );
 		$this->assertSame( '1.0.17', $item->new_version );
-		$this->assertSame( 'https://vcns.github.io/wp-updates/csp-automation-manager/csp-automation-manager-github-v1.0.17.zip', $item->package );
+		$this->assertSame( 'https://vcns.github.io/wp-updates/security-automation-manager/security-automation-manager-github-v1.0.17.zip', $item->package );
 		$this->assertArrayNotHasKey( WP_SAM_PLUGIN_BASENAME, $result->no_update );
 	}
 
@@ -54,7 +54,7 @@ class GithubUpdateCheckerTest extends TestCase {
 
 	public function test_invalid_manifest_does_not_offer_update(): void {
 		$manifest                 = $this->manifest( '1.0.17' );
-		$manifest['download_url'] = 'https://example.com/csp-automation-manager.zip';
+		$manifest['download_url'] = 'https://example.com/security-automation-manager.zip';
 
 		$GLOBALS['_wp_remote_get_response'] = $this->response( $manifest );
 
@@ -75,7 +75,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '1.0.17' ) );
 
 		$checker = new Github_Update_Checker();
-		$args    = (object) array( 'slug' => 'csp-automation-manager' );
+		$args    = (object) array( 'slug' => 'security-automation-manager' );
 
 		$result = $checker->plugin_info( false, 'plugin_information', $args );
 
@@ -163,17 +163,17 @@ class GithubUpdateCheckerTest extends TestCase {
 	private function manifest( string $version ): array {
 		return array(
 			'name'            => 'CSP Automation Manager',
-			'slug'            => 'csp-automation-manager',
+			'slug'            => 'security-automation-manager',
 			'version'         => $version,
 			'author'          => 'VCNS Tech Ltd',
 			'author_homepage' => 'https://vcns.tech',
 			'requires'        => '6.4',
 			'tested'          => '7.0',
 			'requires_php'    => '8.1',
-			'download_url'    => 'https://vcns.github.io/wp-updates/csp-automation-manager/csp-automation-manager-github-v' . $version . '.zip',
+			'download_url'    => 'https://vcns.github.io/wp-updates/security-automation-manager/security-automation-manager-github-v' . $version . '.zip',
 			'sha256'          => str_repeat( 'a', 64 ),
 			'last_updated'    => '2026-08-04',
-			'homepage'        => 'https://github.com/vcns/csp-automation-manager',
+			'homepage'        => 'https://github.com/vcns/security-automation-manager',
 			'sections'        => array(
 				'description' => 'Description',
 				'changelog'   => 'Release notes',

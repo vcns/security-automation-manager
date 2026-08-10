@@ -20,7 +20,7 @@ define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
 define( 'WP_SAM_URL',            'https://example.com/wp-content/plugins/security-automation-manager/' );
 define( 'WP_SAM_PLUGIN_BASENAME', 'security-automation-manager/security-automation-manager.php' );
 define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'wordpress-org' );
-define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json' );
+define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/security-automation-manager/update.json' );
 define( 'HOUR_IN_SECONDS',       3600 );
 define( 'DAY_IN_SECONDS',        86400 );
 if ( ! defined( 'DNS_TXT' ) ) {
