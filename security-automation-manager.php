@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Security Automation Manager
- * Plugin URI:        https://github.com/vcns/csp-automation-manager
+ * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
  * Version:           1.0.16
  * Requires at least: 6.4
@@ -69,13 +69,7 @@ if ( ! defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) ) {
 }
 
 if ( ! defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ) {
-	// NOTE: intentionally still points at the csp-automation-manager path on
-	// VCNS's update-manifest host. This is an external infrastructure
-	// contract (vcns.github.io/wp-updates/), not just an in-repo identifier --
-	// renaming it here would 404 update checks for existing GitHub-channel
-	// installs until the manifest host also migrates to a new path. Update
-	// this once that migration happens on the manifest-hosting side.
-	define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json' );
+	define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/security-automation-manager/update.json' );
 }
 
 

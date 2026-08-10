@@ -19,13 +19,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Github_Update_Checker {
 
-	private const UPDATE_URL          = 'https://vcns.github.io/wp-updates/csp-automation-manager/update.json';
+	private const UPDATE_URL          = 'https://vcns.github.io/wp-updates/security-automation-manager/update.json';
 	private const UPDATE_HOST         = 'vcns.github.io';
-	private const UPDATE_PATH         = '/wp-updates/csp-automation-manager/';
+	private const UPDATE_PATH         = '/wp-updates/security-automation-manager/';
 	private const CACHE_KEY           = 'wp_sam_github_update_info';
 	private const SUCCESS_CACHE_TTL   = 12 * HOUR_IN_SECONDS;
 	private const FAILURE_CACHE_TTL   = HOUR_IN_SECONDS;
-	private const SLUG                = 'csp-automation-manager';
+	private const SLUG                = 'security-automation-manager';
 	private const DISABLE_AUTO_UPDATE = 'WP_SAM_DISABLE_AUTO_UPDATE';
 
 	public function register(): void {

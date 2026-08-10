@@ -114,7 +114,7 @@ The repository includes a public GitHub Pages site in `docs/` for:
 
 Published URL:
 
-- `https://vcns.github.io/csp-automation-manager/`
+- `https://vcns.github.io/security-automation-manager/`
 
 ## WordPress.org Review Readiness
 

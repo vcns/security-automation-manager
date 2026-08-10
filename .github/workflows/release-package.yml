@@ -184,8 +184,8 @@ jobs:
           from pathlib import Path
           plugin = Path("dist/github/security-automation-manager/security-automation-manager.php")
           contents = plugin.read_text()
-          marker = " * Plugin URI:        https://github.com/vcns/csp-automation-manager\n"
-          update = " * Update URI:        https://github.com/vcns/csp-automation-manager\n"
+          marker = " * Plugin URI:        https://github.com/vcns/security-automation-manager\n"
+          update = " * Update URI:        https://github.com/vcns/security-automation-manager\n"
           if update not in contents:
               contents = contents.replace(marker, marker + update, 1)
           plugin.write_text(contents)
@@ -314,25 +314,16 @@ jobs:
           cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/security-automation-manager-github-latest.zip"
           SHA256="$(sha256sum "${FEED_DIR}/${GITHUB_ZIP_FILENAME}" | awk '{print $1}')"
 
-          # NOTE: the update-feed publish path (vcns/wp-updates/csp-automation-manager/)
-          # intentionally still uses the pre-rename slug -- it must match the
-          # WP_SAM_UPDATE_MANIFEST_URL constant baked into already-installed
-          # GitHub-channel copies of the plugin, or they stop discovering new
-          # releases entirely. Migrate both together in a coordinated follow-up.
           python3 - <<PY
           import json
           version = "${VERSION}"
           last_updated = "${LAST_UPDATED}"
           zip_name = "${GITHUB_ZIP_FILENAME}"
           sha256 = "${SHA256}"
-          update_url = "https://vcns.github.io/wp-updates/csp-automation-manager/" + zip_name
+          update_url = "https://vcns.github.io/wp-updates/security-automation-manager/" + zip_name
           data = {
-              # NOTE: "name" is updated for the new branding, but "slug" intentionally
-              # stays the pre-rename value -- it must match Github_Update_Checker::SLUG
-              # in already-installed GitHub-channel copies, or their update check's
-              # slug-match validation rejects future releases. Migrate both together.
               "name": "Security Automation Manager",
-              "slug": "csp-automation-manager",
+              "slug": "security-automation-manager",
               "version": version,
               "author": "VCNS Tech Ltd",
               "author_homepage": "https://vcns.tech",
@@ -342,10 +333,10 @@ jobs:
               "download_url": update_url,
               "sha256": sha256,
               "last_updated": last_updated,
-              "homepage": "https://github.com/vcns/csp-automation-manager",
+              "homepage": "https://github.com/vcns/security-automation-manager",
               "sections": {
                   "description": "Strict HTTP security header rollout, reporting, and decision review for WordPress.",
-                  "changelog": "See https://github.com/vcns/csp-automation-manager/releases/tag/${TAG}"
+                  "changelog": "See https://github.com/vcns/security-automation-manager/releases/tag/${TAG}"
               }
           }
           with open("${FEED_DIR}/update.json", "w", encoding="utf-8") as handle:
@@ -396,14 +387,12 @@ jobs:
             git -C "${WORKTREE}" remote add origin "${REMOTE_URL}"
           fi
 
-          # Deliberately still the pre-rename slug -- see the NOTE above where
-          # update_url is built; keep in lockstep with WP_SAM_UPDATE_MANIFEST_URL.
-          mkdir -p "${WORKTREE}/csp-automation-manager"
-          cp -R /tmp/pages/. "${WORKTREE}/csp-automation-manager/"
+          mkdir -p "${WORKTREE}/security-automation-manager"
+          cp -R /tmp/pages/. "${WORKTREE}/security-automation-manager/"
 
           git -C "${WORKTREE}" config user.name "github-actions[bot]"
           git -C "${WORKTREE}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "${WORKTREE}" add csp-automation-manager
+          git -C "${WORKTREE}" add security-automation-manager
 
           if git -C "${WORKTREE}" diff --cached --quiet; then
             echo "No update feed changes to publish."
