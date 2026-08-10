@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.3.0
+ * Version:           2.4.0
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.3.0' );
+define( 'WP_SAM_VERSION', '2.4.0' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -50,8 +50,19 @@ define( 'WP_SAM_VERSION', '2.3.0' );
  *        strict-dynamic shape (X-Frame-Options, X-Content-Type-Options,
  *        Referrer-Policy, and future pillars). Starts empty; nothing reads
  *        or writes it until those pillars ship.
+ * v11 -- adds sam_dependency_inventory (third-party script/stylesheet origin
+ *        governance).
+ * v12 -- migrates fenced-frame-src out of any already-seeded profile's stored
+ *        directives JSON (removed from the default set as an experimental,
+ *        non-standard directive commonly flagged by CSP linters); adds
+ *        trusted_types to csp_policy_profiles for the per-surface Trusted
+ *        Types toggle.
+ * v13 -- adds sam_pillar_violation_reports, a generic Reporting API violation
+ *        store for pillars other than CSP (currently Cross-Origin-Opener-Policy
+ *        and Cross-Origin-Embedder-Policy, the only two with a browser-native
+ *        report-only + reporting delivery mechanism). See Pillar_Violation_Store.
  */
-define( 'WP_SAM_DB_VERSION', '12' );
+define( 'WP_SAM_DB_VERSION', '13' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

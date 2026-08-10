@@ -99,6 +99,7 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_decision_rule_evaluations',
 			'wp_sam_pillar_profiles',
 			'wp_sam_dependency_inventory',
+			'wp_sam_pillar_violation_reports',
 		);
 
 		$this->assertSame(
@@ -168,6 +169,16 @@ class SchemaMigrationTest extends TestCase {
 		$method->invoke( null );
 
 		$this->assertSame( 3, get_option( 'wp_sam_cron_hour' ) );
+	}
+
+	public function test_schema_v13_pillar_violation_reports_table_is_declared(): void {
+		Activator::activate();
+
+		$schema = implode( "\n\n", $GLOBALS['_dbdelta_queries'] );
+
+		$this->assertStringContainsString( "CREATE TABLE {$GLOBALS['wpdb']->prefix}sam_pillar_violation_reports", $schema );
+		$this->assertStringContainsString( 'detail longtext NOT NULL', $schema );
+		$this->assertStringContainsString( 'UNIQUE KEY fingerprint (fingerprint)', $schema );
 	}
 
 	public function test_migrate_remove_fenced_frame_src_directive_strips_key_from_existing_profile(): void {

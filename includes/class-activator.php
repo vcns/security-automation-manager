@@ -116,6 +116,7 @@ class Activator {
 			'sam_decision_rule_evaluations',
 			'sam_pillar_profiles',
 			'sam_dependency_inventory',
+			'sam_pillar_violation_reports',
 		);
 	}
 
@@ -495,6 +496,34 @@ class Activator {
   PRIMARY KEY  (id),
   UNIQUE KEY surface_type_origin (surface, resource_type, origin),
   KEY classification (classification)
+) {$cc};"
+		);
+
+		// 14. Reporting API violation reports for pillars other than CSP --
+		// currently Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy,
+		// the only two pillars with a browser-native report-only + reporting
+		// delivery mechanism (Chromium only). Deliberately generic rather than
+		// CSP-shaped: COOP/COEP report bodies carry different fields from each
+		// other and from a CSP violation report, and their exact field names
+		// are less stable, so pillar-specific fields live in the `detail` JSON
+		// blob rather than named columns. See Pillar_Violation_Store.
+		dbDelta(
+			"CREATE TABLE {$p}sam_pillar_violation_reports (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  pillar varchar(32) NOT NULL,
+  surface varchar(32) NOT NULL,
+  disposition varchar(16) NOT NULL DEFAULT 'reporting',
+  report_type varchar(64) NOT NULL,
+  detail longtext NOT NULL,
+  fingerprint varchar(64) NOT NULL,
+  occurrence_count int(11) NOT NULL DEFAULT 1,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY pillar (pillar),
+  KEY surface (surface),
+  KEY last_seen_at (last_seen_at),
+  UNIQUE KEY fingerprint (fingerprint)
 ) {$cc};"
 		);
 
