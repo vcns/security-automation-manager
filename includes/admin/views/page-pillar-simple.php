@@ -10,6 +10,11 @@
  *   string      $header_name     the actual HTTP header name, for display
  *   string      $intro_html      allowed-tags help copy above the table
  *   array|null  $value_options   value => label options, or null for no picker
+ *   string      $warning_html    optional allowed-tags warning copy, rendered
+ *                                 in a prominent notice box above $intro_html
+ *                                 for a pillar with real breakage risk (e.g.
+ *                                 Cross-Origin-Opener-Policy,
+ *                                 Cross-Origin-Embedder-Policy); '' for none
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -40,6 +45,12 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 ?>
 <div class="wrap wp-sam-wrap">
 	<h1><?php echo esc_html( $page_title ); ?></h1>
+
+	<?php if ( ! empty( $warning_html ) ) : ?>
+	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
+		<?php echo wp_kses_post( $warning_html ); ?>
+	</div>
+	<?php endif; ?>
 
 	<?php echo wp_kses_post( $intro_html ); ?>
 

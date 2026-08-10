@@ -14,7 +14,11 @@
  *   7. security-automation-manager-hsts              – Strict-Transport-Security: per-surface max-age/includeSubDomains/preload
  *   8. security-automation-manager-reverse-tabnabbing – Reverse Tabnabbing: per-surface on/off, rel=noopener injection
  *   9. security-automation-manager-external-scripts  – External Scripts: third-party script/stylesheet inventory, SRI, enforcement
- *  10. security-automation-manager-readiness         – plugin-specific health checks and reset
+ *  10. security-automation-manager-corp              – Cross-Origin-Resource-Policy: per-surface value picker
+ *  11. security-automation-manager-xpcdp             – X-Permitted-Cross-Domain-Policies: per-surface value picker
+ *  12. security-automation-manager-coop              – Cross-Origin-Opener-Policy: per-surface value picker
+ *  13. security-automation-manager-coep              – Cross-Origin-Embedder-Policy: per-surface value picker
+ *  14. security-automation-manager-readiness         – plugin-specific health checks and reset
  *
  * Policy Audit (effective policy, decisions, provenance) is a tab on the CSP
  * page (2), not a separate top-level page -- it's CSP-specific content.
@@ -33,6 +37,9 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
+use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
+use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
@@ -40,6 +47,7 @@ use WP_SAM\Security\Reverse_Tabnabbing_Builder;
 use WP_SAM\Security\Strict_Transport_Security_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
+use WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -173,6 +181,42 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-external-scripts',
 			array( $this, 'render_external_scripts' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
+			__( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-corp',
+			array( $this, 'render_cross_origin_resource_policy' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
+			__( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-xpcdp',
+			array( $this, 'render_x_permitted_cross_domain_policies' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+			__( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-coop',
+			array( $this, 'render_cross_origin_opener_policy' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+			__( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-coep',
+			array( $this, 'render_cross_origin_embedder_policy' )
 		);
 
 		add_submenu_page(
@@ -330,6 +374,10 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-hsts',
 			'security-automation-manager_page_security-automation-manager-reverse-tabnabbing',
 			'security-automation-manager_page_security-automation-manager-external-scripts',
+			'security-automation-manager_page_security-automation-manager-corp',
+			'security-automation-manager_page_security-automation-manager-xpcdp',
+			'security-automation-manager_page_security-automation-manager-coop',
+			'security-automation-manager_page_security-automation-manager-coep',
 			'security-automation-manager_page_security-automation-manager-readiness',
 		);
 	}
@@ -412,6 +460,65 @@ class Admin_UI {
 		);
 	}
 
+	public function render_cross_origin_resource_policy(): void {
+		$this->render_pillar_page(
+			Cross_Origin_Resource_Policy_Builder::PILLAR_KEY,
+			__( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
+			'Cross-Origin-Resource-Policy',
+			'<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via <img>, <script>, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'security-automation-manager' ) . '</p>',
+			array(
+				'same-site'    => __( 'same-site -- allow same-site origins only', 'security-automation-manager' ),
+				'same-origin'  => __( 'same-origin -- allow only this exact origin', 'security-automation-manager' ),
+				'cross-origin' => __( 'cross-origin -- allow any origin', 'security-automation-manager' ),
+			)
+		);
+	}
+
+	public function render_x_permitted_cross_domain_policies(): void {
+		$this->render_pillar_page(
+			X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY,
+			__( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
+			'X-Permitted-Cross-Domain-Policies',
+			'<p>' . esc_html__( 'A legacy header from the Adobe Flash/Acrobat era, controlling whether Flash and PDF plugins may load a cross-domain policy file from this site. Flash is dead, so "none" is almost always the correct value -- this closes a legacy attack surface that would otherwise sit at its permissive browser default.', 'security-automation-manager' ) . '</p>',
+			array(
+				'none'            => __( 'none -- no policy files allowed (recommended)', 'security-automation-manager' ),
+				'master-only'     => __( 'master-only -- only the root crossdomain.xml', 'security-automation-manager' ),
+				'by-content-type' => __( 'by-content-type', 'security-automation-manager' ),
+				'all'             => __( 'all -- any policy file, anywhere', 'security-automation-manager' ),
+			)
+		);
+	}
+
+	public function render_cross_origin_opener_policy(): void {
+		$this->render_pillar_page(
+			Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
+			__( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+			'Cross-Origin-Opener-Policy',
+			'<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'security-automation-manager' ) . '</p>',
+			array(
+				'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'security-automation-manager' ),
+				'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'security-automation-manager' ),
+				'same-origin'              => __( 'same-origin -- full isolation', 'security-automation-manager' ),
+			),
+			'<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. If this site uses any of those, start with "same-origin-allow-popups" instead, which keeps isolation for this site\'s own top-level navigation while still letting a popup hold a restricted opener reference back.', 'security-automation-manager' ) . '</p>'
+		);
+	}
+
+	public function render_cross_origin_embedder_policy(): void {
+		$this->render_pillar_page(
+			Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
+			__( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+			'Cross-Origin-Embedder-Policy',
+			'<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'security-automation-manager' ) . '</p>',
+			array(
+				'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'security-automation-manager' ),
+				'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'security-automation-manager' ),
+				'require-corp'   => __( 'require-corp -- every cross-origin resource must explicitly opt in, or it is blocked', 'security-automation-manager' ),
+			),
+			'<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Enabling this carelessly silently breaks unrelated page content rather than producing an obvious error. Do not enable this unless this site specifically needs cross-origin isolation.', 'security-automation-manager' ) . '</p>'
+		);
+	}
+
 	public function render_referrer_policy(): void {
 		$options = array();
 		foreach ( Referrer_Policy_Builder::VALID_VALUES as $value ) {
@@ -445,8 +552,9 @@ class Admin_UI {
 	 * includes/admin/views/page-pillar-simple.php for the shared template.
 	 *
 	 * @param array<string,string>|null $value_options value => label options, or null for no picker (e.g. X-Content-Type-Options).
+	 * @param string                    $warning_html  Optional prominent warning notice for a pillar with real breakage risk (e.g. Cross-Origin-Opener-Policy); '' for none.
 	 */
-	private function render_pillar_page( string $pillar_key, string $page_title, string $header_name, string $intro_html, ?array $value_options ): void {
+	private function render_pillar_page( string $pillar_key, string $page_title, string $header_name, string $intro_html, ?array $value_options, string $warning_html = '' ): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
 		}
@@ -823,6 +931,34 @@ class Admin_UI {
 				$sanitized_value = Referrer_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
 					wp_send_json_error( array( 'message' => __( 'Invalid Referrer-Policy value.', 'security-automation-manager' ) ) );
+				}
+				break;
+
+			case Cross_Origin_Resource_Policy_Builder::PILLAR_KEY:
+				$sanitized_value = Cross_Origin_Resource_Policy_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Resource-Policy value.', 'security-automation-manager' ) ) );
+				}
+				break;
+
+			case X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY:
+				$sanitized_value = X_Permitted_Cross_Domain_Policies_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid X-Permitted-Cross-Domain-Policies value.', 'security-automation-manager' ) ) );
+				}
+				break;
+
+			case Cross_Origin_Opener_Policy_Builder::PILLAR_KEY:
+				$sanitized_value = Cross_Origin_Opener_Policy_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy value.', 'security-automation-manager' ) ) );
+				}
+				break;
+
+			case Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY:
+				$sanitized_value = Cross_Origin_Embedder_Policy_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy value.', 'security-automation-manager' ) ) );
 				}
 				break;
 
