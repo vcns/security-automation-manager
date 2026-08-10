@@ -15,8 +15,8 @@
     <header class='hero'>
       <div class='hero-copy'>
         <p class='eyebrow'>Security Automation Manager</p>
-        <h1>Practical CSP help for WordPress administrators.</h1>
-        <p class='lede'>This help site explains what the plugin does, how to roll it out safely, how to read the dashboard, and how to decide which CSP changes should be approved.</p>
+        <h1>Practical security-header help for WordPress administrators.</h1>
+        <p class='lede'>This help site explains what the plugin does, how to roll out Content Security Policy safely, how to read the dashboard, how to decide which CSP changes should be approved, and how to configure the simpler X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy pillars alongside it.</p>
         <div class='hero-actions'>
           <a class='button primary' href='user-guide.html'>Read the user guide</a>
           <a class='button secondary' href='faq.html'>Open the FAQ</a>
@@ -27,8 +27,9 @@
         <h2>At a glance</h2>
         <ul>
           <li>WordPress 6.4+ and PHP 8.1+</li>
+          <li>Five pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy</li>
           <li>Per-surface policies for frontend, admin, login, and API</li>
-          <li>Report-only rollout before enforcement</li>
+          <li>Report-only rollout before CSP enforcement</li>
           <li>Nonce injection for WordPress-managed scripts</li>
           <li>Local violation reporting and source learning</li>
           <li>Risk-ranked approval workflow</li>
@@ -39,6 +40,7 @@
 
     <nav class='section-nav' aria-label='Documentation sections'>
       <a href='#start-here'>Start here</a>
+      <a href='#pillars'>Pillars</a>
       <a href='#how-it-works'>How it works</a>
       <a href='#learning-curve'>Learning curve</a>
       <a href='#rollout-plan'>Rollout plan</a>
@@ -66,6 +68,38 @@
             <h3>Do not start in enforce mode</h3>
             <p>Enforce mode can block scripts, styles, frames, fonts, media, and API calls. Move one surface at a time only after the dashboard evidence supports the change.</p>
           </div>
+        </div>
+      </section>
+
+      <section id='pillars' class='section'>
+        <p class='section-label'>Pillars</p>
+        <h2>Five headers, one dashboard.</h2>
+        <p>Configuration, reporting, and the decision engine are shared plumbing. Content Security Policy is the most capable pillar built on top of it; the other four are simpler per-surface toggles with no learning curve of their own.</p>
+        <div class='card-grid'>
+          <article class='card'>
+            <h3>Content Security Policy</h3>
+            <p>The full workflow this help site mostly covers: report-only rollout, source discovery, risk-ranked approvals, and staged enforcement.</p>
+          </article>
+          <article class='card'>
+            <h3>X-Frame-Options</h3>
+            <p>Per surface, choose DENY or SAMEORIGIN to stop the site being framed by another origin. A fallback for browsers that don't honour CSP's <code>frame-ancestors</code> directive.</p>
+          </article>
+          <article class='card'>
+            <h3>X-Content-Type-Options</h3>
+            <p>Per surface, on or off. When on, sends <code>nosniff</code> so browsers stop guessing content types away from what the server declared.</p>
+          </article>
+          <article class='card'>
+            <h3>Referrer-Policy</h3>
+            <p>Per surface, choose from the eight standard tokens. Controls how much of this site's URL is sent as the Referer header when a visitor follows a link away from it.</p>
+          </article>
+          <article class='card'>
+            <h3>Permissions-Policy</h3>
+            <p>Per surface, per browser feature (camera, geolocation, and similar). Choose None, Self, or All for each one covered.</p>
+          </article>
+        </div>
+        <div class='callout'>
+          <h3>Why these four are simpler than CSP</h3>
+          <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself.</p>
         </div>
       </section>
 
@@ -170,7 +204,7 @@
         <div>
           <p class='section-label'>Dashboard</p>
           <h2>Where to look in the WordPress admin.</h2>
-          <p>Open <strong>Security Automation Manager -> CSP</strong> in the WordPress admin. The main dashboard is split into tabs that match the product workflow.</p>
+          <p>Open <strong>Security Automation Manager</strong> in the WordPress admin. The top-level Overview page shows every pillar's per-surface status at a glance, with a link into each one. For CSP specifically, go to <strong>Security Automation Manager -> CSP</strong> -- that dashboard is split into tabs that match the product workflow.</p>
           <ul class='bullets'>
             <li><strong>Profiles:</strong> see each surface and switch between report-only, enforce, and disabled.</li>
             <li><strong>For Review:</strong> review discovered hosts, risk, state, evidence count, and last-seen time.</li>

@@ -39,6 +39,7 @@
       <a href='#rollout'>Rollout</a>
       <a href='#approvals'>Approvals</a>
       <a href='#violations'>Violations</a>
+      <a href='#other-pillars'>Other pillars</a>
       <a href='#compatibility'>Compatibility</a>
       <a href='#wordpress-org'>WordPress.org build</a>
       <a href='#privacy'>Privacy</a>
@@ -52,7 +53,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What does Security Automation Manager do?</h3>
-            <p>It helps WordPress administrators build, test, and enforce Content Security Policy headers. It emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy.</p>
+            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below.</p>
           </article>
           <article class='faq-item'>
             <h3>Who is it for?</h3>
@@ -182,6 +183,37 @@
           <article class='faq-item'>
             <h3>What does occurrence count mean?</h3>
             <p>It shows how often the same violation fingerprint has been seen. A high count often means a real repeated site behaviour rather than a single test.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id='other-pillars' class='section'>
+        <p class='section-label'>Other pillars</p>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.</h2>
+        <div class='faq-list'>
+          <article class='faq-item'>
+            <h3>What other headers does the plugin manage besides CSP?</h3>
+            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy. Each is configured per surface (frontend, admin, login, API) from its own page under the Security Automation Manager top-level menu.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Do these four pillars have a report-only mode like CSP?</h3>
+            <p>No. None of them do. Each header is either sent exactly as configured, or not sent at all -- there's no intermediate learning state to roll through.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Why don't they have a discovery workflow or automation like CSP does?</h3>
+            <p>They're single-value or small-allowlist headers with nothing to discover: there's no equivalent of "external sources this page happens to load." CSP's discovery, risk-scoring, and approval workflow exist because a CSP policy has to enumerate every legitimate external host; these four pillars don't.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does X-Frame-Options duplicate CSP's frame-ancestors directive?</h3>
+            <p>They overlap in browsers that support both, and CSP's <code>frame-ancestors</code> takes precedence there. X-Frame-Options remains useful as a fallback for older browsers that don't support <code>frame-ancestors</code>.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Why is Permissions-Policy limited to a handful of features?</h3>
+            <p>The plugin ships a starter set of seven commonly-restricted features (geolocation, camera, microphone, fullscreen, payment, usb, autoplay) rather than the full W3C registry, and offers None, Self, or All rather than free-text origin lists -- deliberately narrower in scope than CSP's source model.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>I changed a value and nothing seems different. What now?</h3>
+            <p>Check you changed the correct surface -- frontend, admin, login, and API are configured independently, the same as CSP. Then confirm with your browser's network inspector that the header is present on a fresh request; some caching layers can serve a stale response with the old header until the cache clears.</p>
           </article>
         </div>
       </section>
