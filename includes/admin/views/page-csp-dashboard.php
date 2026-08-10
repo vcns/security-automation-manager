@@ -1128,8 +1128,13 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</p>
 		<?php if ( ! $wp_sam_is_pro ) : ?>
 		<p class="description">
-			<?php esc_html_e( 'Fully Automatic mode (zero-review auto-apply) requires a paid subscription.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Fully Automatic mode (zero-review auto-apply) requires a paid subscription: £1.99/month or £19.99/year.', 'security-automation-manager' ); ?>
 			<?php if ( null !== $this->plugin->checkout ) : ?>
+			<label for="wp-sam-upgrade-interval" class="screen-reader-text"><?php esc_html_e( 'Billing interval', 'security-automation-manager' ); ?></label>
+			<select id="wp-sam-upgrade-interval">
+				<option value="monthly"><?php esc_html_e( 'Monthly — £1.99/mo', 'security-automation-manager' ); ?></option>
+				<option value="annual"><?php esc_html_e( 'Annual — £19.99/yr', 'security-automation-manager' ); ?></option>
+			</select>
 			<button type="button" class="button button-secondary" id="wp-sam-upgrade-button"><?php esc_html_e( 'Upgrade', 'security-automation-manager' ); ?></button>
 			<span id="wp-sam-upgrade-status" role="status"></span>
 			<?php endif; ?>
