@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.0.16
+Stable tag: 2.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,6 +40,15 @@ Reports received by this plugin are validated and stored in this site's WordPres
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
 == Changelog ==
+
+= 2.0.0 =
+
+* Renames the plugin to Security Automation Manager. Content Security Policy becomes the first of five HTTP security-header pillars, joined by X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy as simpler per-surface pillars with no report-only mode, discovery workflow, or automation.
+* Adds a top-level "Security Automation Manager" admin menu with an Overview page summarizing every pillar's per-surface status.
+* Adds full-dataset sorting and per-column filtering to the Violations, For Review, and Policy Changes tables, and a per-row metadata popover on Violations.
+* Adds a "Start Here" tab and merges the standalone Settings page into the CSP dashboard as a tab.
+* Fully Automatic mode (zero-review auto-apply of deterministic policy changes) now requires a paid subscription; sites without an active entitlement are kept on "Automatic (with high approvals only)" instead. Every other feature remains free, with no remote licensing calls in the WordPress.org build.
+* Removes the "Allow eligible auto-approvals" checkbox and its underlying field; Automation Mode alone now governs automatic approval eligibility.
 
 = 1.0.16 =
 
