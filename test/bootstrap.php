@@ -351,6 +351,12 @@ if ( ! function_exists( 'is_admin' ) ) {
 	}
 }
 
+if ( ! function_exists( 'is_ssl' ) ) {
+	function is_ssl(): bool {
+		return $GLOBALS['_wp_is_ssl'] ?? false;
+	}
+}
+
 if ( ! function_exists( 'wp_doing_cron' ) ) {
 	function wp_doing_cron(): bool {
 		return $GLOBALS['_wp_doing_cron'] ?? false;
@@ -638,6 +644,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_remote_head_response'] = null;
 	$GLOBALS['_wp_remote_head_requests'] = [];
 	$GLOBALS['_wp_is_admin']             = false;
+	$GLOBALS['_wp_is_ssl']               = false;
 	$GLOBALS['_wp_doing_cron']           = false;
 	$GLOBALS['_wp_cron']                 = [];
 	$GLOBALS['_wp_current_user_can']     = [];

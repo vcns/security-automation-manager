@@ -251,6 +251,56 @@
 		postPermissionsPolicyChange( $( this ) );
 	} );
 
+	const HSTS_PRELOAD_MIN_MAX_AGE = 31536000; // 1 year -- mirrors Strict_Transport_Security_Builder::PRELOAD_MIN_MAX_AGE.
+
+	function refreshHstsPreloadEligibility( $row ) {
+		const maxAge            = parseInt( $row.find( '.wp-sam-hsts-max-age' ).val(), 10 ) || 0;
+		const includeSubdomains = $row.find( '.wp-sam-hsts-include-subdomains' ).is( ':checked' );
+		const $preload          = $row.find( '.wp-sam-hsts-preload' );
+		const eligible          = includeSubdomains && maxAge >= HSTS_PRELOAD_MIN_MAX_AGE;
+
+		$preload.prop( 'disabled', ! eligible );
+		if ( ! eligible ) {
+			$preload.prop( 'checked', false );
+		}
+	}
+
+	function postHstsChange( $control ) {
+		const $row = $control.closest( 'tr' );
+
+		refreshHstsPreloadEligibility( $row );
+
+		const surface            = $row.find( '.wp-sam-hsts-enabled' ).data( 'surface' );
+		const enabled             = $row.find( '.wp-sam-hsts-enabled' ).is( ':checked' );
+		const maxAge              = $row.find( '.wp-sam-hsts-max-age' ).val();
+		const includeSubdomains   = $row.find( '.wp-sam-hsts-include-subdomains' ).is( ':checked' );
+		const preload             = $row.find( '.wp-sam-hsts-preload' ).is( ':checked' );
+
+		$row.find( 'input, select' ).prop( 'disabled', true );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:              'wp_sam_set_hsts',
+			nonce:                wpSamAdmin.nonce,
+			surface:              surface,
+			enabled:              enabled ? '1' : '',
+			max_age:              maxAge,
+			include_subdomains:   includeSubdomains ? '1' : '',
+			preload:              preload ? '1' : '',
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to save.' );
+		} )
+		.always( function () {
+			$row.find( 'input, select' ).prop( 'disabled', false );
+			refreshHstsPreloadEligibility( $row );
+		} );
+	}
+
+	$( document ).on( 'change', '.wp-sam-hsts-enabled, .wp-sam-hsts-max-age, .wp-sam-hsts-include-subdomains, .wp-sam-hsts-preload', function () {
+		postHstsChange( $( this ) );
+	} );
+
 	$( document ).on( 'click', '#wp-sam-upgrade-button', function () {
 		const $button   = $( this );
 		const $status   = $( '#wp-sam-upgrade-status' );
