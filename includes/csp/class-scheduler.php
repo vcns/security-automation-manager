@@ -70,6 +70,7 @@ class Scheduler {
 			$this->audit->finish_scan( $scan_id, $results );
 			$this->maybe_notify( $results );
 			$this->purge_old_violations();
+			$this->purge_old_pillar_violations();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -147,6 +148,36 @@ class Scheduler {
 				'scheduler',
 				'violations_purged',
 				sprintf( 'Purged %d violation report(s) older than %d days.', $deleted, $days ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Same retention window as CSP violation reports (wp_sam_violation_retention_days)
+	 * -- one retention setting for all violation data, not a second option to configure.
+	 */
+	private function purge_old_pillar_violations(): void {
+		$days = (int) get_option( 'wp_sam_violation_retention_days', 90 );
+		if ( $days <= 0 ) {
+			return;
+		}
+
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_pillar_violation_reports';
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM {$table} WHERE last_seen_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				$days
+			)
+		);
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'pillar_violations_purged',
+				sprintf( 'Purged %d pillar violation report(s) older than %d days.', $deleted, $days ),
 				'info'
 			);
 		}

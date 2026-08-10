@@ -34,6 +34,7 @@ namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Security\Header_Builder;
+use WP_SAM\Security\Reporting_Endpoint;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -93,21 +94,8 @@ class Policy_Builder extends Header_Builder {
 
 		// Declare the Reporting API endpoint only when explicitly enabled. The default
 		// direct report-uri path is intentionally quicker and easier to observe.
-		$report_uri = $this->get_report_endpoint_url();
 		if ( $this->uses_reporting_api() ) {
-			$report_to = wp_json_encode(
-				array(
-					'group'     => 'csp-endpoint',
-					'max_age'   => 86400,
-					'endpoints' => array(
-						array( 'url' => $report_uri ),
-					),
-				)
-			);
-			header( 'Reporting-Endpoints: csp-endpoint="' . $report_uri . '"' );
-			if ( false !== $report_to ) {
-				header( 'Report-To: ' . $report_to );
-			}
+			Reporting_Endpoint::emit_headers();
 		}
 
 		header( $header_name . ': ' . $policy );
@@ -140,19 +128,6 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
-	private function get_report_endpoint_url(): string {
-		$override = trim( (string) get_option( 'wp_sam_report_endpoint_url', '' ) );
-		if ( '' !== $override && $this->is_allowed_report_endpoint_url( $override ) ) {
-			return esc_url_raw( $override );
-		}
-
-		if ( function_exists( 'did_action' ) && did_action( 'init' ) > 0 ) {
-			return esc_url_raw( rest_url( 'security-manager/v1/report' ) );
-		}
-
-		return esc_url_raw( home_url( '/wp-json/security-manager/v1/report' ) );
-	}
-
 	private function uses_reporting_api(): bool {
 		return in_array(
 			$this->get_reporting_transport(),
@@ -163,22 +138,6 @@ class Policy_Builder extends Header_Builder {
 
 	private function get_reporting_transport(): string {
 		return self::sanitize_reporting_transport( get_option( 'wp_sam_reporting_transport', self::REPORTING_TRANSPORT_DIRECT ) );
-	}
-
-	private function is_allowed_report_endpoint_url( string $url ): bool {
-		if ( preg_match( '/[\r\n"\\\\]/', $url ) ) {
-			return false;
-		}
-
-		$parts = wp_parse_url( $url );
-		if ( ! is_array( $parts ) ) {
-			return false;
-		}
-
-		$scheme = strtolower( (string) ( $parts['scheme'] ?? '' ) );
-		$host   = (string) ( $parts['host'] ?? '' );
-
-		return '' !== $host && in_array( $scheme, array( 'http', 'https' ), true );
 	}
 
 	// ── Policy assembly ───────────────────────────────────────────────────────
@@ -308,10 +267,10 @@ class Policy_Builder extends Header_Builder {
 		// browsers ignore report-uri when report-to is present, which delays learning.
 		$reporting_transport = $this->get_reporting_transport();
 		if ( self::REPORTING_TRANSPORT_API !== $reporting_transport ) {
-			$directives['report-uri'] = array( $this->get_report_endpoint_url() );
+			$directives['report-uri'] = array( Reporting_Endpoint::url() );
 		}
 		if ( in_array( $reporting_transport, array( self::REPORTING_TRANSPORT_API, self::REPORTING_TRANSPORT_BOTH ), true ) ) {
-			$directives['report-to'] = array( 'csp-endpoint' );
+			$directives['report-to'] = array( Reporting_Endpoint::GROUP_NAME );
 		}
 
 		$directives = $this->normalize_none_sources( $directives );

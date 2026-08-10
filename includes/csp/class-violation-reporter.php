@@ -18,6 +18,7 @@ namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
+use WP_SAM\Security\Pillar_Violation_Store;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -45,14 +46,22 @@ class Violation_Reporter {
 		'form-action',
 	);
 
+	/** Reporting API report `type` -> this plugin's internal pillar key. */
+	private const PILLAR_REPORT_TYPES = array(
+		'coop' => 'cross-origin-opener-policy',
+		'coep' => 'cross-origin-embedder-policy',
+	);
+
 	private Audit_Log $audit;
 	private ?Learning_Window $learning_window;
 	private Policy_Change_Manager $policy_changes;
+	private Pillar_Violation_Store $pillar_violations;
 
-	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Feature_Gate $gate = null ) {
-		$this->audit           = $audit;
-		$this->learning_window = $learning_window;
-		$this->policy_changes  = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit, gate: $gate );
+	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Feature_Gate $gate = null, ?Pillar_Violation_Store $pillar_violations = null ) {
+		$this->audit             = $audit;
+		$this->learning_window   = $learning_window;
+		$this->policy_changes    = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit, gate: $gate );
+		$this->pillar_violations = null !== $pillar_violations ? $pillar_violations : new Pillar_Violation_Store();
 	}
 
 	// ── REST handler ──────────────────────────────────────────────────────────
@@ -88,7 +97,49 @@ class Violation_Reporter {
 			$this->store_report( $report );
 		}
 
+		$this->store_pillar_reports( $body );
+
 		return new WP_REST_Response( null, 204 );
+	}
+
+	/**
+	 * Routes Reporting API report items whose `type` is coop/coep to the
+	 * generic Pillar_Violation_Store, separately from the CSP-shaped path
+	 * above. A single POST body can legitimately contain a batch mixing CSP
+	 * and COOP/COEP reports -- the browser groups everything queued for
+	 * delivery to the same endpoint into one request.
+	 */
+	private function store_pillar_reports( array $body ): void {
+		if ( ! isset( $body[0]['type'] ) ) {
+			return;
+		}
+
+		foreach ( $body as $item ) {
+			$type = isset( $item['type'] ) ? (string) $item['type'] : '';
+			if ( ! isset( self::PILLAR_REPORT_TYPES[ $type ] ) || ! is_array( $item['body'] ?? null ) ) {
+				continue;
+			}
+
+			// The report envelope's own `url` (not a field inside `body`) is the
+			// page the report was generated for, per the Reporting API spec.
+			$page_url = isset( $item['url'] ) ? (string) $item['url'] : '';
+			if ( '' !== $page_url ) {
+				$page_host = wp_parse_url( $page_url, PHP_URL_HOST );
+				if ( ! empty( $page_host ) && ! in_array( strtolower( (string) $page_host ), $this->get_allowed_document_hosts(), true ) ) {
+					continue; // silently discard a spoofed cross-origin report, same as the CSP path
+				}
+			}
+
+			$disposition = isset( $item['body']['disposition'] ) ? (string) $item['body']['disposition'] : 'reporting';
+
+			$this->pillar_violations->store(
+				self::PILLAR_REPORT_TYPES[ $type ],
+				$this->surface_from_document_uri( $page_url ),
+				$type,
+				$disposition,
+				$item['body']
+			);
+		}
 	}
 
 	// ── Normalisation ─────────────────────────────────────────────────────────

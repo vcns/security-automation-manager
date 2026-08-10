@@ -398,6 +398,108 @@ class ViolationReporterTest extends TestCase {
 		$this->assertEmpty( $stored_third );
 	}
 
+	// ── COOP/COEP Reporting API dispatch ────────────────────────────────────────
+
+	public function test_handle_routes_coop_report_to_pillar_violation_store(): void {
+		$pillar_violations = $this->createMock( \WP_SAM\Security\Pillar_Violation_Store::class );
+		$pillar_violations->expects( $this->once() )
+			->method( 'store' )
+			->with(
+				'cross-origin-opener-policy',
+				'frontend',
+				'coop',
+				'enforce',
+				[ 'disposition' => 'enforce', 'property' => 'postMessage' ]
+			);
+
+		$reporter = new Violation_Reporter( $this->audit, pillar_violations: $pillar_violations );
+
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/reports+json';
+		$request                                     = $this->make_request(
+			'[{"type":"coop","url":"https://example.com/page","body":{"disposition":"enforce","property":"postMessage"}}]'
+		);
+
+		$response = $reporter->handle( $request );
+
+		$this->assertSame( 204, $response->get_status() );
+	}
+
+	public function test_handle_routes_coep_report_to_pillar_violation_store(): void {
+		$pillar_violations = $this->createMock( \WP_SAM\Security\Pillar_Violation_Store::class );
+		$pillar_violations->expects( $this->once() )
+			->method( 'store' )
+			->with(
+				'cross-origin-embedder-policy',
+				'admin',
+				'coep',
+				'reporting',
+				$this->anything()
+			);
+
+		$reporter = new Violation_Reporter( $this->audit, pillar_violations: $pillar_violations );
+
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/reports+json';
+		$request                                     = $this->make_request(
+			'[{"type":"coep","url":"https://example.com/wp-admin/edit.php","body":{"disposition":"reporting","blockedURL":"https://embeds.example.net/widget"}}]'
+		);
+
+		$reporter->handle( $request );
+	}
+
+	public function test_handle_ignores_unrecognised_reporting_api_types(): void {
+		$pillar_violations = $this->createMock( \WP_SAM\Security\Pillar_Violation_Store::class );
+		$pillar_violations->expects( $this->never() )->method( 'store' );
+
+		$reporter = new Violation_Reporter( $this->audit, pillar_violations: $pillar_violations );
+
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/reports+json';
+		$request                                     = $this->make_request(
+			'[{"type":"deprecation","url":"https://example.com/page","body":{"id":"unused-api"}}]'
+		);
+
+		$reporter->handle( $request );
+	}
+
+	public function test_handle_discards_cross_origin_coop_report(): void {
+		$pillar_violations = $this->createMock( \WP_SAM\Security\Pillar_Violation_Store::class );
+		$pillar_violations->expects( $this->never() )->method( 'store' );
+
+		$reporter = new Violation_Reporter( $this->audit, pillar_violations: $pillar_violations );
+
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/reports+json';
+		$request                                     = $this->make_request(
+			'[{"type":"coop","url":"https://attacker.net/page","body":{"disposition":"enforce"}}]'
+		);
+
+		$response = $reporter->handle( $request );
+
+		// Still 204 -- must not reveal rejection to the sender.
+		$this->assertSame( 204, $response->get_status() );
+	}
+
+	public function test_handle_routes_mixed_batch_of_csp_and_coop_reports(): void {
+		$pillar_violations = $this->createMock( \WP_SAM\Security\Pillar_Violation_Store::class );
+		$pillar_violations->expects( $this->once() )
+			->method( 'store' )
+			->with( 'cross-origin-opener-policy', 'frontend', 'coop', 'enforce', $this->anything() );
+
+		$reporter = new Violation_Reporter( $this->audit, pillar_violations: $pillar_violations );
+
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/reports+json';
+		$request                                     = $this->make_request(
+			'[' .
+			'{"type":"csp-violation","body":{"violatedDirective":"script-src","documentURL":"https://example.com/","blockedURL":"https://evil.example.com"}},' .
+			'{"type":"coop","url":"https://example.com/page","body":{"disposition":"enforce"}}' .
+			']'
+		);
+
+		$response = $reporter->handle( $request );
+
+		$this->assertSame( 204, $response->get_status() );
+		// CSP path is unaffected -- still writes to the DB as usual.
+		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
+	}
+
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	private function make_request( string $body ): WP_REST_Request {

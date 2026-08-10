@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.0] - 2026-08-11
+
+### Added
+
+- Added backend plumbing for a Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy report-only learning workflow (no admin-facing UI yet -- this is the first of a multi-stage rollout). COOP and COEP are the only two of this plugin's newer cross-origin pillars with a browser-native report-only + Reporting API delivery mechanism (Chromium only); Cross-Origin-Resource-Policy and X-Permitted-Cross-Domain-Policies have no such mechanism and are not part of this work.
+  - `Violation_Reporter`'s REST endpoint (`security-manager/v1/report`) now also accepts Reporting API `coop`/`coep` report types, routed to a new generic `Pillar_Violation_Store` rather than CSP's directive-shaped storage.
+  - New `sam_pillar_violation_reports` table (schema v13) stores these reports; an activation-time migration is not needed since this is a new table, not a changed one.
+  - Extracted a shared `Reporting_Endpoint` helper (`includes/security/class-reporting-endpoint.php`) from `Policy_Builder` so CSP, COOP, and COEP all resolve the same report endpoint URL and emit identical `Reporting-Endpoints`/`Report-To` header values -- including respecting the existing `wp_sam_report_endpoint_url` override for proxy/CDN deployments.
+  - Extended the daily purge job to also clear old pillar violation reports, reusing the existing `wp_sam_violation_retention_days` setting.
+
 ## [2.3.0] - 2026-08-10
 
 ### Added
