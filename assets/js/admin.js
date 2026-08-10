@@ -301,6 +301,73 @@
 		postHstsChange( $( this ) );
 	} );
 
+	function postDependencyMode( $control ) {
+		const $row     = $control.closest( 'tr' );
+		const surface  = $row.find( '.wp-sam-dependency-enabled' ).data( 'surface' );
+		const enabled  = $row.find( '.wp-sam-dependency-enabled' ).is( ':checked' );
+		const mode     = $row.find( '.wp-sam-dependency-mode' ).val();
+
+		$row.find( 'input, select' ).prop( 'disabled', true );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:  'wp_sam_set_dependency_mode',
+			nonce:   wpSamAdmin.nonce,
+			surface: surface,
+			enabled: enabled ? '1' : '',
+			mode:    mode,
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to save.' );
+		} )
+		.always( function () {
+			$row.find( 'input, select' ).prop( 'disabled', false );
+		} );
+	}
+
+	$( document ).on( 'change', '.wp-sam-dependency-enabled, .wp-sam-dependency-mode', function () {
+		postDependencyMode( $( this ) );
+	} );
+
+	function refreshSriInputState( $row ) {
+		const classification = $row.find( '.wp-sam-dependency-classification' ).val();
+		$row.find( '.wp-sam-dependency-sri' ).prop( 'disabled', 'immutable_pinned' !== classification );
+	}
+
+	function postDependencyClassification( $row ) {
+		const id             = $row.find( '.wp-sam-dependency-classification' ).data( 'id' );
+		const classification = $row.find( '.wp-sam-dependency-classification' ).val();
+		const expectedSri    = $row.find( '.wp-sam-dependency-sri' ).val();
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:         'wp_sam_classify_dependency',
+			nonce:           wpSamAdmin.nonce,
+			id:              id,
+			classification:  classification,
+			expected_sri:    expectedSri,
+		} )
+		.done( function ( res ) {
+			if ( ! res.success ) {
+				// eslint-disable-next-line no-alert
+				alert( ( res.data && res.data.message ) || 'Failed to save.' );
+			}
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to save.' );
+		} );
+	}
+
+	$( document ).on( 'change', '.wp-sam-dependency-classification', function () {
+		const $row = $( this ).closest( 'tr' );
+		refreshSriInputState( $row );
+		postDependencyClassification( $row );
+	} );
+
+	$( document ).on( 'change', '.wp-sam-dependency-sri', function () {
+		postDependencyClassification( $( this ).closest( 'tr' ) );
+	} );
+
 	$( document ).on( 'click', '#wp-sam-upgrade-button', function () {
 		const $button   = $( this );
 		const $status   = $( '#wp-sam-upgrade-status' );

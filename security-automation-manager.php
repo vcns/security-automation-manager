@@ -51,7 +51,7 @@ define( 'WP_SAM_VERSION', '2.0.0' );
  *        Referrer-Policy, and future pillars). Starts empty; nothing reads
  *        or writes it until those pillars ship.
  */
-define( 'WP_SAM_DB_VERSION', '10' );
+define( 'WP_SAM_DB_VERSION', '11' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

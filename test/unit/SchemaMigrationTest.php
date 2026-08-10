@@ -98,6 +98,7 @@ class SchemaMigrationTest extends TestCase {
 			null,
 			'wp_sam_decision_rule_evaluations',
 			'wp_sam_pillar_profiles',
+			'wp_sam_dependency_inventory',
 		);
 
 		$this->assertSame(

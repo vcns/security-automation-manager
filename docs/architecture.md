@@ -89,6 +89,17 @@ Responsibilities:
 
 None of these five pillars have a report-only mode, a discovery workflow, or Decision Engine wiring -- each header is either sent exactly as configured, or not sent at all. `Permissions-Policy-Report-Only` exists only in draft form with minimal real browser support, so even the pillar closest in shape to CSP still skips it. `sam_pillar_profiles` and `Automation_Config`/`Decision_Engine`/`Policy_Change_Manager` remain unconnected until a future pillar actually needs discovery or risk-scoring for its allowlists.
 
+`Request_Surface` (`includes/security/class-request-surface.php`) holds the surface-detection and conflict-probe logic `Header_Builder` used to own directly; both `Header_Builder` and `Content_Rewriter` extend it now, so header pillars and body-rewriting components classify a request identically without either depending on the other.
+
+### Content rewrite protections
+
+`includes/security/*`
+
+`Content_Rewriter` (`includes/security/class-content-rewriter.php`) is the counterpart to `Header_Builder` for components that rewrite the rendered HTML body instead of emitting a header. It opens a plugin-owned output buffer at `template_redirect` (late enough that headers, sent earlier from `WP::send_headers()`, are unaffected), excludes admin/login/AJAX/REST/XML-RPC/cron/CLI/feed/robots/sitemap/non-GET-HEAD requests the same way the header pillars already exclude the CSP conflict probe, and requires a successful, non-streamed, HTML response before calling the concrete subclass's `rewrite()`. Every failure mode -- a parser exception, an unresolvable rewrite, a fatal-error shutdown mid-request -- fails open to the original response, and the Content-Length header is dropped only when the body actually changed and headers haven't been sent yet, so a stale length can never truncate a rewritten response.
+
+- **Reverse Tabnabbing Protection** (`Reverse_Tabnabbing_Builder`) -- adds `rel="noopener"` to `target="_blank"` anchors missing `noopener`/`noreferrer` via `WP_HTML_Tag_Processor`, preserving every other `rel` token. Enabled state lives in `sam_pillar_profiles` (no configurable value, same shape as X-Content-Type-Options) even though it isn't a header pillar, purely for admin-UI and storage consistency.
+- **External Scripts** (`Dependency_Governance_Builder`) -- passively inventories third-party `<script src>` / `<link rel="stylesheet" href>` origins into a new `sam_dependency_inventory` table during real page renders (never a dedicated crawl), storing only the origin (scheme + host) -- no path, no query string. A freshly discovered origin is always `unclassified`; this deliberately diverges from a naive default-deny design where anything off an allowlist is blocked immediately. Per-surface mode (`report` | `enforce`, default `report`) lives in `sam_pillar_profiles` alongside `enabled`, matching the rest of this plugin's report-first philosophy. Enforce mode still only ever removes an origin the administrator explicitly classified `prohibited`, or an `immutable_pinned` origin whose administrator-declared `expected_sri` no longer matches what the page actually served -- an `unclassified` origin is never silently blocked, even in enforce mode. `expected_sri` is admin-supplied only: this class only ever *compares* against it, never computes a hash from a live fetch, which would defeat the point of SRI if the remote origin were compromised. Element removal marks matched tags via a private data attribute during the `WP_HTML_Tag_Processor` pass, then strips the marked spans with a narrow, quote-aware regex afterward, since `WP_HTML_Tag_Processor` in this plugin's supported WordPress versions has no element-deletion API; any surviving marker (an element that couldn't be resolved) discards the rewrite and returns the original response instead.
+
 ### Entitlement and payment runtime
 
 `includes/modules/*`
@@ -110,7 +121,7 @@ Responsibilities:
 
 Responsibilities:
 
-- render the Overview, CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and readiness pages
+- render the Overview, CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Reverse Tabnabbing, External Scripts, and readiness pages
 - support full-dataset sorting and per-column filtering on the Violations, For Review, and Policy Changes tables, plus a per-row metadata popover on Violations (document URI, source file, line/column, referrer, user agent, captured data-URI payload)
 - support source review and mode switching
 - trigger scans and config refreshes

@@ -319,6 +319,12 @@ if ( ! function_exists( 'get_home_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'site_url' ) ) {
+	function site_url( string $path = '', string $scheme = '' ): string {
+		return home_url( $path, $scheme );
+	}
+}
+
 if ( ! function_exists( 'admin_url' ) ) {
 	function admin_url( string $path = '', string $scheme = 'admin' ): string {
 		return 'https://example.com/wp-admin/' . ltrim( $path, '/' );
