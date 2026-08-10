@@ -250,4 +250,29 @@
 	$( document ).on( 'change', '.wp-sam-permissions-policy-enabled, .wp-sam-permissions-policy-directive', function () {
 		postPermissionsPolicyChange( $( this ) );
 	} );
+
+	$( document ).on( 'click', '#wp-sam-upgrade-button', function () {
+		const $button = $( this );
+		const $status = $( '#wp-sam-upgrade-status' );
+
+		$button.prop( 'disabled', true );
+		$status.text( wpSamAdmin.i18n.upgradeStarting || 'Starting checkout…' );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action: 'wp_sam_create_checkout_session',
+			nonce:  wpSamAdmin.nonce,
+		} )
+		.done( function ( res ) {
+			if ( res.success && res.data.url ) {
+				window.location.href = res.data.url;
+				return;
+			}
+			$status.text( ( res.data && res.data.message ) || 'Unable to start checkout.' );
+			$button.prop( 'disabled', false );
+		} )
+		.fail( function () {
+			$status.text( 'Unable to start checkout.' );
+			$button.prop( 'disabled', false );
+		} );
+	} );
 } )( jQuery );

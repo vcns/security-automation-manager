@@ -10,6 +10,7 @@ namespace WP_SAM\Rest;
 use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Modules\Feature_Gate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -21,10 +22,10 @@ class Admin_Controller {
 	private Policy_Version_Manager $policy_versions;
 	private Automation_Config $automation_config;
 
-	public function __construct( Audit_Log $audit, ?Policy_Version_Manager $policy_versions = null, ?Automation_Config $automation_config = null ) {
+	public function __construct( Audit_Log $audit, ?Policy_Version_Manager $policy_versions = null, ?Automation_Config $automation_config = null, ?Feature_Gate $gate = null ) {
 		$this->audit             = $audit;
 		$this->policy_versions   = $policy_versions ?? new Policy_Version_Manager();
-		$this->automation_config = $automation_config ?? new Automation_Config();
+		$this->automation_config = $automation_config ?? new Automation_Config( $gate );
 	}
 
 	public function register_routes(): void {

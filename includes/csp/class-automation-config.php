@@ -7,6 +7,8 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+use WP_SAM\Modules\Feature_Gate;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -44,6 +46,17 @@ class Automation_Config {
 		'balanced'     => self::MODE_AUTOMATIC_HIGH_APPROVAL,
 		'expert'       => self::MODE_FULLY_AUTOMATIC,
 	);
+
+	private Feature_Gate $gate;
+
+	/**
+	 * Defaults to a bare Feature_Gate (no entitlements), matching the
+	 * WordPress.org/GitHub-channel free-tier posture: fully_automatic
+	 * requires an explicitly injected, entitlement-aware gate to unlock.
+	 */
+	public function __construct( ?Feature_Gate $gate = null ) {
+		$this->gate = $gate ?? new Feature_Gate();
+	}
 
 	public static function mode_labels(): array {
 		return array(
@@ -142,7 +155,16 @@ class Automation_Config {
 	private function normalise_mode( string $mode ): string {
 		$mode = strtolower( trim( sanitize_text_field( $mode ) ) );
 		$mode = self::LEGACY_MODE_MAP[ $mode ] ?? $mode;
+		$mode = in_array( $mode, self::MODES, true ) ? $mode : self::MODE_MANUAL;
 
-		return in_array( $mode, self::MODES, true ) ? $mode : self::MODE_MANUAL;
+		// Fully Automatic (zero human review) is a paid feature. Downgrade
+		// here -- the single funnel every read/write of this option passes
+		// through -- so a lapsed entitlement can't leave a stale option
+		// value still auto-applying changes with no review.
+		if ( self::MODE_FULLY_AUTOMATIC === $mode && ! $this->gate->is_allowed( 'fully_automatic' ) ) {
+			return self::MODE_AUTOMATIC_HIGH_APPROVAL;
+		}
+
+		return $mode;
 	}
 }

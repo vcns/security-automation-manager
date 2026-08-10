@@ -42,6 +42,20 @@ class FeatureGateTest extends TestCase {
 		$this->assertFalse( $gate->is_allowed( 'unknown_feature' ) );
 	}
 
+	public function test_non_free_feature_is_denied_without_a_pro_entitlement(): void {
+		$gate = new Feature_Gate();
+
+		$this->assertFalse( $gate->is_allowed( 'fully_automatic' ) );
+	}
+
+	public function test_non_free_feature_is_allowed_with_a_pro_entitlement(): void {
+		$entitlements = $this->make_entitlement_stub( 'pro' );
+
+		$gate = new Feature_Gate( $entitlements );
+
+		$this->assertTrue( $gate->is_allowed( 'fully_automatic' ) );
+	}
+
 	public function test_current_tier_returns_free_with_no_entitlement(): void {
 		$gate = new Feature_Gate();
 

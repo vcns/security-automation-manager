@@ -43,7 +43,7 @@ class Discovery {
 	public function __construct( Audit_Log $audit, Feature_Gate $gate, ?Policy_Change_Manager $policy_changes = null ) {
 		$this->audit          = $audit;
 		$this->gate           = $gate;
-		$this->policy_changes = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit );
+		$this->policy_changes = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit, gate: $gate );
 	}
 
 	// ── Public API ────────────────────────────────────────────────────────────

@@ -13,6 +13,10 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 - Added a shared `Header_Builder` envelope (hook registration, header-emission guard, conflict-probe suppression, surface detection) and a `sam_pillar_profiles` table so future pillars can reuse the same plumbing as CSP without duplicating it.
 - Added Permissions-Policy as a fourth pillar: per-surface, per-directive control (`none`/`self`/`all`) over a starter set of seven browser features (geolocation, camera, microphone, fullscreen, payment, usb, autoplay). No report-only mode, discovery workflow, or automation, matching the other simple pillars.
 
+### Changed
+
+- Fully Automatic mode (zero-review auto-apply of deterministic policy changes) now requires a paid subscription. Sites without an active entitlement have Fully Automatic selections downgraded to "Automatic (with high approvals only)"; the free/local WordPress.org and GitHub-channel builds are unaffected otherwise. An "Upgrade" action is shown on the CSP Settings tab where a Checkout flow is available.
+
 ## [1.0.16] - 2026-08-04
 
 ### Added

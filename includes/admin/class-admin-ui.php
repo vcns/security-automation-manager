@@ -65,6 +65,7 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_undo_source_decision', array( $this, 'ajax_undo_source_decision' ) );
 		add_action( 'wp_ajax_wp_sam_toggle_mode', array( $this, 'ajax_toggle_mode' ) );
 		add_action( 'wp_ajax_wp_sam_set_automation_mode', array( $this, 'ajax_set_automation_mode' ) );
+		add_action( 'wp_ajax_wp_sam_create_checkout_session', array( $this, 'ajax_create_checkout_session' ) );
 		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
 		add_action( 'wp_ajax_wp_sam_set_permissions_policy_directive', array( $this, 'ajax_set_permissions_policy_directive' ) );
 	}
@@ -262,7 +263,22 @@ class Admin_UI {
 	}
 
 	public function sanitize_automation_config( mixed $config ): array {
-		return ( new Automation_Config() )->normalise_admin_input( is_array( $config ) ? $config : array() );
+		$raw        = is_array( $config ) ? $config : array();
+		$normalised = ( new Automation_Config( $this->plugin->gate ) )->normalise_admin_input( $raw );
+
+		foreach ( $normalised as $surface => $surface_config ) {
+			$requested_mode = strtolower( trim( (string) ( $raw[ $surface ]['mode'] ?? '' ) ) );
+			if ( Automation_Config::MODE_FULLY_AUTOMATIC === $requested_mode && Automation_Config::MODE_FULLY_AUTOMATIC !== $surface_config['mode'] ) {
+				add_settings_error(
+					'wp_sam_automation_config',
+					'wp_sam_fully_automatic_requires_upgrade',
+					__( 'Fully Automatic mode requires a paid subscription. The affected surface was kept on "Automatic (with high approvals only)" instead.', 'security-automation-manager' ),
+					'warning'
+				);
+			}
+		}
+
+		return $normalised;
 	}
 
 	/**
@@ -316,10 +332,11 @@ class Admin_UI {
 				'nonce'     => wp_create_nonce( 'wp_sam_admin_nonce' ),
 				'restNonce' => wp_create_nonce( 'wp_rest' ),
 				'i18n'      => array(
-					'scanning'       => __( 'Scanning…', 'security-automation-manager' ),
-					'scanDone'       => __( 'Scan complete.', 'security-automation-manager' ),
-					'scanError'      => __( 'Scan failed. Check error log.', 'security-automation-manager' ),
-					'reasonRequired' => __( 'A decision reason is required.', 'security-automation-manager' ),
+					'scanning'        => __( 'Scanning…', 'security-automation-manager' ),
+					'scanDone'        => __( 'Scan complete.', 'security-automation-manager' ),
+					'scanError'       => __( 'Scan failed. Check error log.', 'security-automation-manager' ),
+					'reasonRequired'  => __( 'A decision reason is required.', 'security-automation-manager' ),
+					'upgradeStarting' => __( 'Starting checkout…', 'security-automation-manager' ),
 				),
 			)
 		);
@@ -593,7 +610,7 @@ class Admin_UI {
 			wp_send_json_error( array( 'message' => __( 'A decision reason is required.', 'security-automation-manager' ) ) );
 		}
 
-		$manager = new Policy_Change_Manager( $this->plugin->audit, null, new Policy_Version_Manager( $this->plugin->policy_builder ) );
+		$manager = new Policy_Change_Manager( $this->plugin->audit, null, new Policy_Version_Manager( $this->plugin->policy_builder ), gate: $this->plugin->gate );
 		if ( 'approved' === $action ) {
 			$ok = $manager->approve_source( $id, $reason );
 		} elseif ( 'reverted' === $action ) {
@@ -667,7 +684,16 @@ class Admin_UI {
 			wp_send_json_error( array( 'message' => __( 'Invalid automation mode.', 'security-automation-manager' ) ) );
 		}
 
-		( new Automation_Config() )->update_surface_mode( $surface, $mode );
+		if ( Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $this->plugin->gate->is_allowed( 'fully_automatic' ) ) {
+			wp_send_json_error(
+				array(
+					'message'          => __( 'Fully Automatic mode requires a paid subscription.', 'security-automation-manager' ),
+					'upgrade_required' => true,
+				)
+			);
+		}
+
+		( new Automation_Config( $this->plugin->gate ) )->update_surface_mode( $surface, $mode );
 
 		wp_send_json_success(
 			array(
@@ -675,6 +701,37 @@ class Admin_UI {
 				'label' => Automation_Config::mode_label( $mode ),
 			)
 		);
+	}
+
+	/**
+	 * Creates a Stripe Checkout Session and returns its URL for the browser
+	 * to redirect to. Only available when this is a private/commercial build
+	 * with the offline Checkout_Service module present -- the WordPress.org
+	 * and GitHub-channel builds always return the "not available" error.
+	 */
+	public function ajax_create_checkout_session(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		if ( null === $this->plugin->checkout ) {
+			wp_send_json_error(
+				array( 'message' => __( 'Upgrading is not available in this build of the plugin.', 'security-automation-manager' ) )
+			);
+		}
+
+		$session = $this->plugin->checkout->create_session(
+			'csp-automation-manager',
+			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=success' ),
+			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=cancelled' )
+		);
+
+		if ( is_wp_error( $session ) ) {
+			wp_send_json_error( array( 'message' => $session->get_error_message() ) );
+		}
+
+		wp_send_json_success( array( 'url' => $session['url'] ) );
 	}
 
 	// ── AJAX: simple pillar profiles ──────────────────────────────────────────

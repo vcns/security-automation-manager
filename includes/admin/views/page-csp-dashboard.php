@@ -58,8 +58,9 @@ $tab_help = array(
 $profiles_raw      = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
 $profiles          = ! empty( $profiles_raw ) ? $profiles_raw : array();
 $surfaces          = array( 'frontend', 'admin', 'login', 'api' );
-$automation_config = ( new \WP_SAM\CSP\Automation_Config() )->all();
+$automation_config = ( new \WP_SAM\CSP\Automation_Config( $this->plugin->gate ) )->all();
 $automation_labels = \WP_SAM\CSP\Automation_Config::mode_labels();
+$wp_sam_is_pro     = $this->plugin->gate->is_allowed( 'fully_automatic' );
 
 // Shared pagination defaults.
 $per_page = 20;
@@ -202,8 +203,14 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					data-surface="<?php echo esc_attr( $surface ); ?>"
 					title="<?php echo esc_attr( $automation_title ); ?>">
 					<?php foreach ( $automation_labels as $mode => $label ) : ?>
-					<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $automation_mode, $mode ); ?>>
-						<?php echo esc_html( $label ); ?>
+					<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $automation_mode, $mode ); ?>
+						<?php disabled( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ); ?>>
+						<?php
+						echo esc_html( $label );
+						if ( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ) {
+							echo ' ' . esc_html__( '(requires upgrade)', 'security-automation-manager' );
+						}
+						?>
 					</option>
 					<?php endforeach; ?>
 				</select>
@@ -1083,7 +1090,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$configured_report_endpoint = (string) get_option( 'wp_sam_report_endpoint_url', '' );
 		$configured_policy_header   = (string) get_option( 'wp_sam_policy_header_name', '' );
 		$reporting_transport        = \WP_SAM\CSP\Policy_Builder::sanitize_reporting_transport( get_option( 'wp_sam_reporting_transport', 'report-uri' ) );
-		$settings_automation_config = ( new \WP_SAM\CSP\Automation_Config() )->all();
+		$settings_automation_config = ( new \WP_SAM\CSP\Automation_Config( $this->plugin->gate ) )->all();
 		$automation_mode_labels     = \WP_SAM\CSP\Automation_Config::mode_labels();
 		$automation_directives      = array( 'default-src', 'img-src', 'font-src', 'media-src', 'manifest-src' );
 		$automation_schemes         = array( 'https', 'wss' );
@@ -1119,6 +1126,15 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<p class="description">
 			<?php esc_html_e( 'Configure how far the deterministic engine may go without administrator approval. Manual mode remains the default; hard-excluded, critical, unknown, and insufficient-evidence proposals always require review.', 'security-automation-manager' ); ?>
 		</p>
+		<?php if ( ! $wp_sam_is_pro ) : ?>
+		<p class="description">
+			<?php esc_html_e( 'Fully Automatic mode (zero-review auto-apply) requires a paid subscription.', 'security-automation-manager' ); ?>
+			<?php if ( null !== $this->plugin->checkout ) : ?>
+			<button type="button" class="button button-secondary" id="wp-sam-upgrade-button"><?php esc_html_e( 'Upgrade', 'security-automation-manager' ); ?></button>
+			<span id="wp-sam-upgrade-status" role="status"></span>
+			<?php endif; ?>
+		</p>
+		<?php endif; ?>
 		<table class="widefat striped" role="presentation">
 			<thead>
 				<tr>
@@ -1137,8 +1153,14 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					<td>
 						<select name="wp_sam_automation_config[<?php echo esc_attr( $surface ); ?>][mode]">
 							<?php foreach ( $automation_mode_labels as $mode => $label ) : ?>
-							<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $surface_config['mode'], $mode ); ?>>
-								<?php echo esc_html( $label ); ?>
+							<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $surface_config['mode'], $mode ); ?>
+								<?php disabled( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ); ?>>
+								<?php
+								echo esc_html( $label );
+								if ( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ) {
+									echo ' ' . esc_html__( '(requires upgrade)', 'security-automation-manager' );
+								}
+								?>
 							</option>
 							<?php endforeach; ?>
 						</select>
