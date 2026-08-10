@@ -17,6 +17,9 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Automatic purge of old violation reports
 - Append-only audit log for significant plugin events
 - Source discovery and administrator approval workflow
+- "Start Here" tab covering the report-only, learning-window, and manual-promotion workflow; the default landing tab on the CSP dashboard
+- Full-dataset sorting and per-column filtering (multi-select, free-text, numeric, date-range) on the Violations, For Review, and Policy Changes tables
+- Per-row metadata popover on the Violations table showing document URI, source file, line/column, referrer, user agent, and any captured data-URI payload
 - Risk-ranked CSP change proposals with reason-required approve, reject, revert, and undo decisions
 - Revert-and-suppress workflow so a reversed source is not proposed again automatically
 - Policy version snapshots, policy diffs, decision provenance, and deterministic rule findings
@@ -38,7 +41,7 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 
 These four pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
 
-All features shipped in the WordPress.org package are available locally without payment, remote entitlement checks, trialware-style feature locking, or third-party licensing calls.
+Every pillar and three of the four CSP automation modes are available locally without payment, remote entitlement checks, or third-party licensing calls. The exception is Fully Automatic CSP mode, which requires an active subscription -- see Automation Posture below.
 
 ## Requirements
 
@@ -70,23 +73,24 @@ The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress'
 ## Getting Started
 
 1. Install and activate the plugin.
-2. Run an initial scan from Security Automation Manager -> CSP.
-3. Review and approve only the external sources your site actually requires.
-4. Reject or revert unwanted sources so the same fingerprint is suppressed from future proposals.
-5. Use the Policy Audit page to inspect why a proposal exists and what policy version resulted from decisions.
-6. Use the Readiness page when validating schema health or deliberately resetting CSP data for a clean rollout attempt.
-7. After a reset, re-enable the required surfaces in report-only mode when you are ready to restart rollout.
-8. Stay in report-only mode until violations are understood.
-9. Promote one surface at a time into enforce mode.
+2. Open **Security Automation Manager -> CSP**; the Start Here tab explains the workflow below.
+3. Run an initial scan from the Profiles tab.
+4. Review and approve only the external sources your site actually requires from the For Review tab.
+5. Reject or revert unwanted sources so the same fingerprint is suppressed from future proposals.
+6. Use the Policy Audit page to inspect why a proposal exists and what policy version resulted from decisions.
+7. Use the Readiness page when validating schema health or deliberately resetting CSP data for a clean rollout attempt.
+8. After a reset, re-enable the required surfaces in report-only mode when you are ready to restart rollout.
+9. Stay in report-only mode until violations are understood.
+10. Promote one surface at a time into enforce mode.
 
 ## Automation Posture
 
-Automation defaults to `Manual` for every surface. Administrators may explicitly select each surface posture from the Profiles tab or Settings page:
+Automation defaults to `Manual` for every surface. Administrators may explicitly select each surface posture from the Profiles tab or the Settings tab:
 
-- `Manual`
-- `Automatic (with medium+high approvals)`
-- `Automatic (with high approvals only)`
-- `Fully Automatic`
+- `Manual` -- free
+- `Automatic (with medium+high approvals)` -- free
+- `Automatic (with high approvals only)` -- free
+- `Fully Automatic` -- requires an active subscription; without one, a surface selecting it is kept on `Automatic (with high approvals only)` instead
 
 Automatic approvals are bounded by deterministic risk rules, hard exclusions, configured directive/scheme limits, evidence requirements, and per-run caps. Automatic decisions record `automation_engine` provenance and can be undone without rewriting history.
 
