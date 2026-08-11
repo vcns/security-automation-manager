@@ -379,7 +379,9 @@
 
 	function refreshSriInputState( $row ) {
 		const classification = $row.find( '.wp-sam-dependency-classification' ).val();
-		$row.find( '.wp-sam-dependency-sri' ).prop( 'disabled', 'immutable_pinned' !== classification );
+		const disabled       = 'immutable_pinned' !== classification;
+		$row.find( '.wp-sam-dependency-sri' ).prop( 'disabled', disabled );
+		$row.find( '.wp-sam-dependency-suggest-url, .wp-sam-dependency-suggest-button' ).prop( 'disabled', disabled );
 	}
 
 	function postDependencyClassification( $row ) {
@@ -409,6 +411,45 @@
 
 	$( document ).on( 'change', '.wp-sam-dependency-sri', function () {
 		postDependencyClassification( $( this ).closest( 'tr' ) );
+	} );
+
+	$( document ).on( 'click', '.wp-sam-dependency-suggest-button', function () {
+		const $button = $( this );
+		const $row    = $button.closest( 'tr' );
+		const id      = $button.data( 'id' );
+		const url     = $row.find( '.wp-sam-dependency-suggest-url' ).val();
+
+		if ( ! url ) {
+			// eslint-disable-next-line no-alert
+			alert( 'Enter the exact URL to fetch and hash first.' );
+			return;
+		}
+
+		const originalLabel = $button.text();
+		$button.prop( 'disabled', true ).text( '…' );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action: 'wp_sam_suggest_dependency_sri',
+			nonce:  wpSamAdmin.nonce,
+			id:     id,
+			url:    url,
+		} )
+		.done( function ( res ) {
+			if ( res.success && res.data && res.data.hash ) {
+				$row.find( '.wp-sam-dependency-sri' ).val( res.data.hash );
+				postDependencyClassification( $row );
+			} else {
+				// eslint-disable-next-line no-alert
+				alert( ( res.data && res.data.message ) || 'Could not compute a hash for that URL.' );
+			}
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to compute hash.' );
+		} )
+		.always( function () {
+			$button.prop( 'disabled', false ).text( originalLabel );
+		} );
 	} );
 
 	$( document ).on( 'click', '.wp-sam-upgrade-button', function () {

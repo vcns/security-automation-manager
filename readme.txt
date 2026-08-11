@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.13
+Stable tag: 2.4.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,7 +41,14 @@ Reports received by this plugin are validated and stored in this site's WordPres
 
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
+The External Scripts page's "Suggest" button, only triggered by an administrator explicitly clicking it, fetches a URL the administrator themselves supplies (restricted to a third-party origin already observed on this site) to compute a Subresource Integrity hash for their review. No content from that fetch is stored or sent anywhere else; only the computed hash is returned to the admin screen. Nothing is fetched automatically or in the background as part of this feature.
+
 == Changelog ==
+
+= 2.4.14 =
+
+* Adds proactive Subresource Integrity drift detection: a daily check re-verifies pinned SRI hashes against this site's own homepage and warns before a visitor triggers a removal.
+* Adds a "Suggest" button on the External Scripts page to compute an SRI hash for a URL you supply, instead of using an external tool.
 
 = 2.4.13 =
 

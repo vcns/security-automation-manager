@@ -126,6 +126,35 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 		return 'first-party' === $origin || in_array( $origin, self::first_party_origins(), true );
 	}
 
+	/**
+	 * Extracts (resource_type, url) for the tag the processor is currently
+	 * positioned at, or null if it isn't a resource this pillar governs (an
+	 * unrecognised tag/rel, or a missing/empty src|href). Shared by the
+	 * per-request rewrite pass and Dependency_Integrity_Monitor's proactive
+	 * scan so both recognise exactly the same set of elements.
+	 *
+	 * @return array{0:string,1:string}|null
+	 */
+	public static function extract_governed_resource( \WP_HTML_Tag_Processor $processor ): ?array {
+		$tag = $processor->get_tag();
+
+		if ( 'SCRIPT' === $tag ) {
+			$src = $processor->get_attribute( 'src' );
+			return ( is_string( $src ) && '' !== trim( $src ) ) ? array( self::RESOURCE_SCRIPT, $src ) : null;
+		}
+
+		if ( 'LINK' === $tag ) {
+			$rel = $processor->get_attribute( 'rel' );
+			if ( ! is_string( $rel ) || 'stylesheet' !== strtolower( trim( $rel ) ) ) {
+				return null;
+			}
+			$href = $processor->get_attribute( 'href' );
+			return ( is_string( $href ) && '' !== trim( $href ) ) ? array( self::RESOURCE_STYLE, $href ) : null;
+		}
+
+		return null;
+	}
+
 	// ── Rewrite pass ──────────────────────────────────────────────────────────
 
 	protected function rewrite( string $html, string $surface ): string {
@@ -151,28 +180,12 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 			$processor = new \WP_HTML_Tag_Processor( $html );
 
 			while ( $processor->next_tag() ) {
-				$tag = $processor->get_tag();
-
-				if ( 'SCRIPT' === $tag ) {
-					$src = $processor->get_attribute( 'src' );
-					if ( ! is_string( $src ) || '' === trim( $src ) ) {
-						continue;
-					}
-					$this->classify_and_maybe_mark( $processor, self::RESOURCE_SCRIPT, $src, $surface, $mode, $inventory, $seen, $to_remove );
+				$resource = self::extract_governed_resource( $processor );
+				if ( null === $resource ) {
 					continue;
 				}
-
-				if ( 'LINK' === $tag ) {
-					$rel = $processor->get_attribute( 'rel' );
-					if ( ! is_string( $rel ) || 'stylesheet' !== strtolower( trim( $rel ) ) ) {
-						continue;
-					}
-					$href = $processor->get_attribute( 'href' );
-					if ( ! is_string( $href ) || '' === trim( $href ) ) {
-						continue;
-					}
-					$this->classify_and_maybe_mark( $processor, self::RESOURCE_STYLE, $href, $surface, $mode, $inventory, $seen, $to_remove );
-				}
+				list( $resource_type, $url ) = $resource;
+				$this->classify_and_maybe_mark( $processor, $resource_type, $url, $surface, $mode, $inventory, $seen, $to_remove );
 			}
 
 			$this->persist_inventory( $inventory );

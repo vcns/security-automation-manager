@@ -253,6 +253,21 @@ $classification_labels = array(
 							value="<?php echo esc_attr( $item['expected_sri'] ?? '' ); ?>"
 							<?php disabled( 'immutable_pinned' !== $item['classification'] ); ?>
 						/>
+						<div class="wp-sam-dependency-suggest" style="margin-top:4px;display:flex;gap:4px;">
+							<input
+								type="url"
+								class="wp-sam-dependency-suggest-url"
+								placeholder="<?php esc_attr_e( 'https://exact/script/url to hash & pin', 'security-automation-manager' ); ?>"
+								style="flex:1;font-size:11px"
+								<?php disabled( 'immutable_pinned' !== $item['classification'] ); ?>
+							/>
+							<button
+								type="button"
+								class="button button-small wp-sam-dependency-suggest-button"
+								data-id="<?php echo esc_attr( (string) $item['id'] ); ?>"
+								<?php disabled( 'immutable_pinned' !== $item['classification'] ); ?>
+							><?php esc_html_e( 'Suggest', 'security-automation-manager' ); ?></button>
+						</div>
 					</td>
 					<td><?php echo esc_html( (string) $item['evidence_count'] ); ?></td>
 					<td><?php echo esc_html( $item['last_seen_at'] ); ?></td>

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.14] - 2026-08-11
+
+### Added
+
+- Proactive Subresource Integrity drift detection: a new daily check (`Dependency_Integrity_Monitor`) fetches this site's own frontend homepage -- never third-party content -- and re-verifies that every `immutable_pinned` origin's live `integrity` attribute still matches the administrator-declared `expected_sri`, logging a warning via the audit log on mismatch. Catches drift (a theme update stripping the attribute, an edited embed) before a real visitor triggers `Dependency_Governance_Builder`'s reactive removal in enforce mode.
+- A "Suggest" button on the External Scripts page's Expected SRI field: fetches a URL the administrator explicitly supplies (restricted to an origin already observed on this site, to avoid becoming an arbitrary fetch proxy) and computes its SHA-384 hash for them to review and save, saving a trip to an external hash generator. Never fetches automatically or trusts a hash without the administrator both supplying the URL and accepting the result via the normal save action.
+
+### Changed
+
+- Extracted `Dependency_Governance_Builder::extract_governed_resource()`, a small static helper shared by the per-request rewrite pass and the new proactive monitor, so both recognise exactly the same set of `<script>`/`<link rel="stylesheet">` elements.
+
 ## [2.4.13] - 2026-08-11
 
 ### Changed
