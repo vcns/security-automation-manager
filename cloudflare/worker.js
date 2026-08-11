@@ -102,8 +102,12 @@ const CONFIG = {
     billing_address_collection: "auto"
   },
 
-  // Replace with output from .private_key/sign-config.php
-  signature: "793pQPuSvM32+ZSde3xLuwvgHcr3ozB4Tbja7b3Ys9iYwsZr+owk7Wvn8FtspZ5fGjtQ6aJjkwnak7anMBNDBQ=="
+  // Signed with a freshly generated Ed25519 keypair (2026-08-11) -- the
+  // matching public key is hardcoded as WP_SAM_CONFIG_PUBLIC_KEY in
+  // security-automation-manager.php. Re-sign and update both sides together
+  // if this CONFIG object's content ever changes; the signature covers this
+  // exact payload (every field except "signature" itself).
+  signature: "zIJJI2p2gBV+IRRbupEVep++MG6KRyTJehofS8XlL53dp4smLzFLYqNHsykCS3SWluvv5URfouO6hGEzVMJpCg=="
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
