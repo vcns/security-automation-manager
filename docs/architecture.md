@@ -168,7 +168,7 @@ Responsibilities:
 
 - `wp_headers` is inspected late for CSP values added by other WordPress plugins.
 - `ABSPATH/.htaccess` is scanned for Apache or LiteSpeed `Header` directives that set, add, append, merge, or edit CSP headers.
-- A throttled internal `HEAD` probe sends `X-WP-CSP-Probe: 1`; `Policy_Builder` suppresses this plugin's own CSP output for that request so any remaining CSP header is treated as likely coming from web-server configuration or another security-header plugin.
+- A throttled internal `HEAD` probe sends `X-WP-SAM-Probe: 1` (`Request_Surface::CONFLICT_PROBE_HEADER`); every header pillar built on `Header_Builder`/`Pillar_Header_Builder` suppresses its own output for that request via `Request_Surface::is_conflict_probe_request()`, so any remaining CSP header is treated as likely coming from web-server configuration or another security-header plugin.
 
 Conflicts are warning-level audit events. The detector never removes or rewrites another component's header because browser behaviour with multiple CSP policies is cumulative and site-specific.
 

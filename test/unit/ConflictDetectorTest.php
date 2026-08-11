@@ -107,8 +107,43 @@ class ConflictDetectorTest extends TestCase {
 
 		$this->assertCount( 1, $GLOBALS['_wp_remote_head_requests'] );
 		$this->assertSame( 'https://example.com', $GLOBALS['_wp_remote_head_requests'][0]['url'] );
-		$this->assertSame( '1', $GLOBALS['_wp_remote_head_requests'][0]['args']['headers']['X-WP-CSP-Probe'] );
+		$this->assertSame( '1', $GLOBALS['_wp_remote_head_requests'][0]['args']['headers']['X-WP-SAM-Probe'] );
 		$this->assertSame( 1, $GLOBALS['_wp_transients']['wp_sam_conflict_probe_ran'] );
+	}
+
+	public function test_probe_header_name_matches_request_surface_suppression_constant(): void {
+		// Regression test: the outgoing probe header name and the incoming
+		// suppression check (Request_Surface::is_conflict_probe_request())
+		// must always agree, or every probe silently stops suppressing this
+		// plugin's own CSP output and misreports it as a "competing" header
+		// from another plugin or the web server. This diverged once already
+		// during the WP_CSP -> WP_SAM rename -- the outgoing header name was
+		// never updated while the incoming check was, so the suppression
+		// never actually fired on any live site running that release.
+		$GLOBALS['_wp_remote_head_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'headers'  => array(),
+		);
+
+		$this->detector->run_probe( 'https://example.com/' );
+
+		$sent_header_name = array_key_first( $GLOBALS['_wp_remote_head_requests'][0]['args']['headers'] );
+		$this->assertSame( \WP_SAM\Security\Request_Surface::CONFLICT_PROBE_HEADER, $sent_header_name );
+	}
+
+	public function test_conflict_probe_request_is_recognised_via_the_shared_header_name(): void {
+		$stub = new class extends \WP_SAM\Security\Request_Surface {
+			public function is_probe(): bool {
+				return $this->is_conflict_probe_request();
+			}
+		};
+
+		$server_key                 = 'HTTP_' . strtoupper( str_replace( '-', '_', \WP_SAM\Security\Request_Surface::CONFLICT_PROBE_HEADER ) );
+		$_SERVER[ $server_key ]     = '1';
+
+		$this->assertTrue( $stub->is_probe() );
+
+		unset( $_SERVER[ $server_key ] );
 	}
 
 	private function assertAuditDetailContains( string $needle ): void {
