@@ -28,7 +28,7 @@ class AdminUITest extends TestCase {
 		$this->assertArrayHasKey( 'reset', $links );
 		$this->assertStringContainsString( 'admin.php?page=security-automation-manager-dashboard', $links['settings'] );
 		$this->assertStringContainsString( 'tab=settings', $links['settings'] );
-		$this->assertStringContainsString( 'admin.php?page=security-automation-manager-readiness#wp-sam-reset', $links['reset'] );
+		$this->assertStringContainsString( 'admin.php?page=security-automation-manager&tab=readiness#wp-sam-reset', $links['reset'] );
 		$this->assertStringContainsString( 'Settings', $links['settings'] );
 		$this->assertStringContainsString( 'Reset', $links['reset'] );
 		$this->assertSame( 'settings', array_key_first( $links ) );
@@ -91,7 +91,9 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'security-automation-manager-hsts', $view );
 		$this->assertStringContainsString( 'security-automation-manager-reverse-tabnabbing', $view );
 		$this->assertStringContainsString( 'security-automation-manager-external-scripts', $view );
-		$this->assertStringContainsString( 'security-automation-manager-readiness', $view );
+		$this->assertStringContainsString( "'readiness'", $view );
+		$this->assertStringContainsString( "'about'", $view );
+		$this->assertStringContainsString( 'wp-sam-reset', $view );
 	}
 
 	/**

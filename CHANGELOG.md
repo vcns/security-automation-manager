@@ -4,14 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
-## [2.4.9] - 2026-08-11
+## [2.4.10] - 2026-08-11
 
 ### Changed
 
 - Commercial-build only, no functional change to the free WordPress.org/GitHub build. Replaced the Cloudflare Worker-based checkout/entitlement backend with a direct integration: `Checkout_Service` now calls `https://api.stripe.com/v1/checkout/sessions` directly from this WordPress install using a locally-configured secret key and Price ID, and `Webhook_Controller` (already a direct Stripe webhook receiver at `/wp-json/security-manager/v1/webhook/stripe`, verifying Stripe's real signature and granting entitlement to the local `sam_entitlements` table) needed no changes at all. Removed `Config_Resolver` and the entire `cloudflare/` directory (worker + wrangler config) -- neither serves a purpose in this architecture. Added a "Stripe Configuration" section to the CSP dashboard's Settings tab (secret keys, Price IDs per mode/interval, webhook signing secret; only rendered on a build where `Checkout_Service` is present) so the whole flow is configurable without leaving wp-admin.
 - Removed the now-unused `wp_sam_config_*` and `wp_sam_entitlement_grace_hours` options (`Config_Resolver`-only, never read anywhere else) from `Activator`, `uninstall.php`, and the reset/uninstall option lists.
 
-## [2.4.8] - 2026-08-11
+## [2.4.9] - 2026-08-11
+
+### Changed
+
+- Sorted the left-nav submenu alphabetically by its displayed label. The Overview submenu item (whose slug matches the top-level menu, so it still serves as the top-level click target) now falls wherever "Overview" sorts alphabetically rather than always being first.
+- Merged the standalone Readiness page into the Overview page as a tab. Schema/runtime checks and the authenticated data-reset flow are unchanged, only relocated -- the reset form's redirect and the Plugins-list "Reset" action link now point at `security-automation-manager&tab=readiness#wp-sam-reset` instead of the removed `security-automation-manager-readiness` page.
+- Added an About tab to the Overview page: who built this plugin (VCNS Tech Ltd), why, the gap it fills in the WordPress security-plugin market, and links to the public help site, user guide, FAQ, and GitHub repository.
 
 ### Changed
 

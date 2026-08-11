@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.9
+Stable tag: 2.4.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,9 +43,15 @@ For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure
 
 == Changelog ==
 
-= 2.4.9 =
+= 2.4.10 =
 
 * Commercial-build only, no functional change to the free WordPress.org/GitHub build: Fully Automatic checkout now calls the Stripe API directly from this WordPress install instead of through an external Cloudflare Worker, which has been removed entirely. Configure your Stripe secret keys, Price IDs, and webhook signing secret in Settings ("Stripe Configuration").
+
+= 2.4.9 =
+
+* Sorts the left-nav submenu alphabetically.
+* Merges the Readiness page into the Overview page as a tab (schema/runtime checks and the data-reset flow are unchanged, just relocated).
+* Adds an About tab to the Overview page: who built this plugin, why, the gap it fills, and links to the public help site.
 
 = 2.4.8 =
 
