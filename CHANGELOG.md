@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.13] - 2026-08-11
+
+### Changed
+
+- Sorted the Overview page's per-pillar status table alphabetically by pillar label, matching the left-nav ordering. "Content Security Policy" (rendered as its own row above the sorted list) already sorts first on its own.
+
 ## [2.4.12] - 2026-08-11
 
 ### Fixed

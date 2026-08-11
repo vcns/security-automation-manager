@@ -97,6 +97,52 @@ class AdminUITest extends TestCase {
 	}
 
 	/**
+	 * Regression test for the underlying $simple_pillars array, extracted and
+	 * sorted the same way page-overview.php sorts it at render time -- the
+	 * view itself isn't executed here (it needs a live WP_SAM\Security\*
+	 * builder set and $wpdb), so this proves the alphabetical-by-label
+	 * ordering the view relies on actually produces the expected row order,
+	 * with "Content Security Policy" (rendered as a separate hardcoded row
+	 * before this array) sorting first on its own merit.
+	 */
+	public function test_overview_pillar_rows_sort_alphabetically_by_label(): void {
+		$labels = array(
+			'Content Security Policy',
+			'X-Frame-Options',
+			'X-Content-Type-Options',
+			'Referrer-Policy',
+			'Permissions-Policy',
+			'Strict-Transport-Security',
+			'Reverse Tabnabbing Protection',
+			'External Scripts',
+			'Cross-Origin-Resource-Policy',
+			'X-Permitted-Cross-Domain-Policies',
+			'Cross-Origin-Opener-Policy',
+			'Cross-Origin-Embedder-Policy',
+		);
+
+		usort( $labels, static fn( string $a, string $b ): int => strcasecmp( $a, $b ) );
+
+		$this->assertSame(
+			array(
+				'Content Security Policy',
+				'Cross-Origin-Embedder-Policy',
+				'Cross-Origin-Opener-Policy',
+				'Cross-Origin-Resource-Policy',
+				'External Scripts',
+				'Permissions-Policy',
+				'Referrer-Policy',
+				'Reverse Tabnabbing Protection',
+				'Strict-Transport-Security',
+				'X-Content-Type-Options',
+				'X-Frame-Options',
+				'X-Permitted-Cross-Domain-Policies',
+			),
+			$labels
+		);
+	}
+
+	/**
 	 * WordPress derives a submenu's hook suffix from sanitize_title() of the
 	 * top-level menu's *title text*, not its slug -- since the top-level menu
 	 * title is now "Security Automation Manager" (not "CSP Manager"), every

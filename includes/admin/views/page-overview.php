@@ -106,6 +106,14 @@ $simple_pillars = array(
 	),
 );
 
+// Sorted alphabetically by label to match the left-nav ordering. "Content
+// Security Policy" (the hardcoded row above this loop) already sorts first
+// on its own -- "Content" < "Cross-..." -- so it needs no special handling.
+uasort(
+	$simple_pillars,
+	static fn( array $a, array $b ): int => strcasecmp( $a['label'], $b['label'] )
+);
+
 // ── Readiness tab data ──────────────────────────────────────────────────────
 $reset_result = sanitize_text_field( wp_unslash( $_GET['wp_sam_reset'] ?? '' ) );
 $status_badge = static function ( string $status ): void {
