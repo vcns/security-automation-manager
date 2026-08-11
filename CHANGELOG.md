@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.6] - 2026-08-11
+
+### Changed
+
+- Commercial-build only, no functional change to the free WordPress.org/GitHub build. Wired up the pieces that make the Fully Automatic checkout flow actually work end-to-end rather than fail with "unable to create a checkout session" on every install:
+  - `cloudflare/wrangler.toml` now activates the `wp-sam.vcns.tech` custom domain route (previously commented out, so the worker was only reachable at its default `*.workers.dev` URL, not the URL `Checkout_Service` and `Config_Resolver` actually call).
+  - Added `WP_SAM_CONFIG_PUBLIC_KEY` (the public half of a freshly generated Ed25519 keypair) as a hardcoded constant in `security-automation-manager.php` -- safe to publish, since only the matching private key needs to stay secret -- and re-signed `cloudflare/worker.js`'s `CONFIG` payload with it. Previously no public key was wired in anywhere, so `Config_Resolver::verify_signature()` always failed closed and no product config could ever be trusted, regardless of everything else being correctly deployed.
+  - Added `WP_SAM_CONFIG_URL`, the one signed-config endpoint every install of this product shares, as `Config_Resolver::get()`'s final fallback -- previously an install had no way to resolve pricing at all unless an administrator manually set a DNS TXT record or the `wp_sam_config_fallback_url` option, which nothing in the admin UI ever surfaced.
+  - The Stripe Product ID placeholders in `cloudflare/worker.js` and the KV-stored Price IDs and Stripe API/webhook secrets referenced there still require the account owner's own Stripe/Cloudflare credentials and cannot be filled in by this change -- see the worker's own doc comment for the exact remaining `wrangler` commands.
+
 ## [2.4.5] - 2026-08-11
 
 ### Fixed
