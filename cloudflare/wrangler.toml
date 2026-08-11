@@ -14,10 +14,12 @@ binding    = "ENTITLEMENTS"
 id         = "03b094a33d484daabb04ad4336e12382"
 
 # ── Routes ────────────────────────────────────────────────────────────────────
-# Uncomment and adjust if using a custom domain:
-# [[routes]]
-# pattern = "wp-sam.vcns.tech/*"
-# zone_name = "vcns.tech"
+# Requires vcns.tech to be an active zone on this Cloudflare account (added as
+# a site, nameservers pointed at Cloudflare) before `wrangler deploy` can
+# attach this route -- deploy will otherwise fail with a zone-not-found error.
+[[routes]]
+pattern   = "wp-sam.vcns.tech/*"
+zone_name = "vcns.tech"
 
 # ── Secrets (never put values here — use `wrangler secret put` or dashboard) ──
 # STRIPE_TEST_SECRET_KEY

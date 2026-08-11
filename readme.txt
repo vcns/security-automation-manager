@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.6
+Stable tag: 2.4.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,9 +43,13 @@ For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure
 
 == Changelog ==
 
-= 2.4.6 =
+= 2.4.7 =
 
 * Consolidates the four separate Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy submenu pages into one "Cross-Origin Policies" page with a tab per pillar.
+
+= 2.4.6 =
+
+* Commercial-build only, no functional change to the free WordPress.org/GitHub build: wires up the signed product-config endpoint (Cloudflare Worker's custom domain route, the Ed25519 keypair used to verify it, and a shared default config URL) so the Fully Automatic checkout flow no longer requires per-site manual configuration.
 
 = 2.4.5 =
 

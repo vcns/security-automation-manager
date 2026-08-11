@@ -107,9 +107,15 @@ class ConfigResolverTest extends TestCase {
 		$this->assertNull( $result );
 	}
 
-	public function test_empty_fallback_url_skips_fallback_path(): void {
+	public function test_empty_fallback_url_falls_through_to_config_url_constant(): void {
 		update_option( 'wp_sam_config_fallback_url', '' );
 
+		// The stub fetch_url() ignores whichever URL was actually resolved and
+		// always returns this canned (empty) response -- this only proves the
+		// resolver doesn't error out and still returns null when that response
+		// is empty, not which URL was used. See
+		// test_config_url_constant_used_when_dns_and_option_both_unavailable()
+		// for a positive assertion that the constant path actually fetches.
 		$resolver = $this->make_resolver(
 			dns_url:    null,
 			fetch_body: '',
@@ -119,6 +125,27 @@ class ConfigResolverTest extends TestCase {
 		$result = $resolver->get();
 
 		$this->assertNull( $result );
+	}
+
+	/**
+	 * WP_SAM_CONFIG_URL is the single shared config endpoint every install of
+	 * this product falls back to when no per-site DNS/override is configured
+	 * -- this is what makes checkout work without every site owner having to
+	 * manually set up a DNS TXT record or fallback URL option first.
+	 */
+	public function test_config_url_constant_used_when_dns_and_option_both_unavailable(): void {
+		$config = $this->valid_config();
+
+		$resolver = $this->make_resolver(
+			dns_url:    null,
+			fetch_body: json_encode( $config ),
+			fetch_code: 200
+		);
+
+		$result = $resolver->get();
+
+		$this->assertIsArray( $result );
+		$this->assertSame( $config['version'], $result['version'] );
 	}
 
 	// ── Stale cache ───────────────────────────────────────────────────────────
