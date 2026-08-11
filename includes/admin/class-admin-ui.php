@@ -2,25 +2,26 @@
 /**
  * WordPress Admin UI: menus, settings API, AJAX handlers.
  *
- * Registers a top-level "Security Automation Manager" menu with these pages:
- *   1. security-automation-manager                  – Overview: per-pillar status summary
- *   2. security-automation-manager-dashboard         – CSP: surface profiles, source inventory,
+ * Registers a top-level "Security Automation Manager" menu. Submenu items are
+ * ordered alphabetically by their left-nav label (not the list order below):
+ *   - security-automation-manager                  – Overview: per-pillar status summary, plus
+ *      Readiness (plugin-specific schema/runtime checks and reset) and About tabs
+ *   - security-automation-manager-dashboard         – CSP: surface profiles, source inventory,
  *      violations, scan history, and settings (promotion gates, learning window, cron schedule,
  *      notify email), all as tabs on one page
- *   3. security-automation-manager-xfo               – X-Frame-Options: per-surface DENY/SAMEORIGIN
- *   4. security-automation-manager-xcto              – X-Content-Type-Options: per-surface on/off
- *   5. security-automation-manager-referrer-policy   – Referrer-Policy: per-surface value picker
- *   6. security-automation-manager-permissions-policy – Permissions-Policy: per-surface, per-directive picker
- *   7. security-automation-manager-hsts              – Strict-Transport-Security: per-surface max-age/includeSubDomains/preload
- *   8. security-automation-manager-reverse-tabnabbing – Reverse Tabnabbing: per-surface on/off, rel=noopener injection
- *   9. security-automation-manager-external-scripts  – External Scripts: third-party script/stylesheet inventory, SRI, enforcement
- *  10. security-automation-manager-cross-origin      – Cross-Origin Policies: Cross-Origin-Resource-Policy,
+ *   - security-automation-manager-xfo               – X-Frame-Options: per-surface DENY/SAMEORIGIN
+ *   - security-automation-manager-xcto              – X-Content-Type-Options: per-surface on/off
+ *   - security-automation-manager-referrer-policy   – Referrer-Policy: per-surface value picker
+ *   - security-automation-manager-permissions-policy – Permissions-Policy: per-surface, per-directive picker
+ *   - security-automation-manager-hsts              – Strict-Transport-Security: per-surface max-age/includeSubDomains/preload
+ *   - security-automation-manager-reverse-tabnabbing – Reverse Tabnabbing: per-surface on/off, rel=noopener injection
+ *   - security-automation-manager-external-scripts  – External Scripts: third-party script/stylesheet inventory, SRI, enforcement
+ *   - security-automation-manager-cross-origin      – Cross-Origin Policies: Cross-Origin-Resource-Policy,
  *      X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy,
  *      each a tab on one page (they previously each had their own separate submenu page)
- *  11. security-automation-manager-readiness         – plugin-specific health checks and reset
  *
  * Policy Audit (effective policy, decisions, provenance) is a tab on the CSP
- * page (2), not a separate top-level page -- it's CSP-specific content.
+ * page, not a separate top-level page -- it's CSP-specific content.
  *
  * All form submissions are protected by check_admin_referer() and
  * current_user_can('manage_options').
@@ -102,13 +103,16 @@ class Admin_UI {
 			80
 		);
 
+		// Submenu order is alphabetical by the label shown in the left nav
+		// (not registration/logical order) -- Readiness is a tab on the
+		// Overview page (see page-overview.php), not a separate menu entry.
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Overview', 'security-automation-manager' ),
-			__( 'Overview', 'security-automation-manager' ),
+			__( 'Cross-Origin Policies', 'security-automation-manager' ),
+			__( 'Cross-Origin Policies', 'security-automation-manager' ),
 			'manage_options',
-			'security-automation-manager',
-			array( $this, 'render_overview' )
+			'security-automation-manager-cross-origin',
+			array( $this, 'render_cross_origin' )
 		);
 
 		add_submenu_page(
@@ -122,38 +126,11 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'X-Frame-Options', 'security-automation-manager' ),
-			__( 'X-Frame-Options', 'security-automation-manager' ),
+			__( 'External Scripts', 'security-automation-manager' ),
+			__( 'External Scripts', 'security-automation-manager' ),
 			'manage_options',
-			'security-automation-manager-xfo',
-			array( $this, 'render_x_frame_options' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
-			__( 'X-Content-Type-Options', 'security-automation-manager' ),
-			__( 'X-Content-Type-Options', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager-xcto',
-			array( $this, 'render_x_content_type_options' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
-			__( 'Referrer-Policy', 'security-automation-manager' ),
-			__( 'Referrer-Policy', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager-referrer-policy',
-			array( $this, 'render_referrer_policy' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
-			__( 'Permissions-Policy', 'security-automation-manager' ),
-			__( 'Permissions-Policy', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager-permissions-policy',
-			array( $this, 'render_permissions_policy' )
+			'security-automation-manager-external-scripts',
+			array( $this, 'render_external_scripts' )
 		);
 
 		add_submenu_page(
@@ -167,6 +144,33 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
+			__( 'Overview', 'security-automation-manager' ),
+			__( 'Overview', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager',
+			array( $this, 'render_overview' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Permissions-Policy', 'security-automation-manager' ),
+			__( 'Permissions-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-permissions-policy',
+			array( $this, 'render_permissions_policy' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Referrer-Policy', 'security-automation-manager' ),
+			__( 'Referrer-Policy', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-referrer-policy',
+			array( $this, 'render_referrer_policy' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
 			__( 'Reverse Tabnabbing Protection', 'security-automation-manager' ),
 			__( 'Reverse Tabnabbing', 'security-automation-manager' ),
 			'manage_options',
@@ -176,29 +180,20 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'External Scripts', 'security-automation-manager' ),
-			__( 'External Scripts', 'security-automation-manager' ),
+			__( 'X-Content-Type-Options', 'security-automation-manager' ),
+			__( 'X-Content-Type-Options', 'security-automation-manager' ),
 			'manage_options',
-			'security-automation-manager-external-scripts',
-			array( $this, 'render_external_scripts' )
+			'security-automation-manager-xcto',
+			array( $this, 'render_x_content_type_options' )
 		);
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Cross-Origin Policies', 'security-automation-manager' ),
-			__( 'Cross-Origin Policies', 'security-automation-manager' ),
+			__( 'X-Frame-Options', 'security-automation-manager' ),
+			__( 'X-Frame-Options', 'security-automation-manager' ),
 			'manage_options',
-			'security-automation-manager-cross-origin',
-			array( $this, 'render_cross_origin' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
-			__( 'Readiness', 'security-automation-manager' ),
-			__( 'Readiness', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager-readiness',
-			array( $this, 'render_readiness' )
+			'security-automation-manager-xfo',
+			array( $this, 'render_x_frame_options' )
 		);
 	}
 
@@ -232,7 +227,7 @@ class Admin_UI {
 
 		$reset_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
-			esc_url( admin_url( 'admin.php?page=security-automation-manager-readiness#wp-sam-reset' ) ),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=readiness#wp-sam-reset' ) ),
 			esc_html__( 'Reset', 'security-automation-manager' )
 		);
 
@@ -355,7 +350,6 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-reverse-tabnabbing',
 			'security-automation-manager_page_security-automation-manager-external-scripts',
 			'security-automation-manager_page_security-automation-manager-cross-origin',
-			'security-automation-manager_page_security-automation-manager-readiness',
 		);
 	}
 
@@ -404,6 +398,7 @@ class Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
 		}
+		$readiness = ( new Readiness_Checker() )->get_report();
 		require WP_SAM_DIR . 'includes/admin/views/page-overview.php';
 	}
 
@@ -507,15 +502,6 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-external-scripts.php';
 	}
 
-	public function render_readiness(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
-		}
-
-		$readiness = ( new Readiness_Checker() )->get_report();
-		require WP_SAM_DIR . 'includes/admin/views/page-readiness.php';
-	}
-
 	public function handle_reset_data(): void {
 		check_admin_referer( 'wp_sam_reset_data' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -551,8 +537,11 @@ class Admin_UI {
 
 	private function redirect_to_readiness( string $result ): void {
 		$url = add_query_arg(
-			array( 'wp_sam_reset' => $result ),
-			admin_url( 'admin.php?page=security-automation-manager-readiness#wp-sam-reset' )
+			array(
+				'tab'          => 'readiness',
+				'wp_sam_reset' => $result,
+			),
+			admin_url( 'admin.php?page=security-automation-manager#wp-sam-reset' )
 		);
 
 		wp_safe_redirect( $url );
