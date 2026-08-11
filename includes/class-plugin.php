@@ -26,6 +26,7 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
+use WP_SAM\Security\Dependency_Integrity_Monitor;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
 use WP_SAM\Security\Reverse_Tabnabbing_Builder;
@@ -177,6 +178,7 @@ final class Plugin {
 		// Conflict detection runs once per admin pageload.
 		if ( is_admin() ) {
 			( new Conflict_Detector( $this->audit ) )->register();
+			( new Dependency_Integrity_Monitor( $this->audit ) )->register();
 		}
 
 		// Admin UI.

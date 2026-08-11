@@ -88,6 +88,7 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_set_hsts', array( $this, 'ajax_set_hsts' ) );
 		add_action( 'wp_ajax_wp_sam_set_dependency_mode', array( $this, 'ajax_set_dependency_mode' ) );
 		add_action( 'wp_ajax_wp_sam_classify_dependency', array( $this, 'ajax_classify_dependency' ) );
+		add_action( 'wp_ajax_wp_sam_suggest_dependency_sri', array( $this, 'ajax_suggest_dependency_sri' ) );
 	}
 
 	// ── Menu registration ─────────────────────────────────────────────────────
@@ -1118,10 +1119,10 @@ class Admin_UI {
 	/**
 	 * Classifies one discovered origin, and -- only for 'immutable_pinned' --
 	 * records the administrator's own expected SRI hash. expected_sri is
-	 * never computed here or anywhere else in this plugin: it is only ever
-	 * what the administrator explicitly typed or pasted in, matching what
-	 * they already trust from elsewhere (a local copy of the file, or the
-	 * vendor's own published hash).
+	 * never computed by this plugin on its own initiative: it is only ever
+	 * what the administrator explicitly typed/pasted in directly, or what
+	 * ajax_suggest_dependency_sri() computed for a URL the administrator
+	 * themselves supplied and then chose to save here.
 	 */
 	public function ajax_classify_dependency(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
@@ -1164,6 +1165,79 @@ class Admin_UI {
 		);
 
 		wp_send_json_success();
+	}
+
+	/**
+	 * Computes a suggested SRI hash for a URL the administrator explicitly
+	 * supplies, to save them running an external hash generator by hand.
+	 * Never saved automatically -- the computed value is only ever returned
+	 * to the browser; the administrator still has to accept it via the
+	 * existing "Expected SRI" field (ajax_classify_dependency()) before it's
+	 * ever compared against anything.
+	 *
+	 * Deliberately restricted to a URL whose origin already matches an
+	 * origin this plugin has itself observed on a real page load (the
+	 * inventory row identified by $id): this endpoint fetches whatever URL
+	 * it's given, so without that restriction it would be a same-origin-only
+	 * fetch proxy an authenticated admin could point at anything. Requiring
+	 * the origin to match a known, passively-discovered one keeps its blast
+	 * radius to "third-party assets this site already loads" rather than
+	 * arbitrary internal/external URLs.
+	 */
+	public function ajax_suggest_dependency_sri(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$id  = (int) ( $_POST['id'] ?? 0 );
+		$url = esc_url_raw( trim( (string) wp_unslash( $_POST['url'] ?? '' ) ) );
+
+		if ( $id <= 0 || '' === $url ) {
+			wp_send_json_error( array( 'message' => __( 'A URL is required.', 'security-automation-manager' ) ) );
+		}
+
+		if ( ! preg_match( '#^https://#i', $url ) ) {
+			wp_send_json_error( array( 'message' => __( 'Only https:// URLs can be hashed.', 'security-automation-manager' ) ) );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_dependency_inventory';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT origin FROM {$table} WHERE id = %d", $id ), ARRAY_A );
+		if ( empty( $row ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'security-automation-manager' ) ) );
+		}
+
+		$url_origin = Dependency_Governance_Builder::normalize_origin( $url );
+		if ( null === $url_origin || $url_origin !== $row['origin'] ) {
+			wp_send_json_error( array( 'message' => __( 'That URL must be on the same origin already shown for this row.', 'security-automation-manager' ) ) );
+		}
+
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout'   => 10,
+				'sslverify' => true,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( array( 'message' => __( 'Could not fetch that URL.', 'security-automation-manager' ) ) );
+		}
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			wp_send_json_error( array( 'message' => __( 'That URL did not return a successful response.', 'security-automation-manager' ) ) );
+		}
+
+		$body = wp_remote_retrieve_body( $response );
+		// 5 MB is generously above any legitimate third-party script/stylesheet;
+		// guards against hashing an unexpectedly huge response.
+		if ( '' === $body || strlen( $body ) > 5 * MB_IN_BYTES ) {
+			wp_send_json_error( array( 'message' => __( 'That URL returned an empty or unexpectedly large response.', 'security-automation-manager' ) ) );
+		}
+
+		$hash = 'sha384-' . base64_encode( hash( 'sha384', $body, true ) );
+
+		wp_send_json_success( array( 'hash' => $hash ) );
 	}
 
 	// ── Promotion gate ────────────────────────────────────────────────────────

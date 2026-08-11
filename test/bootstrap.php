@@ -13,7 +13,7 @@ declare( strict_types=1 );
 
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
-define( 'WP_SAM_VERSION',        '2.4.13' );
+define( 'WP_SAM_VERSION',        '2.4.14' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -23,6 +23,8 @@ define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'wordpress-org' );
 define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/security-automation-manager/update.json' );
 define( 'HOUR_IN_SECONDS',       3600 );
 define( 'DAY_IN_SECONDS',        86400 );
+define( 'KB_IN_BYTES',           1024 );
+define( 'MB_IN_BYTES',           1024 * 1024 );
 if ( ! defined( 'DNS_TXT' ) ) {
 	define( 'DNS_TXT', 16 );
 }
