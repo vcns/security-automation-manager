@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.6] - 2026-08-11
+
+### Changed
+
+- Consolidated the four separate `Cross-Origin-Resource-Policy`, `X-Permitted-Cross-Domain-Policies`, `Cross-Origin-Opener-Policy`, and `Cross-Origin-Embedder-Policy` submenu pages into one "Cross-Origin Policies" page (`security-automation-manager-cross-origin`) with a tab per pillar, matching the tab pattern already used by the CSP dashboard. `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` keep their own separate pages -- they aren't part of this "cross-origin" grouping. The Overview page's per-pillar "Manage" links now route to the correct tab on the consolidated page.
+
 ## [2.4.5] - 2026-08-11
 
 ### Fixed
