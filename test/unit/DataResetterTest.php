@@ -41,7 +41,6 @@ class DataResetterTest extends TestCase {
 			'wp_sam_report_endpoint_url' => 'https://public.example.com/wp-json/csp-manager/v1/report',
 		);
 		$GLOBALS['_wp_transients']      = array(
-			'wp_sam_remote_config'       => array( 'cached' => true ),
 			'wp_sam_conflict_probe_ran'  => 1,
 			'unrelated_plugin_transient' => 1,
 		);
@@ -55,7 +54,7 @@ class DataResetterTest extends TestCase {
 
 		$this->assertSame( $table_names, array_keys( $result['tables_cleared'] ) );
 		$this->assertSame( '', $GLOBALS['_wp_options']['wp_sam_report_endpoint_url'] );
-		$this->assertArrayNotHasKey( 'wp_sam_remote_config', $GLOBALS['_wp_transients'] );
+		$this->assertArrayNotHasKey( 'wp_sam_conflict_probe_ran', $GLOBALS['_wp_transients'] );
 		$this->assertArrayHasKey( 'unrelated_plugin_transient', $GLOBALS['_wp_transients'] );
 		$this->assertArrayHasKey( 'wp_sam_daily_scan', $GLOBALS['_wp_cron'] );
 		$this->assertSame( WP_SAM_DB_VERSION, $GLOBALS['_wp_options']['wp_sam_db_version'] );

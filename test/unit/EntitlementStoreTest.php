@@ -2,8 +2,9 @@
 /**
  * Unit tests for WP_SAM\Modules\Entitlement_Store.
  *
- * DB interactions are exercised through the wpdb_stub configured in bootstrap.
- * HTTP calls in sync_from_worker() are exercised through the wp_remote_get stub.
+ * Entitlements are entirely local (the sam_entitlements table, populated by
+ * Webhook_Controller on a fulfilled Stripe checkout) -- DB interactions are
+ * exercised through the wpdb_stub configured in bootstrap.
  */
 
 declare( strict_types=1 );
@@ -69,24 +70,10 @@ class EntitlementStoreTest extends TestCase {
 		$this->assertSame( 'pro', $result['tier'] );
 	}
 
-	// ── get_for_site() — no local row, worker fails gracefully ───────────────
+	// ── get_for_site() — no local row ────────────────────────────────────────
 
-	public function test_get_for_site_returns_null_when_db_empty_and_worker_fails(): void {
-		$GLOBALS['_wpdb_get_row']           = null;
-		$GLOBALS['_wp_remote_get_response'] = array(
-			'response' => array( 'code' => 404 ),
-			'body'     => '',
-		);
-
-		$store  = new Entitlement_Store( $this->audit );
-		$result = $store->get_for_site( 'csp-automation-manager' );
-
-		$this->assertNull( $result );
-	}
-
-	public function test_get_for_site_returns_null_when_worker_returns_wp_error(): void {
-		$GLOBALS['_wpdb_get_row']           = null;
-		$GLOBALS['_wp_remote_get_response'] = new WP_Error( 'http_request_failed', 'cURL error' );
+	public function test_get_for_site_returns_null_when_no_local_row(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
 
 		$store  = new Entitlement_Store( $this->audit );
 		$result = $store->get_for_site( 'csp-automation-manager' );

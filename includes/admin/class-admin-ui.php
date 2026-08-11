@@ -211,6 +211,19 @@ class Admin_UI {
 			'wp_sam_automation_config'             => array( $this, 'sanitize_automation_config' ),
 			// Data retention: days to keep violation reports (0 = keep forever).
 			'wp_sam_violation_retention_days'      => 'absint',
+			// Stripe configuration for the Fully Automatic checkout flow -- these
+			// fields only render when a commercial build's Checkout_Service is
+			// present (see the "Stripe Configuration" section further down this
+			// tab), but registering the settings unconditionally is harmless and
+			// keeps this one list authoritative for every wp_sam_* option.
+			'wp_sam_stripe_mode'                   => array( $this, 'sanitize_stripe_mode' ),
+			'wp_sam_stripe_secret_key_test'        => 'sanitize_text_field',
+			'wp_sam_stripe_secret_key_live'        => 'sanitize_text_field',
+			'wp_sam_stripe_price_id_monthly_test'  => 'sanitize_text_field',
+			'wp_sam_stripe_price_id_annual_test'   => 'sanitize_text_field',
+			'wp_sam_stripe_price_id_monthly_live'  => 'sanitize_text_field',
+			'wp_sam_stripe_price_id_annual_live'   => 'sanitize_text_field',
+			'wp_sam_webhook_secret'                => 'sanitize_text_field',
 		);
 
 		foreach ( $settings as $option => $callback ) {
@@ -302,6 +315,10 @@ class Admin_UI {
 
 	public function sanitize_policy_header_name( mixed $header_name ): string {
 		return Policy_Builder::sanitize_custom_policy_header_name( $header_name );
+	}
+
+	public function sanitize_stripe_mode( mixed $mode ): string {
+		return 'live' === $mode ? 'live' : 'test';
 	}
 
 	// ── Asset enqueue ─────────────────────────────────────────────────────────

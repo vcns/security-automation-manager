@@ -24,18 +24,6 @@ class ActivatorTest extends TestCase {
 
 	// ── Default options ───────────────────────────────────────────────────────
 
-	public function test_activate_seeds_config_dns_domain_option(): void {
-		Activator::activate();
-
-		$this->assertSame( '', get_option( 'wp_sam_config_dns_domain' ) );
-	}
-
-	public function test_activate_seeds_config_cache_ttl_option(): void {
-		Activator::activate();
-
-		$this->assertSame( 3600, get_option( 'wp_sam_config_cache_ttl' ) );
-	}
-
 	public function test_activate_seeds_violation_retention_days_option(): void {
 		Activator::activate();
 
@@ -71,12 +59,6 @@ class ActivatorTest extends TestCase {
 		Activator::activate();
 
 		$this->assertSame( 2, get_option( 'wp_sam_cron_hour' ) );
-	}
-
-	public function test_activate_seeds_entitlement_grace_hours(): void {
-		Activator::activate();
-
-		$this->assertSame( 72, get_option( 'wp_sam_entitlement_grace_hours' ) );
 	}
 
 	public function test_activate_does_not_overwrite_existing_options(): void {

@@ -40,19 +40,12 @@ class Feature_Gate {
 	 */
 	private ?object $entitlements;
 
-	/**
-	 * Legacy Config_Resolver instance, or null when no compatibility module is present.
-	 * Typed as object to avoid autoloading optional classes at parse time.
-	 */
-	private ?object $config;
-
 	/** In-memory cache to avoid repeated DB + transient reads per request. */
 	private ?array $entitlement_cache = null;
 	private bool $cache_loaded        = false;
 
-	public function __construct( ?object $entitlements = null, ?object $config = null ) {
+	public function __construct( ?object $entitlements = null ) {
 		$this->entitlements = $entitlements;
-		$this->config       = $config;
 	}
 
 	// ── Public API ────────────────────────────────────────────────────────────

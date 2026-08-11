@@ -1216,6 +1216,67 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<?php endif; ?>
 		</div>
 		<?php endif; ?>
+
+		<?php if ( null !== $this->plugin->checkout ) : ?>
+		<h2 class="title"><?php esc_html_e( 'Stripe Configuration', 'security-automation-manager' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'This site calls the Stripe API directly to create checkout sessions -- no external proxy is involved. Create one Product with a recurring Monthly and Annual Price in your Stripe dashboard, then paste the resulting IDs below.', 'security-automation-manager' ); ?>
+		</p>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_mode"><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></label></th>
+				<td>
+					<select id="wp_sam_stripe_mode" name="wp_sam_stripe_mode">
+						<option value="test" <?php selected( get_option( 'wp_sam_stripe_mode', 'test' ), 'test' ); ?>><?php esc_html_e( 'Test', 'security-automation-manager' ); ?></option>
+						<option value="live" <?php selected( get_option( 'wp_sam_stripe_mode', 'test' ), 'live' ); ?>><?php esc_html_e( 'Live', 'security-automation-manager' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'Which key/price pair below is actually used for checkout. Test everything in Test mode first.', 'security-automation-manager' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_secret_key_test"><?php esc_html_e( 'Test Secret Key', 'security-automation-manager' ); ?></label></th>
+				<td><input type="password" id="wp_sam_stripe_secret_key_test" name="wp_sam_stripe_secret_key_test" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_secret_key_test', '' ) ); ?>" class="regular-text" autocomplete="off" placeholder="sk_test_…" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_secret_key_live"><?php esc_html_e( 'Live Secret Key', 'security-automation-manager' ); ?></label></th>
+				<td><input type="password" id="wp_sam_stripe_secret_key_live" name="wp_sam_stripe_secret_key_live" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_secret_key_live', '' ) ); ?>" class="regular-text" autocomplete="off" placeholder="sk_live_…" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_price_id_monthly_test"><?php esc_html_e( 'Test Price ID (Monthly)', 'security-automation-manager' ); ?></label></th>
+				<td><input type="text" id="wp_sam_stripe_price_id_monthly_test" name="wp_sam_stripe_price_id_monthly_test" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_monthly_test', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_price_id_annual_test"><?php esc_html_e( 'Test Price ID (Annual)', 'security-automation-manager' ); ?></label></th>
+				<td><input type="text" id="wp_sam_stripe_price_id_annual_test" name="wp_sam_stripe_price_id_annual_test" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_annual_test', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_price_id_monthly_live"><?php esc_html_e( 'Live Price ID (Monthly)', 'security-automation-manager' ); ?></label></th>
+				<td><input type="text" id="wp_sam_stripe_price_id_monthly_live" name="wp_sam_stripe_price_id_monthly_live" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_monthly_live', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_stripe_price_id_annual_live"><?php esc_html_e( 'Live Price ID (Annual)', 'security-automation-manager' ); ?></label></th>
+				<td><input type="text" id="wp_sam_stripe_price_id_annual_live" name="wp_sam_stripe_price_id_annual_live" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_annual_live', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_webhook_secret"><?php esc_html_e( 'Webhook Signing Secret', 'security-automation-manager' ); ?></label></th>
+				<td>
+					<input type="password" id="wp_sam_webhook_secret" name="wp_sam_webhook_secret" value="<?php echo esc_attr( get_option( 'wp_sam_webhook_secret', '' ) ); ?>" class="regular-text" autocomplete="off" placeholder="whsec_…" />
+					<p class="description">
+						<?php
+						echo wp_kses_post(
+							sprintf(
+								/* translators: %s: the webhook URL to register in the Stripe dashboard */
+								__( 'In the Stripe dashboard, add a webhook endpoint at %s listening for checkout.session.completed and checkout.session.async_payment_succeeded, then paste its signing secret here. One endpoint covers both Test and Live mode.', 'security-automation-manager' ),
+								'<code>' . esc_html( rest_url( 'security-manager/v1/webhook/stripe' ) ) . '</code>'
+							)
+						);
+						?>
+					</p>
+				</td>
+			</tr>
+		</table>
+		<?php endif; ?>
+
 		<table class="widefat striped" role="presentation">
 			<thead>
 				<tr>

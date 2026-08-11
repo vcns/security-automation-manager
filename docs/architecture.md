@@ -106,14 +106,15 @@ None of these nine pillars have a report-only mode, a discovery workflow, or Dec
 
 ### Entitlement and payment runtime
 
-`offline/modules/*` (`Config_Resolver`, `Checkout_Service`, `Webhook_Controller`, `Entitlement_Store`) -- gitignored, never bundled into a WordPress.org or GitHub-channel release ZIP. `Feature_Gate` (`includes/modules/class-feature-gate.php`) is the only always-shipped piece; it accepts these as optional dependencies and runs in a free-only posture when they're absent, which is the case for every distributed build today.
+`offline/modules/*` (`Checkout_Service`, `Webhook_Controller`, `Entitlement_Store`) -- gitignored, never bundled into a WordPress.org or GitHub-channel release ZIP. `Feature_Gate` (`includes/modules/class-feature-gate.php`) is the only always-shipped piece; it accepts these as optional dependencies and runs in a free-only posture when they're absent, which is the case for every distributed build today.
+
+Every piece of this runtime calls the Stripe API directly from the WordPress install -- there is no external proxy or worker. Stripe secret keys, Price IDs, and the webhook signing secret are configured locally (CSP dashboard, Settings tab, "Stripe Configuration" section, only rendered when `Checkout_Service` is present).
 
 Responsibilities:
 
-- `Config_Resolver`: fetch and Ed25519-verify the signed remote product config from `https://wp-sam.vcns.tech/`, with transient caching and stale-cache fallback
-- `Checkout_Service`: start a Stripe Checkout session (subscription mode) via `https://wp-sam.vcns.tech/checkout` for the selected billing interval (monthly £1.99 / annual £19.99)
-- `Webhook_Controller`: verify Stripe webhook signatures and grant entitlements on `checkout.session.completed`
-- `Entitlement_Store`: read/write local entitlement rows, falling back to `https://wp-sam.vcns.tech/entitlement` when none exists locally
+- `Checkout_Service`: create a Stripe Checkout Session (subscription mode) by calling `https://api.stripe.com/v1/checkout/sessions` directly with a locally-configured secret key and Price ID for the selected billing interval and Stripe mode (test/live)
+- `Webhook_Controller`: receive Stripe's webhook directly at `/wp-json/security-manager/v1/webhook/stripe`, verify its signature against the locally-configured webhook secret, and grant entitlements on `checkout.session.completed` / `checkout.session.async_payment_succeeded`
+- `Entitlement_Store`: read/write local entitlement rows (`sam_entitlements`) -- entitlement state never leaves this site's own database
 - `Feature_Gate`: gates exactly one feature -- `fully_automatic` -- behind an active entitlement; everything else is free regardless of entitlement state
 - provide structured operational logging (append-only DB audit trail via `Audit_Log`)
 
@@ -125,7 +126,7 @@ Responsibilities:
 
 Responsibilities:
 
-- render the Overview, CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Reverse Tabnabbing, External Scripts, and readiness pages
+- render the Overview page (Overview, Readiness, and About tabs), CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), Cross-Origin Policies page (Cross-Origin-Embedder-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Reverse Tabnabbing, and External Scripts pages
 - support full-dataset sorting and per-column filtering on the Violations, For Review, and Policy Changes tables, plus a per-row metadata popover on Violations (document URI, source file, line/column, referrer, user agent, captured data-URI payload)
 - support source review and mode switching
 - trigger scans and config refreshes
