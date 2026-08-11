@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Security\Request_Surface;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -152,7 +153,7 @@ class Conflict_Detector {
 			array(
 				'timeout'   => 10,
 				'sslverify' => true,
-				'headers'   => array( 'X-WP-CSP-Probe' => '1' ),
+				'headers'   => array( Request_Surface::CONFLICT_PROBE_HEADER => '1' ),
 			)
 		);
 

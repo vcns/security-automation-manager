@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.2] - 2026-08-11
+
+### Fixed
+
+- Fixed `Conflict_Detector`'s internal self-check probe permanently failing to suppress this plugin's own CSP output, causing every install to misreport its own live CSP/CSP-Report-Only header as a "competing" header from web-server configuration or another plugin. The probe's outgoing header name (`X-WP-CSP-Probe`) was never updated during the WP_CSP -> WP_SAM rename, while the incoming suppression check (`Request_Surface::is_conflict_probe_request()`) was -- the two silently drifted apart, so the suppression never actually triggered on any release since the rename. Both sides now reference one shared constant (`Request_Surface::CONFLICT_PROBE_HEADER`) so they cannot diverge again, with a regression test covering it.
+
 ## [2.4.1] - 2026-08-11
 
 No functional changes. Marks the first release actually tagged and published this session -- 2.2.0, 2.3.0, and 2.4.0 were all merged to `main` but never tagged, so no GitHub Release or update-feed entry exists for them. This tag is the first to trigger the publish pipeline.

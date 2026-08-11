@@ -21,13 +21,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Request_Surface {
 
 	/**
-	 * Conflict_Detector issues an internal request carrying this header to
-	 * see what security headers other plugins/web-server config are already
+	 * HTTP header name Conflict_Detector's internal probe sends, and this
+	 * class checks the corresponding $_SERVER key for, to recognise and
+	 * suppress the plugin's own CSP output during that one request. Defined
+	 * once and referenced by both sides so they can never silently drift
+	 * apart again -- they already did once (the outgoing probe header was
+	 * never updated during the WP_CSP -> WP_SAM rename while this check
+	 * was), which meant the suppression never actually triggered and every
+	 * probe misreported this plugin's own live CSP header as a "competing"
+	 * header from another plugin or the web server.
+	 */
+	public const CONFLICT_PROBE_HEADER = 'X-WP-SAM-Probe';
+
+	/**
+	 * Conflict_Detector issues an internal request carrying CONFLICT_PROBE_HEADER
+	 * to see what security headers other plugins/web-server config are already
 	 * sending, without this plugin's own header masking the result.
 	 */
 	protected function is_conflict_probe_request(): bool {
-		return isset( $_SERVER['HTTP_X_WP_SAM_PROBE'] )
-			&& '1' === (string) $_SERVER['HTTP_X_WP_SAM_PROBE'];
+		$server_key = 'HTTP_' . strtoupper( str_replace( '-', '_', self::CONFLICT_PROBE_HEADER ) );
+
+		return isset( $_SERVER[ $server_key ] ) && '1' === (string) $_SERVER[ $server_key ];
 	}
 
 	// ── Surface detection ─────────────────────────────────────────────────────
