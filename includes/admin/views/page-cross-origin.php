@@ -26,6 +26,30 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 global $wpdb;
 
 $tabs = array(
+	'coep'  => array(
+		'label'         => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+		'pillar_key'    => Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
+		'header_name'   => 'Cross-Origin-Embedder-Policy',
+		'intro_html'    => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'security-automation-manager' ) . '</p>',
+		'value_options' => array(
+			'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'security-automation-manager' ),
+			'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'security-automation-manager' ),
+			'require-corp'   => __( 'require-corp -- every cross-origin resource must explicitly opt in, or it is blocked', 'security-automation-manager' ),
+		),
+		'warning_html'  => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Enabling this carelessly silently breaks unrelated page content rather than producing an obvious error. Do not enable this unless this site specifically needs cross-origin isolation.', 'security-automation-manager' ) . '</p>',
+	),
+	'coop'  => array(
+		'label'         => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+		'pillar_key'    => Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
+		'header_name'   => 'Cross-Origin-Opener-Policy',
+		'intro_html'    => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'security-automation-manager' ) . '</p>',
+		'value_options' => array(
+			'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'security-automation-manager' ),
+			'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'security-automation-manager' ),
+			'same-origin'              => __( 'same-origin -- full isolation', 'security-automation-manager' ),
+		),
+		'warning_html'  => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. If this site uses any of those, start with "same-origin-allow-popups" instead, which keeps isolation for this site\'s own top-level navigation while still letting a popup hold a restricted opener reference back.', 'security-automation-manager' ) . '</p>',
+	),
 	'corp'  => array(
 		'label'         => __( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
 		'pillar_key'    => Cross_Origin_Resource_Policy_Builder::PILLAR_KEY,
@@ -51,35 +75,11 @@ $tabs = array(
 		),
 		'warning_html'  => '',
 	),
-	'coop'  => array(
-		'label'         => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
-		'pillar_key'    => Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
-		'header_name'   => 'Cross-Origin-Opener-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'security-automation-manager' ) . '</p>',
-		'value_options' => array(
-			'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'security-automation-manager' ),
-			'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'security-automation-manager' ),
-			'same-origin'              => __( 'same-origin -- full isolation', 'security-automation-manager' ),
-		),
-		'warning_html'  => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. If this site uses any of those, start with "same-origin-allow-popups" instead, which keeps isolation for this site\'s own top-level navigation while still letting a popup hold a restricted opener reference back.', 'security-automation-manager' ) . '</p>',
-	),
-	'coep'  => array(
-		'label'         => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
-		'pillar_key'    => Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
-		'header_name'   => 'Cross-Origin-Embedder-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'security-automation-manager' ) . '</p>',
-		'value_options' => array(
-			'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'security-automation-manager' ),
-			'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'security-automation-manager' ),
-			'require-corp'   => __( 'require-corp -- every cross-origin resource must explicitly opt in, or it is blocked', 'security-automation-manager' ),
-		),
-		'warning_html'  => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Enabling this carelessly silently breaks unrelated page content rather than producing an obvious error. Do not enable this unless this site specifically needs cross-origin isolation.', 'security-automation-manager' ) . '</p>',
-	),
 );
 
-$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'corp';
+$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'coep';
 if ( ! isset( $tabs[ $tab ] ) ) {
-	$tab = 'corp';
+	$tab = 'coep';
 }
 $active = $tabs[ $tab ];
 
