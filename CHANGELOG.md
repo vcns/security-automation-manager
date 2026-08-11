@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.8] - 2026-08-11
+
+### Changed
+
+- Reordered the Cross-Origin Policies page's tabs alphabetically: Cross-Origin-Embedder-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies (previously CORP, XPCDP, COOP, COEP). The default tab (when no `tab` query arg is present) changed accordingly, from `corp` to `coep`.
+
 ## [2.4.7] - 2026-08-11
 
 ### Changed
