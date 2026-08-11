@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.12] - 2026-08-11
+
+### Fixed
+
+- Widened `sam_pillar_profiles.pillar` from `varchar(32)` to `varchar(48)`. `X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY` (`x-permitted-cross-domain-policies`) is 33 characters -- one over the old column length -- so every toggle on that one pillar either failed outright under strict SQL mode, or was silently truncated to a different, unreadable key otherwise. Either way the Overview page's per-pillar status table always showed it as "Off" regardless of what an admin actually saved on the Cross-Origin Policies page.
+
 ## [2.4.11] - 2026-08-11
 
 ### Fixed
