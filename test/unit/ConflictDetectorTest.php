@@ -96,6 +96,40 @@ class ConflictDetectorTest extends TestCase {
 		$this->assertAuditDetailContains( 'Multiple live CSP headers are present' );
 	}
 
+	public function test_probe_ignores_own_cached_header_served_by_a_front_end_cache(): void {
+		// A full-page cache/CDN in front of the site can serve a previously
+		// rendered response -- including this plugin's own CSP header from an
+		// earlier real visitor request -- for the probe's HEAD request without
+		// WordPress ever re-running, so the outgoing X-WP-SAM-Probe header
+		// never reaches PHP and the usual self-suppression never fires. This
+		// must not be misreported as a competing header from another plugin.
+		$GLOBALS['_wp_remote_head_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'headers'  => array(
+				'content-security-policy-report-only' => "default-src 'none'; script-src 'nonce-abc123'; report-uri https://example.com/wp-json/security-manager/v1/report",
+			),
+		);
+
+		$found = $this->detector->run_probe( 'https://example.com/' );
+
+		$this->assertSame( array(), $found );
+		$this->assertSame( array(), $this->audit->get_buffer() );
+	}
+
+	public function test_probe_still_flags_a_genuine_third_party_csp_header(): void {
+		$GLOBALS['_wp_remote_head_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'headers'  => array(
+				'content-security-policy-report-only' => "default-src 'self'; report-uri https://example.com/wp-json/some-other-plugin/v1/report",
+			),
+		);
+
+		$found = $this->detector->run_probe( 'https://example.com/' );
+
+		$this->assertSame( array( 'content-security-policy-report-only' ), $found );
+		$this->assertAuditDetailContains( 'via probe_existing' );
+	}
+
 	public function test_maybe_run_probe_sends_internal_probe_header_once_per_day(): void {
 		$GLOBALS['_wp_remote_head_response'] = array(
 			'response' => array( 'code' => 200 ),

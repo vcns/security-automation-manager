@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Security\Reporting_Endpoint;
 use WP_SAM\Security\Request_Surface;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -166,6 +167,7 @@ class Conflict_Detector {
 
 		foreach ( self::CSP_HEADERS as $hdr ) {
 			$values = $this->get_response_header_values( $headers, $hdr );
+			$values = array_values( array_filter( $values, array( $this, 'is_external_header_value' ) ) );
 			if ( empty( $values ) ) {
 				continue;
 			}
@@ -176,6 +178,28 @@ class Conflict_Detector {
 		}
 
 		return $found;
+	}
+
+	/**
+	 * False if a probed CSP header value is actually this plugin's own
+	 * output, rather than a genuine competing header. A full-page cache,
+	 * CDN, or reverse proxy sitting in front of the site can serve a
+	 * previously-rendered response -- including this plugin's own CSP
+	 * header from an earlier real visitor request -- for the probe's HEAD
+	 * request without WordPress (and therefore
+	 * is_conflict_probe_request()'s suppression) ever running again. The
+	 * probe then misreports the plugin's own cached header as a competing
+	 * one. Recognise our own output by its report-uri, which always points
+	 * back at this site's own report endpoint, and exclude it rather than
+	 * flagging a false conflict.
+	 *
+	 * @param string $value CSP header value under test.
+	 */
+	private function is_external_header_value( string $value ): bool {
+		$own_endpoint = Reporting_Endpoint::url();
+
+		return ! ( '' !== $own_endpoint && str_contains( $value, $own_endpoint ) )
+			&& ! str_contains( $value, 'security-manager/v1/report' );
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────────

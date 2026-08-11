@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.11] - 2026-08-11
+
+### Fixed
+
+- Fixed a false-positive conflict report: `Conflict_Detector`'s daily probe could misreport this plugin's own live `Content-Security-Policy`/`-Report-Only` header as a "competing" header from another plugin or the web server. On sites sitting behind a full-page cache, CDN, or reverse proxy, that layer can serve a previously-rendered response -- including this plugin's own CSP header from an earlier real visitor request -- for the probe's HEAD request without WordPress re-running, so the outgoing `X-WP-SAM-Probe` suppression header never reaches PHP and the usual self-suppression never fires. The probe now recognises its own output by the `report-uri` it always emits (pointing back at this site's own report endpoint) and excludes it, rather than flagging a false conflict.
+
 ## [2.4.10] - 2026-08-11
 
 ### Changed
