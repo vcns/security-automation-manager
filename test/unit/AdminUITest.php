@@ -121,6 +121,34 @@ class AdminUITest extends TestCase {
 		}
 	}
 
+	// ── filter_admin_footer_text() ──────────────────────────────────────────
+
+	public function test_filter_admin_footer_text_returns_the_string_unchanged(): void {
+		$ui = $this->make_admin_ui();
+
+		$this->assertSame( 'Thank you.', $ui->filter_admin_footer_text( 'Thank you.' ) );
+	}
+
+	/**
+	 * Regression test: a fatal TypeError shipped in production because this
+	 * method was typed `string $text`, but admin_footer_text runs through
+	 * every plugin's filter callbacks in sequence and WordPress does not
+	 * enforce that an earlier callback returns a string -- a misbehaving
+	 * plugin/theme returning null here fataled every wp-admin page load.
+	 */
+	public function test_filter_admin_footer_text_tolerates_null_from_an_earlier_filter(): void {
+		$ui = $this->make_admin_ui();
+
+		$this->assertSame( '', $ui->filter_admin_footer_text( null ) );
+	}
+
+	public function test_filter_admin_footer_text_tolerates_non_string_types(): void {
+		$ui = $this->make_admin_ui();
+
+		$this->assertSame( '', $ui->filter_admin_footer_text( array( 'unexpected' ) ) );
+		$this->assertSame( '', $ui->filter_admin_footer_text( 42 ) );
+	}
+
 	private function make_admin_ui(): Admin_UI {
 		$reflection = new ReflectionClass( Plugin::class );
 

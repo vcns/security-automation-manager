@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.3] - 2026-08-11
+
+### Fixed
+
+- Fixed a fatal `TypeError` on every wp-admin page load: `Admin_UI::filter_admin_footer_text()` was typed to require its `admin_footer_text` filter argument be a `string`, but WordPress does not guarantee that -- any other plugin or theme hooked earlier in the same filter chain can pass through a non-string value (observed live: `null`), and this plugin's `strict_types` declaration turned that into an uncaught fatal instead of a type-juggled empty string. The method now accepts `mixed` and coerces defensively, matching how WordPress's own loosely-typed filter contracts should be handled.
+
 ## [2.4.2] - 2026-08-11
 
 ### Fixed

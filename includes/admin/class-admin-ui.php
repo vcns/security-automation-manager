@@ -291,14 +291,21 @@ class Admin_UI {
 	 * Suppresses the default "Thank you for creating with WordPress." footer
 	 * text on this plugin's own admin pages only; every other admin screen is
 	 * left untouched.
+	 *
+	 * FIX: accepts mixed, not string. admin_footer_text runs through every
+	 * plugin's filter callbacks in sequence, and WordPress does not enforce
+	 * that earlier callbacks return a string -- a misbehaving plugin/theme
+	 * returning null (or anything else) here previously fataled every wp-admin
+	 * page load with a TypeError, since this method's parameter was typed
+	 * `string` under this plugin's own strict_types declaration.
 	 */
-	public function filter_admin_footer_text( string $text ): string {
+	public function filter_admin_footer_text( mixed $text ): string {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( $screen && in_array( $screen->id, $this->plugin_page_hooks(), true ) ) {
 			return '';
 		}
 
-		return $text;
+		return is_string( $text ) ? $text : '';
 	}
 
 	public function sanitize_report_endpoint_url( mixed $url ): string {

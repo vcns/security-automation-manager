@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.2
+Stable tag: 2.4.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,10 @@ Reports received by this plugin are validated and stored in this site's WordPres
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
 == Changelog ==
+
+= 2.4.3 =
+
+* Fixes a fatal error on every wp-admin page load. admin_footer_text filter callbacks can receive a non-string value from another plugin or theme hooked earlier in the chain; this plugin's own callback required a string and fataled instead of tolerating it.
 
 = 2.4.2 =
 
