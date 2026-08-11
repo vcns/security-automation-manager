@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.1] - 2026-08-11
+
+No functional changes. Marks the first release actually tagged and published this session -- 2.2.0, 2.3.0, and 2.4.0 were all merged to `main` but never tagged, so no GitHub Release or update-feed entry exists for them. This tag is the first to trigger the publish pipeline.
+
 ## [2.4.0] - 2026-08-11
 
 ### Added
