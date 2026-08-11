@@ -464,10 +464,19 @@ class Activator {
 		// X-Content-Type-Options, Referrer-Policy, and future pillars).
 		// payload is NOT NULL: writers must always store valid JSON, e.g. '{}'
 		// for a pillar with no configurable value (X-Content-Type-Options).
+		// pillar is varchar(48), not (32): X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY
+		// ('x-permitted-cross-domain-policies') is 33 characters, one over a
+		// 32-length column. Under strict SQL mode the INSERT in
+		// Admin_UI::ajax_set_pillar_value() silently failed for every toggle
+		// on that one pillar; without strict mode it was truncated to a
+		// different string than the constant, so it could never be read back
+		// by key -- the Overview table always showed it as "Off" no matter
+		// what was saved. 48 leaves headroom for future pillar keys longer
+		// than today's.
 		dbDelta(
 			"CREATE TABLE {$p}sam_pillar_profiles (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  pillar varchar(32) NOT NULL,
+  pillar varchar(48) NOT NULL,
   surface varchar(32) NOT NULL,
   enabled tinyint(1) NOT NULL DEFAULT 0,
   payload longtext NOT NULL,

@@ -37,6 +37,54 @@ class SchemaMigrationTest extends TestCase {
 		$this->assertStringContainsString( 'UNIQUE KEY fingerprint (fingerprint)', $schema );
 	}
 
+	public function test_pillar_profiles_pillar_column_fits_the_longest_pillar_key(): void {
+		// Regression test: sam_pillar_profiles.pillar was varchar(32), but
+		// X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY
+		// ('x-permitted-cross-domain-policies') is 33 characters -- one over.
+		// Depending on SQL mode, every save for that one pillar either failed
+		// outright or was silently truncated to a different, unreadable key,
+		// so the Overview table always showed it as "Off" no matter what an
+		// admin actually toggled. Assert the column is wide enough for every
+		// currently-defined pillar key, not just today's longest one.
+		Activator::activate();
+
+		$table = $GLOBALS['wpdb']->prefix . 'sam_pillar_profiles';
+		$statement = null;
+		foreach ( $GLOBALS['_dbdelta_queries'] as $query ) {
+			if ( str_contains( $query, "CREATE TABLE {$table} " ) ) {
+				$statement = $query;
+				break;
+			}
+		}
+		$this->assertNotNull( $statement, "CREATE TABLE statement for {$table} not found." );
+
+		$matched = preg_match( '/pillar varchar\((\d+)\) NOT NULL/', $statement, $matches );
+		$this->assertSame( 1, $matched, 'sam_pillar_profiles.pillar column definition not found in its own CREATE TABLE statement.' );
+		$column_length = (int) $matches[1];
+
+		$pillar_keys = array(
+			\WP_SAM\Security\X_Frame_Options_Builder::PILLAR_KEY,
+			\WP_SAM\Security\X_Content_Type_Options_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Referrer_Policy_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Permissions_Policy_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Strict_Transport_Security_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Reverse_Tabnabbing_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Dependency_Governance_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Cross_Origin_Resource_Policy_Builder::PILLAR_KEY,
+			\WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
+		);
+
+		foreach ( $pillar_keys as $pillar_key ) {
+			$this->assertLessThanOrEqual(
+				$column_length,
+				strlen( $pillar_key ),
+				"Pillar key '{$pillar_key}' (" . strlen( $pillar_key ) . ' chars) does not fit in the pillar column (' . $column_length . ' chars).'
+			);
+		}
+	}
+
 	public function test_policy_decision_ledger_columns_are_declared(): void {
 		Activator::activate();
 
