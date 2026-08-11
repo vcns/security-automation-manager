@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.4] - 2026-08-11
+
+### Fixed
+
+- Fixed CSP violation reports being deduplicated by exact `blocked_uri` instead of host, so a CDN or font provider (e.g. `fonts.gstatic.com`) serving each request from a distinct, content-hashed filename under the same host permanently accumulated a separate row per file in the Violations table instead of being recognised as repeat traffic to the same source. `Violation_Reporter::store_report()` now fingerprints on `(profile_surface, blocked_host, violated_directive)` wherever a host is extractable from `blocked_uri` (`Violation_Reporter::extract_blocked_host()`), matching the host-level granularity CSP source-approval already uses; keyword-like values with no host (`inline`, `eval`, `data:`, `blob:`, `about:`) keep their exact-value fingerprint. A new `blocked_host` column (schema v14) is backfilled and existing rows that now collapse under the same fingerprint are merged on upgrade, summing occurrence counts and keeping the earliest first-seen / latest last-seen timestamps. The Violations tab's "Blocked URI" column and its search filter now match against the grouped host first.
+
 ## [2.4.3] - 2026-08-11
 
 ### Fixed

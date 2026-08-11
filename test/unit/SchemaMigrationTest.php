@@ -225,6 +225,136 @@ class SchemaMigrationTest extends TestCase {
 		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
 	}
 
+	// ── migrate_dedupe_violation_reports_by_host() (schema v14) ──────────────────
+
+	public function test_migrate_dedupe_violation_reports_by_host_skips_when_table_missing(): void {
+		$GLOBALS['_wpdb_get_var'] = null;
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_dedupe_violation_reports_by_host' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
+	public function test_migrate_dedupe_violation_reports_by_host_noop_when_table_empty(): void {
+		$table                        = $GLOBALS['wpdb']->prefix . 'csp_violation_reports';
+		$GLOBALS['_wpdb_get_var']     = $table;
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_dedupe_violation_reports_by_host' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
+	public function test_migrate_dedupe_violation_reports_by_host_backfills_single_row_group(): void {
+		$table                        = $GLOBALS['wpdb']->prefix . 'csp_violation_reports';
+		$GLOBALS['_wpdb_get_var']     = $table;
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                => 7,
+				'profile_surface'   => 'frontend',
+				'blocked_uri'       => 'https://fonts.gstatic.com/s/poppins/v24/aaaa.woff2',
+				'violated_directive' => 'font-src',
+				'occurrence_count'  => 3,
+				'first_reported_at' => '2026-08-01 00:00:00',
+				'last_reported_at'  => '2026-08-01 00:00:00',
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_dedupe_violation_reports_by_host' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
+		$update = $GLOBALS['_wpdb_updated_rows'][0];
+		$this->assertSame( array( 'id' => 7 ), $update['where'] );
+		$this->assertSame( 'fonts.gstatic.com', $update['data']['blocked_host'] );
+		// Single-row groups are backfilled only -- occurrence_count/timestamps untouched.
+		$this->assertArrayNotHasKey( 'occurrence_count', $update['data'] );
+	}
+
+	public function test_migrate_dedupe_violation_reports_by_host_merges_rows_sharing_a_host(): void {
+		$table                        = $GLOBALS['wpdb']->prefix . 'csp_violation_reports';
+		$GLOBALS['_wpdb_get_var']     = $table;
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                 => 1,
+				'profile_surface'    => 'frontend',
+				'blocked_uri'        => 'https://fonts.gstatic.com/s/poppins/v24/aaaa.woff2',
+				'violated_directive' => 'font-src',
+				'occurrence_count'   => 3,
+				'first_reported_at'  => '2026-08-01 00:00:00',
+				'last_reported_at'   => '2026-08-01 00:00:00',
+			),
+			array(
+				'id'                 => 2,
+				'profile_surface'    => 'frontend',
+				'blocked_uri'        => 'https://fonts.gstatic.com/s/poppins/v24/bbbb.woff2',
+				'violated_directive' => 'font-src',
+				'occurrence_count'   => 5,
+				'first_reported_at'  => '2026-07-20 00:00:00',
+				'last_reported_at'   => '2026-08-10 12:00:00',
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_dedupe_violation_reports_by_host' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		// Both rows collapse to a single fingerprint -- one survivor update, keyed on
+		// the row most recently seen (id 2), with counts summed and earliest first-seen kept.
+		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
+		$update = $GLOBALS['_wpdb_updated_rows'][0];
+		$this->assertSame( array( 'id' => 2 ), $update['where'] );
+		$this->assertSame( 'fonts.gstatic.com', $update['data']['blocked_host'] );
+		$this->assertSame( 8, $update['data']['occurrence_count'] );
+		$this->assertSame( '2026-07-20 00:00:00', $update['data']['first_reported_at'] );
+		$this->assertSame( '2026-08-10 12:00:00', $update['data']['last_reported_at'] );
+
+		// The other row (id 1) is deleted.
+		$this->assertStringContainsString( 'DELETE FROM', $GLOBALS['_wpdb_last_query'] );
+		$this->assertStringContainsString( 'WHERE id IN (1)', $GLOBALS['_wpdb_last_query'] );
+	}
+
+	public function test_migrate_dedupe_violation_reports_by_host_leaves_keyword_rows_unmerged(): void {
+		$table                        = $GLOBALS['wpdb']->prefix . 'csp_violation_reports';
+		$GLOBALS['_wpdb_get_var']     = $table;
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                 => 1,
+				'profile_surface'    => 'frontend',
+				'blocked_uri'        => 'inline',
+				'violated_directive' => 'script-src',
+				'occurrence_count'   => 1,
+				'first_reported_at'  => '2026-08-01 00:00:00',
+				'last_reported_at'   => '2026-08-01 00:00:00',
+			),
+			array(
+				'id'                 => 2,
+				'profile_surface'    => 'frontend',
+				'blocked_uri'        => 'eval',
+				'violated_directive' => 'script-src',
+				'occurrence_count'   => 1,
+				'first_reported_at'  => '2026-08-01 00:00:00',
+				'last_reported_at'   => '2026-08-01 00:00:00',
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_dedupe_violation_reports_by_host' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		// Different keyword values keep their own exact-value fingerprint -- two
+		// independent backfills, no merge, no delete.
+		$this->assertCount( 2, $GLOBALS['_wpdb_updated_rows'] );
+		foreach ( $GLOBALS['_wpdb_updated_rows'] as $update ) {
+			$this->assertNull( $update['data']['blocked_host'] );
+		}
+	}
+
 	public static function legacy_schema_version_provider(): array {
 		return array(
 			'v1' => array( '1' ),

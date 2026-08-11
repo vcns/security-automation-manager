@@ -377,6 +377,92 @@ class ViolationReporterTest extends TestCase {
 		$this->assertNotSame( $stored1[0]['fingerprint'], $stored2[0]['fingerprint'] );
 	}
 
+	// ── Host-level dedup fingerprint ──────────────────────────────────────────
+
+	public function test_different_filenames_under_same_host_produce_same_fingerprint(): void {
+		$reporter = $this->make_capturing_reporter();
+
+		$report1 = [ 'csp-report' => [ 'blocked-uri' => 'https://fonts.gstatic.com/s/poppins/v24/aaaa.woff2', 'violated-directive' => 'font-src', 'document-uri' => 'https://example.com/' ] ];
+		$report2 = [ 'csp-report' => [ 'blocked-uri' => 'https://fonts.gstatic.com/s/poppins/v24/bbbb.woff2', 'violated-directive' => 'font-src', 'document-uri' => 'https://example.com/' ] ];
+
+		$stored1 = $reporter->capture_stored_reports( $report1 );
+		$stored2 = $reporter->capture_stored_reports( $report2 );
+
+		$this->assertSame( $stored1[0]['fingerprint'], $stored2[0]['fingerprint'] );
+	}
+
+	public function test_different_hosts_still_produce_different_fingerprints(): void {
+		$reporter = $this->make_capturing_reporter();
+
+		$report1 = [ 'csp-report' => [ 'blocked-uri' => 'https://fonts.gstatic.com/a.woff2', 'violated-directive' => 'font-src', 'document-uri' => 'https://example.com/' ] ];
+		$report2 = [ 'csp-report' => [ 'blocked-uri' => 'https://other.example.net/a.woff2', 'violated-directive' => 'font-src', 'document-uri' => 'https://example.com/' ] ];
+
+		$stored1 = $reporter->capture_stored_reports( $report1 );
+		$stored2 = $reporter->capture_stored_reports( $report2 );
+
+		$this->assertNotSame( $stored1[0]['fingerprint'], $stored2[0]['fingerprint'] );
+	}
+
+	public function test_keyword_blocked_uri_keeps_exact_value_fingerprint(): void {
+		$reporter = $this->make_capturing_reporter();
+
+		$report1 = [ 'csp-report' => [ 'blocked-uri' => 'inline', 'violated-directive' => 'script-src', 'document-uri' => 'https://example.com/' ] ];
+		$report2 = [ 'csp-report' => [ 'blocked-uri' => 'eval', 'violated-directive' => 'script-src', 'document-uri' => 'https://example.com/' ] ];
+
+		$stored1 = $reporter->capture_stored_reports( $report1 );
+		$stored2 = $reporter->capture_stored_reports( $report2 );
+
+		$this->assertNotSame( $stored1[0]['fingerprint'], $stored2[0]['fingerprint'] );
+	}
+
+	public function test_new_report_upsert_query_stores_extracted_blocked_host(): void {
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		$request                                     = $this->make_request(
+			'{"csp-report":{"violated-directive":"font-src","document-uri":"https://example.com/","blocked-uri":"https://fonts.gstatic.com/s/poppins/v24/aaaa.woff2"}}'
+		);
+
+		$this->reporter->handle( $request );
+
+		$this->assertStringContainsString( "'fonts.gstatic.com'", $GLOBALS['_wpdb_last_query'] );
+	}
+
+	public function test_new_report_with_keyword_blocked_uri_stores_null_blocked_host(): void {
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		$request                                     = $this->make_request(
+			'{"csp-report":{"violated-directive":"script-src","document-uri":"https://example.com/","blocked-uri":"inline"}}'
+		);
+
+		$this->reporter->handle( $request );
+
+		// blocked_host is bound as NULLIF('', '') so an empty string becomes genuine SQL NULL.
+		$this->assertStringContainsString( "NULLIF('', '')", $GLOBALS['_wpdb_last_query'] );
+	}
+
+	// ── extract_blocked_host() ────────────────────────────────────────────────
+
+	public function test_extract_blocked_host_returns_lowercased_host(): void {
+		$this->assertSame( 'fonts.gstatic.com', Violation_Reporter::extract_blocked_host( 'HTTPS://Fonts.Gstatic.com/s/poppins/v24/aaaa.woff2' ) );
+	}
+
+	public function test_extract_blocked_host_handles_protocol_relative_uri(): void {
+		$this->assertSame( 'cdn.example.com', Violation_Reporter::extract_blocked_host( '//cdn.example.com/lib.js' ) );
+	}
+
+	public function test_extract_blocked_host_returns_null_for_keyword_values(): void {
+		foreach ( [ 'inline', 'eval', 'wasm-eval', 'data', 'blob', 'about' ] as $keyword ) {
+			$this->assertNull( Violation_Reporter::extract_blocked_host( $keyword ), "expected null for '{$keyword}'" );
+		}
+	}
+
+	public function test_extract_blocked_host_returns_null_for_data_uri(): void {
+		$this->assertNull( Violation_Reporter::extract_blocked_host( 'data:image/png;base64,aaaa' ) );
+	}
+
+	public function test_extract_blocked_host_returns_null_for_empty_string(): void {
+		$this->assertNull( Violation_Reporter::extract_blocked_host( '' ) );
+		$this->assertNull( Violation_Reporter::extract_blocked_host( '   ' ) );
+	}
+
 	// ── Rate limiting ─────────────────────────────────────────────────────────
 
 	public function test_rate_limit_blocks_reports_beyond_cap(): void {
@@ -549,9 +635,13 @@ class ViolationReporterTest extends TestCase {
 					return;
 				}
 
-				$blocked_uri        = substr( $r['blocked_uri'] ?? '', 0, 2048 );
-				$violated_directive = substr( $r['violated_directive'] ?? '', 0, 128 );
-				$fingerprint        = hash( 'sha256', $surface . '|' . $blocked_uri . '|' . $violated_directive );
+				$blocked_uri          = substr( $r['blocked_uri'] ?? '', 0, 2048 );
+				$violated_directive   = substr( $r['violated_directive'] ?? '', 0, 128 );
+				// Mirrors store_report()'s real fingerprinting via the shared static
+				// helper, rather than a second hand-rolled copy that could drift.
+				$blocked_host         = Violation_Reporter::extract_blocked_host( $blocked_uri );
+				$fingerprint_subject  = $blocked_host ?? $blocked_uri;
+				$fingerprint          = hash( 'sha256', $surface . '|' . $fingerprint_subject . '|' . $violated_directive );
 
 				$this->captured[] = array_merge( $r, [
 					'profile_surface' => $surface,
