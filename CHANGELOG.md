@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.4] - 2026-08-11
+
+### Fixed
+
+- Fixed every header pillar (CSP, X-Frame-Options, Permissions-Policy, X-Content-Type-Options, Referrer-Policy, HSTS, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies) being silently skipped on the WordPress login page (`wp-login.php`) regardless of configuration. `Header_Builder::register()` hooked only `send_headers` and the `wp_redirect` filter, but `wp-login.php` is a standalone entry point that never calls `wp()` / `WP::main()`, so `send_headers` -- fired only from `WP::send_headers()` -- never runs there; every pillar's `login` surface profile was loaded, active, and configured, but its header was never actually sent. Confirmed live: a raw fetch of a customer's `wp-login.php` carried none of this plugin's headers (its `Content-Security-Policy` value didn't even match this plugin's output shape), while the same site's frontend response carried the full configured set, including `Permissions-Policy` -- the only symptom the customer's external scanner had flagged, since a host-level LiteSpeed default happened to cover the other, older headers on that surface. `register()` now also hooks `login_init`, the substitute WordPress itself documents for code that must run before any output on that page.
+
 ## [2.4.3] - 2026-08-11
 
 ### Fixed
