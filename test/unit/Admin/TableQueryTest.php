@@ -124,6 +124,29 @@ class TableQueryTest extends TestCase {
 		$this->assertSame( '%100\%\_off%', $fragment['args'][0] );
 	}
 
+	// ── like_where_any() ─────────────────────────────────────────────────────────
+
+	public function test_like_where_any_returns_null_for_blank_term(): void {
+		$this->assertNull( Table_Query::like_where_any( $GLOBALS['wpdb'], array( 'blocked_host', 'blocked_uri' ), '  ' ) );
+	}
+
+	public function test_like_where_any_returns_null_for_empty_column_list(): void {
+		$this->assertNull( Table_Query::like_where_any( $GLOBALS['wpdb'], array(), 'gstatic' ) );
+	}
+
+	public function test_like_where_any_ors_across_all_given_columns(): void {
+		$fragment = Table_Query::like_where_any( $GLOBALS['wpdb'], array( 'blocked_host', 'blocked_uri' ), 'gstatic' );
+
+		$this->assertSame( '(blocked_host LIKE %s OR blocked_uri LIKE %s)', $fragment['sql'] );
+		$this->assertSame( array( '%gstatic%', '%gstatic%' ), $fragment['args'] );
+	}
+
+	public function test_like_where_any_escapes_wildcards_via_esc_like(): void {
+		$fragment = Table_Query::like_where_any( $GLOBALS['wpdb'], array( 'blocked_host' ), '100%_off' );
+
+		$this->assertSame( '%100\%\_off%', $fragment['args'][0] );
+	}
+
 	// ── numeric_gte_where() ──────────────────────────────────────────────────────
 
 	public function test_numeric_gte_where_returns_null_when_absent(): void {

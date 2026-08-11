@@ -129,6 +129,32 @@ final class Table_Query {
 		);
 	}
 
+	/**
+	 * Same as like_where(), but matches if the term is found in ANY of the
+	 * given columns (e.g. a "Blocked URI" search field that should match
+	 * against either the grouped blocked_host column or the full blocked_uri
+	 * column, since a filter box only has one place to type into).
+	 */
+	public static function like_where_any( \wpdb $wpdb, array $columns, string $raw_term ): ?array {
+		$term = trim( $raw_term );
+		if ( '' === $term || empty( $columns ) ) {
+			return null;
+		}
+
+		$like    = '%' . $wpdb->esc_like( $term ) . '%';
+		$clauses = array();
+		$args    = array();
+		foreach ( $columns as $column ) {
+			$clauses[] = "{$column} LIKE %s";
+			$args[]    = $like;
+		}
+
+		return array(
+			'sql'  => '(' . implode( ' OR ', $clauses ) . ')',
+			'args' => $args,
+		);
+	}
+
 	public static function numeric_gte_where( string $column, ?int $raw_min ): ?array {
 		if ( null === $raw_min ) {
 			return null;

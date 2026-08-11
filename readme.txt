@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.4
+Stable tag: 2.4.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,9 +43,13 @@ For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure
 
 == Changelog ==
 
-= 2.4.4 =
+= 2.4.5 =
 
 * Fixes every header pillar (Content Security Policy, X-Frame-Options, Permissions-Policy, HSTS, and all others) being silently skipped on the WordPress login page (wp-login.php), even when explicitly enabled and configured for the login surface. wp-login.php never fires the `send_headers` action this plugin relied on exclusively; it now also emits headers on `login_init`, the hook WordPress itself documents as the substitute for code that must run early on that page.
+
+= 2.4.4 =
+
+* Fixes CSP violation reports being logged as a permanent, separate row per exact file URL instead of grouping by host -- a CDN or font provider (e.g. Google Fonts) serving each request from a distinct, content-hashed filename under the same host no longer floods the Violations table with one row per file. Deduplication now groups on the blocked host wherever one is extractable, matching how CSP source-approval already treats hosts as the unit of approval. Existing rows are merged automatically on upgrade.
 
 = 2.4.3 =
 

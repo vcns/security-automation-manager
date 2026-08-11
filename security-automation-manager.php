@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.4.4
+ * Version:           2.4.5
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.4.4' );
+define( 'WP_SAM_VERSION', '2.4.5' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -61,8 +61,14 @@ define( 'WP_SAM_VERSION', '2.4.4' );
  *        store for pillars other than CSP (currently Cross-Origin-Opener-Policy
  *        and Cross-Origin-Embedder-Policy, the only two with a browser-native
  *        report-only + reporting delivery mechanism). See Pillar_Violation_Store.
+ * v14 -- adds blocked_host to csp_violation_reports and switches violation
+ *        dedup from exact-URL to host granularity (see
+ *        Violation_Reporter::extract_blocked_host()) -- a CDN/font-provider
+ *        serving each request from a distinct, content-hashed filename under
+ *        the same host no longer gets a permanent row per file. Existing
+ *        rows are merged accordingly on upgrade.
  */
-define( 'WP_SAM_DB_VERSION', '13' );
+define( 'WP_SAM_DB_VERSION', '14' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

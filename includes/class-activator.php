@@ -12,6 +12,8 @@ declare( strict_types=1 );
 
 namespace WP_SAM;
 
+use WP_SAM\CSP\Violation_Reporter;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -253,6 +255,7 @@ class Activator {
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   profile_surface varchar(32) NOT NULL,
   blocked_uri varchar(2048) NOT NULL,
+  blocked_host varchar(255) DEFAULT NULL,
   document_uri varchar(2048) DEFAULT NULL,
   violated_directive varchar(128) NOT NULL,
   effective_directive varchar(128) DEFAULT NULL,
@@ -276,9 +279,12 @@ class Activator {
   KEY reported_at (reported_at),
   KEY last_reported_at (last_reported_at),
   KEY occurrence_count (occurrence_count),
+  KEY blocked_host (blocked_host),
   UNIQUE KEY fingerprint (fingerprint)
 ) {$cc};"
 		);
+
+		self::migrate_dedupe_violation_reports_by_host();
 
 		self::migrate_violation_report_rollups();
 
@@ -564,6 +570,105 @@ class Activator {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->query( "RENAME TABLE {$old_table} TO {$new_table}" );
 			}
+		}
+	}
+
+	/**
+	 * Schema v14: recomputes each violation report's fingerprint at host
+	 * granularity instead of exact-URL granularity (see
+	 * Violation_Reporter::extract_blocked_host()) and merges any existing
+	 * rows that now collapse under the same fingerprint -- e.g. every
+	 * fonts.gstatic.com/.../<hash>.woff2 file an install already logged as a
+	 * separate row becomes one "fonts.gstatic.com" row, matching how CSP
+	 * source approval already groups at host granularity. Rows with no
+	 * extractable host (inline/eval/data:/blob:/about:) keep their
+	 * exact-value fingerprint and are only backfilled, never merged.
+	 */
+	private static function migrate_dedupe_violation_reports_by_host(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_violation_reports';
+
+		if ( ! self::table_exists( $table ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			"SELECT id, profile_surface, blocked_uri, violated_directive, occurrence_count, first_reported_at, last_reported_at FROM {$table}",
+			ARRAY_A
+		);
+		if ( empty( $rows ) ) {
+			return;
+		}
+
+		$groups = array();
+		foreach ( $rows as $row ) {
+			$host        = Violation_Reporter::extract_blocked_host( (string) $row['blocked_uri'] );
+			$subject     = $host ?? (string) $row['blocked_uri'];
+			$fingerprint = hash( 'sha256', $row['profile_surface'] . '|' . $subject . '|' . $row['violated_directive'] );
+
+			if ( ! isset( $groups[ $fingerprint ] ) ) {
+				$groups[ $fingerprint ] = array(
+					'host' => $host,
+					'rows' => array(),
+				);
+			}
+			$groups[ $fingerprint ]['rows'][] = $row;
+		}
+
+		foreach ( $groups as $fingerprint => $group ) {
+			$group_rows = $group['rows'];
+
+			if ( 1 === count( $group_rows ) ) {
+				$wpdb->update(
+					$table,
+					array(
+						'fingerprint'  => $fingerprint,
+						'blocked_host' => $group['host'],
+					),
+					array( 'id' => (int) $group_rows[0]['id'] ),
+					array( '%s', '%s' ),
+					array( '%d' )
+				);
+				continue;
+			}
+
+			// Multiple rows collapse into one: keep the row most recently seen
+			// (its blocked_uri is the freshest real example for that host),
+			// sum occurrence counts, keep the earliest first-seen timestamp.
+			usort( $group_rows, static fn( array $a, array $b ): int => strcmp( (string) $b['last_reported_at'], (string) $a['last_reported_at'] ) );
+			$survivor = $group_rows[0];
+			$others   = array_slice( $group_rows, 1 );
+
+			$total_occurrences = array_sum( array_map( static fn( array $r ): int => (int) $r['occurrence_count'], $group_rows ) );
+			$first_seen        = min( array_map( static fn( array $r ): string => (string) $r['first_reported_at'], $group_rows ) );
+			$last_seen         = (string) $survivor['last_reported_at'];
+
+			$wpdb->update(
+				$table,
+				array(
+					'fingerprint'       => $fingerprint,
+					'blocked_host'      => $group['host'],
+					'occurrence_count'  => $total_occurrences,
+					'first_reported_at' => $first_seen,
+					'last_reported_at'  => $last_seen,
+					'reported_at'       => $last_seen,
+				),
+				array( 'id' => (int) $survivor['id'] ),
+				array( '%s', '%s', '%d', '%s', '%s', '%s' ),
+				array( '%d' )
+			);
+
+			$other_ids = array_map( static fn( array $r ): int => (int) $r['id'], $others );
+			$in_clause = implode( ',', array_fill( 0, count( $other_ids ), '%d' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->query(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- {$in_clause} is a runtime-built string of %d placeholders, one per element of the spread $other_ids below; phpcs cannot see through the interpolation.
+					"DELETE FROM {$table} WHERE id IN ({$in_clause})",
+					...$other_ids
+				)
+			);
 		}
 	}
 

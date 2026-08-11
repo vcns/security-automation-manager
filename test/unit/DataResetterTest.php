@@ -25,6 +25,10 @@ class DataResetterTest extends TestCase {
 		$GLOBALS['_wpdb_get_var_queue'] = array_merge(
 			$table_names,
 			array_fill( 0, 7, null ),
+			// Two consecutive table_exists() checks against the same table: schema
+			// v14's migrate_dedupe_violation_reports_by_host(), then the existing
+			// migrate_violation_report_rollups().
+			array( 'wp_csp_violation_reports' ),
 			array( 'wp_csp_violation_reports' ),
 			array_fill( 0, 4, '1' ),
 			array( 'wp_sam_policy_versions' ),
