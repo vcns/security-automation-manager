@@ -58,19 +58,23 @@ $simple_pillars = array(
 	),
 	\WP_SAM\Security\Cross_Origin_Resource_Policy_Builder::PILLAR_KEY => array(
 		'label' => __( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
-		'page'  => 'security-automation-manager-corp',
+		'page'  => 'security-automation-manager-cross-origin',
+		'tab'   => 'corp',
 	),
 	\WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY => array(
 		'label' => __( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
-		'page'  => 'security-automation-manager-xpcdp',
+		'page'  => 'security-automation-manager-cross-origin',
+		'tab'   => 'xpcdp',
 	),
 	\WP_SAM\Security\Cross_Origin_Opener_Policy_Builder::PILLAR_KEY => array(
 		'label' => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
-		'page'  => 'security-automation-manager-coop',
+		'page'  => 'security-automation-manager-cross-origin',
+		'tab'   => 'coop',
 	),
 	\WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY => array(
 		'label' => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
-		'page'  => 'security-automation-manager-coep',
+		'page'  => 'security-automation-manager-cross-origin',
+		'tab'   => 'coep',
 	),
 );
 ?>
@@ -121,7 +125,7 @@ $simple_pillars = array(
 						<?php endforeach; ?>
 					</td>
 					<td>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $pillar['page'] ) ); ?>">
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $pillar['page'] . ( isset( $pillar['tab'] ) ? '&tab=' . $pillar['tab'] : '' ) ) ); ?>">
 							<?php
 							echo esc_html(
 								sprintf(
