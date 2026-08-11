@@ -31,6 +31,14 @@ abstract class Header_Builder extends Request_Surface {
 		// send_headers fires before any output, ideal for emitting headers.
 		add_action( 'send_headers', array( $this, 'emit_header' ) );
 		add_filter( 'wp_redirect', array( $this, 'emit_header_before_redirect' ), 1, 2 );
+
+		// wp-login.php is a standalone entry point that never calls wp() / WP::main(),
+		// so send_headers -- fired only from WP::send_headers() -- never runs there.
+		// Every pillar silently skipped the login surface entirely until this was
+		// added: login_init fires at the very top of wp-login.php, before any
+		// output, and is the documented substitute WordPress itself recommends for
+		// code that needs to run early on that page.
+		add_action( 'login_init', array( $this, 'emit_header' ) );
 	}
 
 	// ── Header emission ───────────────────────────────────────────────────────
