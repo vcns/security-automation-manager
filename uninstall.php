@@ -34,13 +34,6 @@ foreach ( $tables as $table ) {
 // ── Delete options ────────────────────────────────────────────────────────────
 $options = array(
 	'wp_sam_db_version',
-	'wp_sam_config_dns_domain',
-	'wp_sam_config_fallback_url',
-	'wp_sam_config_cache_ttl',
-	'wp_sam_config_grace_ttl',
-	'wp_sam_config_last_fetched',
-	'wp_sam_config_version',
-	'wp_sam_entitlement_grace_hours',
 	'wp_sam_enforce_gate_violation_window',
 	'wp_sam_cron_hour',
 	'wp_sam_notify_email',
@@ -51,6 +44,14 @@ $options = array(
 	'wp_sam_last_material_change_at',
 	'wp_sam_automation_config',
 	'wp_sam_admin_notices',
+	'wp_sam_stripe_mode',
+	'wp_sam_stripe_secret_key_test',
+	'wp_sam_stripe_secret_key_live',
+	'wp_sam_stripe_price_id_monthly_test',
+	'wp_sam_stripe_price_id_annual_test',
+	'wp_sam_stripe_price_id_monthly_live',
+	'wp_sam_stripe_price_id_annual_live',
+	'wp_sam_webhook_secret',
 );
 
 foreach ( $options as $option ) {
@@ -58,8 +59,6 @@ foreach ( $options as $option ) {
 }
 
 // ── Remove transients ─────────────────────────────────────────────────────────
-delete_transient( 'wp_sam_remote_config' );
-delete_transient( 'wp_sam_config_stale' );
 delete_transient( 'wp_sam_conflict_probe_ran' );
 
 // ── Clear scheduled hooks ─────────────────────────────────────────────────────

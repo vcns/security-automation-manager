@@ -13,7 +13,7 @@ declare( strict_types=1 );
 
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
-define( 'WP_SAM_VERSION',        '2.4.8' );
+define( 'WP_SAM_VERSION',        '2.4.9' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -21,8 +21,6 @@ define( 'WP_SAM_URL',            'https://example.com/wp-content/plugins/securit
 define( 'WP_SAM_PLUGIN_BASENAME', 'security-automation-manager/security-automation-manager.php' );
 define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'wordpress-org' );
 define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/security-automation-manager/update.json' );
-define( 'WP_SAM_CONFIG_PUBLIC_KEY', 'HGVM6405RwSulFWgs0jHoioSnOsOg1YPpzJN65GNSFU=' );
-define( 'WP_SAM_CONFIG_URL', 'https://wp-sam.vcns.tech/' );
 define( 'HOUR_IN_SECONDS',       3600 );
 define( 'DAY_IN_SECONDS',        86400 );
 if ( ! defined( 'DNS_TXT' ) ) {
@@ -233,6 +231,16 @@ if ( ! function_exists( 'wp_remote_get' ) ) {
 			'args' => $args,
 		);
 		return $GLOBALS['_wp_remote_get_response'] ?? [ 'response' => [ 'code' => 200 ], 'body' => '' ];
+	}
+}
+
+if ( ! function_exists( 'wp_remote_post' ) ) {
+	function wp_remote_post( string $url, array $args = [] ): array|WP_Error {
+		$GLOBALS['_wp_remote_post_requests'][] = array(
+			'url'  => $url,
+			'args' => $args,
+		);
+		return $GLOBALS['_wp_remote_post_response'] ?? [ 'response' => [ 'code' => 200 ], 'body' => '' ];
 	}
 }
 
@@ -646,6 +654,8 @@ function wp_test_reset_globals(): void {
 
 	$GLOBALS['_wp_remote_get_response']  = null;
 	$GLOBALS['_wp_remote_get_requests']  = [];
+	$GLOBALS['_wp_remote_post_response'] = null;
+	$GLOBALS['_wp_remote_post_requests'] = [];
 	$GLOBALS['_wp_download_url_response'] = '';
 	$GLOBALS['_wp_download_url_requests'] = [];
 	$GLOBALS['_wp_deleted_files']        = [];

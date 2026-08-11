@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.9] - 2026-08-11
+
+### Changed
+
+- Commercial-build only, no functional change to the free WordPress.org/GitHub build. Replaced the Cloudflare Worker-based checkout/entitlement backend with a direct integration: `Checkout_Service` now calls `https://api.stripe.com/v1/checkout/sessions` directly from this WordPress install using a locally-configured secret key and Price ID, and `Webhook_Controller` (already a direct Stripe webhook receiver at `/wp-json/security-manager/v1/webhook/stripe`, verifying Stripe's real signature and granting entitlement to the local `sam_entitlements` table) needed no changes at all. Removed `Config_Resolver` and the entire `cloudflare/` directory (worker + wrangler config) -- neither serves a purpose in this architecture. Added a "Stripe Configuration" section to the CSP dashboard's Settings tab (secret keys, Price IDs per mode/interval, webhook signing secret; only rendered on a build where `Checkout_Service` is present) so the whole flow is configurable without leaving wp-admin.
+- Removed the now-unused `wp_sam_config_*` and `wp_sam_entitlement_grace_hours` options (`Config_Resolver`-only, never read anywhere else) from `Activator`, `uninstall.php`, and the reset/uninstall option lists.
+
 ## [2.4.8] - 2026-08-11
 
 ### Changed

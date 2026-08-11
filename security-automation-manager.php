@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.4.8
+ * Version:           2.4.9
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.4.8' );
+define( 'WP_SAM_VERSION', '2.4.9' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -88,29 +88,6 @@ if ( ! defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) ) {
 if ( ! defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ) {
 	define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/security-automation-manager/update.json' );
 }
-
-/**
- * Only read by offline/modules/class-config-resolver.php, present solely on
- * private/commercial builds -- inert everywhere else. Safe to hardcode in
- * this publicly-distributed file: it's the *public* half of the Ed25519
- * keypair that signs the Cloudflare-hosted product config (see
- * cloudflare/worker.js's CONFIG.signature); publishing a public key carries
- * no risk by design, only the matching private key must stay secret.
- */
-if ( ! defined( 'WP_SAM_CONFIG_PUBLIC_KEY' ) ) {
-	define( 'WP_SAM_CONFIG_PUBLIC_KEY', 'HGVM6405RwSulFWgs0jHoioSnOsOg1YPpzJN65GNSFU=' );
-}
-
-/**
- * Default signed-config URL, used when neither wp_sam_config_dns_domain nor
- * wp_sam_config_fallback_url is set on a given install -- there's exactly
- * one of these for every customer of this product, so it belongs here as a
- * constant rather than something each site must independently configure.
- */
-if ( ! defined( 'WP_SAM_CONFIG_URL' ) ) {
-	define( 'WP_SAM_CONFIG_URL', 'https://wp-sam.vcns.tech/' );
-}
-
 
 // ── PSR-4 autoloader ──────────────────────────────────────────────────────────
 spl_autoload_register(

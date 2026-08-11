@@ -44,7 +44,6 @@ final class Plugin {
 
 	// Shared module instances (read by Admin_UI and other consumers).
 	// Nullable compatibility hooks for legacy or future optional integrations.
-	public ?object $config       = null;
 	public ?object $entitlements = null;
 	public ?object $checkout     = null;
 	public Feature_Gate $gate;
@@ -116,22 +115,18 @@ final class Plugin {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
 
-		// Entitlement/config modules are only present in a private/commercial
-		// build (see offline/modules/ -- gitignored and excluded from every
-		// release ZIP this repo's CI produces). The WordPress.org and
-		// GitHub-channel builds never find these classes, so $config and
-		// $entitlements stay null and Feature_Gate runs in its free-tier
-		// posture, exactly as it does today.
-		if ( class_exists( \WP_SAM\Modules\Config_Resolver::class ) ) {
-			$this->config = new \WP_SAM\Modules\Config_Resolver( $this->audit );
-		}
+		// Entitlement modules are only present in a private/commercial build
+		// (see offline/modules/ -- gitignored and excluded from every release
+		// ZIP this repo's CI produces). The WordPress.org and GitHub-channel
+		// builds never find these classes, so $entitlements stays null and
+		// Feature_Gate runs in its free-tier posture, exactly as it does today.
 		if ( class_exists( \WP_SAM\Modules\Entitlement_Store::class ) ) {
 			$this->entitlements = new \WP_SAM\Modules\Entitlement_Store( $this->audit );
 		}
-		if ( class_exists( \WP_SAM\Modules\Checkout_Service::class ) && null !== $this->config && null !== $this->entitlements ) {
-			$this->checkout = new \WP_SAM\Modules\Checkout_Service( $this->config, $this->entitlements );
+		if ( class_exists( \WP_SAM\Modules\Checkout_Service::class ) && null !== $this->entitlements ) {
+			$this->checkout = new \WP_SAM\Modules\Checkout_Service( $this->entitlements );
 		}
-		$this->gate                                      = new Feature_Gate( $this->entitlements, $this->config );
+		$this->gate                                      = new Feature_Gate( $this->entitlements );
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
 		$this->policy_builder                            = new Policy_Builder( $this->gate );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();

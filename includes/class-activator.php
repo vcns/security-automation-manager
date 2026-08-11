@@ -125,13 +125,6 @@ class Activator {
 	public static function get_option_names(): array {
 		return array(
 			'wp_sam_db_version',
-			'wp_sam_config_dns_domain',
-			'wp_sam_config_fallback_url',
-			'wp_sam_config_cache_ttl',
-			'wp_sam_config_grace_ttl',
-			'wp_sam_config_last_fetched',
-			'wp_sam_config_version',
-			'wp_sam_entitlement_grace_hours',
 			'wp_sam_enforce_gate_violation_window',
 			'wp_sam_cron_hour',
 			'wp_sam_notify_email',
@@ -144,13 +137,22 @@ class Activator {
 			'wp_sam_last_material_change_at',
 			'wp_sam_automation_config',
 			'wp_sam_admin_notices',
+			// Stripe configuration for the (commercial-build-only) Fully
+			// Automatic checkout flow -- see Checkout_Service and
+			// Webhook_Controller in offline/modules/.
+			'wp_sam_stripe_mode',
+			'wp_sam_stripe_secret_key_test',
+			'wp_sam_stripe_secret_key_live',
+			'wp_sam_stripe_price_id_monthly_test',
+			'wp_sam_stripe_price_id_annual_test',
+			'wp_sam_stripe_price_id_monthly_live',
+			'wp_sam_stripe_price_id_annual_live',
+			'wp_sam_webhook_secret',
 		);
 	}
 
 	public static function get_transient_names(): array {
 		return array(
-			'wp_sam_remote_config',
-			'wp_sam_config_stale',
 			'wp_sam_conflict_probe_ran',
 		);
 	}
@@ -743,14 +745,6 @@ class Activator {
 
 	private static function set_default_options(): void {
 		$defaults = array(
-			'wp_sam_config_dns_domain'             => '',
-			// Fallback HTTPS URL used when DNS TXT lookup fails or dns_get_record
-			// is unavailable on the host. Must be a valid https:// URL pointing
-			// to a signed config JSON document. Leave empty to disable.
-			'wp_sam_config_fallback_url'           => '',
-			'wp_sam_config_cache_ttl'              => 3600,
-			'wp_sam_config_grace_ttl'              => 86400,
-			'wp_sam_entitlement_grace_hours'       => 72,
 			'wp_sam_cron_hour'                     => 2,
 			'wp_sam_notify_email'                  => get_option( 'admin_email' ),
 			// Promotion gate: minimum hours without a high-severity violation
