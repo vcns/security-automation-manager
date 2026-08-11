@@ -239,7 +239,16 @@ class Violation_Reporter {
 		}
 		set_transient( $rate_key, $count + 1, self::RATE_LIMIT_WINDOW );
 
-		$fingerprint = hash( 'sha256', $surface . '|' . $blocked_uri . '|' . $violated_directive );
+		// FIX: fingerprint on the host, not the exact blocked_uri, wherever a host is
+		// extractable. Font providers (and many other CDNs) serve each request from a
+		// distinct, content-hashed filename under the same host -- fingerprinting on
+		// the exact URL meant every file variant got its own permanent row instead of
+		// being recognised as "the same source, seen again." Keyword-like values
+		// (inline/eval/data:/blob:/about:) have no host and keep their exact-value
+		// fingerprint, matching how source-approval already groups at host granularity.
+		$blocked_host        = self::extract_blocked_host( $blocked_uri );
+		$fingerprint_subject = $blocked_host ?? $blocked_uri;
+		$fingerprint         = hash( 'sha256', $surface . '|' . $fingerprint_subject . '|' . $violated_directive );
 
 		$now = current_time( 'mysql', true );
 
@@ -261,12 +270,12 @@ class Violation_Reporter {
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"INSERT INTO {$table} (
-					profile_surface, blocked_uri, document_uri, violated_directive, effective_directive,
+					profile_surface, blocked_uri, blocked_host, document_uri, violated_directive, effective_directive,
 					original_policy, source_file, line_number, column_number, status_code, disposition,
 					referrer, user_agent, sample, reported_at, first_reported_at, last_reported_at,
 					fingerprint, occurrence_count
 				) VALUES (
-					%s, %s, %s, %s, %s,
+					%s, %s, NULLIF(%s, ''), %s, %s, %s,
 					%s, %s, NULLIF(%d, -1), NULLIF(%d, -1), NULLIF(%d, -1), %s,
 					%s, %s, %s, %s, %s, %s,
 					%s, %d
@@ -274,11 +283,16 @@ class Violation_Reporter {
 					occurrence_count = occurrence_count + 1,
 					reported_at = VALUES(last_reported_at),
 					last_reported_at = VALUES(last_reported_at),
+					blocked_uri = VALUES(blocked_uri),
+					source_file = VALUES(source_file),
+					line_number = VALUES(line_number),
+					column_number = VALUES(column_number),
 					referrer = VALUES(referrer),
 					user_agent = VALUES(user_agent),
 					sample = CASE WHEN VALUES(sample) <> '' THEN VALUES(sample) ELSE sample END",
 				$surface,
 				$blocked_uri,
+				$blocked_host,
 				$document_uri_sanitized,
 				$violated_directive,
 				$effective_directive_sanitized,
@@ -340,7 +354,7 @@ class Violation_Reporter {
 		}
 
 		$blocked_uri = trim( $blocked_uri );
-		if ( '' === $blocked_uri || $this->is_non_host_blocked_uri( $blocked_uri ) ) {
+		if ( '' === $blocked_uri || self::is_non_host_blocked_uri( $blocked_uri ) ) {
 			return null;
 		}
 
@@ -382,7 +396,7 @@ class Violation_Reporter {
 		return is_string( $normalised ) ? $normalised : '';
 	}
 
-	private function is_non_host_blocked_uri( string $blocked_uri ): bool {
+	private static function is_non_host_blocked_uri( string $blocked_uri ): bool {
 		$value = strtolower( $blocked_uri );
 		if ( in_array( $value, array( 'inline', 'eval', 'wasm-eval', 'data', 'blob', 'about' ), true ) ) {
 			return true;
@@ -391,6 +405,32 @@ class Violation_Reporter {
 		return str_starts_with( $value, 'data:' )
 			|| str_starts_with( $value, 'blob:' )
 			|| str_starts_with( $value, 'about:' );
+	}
+
+	/**
+	 * Extracts the host from a blocked_uri for host-level violation dedup
+	 * (e.g. every fonts.gstatic.com/.../<hash>.woff2 file collapses to one
+	 * "fonts.gstatic.com" row instead of a permanent row per file). Returns
+	 * null for keyword-like values (inline/eval/data:/blob:/about:) that
+	 * have no host to group by -- those keep their exact-value fingerprint.
+	 * Public + static so Activator's one-time dedup migration can reuse the
+	 * exact same logic store_report() uses, rather than a second copy that
+	 * could silently drift out of sync (as already happened once this
+	 * session with the conflict-probe header name).
+	 */
+	public static function extract_blocked_host( string $blocked_uri ): ?string {
+		$blocked_uri = trim( $blocked_uri );
+		if ( '' === $blocked_uri || self::is_non_host_blocked_uri( $blocked_uri ) ) {
+			return null;
+		}
+
+		if ( str_starts_with( $blocked_uri, '//' ) ) {
+			$blocked_uri = 'https:' . $blocked_uri;
+		}
+
+		$host = wp_parse_url( $blocked_uri, PHP_URL_HOST );
+
+		return ! empty( $host ) ? strtolower( sanitize_text_field( substr( (string) $host, 0, 255 ) ) ) : null;
 	}
 
 	private function get_allowed_document_hosts(): array {

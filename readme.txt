@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.3
+Stable tag: 2.4.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,10 @@ Reports received by this plugin are validated and stored in this site's WordPres
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
 == Changelog ==
+
+= 2.4.4 =
+
+* Fixes CSP violation reports being logged as a permanent, separate row per exact file URL instead of grouping by host -- a CDN or font provider (e.g. Google Fonts) serving each request from a distinct, content-hashed filename under the same host no longer floods the Violations table with one row per file. Deduplication now groups on the blocked host wherever one is extractable, matching how CSP source-approval already treats hosts as the unit of approval. Existing rows are merged automatically on upgrade.
 
 = 2.4.3 =
 

@@ -895,7 +895,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			array(
 				Table_Query::equals_where( 'profile_surface', $v_surface ),
 				Table_Query::like_where( $wpdb, 'violated_directive', $v_directive ),
-				Table_Query::like_where( $wpdb, 'blocked_uri', $v_blocked ),
+				Table_Query::like_where_any( $wpdb, array( 'blocked_host', 'blocked_uri' ), $v_blocked ),
 				Table_Query::numeric_gte_where( 'occurrence_count', $v_occ_min ),
 				Table_Query::date_range_where( 'reported_at', $v_seen_from, $v_seen_to ),
 			) as $viol_fragment
@@ -914,7 +914,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				'default_dir' => 'asc',
 			),
 			'blocked_uri' => array(
-				'expr'        => 'blocked_uri',
+				'expr'        => 'COALESCE(blocked_host, blocked_uri)',
 				'default_dir' => 'asc',
 			),
 			'directive'   => array(
@@ -1030,7 +1030,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<?php foreach ( $violations as $v ) : ?>
 		<tr>
 			<td><?php echo esc_html( $v['profile_surface'] ); ?></td>
-			<td><code style="word-break:break-all"><?php echo esc_html( $v['blocked_uri'] ); ?></code></td>
+			<td><code style="word-break:break-all"><?php echo esc_html( ! empty( $v['blocked_host'] ) ? $v['blocked_host'] : $v['blocked_uri'] ); ?></code></td>
 			<td><code><?php echo esc_html( $v['violated_directive'] ); ?></code></td>
 			<td><?php echo esc_html( number_format( (int) $v['occurrence_count'] ) ); ?></td>
 			<td><?php echo esc_html( $v['reported_at'] ); ?></td>
@@ -1040,6 +1040,8 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				$meta_fields = array();
 				if ( 0 === strpos( (string) $v['blocked_uri'], 'data:' ) ) {
 					$meta_fields[ __( 'Data URI payload', 'security-automation-manager' ) ] = mb_substr( (string) $v['blocked_uri'], 0, 200 );
+				} elseif ( ! empty( $v['blocked_host'] ) ) {
+					$meta_fields[ __( 'Last seen URL', 'security-automation-manager' ) ] = (string) $v['blocked_uri'];
 				}
 				if ( ! empty( $v['document_uri'] ) ) {
 					$meta_fields[ __( 'Page URL', 'security-automation-manager' ) ] = (string) $v['document_uri'];
@@ -1064,7 +1066,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					$meta_fields[ __( 'Sample', 'security-automation-manager' ) ] = (string) $v['sample'];
 				}
 
-				$has_meta = ! empty( $v['document_uri'] ) || ! empty( $v['source_file'] ) || ! empty( $v['referrer'] ) || ! empty( $v['user_agent'] ) || ! empty( $v['sample'] );
+				$has_meta = ! empty( $meta_fields );
 				?>
 				<?php if ( $has_meta ) : ?>
 				<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
