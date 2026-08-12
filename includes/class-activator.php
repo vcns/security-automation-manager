@@ -119,6 +119,7 @@ class Activator {
 			'sam_pillar_profiles',
 			'sam_dependency_inventory',
 			'sam_pillar_violation_reports',
+			'sam_internal_asset_inventory',
 		);
 	}
 
@@ -541,6 +542,41 @@ class Activator {
   KEY surface (surface),
   KEY last_seen_at (last_seen_at),
   UNIQUE KEY fingerprint (fingerprint)
+) {$cc};"
+		);
+
+		// 15. First-party (theme/plugin/core) script and stylesheet integrity
+		// inventory. Unlike sam_dependency_inventory (third-party origins,
+		// admin-supplied expected_sri, never fetched by this plugin), every
+		// row here is hashed directly from a local file this WordPress
+		// install itself is about to serve -- not a remote fetch, so it
+		// carries none of the "trusting a compromised third party" risk a
+		// self-fetched third-party hash would. path is the resolved absolute
+		// filesystem path (identity key, together with resource_type);
+		// file_size/file_mtime are a cheap stat()-only cache-invalidation
+		// check so an unchanged file is never re-read and re-hashed on every
+		// request -- only a changed mtime/size triggers a re-hash. url,
+		// surface and handle reflect only the most recently observed
+		// request; a file enqueued identically on multiple surfaces still
+		// gets one row.
+		dbDelta(
+			"CREATE TABLE {$p}sam_internal_asset_inventory (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  resource_type varchar(16) NOT NULL,
+  path varchar(255) NOT NULL,
+  url varchar(255) NOT NULL,
+  surface varchar(32) NOT NULL,
+  handle varchar(191) NOT NULL,
+  hash varchar(128) NOT NULL,
+  file_size bigint(20) UNSIGNED NOT NULL,
+  file_mtime int(11) UNSIGNED NOT NULL,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY resource_path (resource_type, path),
+  KEY surface (surface)
 ) {$cc};"
 		);
 

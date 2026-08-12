@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.15
+Stable tag: 2.4.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,9 +12,9 @@ Automates strict HTTP security header rollout -- Content Security Policy, X-Fram
 
 == Description ==
 
-Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies are simpler per-surface pillars alongside it. Reverse Tabnabbing Protection and External Scripts round it out as two further protections that rewrite the rendered page itself rather than emit a header.
+Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally. Content Security Policy (CSP) is its most capable pillar; X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies are simpler per-surface pillars alongside it. Reverse Tabnabbing Protection, External Scripts, and Internal Script Integrity round it out as further protections that rewrite the rendered page itself rather than emit a header.
 
-The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other nine pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation. External Scripts follows the same report-first philosophy as CSP: a freshly discovered third-party origin is always unclassified, never blocked, until an administrator decides.
+The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. The other pillars are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation. External Scripts follows the same report-first philosophy as CSP: a freshly discovered third-party origin is always unclassified, never blocked, until an administrator decides. Internal Script Integrity is unconditional once enabled for a surface -- there is nothing to classify, since the hash is always freshly computed from the exact file being served.
 
 Every pillar and three of the four CSP automation modes are free. The exception is Fully Automatic mode (zero-review auto-apply of deterministic policy changes), which requires an active subscription: £1.99/month or £19.99/year.
 
@@ -41,9 +41,16 @@ Reports received by this plugin are validated and stored in this site's WordPres
 
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
-The External Scripts page's "Suggest" button, only triggered by an administrator explicitly clicking it, fetches a URL the administrator themselves supplies (restricted to a third-party origin already observed on this site) to compute a Subresource Integrity hash for their review. No content from that fetch is stored or sent anywhere else; only the computed hash is returned to the admin screen. Nothing is fetched automatically or in the background as part of this feature.
+The Scripts page's External tab has a "Suggest" button, only triggered by an administrator explicitly clicking it, that fetches a URL the administrator themselves supplies (restricted to a third-party origin already observed on this site) to compute a Subresource Integrity hash for their review. No content from that fetch is stored or sent anywhere else; only the computed hash is returned to the admin screen. Nothing is fetched automatically or in the background as part of this feature.
+
+The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.16 =
+
+* Renames the External Scripts page to Scripts, adding a Start Here tab and a new Internal tab.
+* Adds Internal Script Integrity: automatic Subresource Integrity for your own theme/plugin/core scripts and stylesheets, per-surface opt-in, recalculated whenever a file changes. Reads the local file directly -- never a network fetch.
 
 = 2.4.15 =
 

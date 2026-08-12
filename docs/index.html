@@ -157,8 +157,8 @@ flowchart LR
 
       <section id='content-rewrites' class='section'>
         <p class='section-label'>Content rewrite protections</p>
-        <h2>Two more, beyond the headers.</h2>
-        <p>Reverse Tabnabbing and External Scripts aren't header pillars -- they rewrite the rendered page itself, both free, both fail-open on any uncertainty.</p>
+        <h2>Beyond the headers.</h2>
+        <p>Reverse Tabnabbing, External Scripts, and Internal Script Integrity aren't header pillars -- they act on the page or its assets directly, all free, all fail-open on any uncertainty.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>Reverse Tabnabbing</h3>
@@ -167,6 +167,10 @@ flowchart LR
           <article class='card'>
             <h3>External Scripts</h3>
             <p>Inventories third-party script/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity -- report-only by default, matching CSP's own philosophy.</p>
+          </article>
+          <article class='card'>
+            <h3>Internal Script Integrity</h3>
+            <p>Adds Subresource Integrity to your own theme/plugin/core scripts and stylesheets automatically, per-surface opt-in. Reads the local file directly -- never a network fetch -- so there's nothing to classify or approve.</p>
           </article>
         </div>
         <p class='section-note'>Full details, including why SRI hashes are never fetched or fabricated, are in the <a href='user-guide.html#content-rewrites'>user guide</a>.</p>

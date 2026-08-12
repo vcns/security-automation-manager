@@ -13,7 +13,9 @@ declare( strict_types=1 );
 
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
-define( 'WP_SAM_VERSION',        '2.4.15' );
+define( 'WP_CONTENT_DIR',        __DIR__ . '/wp-content' );
+define( 'WPINC',                 'wp-includes' );
+define( 'WP_SAM_VERSION',        '2.4.16' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -340,6 +342,18 @@ if ( ! function_exists( 'site_url' ) ) {
 if ( ! function_exists( 'admin_url' ) ) {
 	function admin_url( string $path = '', string $scheme = 'admin' ): string {
 		return 'https://example.com/wp-admin/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'content_url' ) ) {
+	function content_url( string $path = '' ): string {
+		return 'https://example.com/wp-content' . ( '' !== $path ? '/' . ltrim( $path, '/' ) : '' );
+	}
+}
+
+if ( ! function_exists( 'includes_url' ) ) {
+	function includes_url( string $path = '', string $scheme = '' ): string {
+		return 'https://example.com/wp-includes/' . ltrim( $path, '/' );
 	}
 }
 
