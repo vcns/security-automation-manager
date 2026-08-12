@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.15] - 2026-08-12
+
+### Changed
+
+- Pinned the Overview submenu to the top of the left nav (the plugin's landing page), above the alphabetically-sorted rest of the menu.
+
 ## [2.4.14] - 2026-08-11
 
 ### Added

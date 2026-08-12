@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.14
+Stable tag: 2.4.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,6 +44,10 @@ For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure
 The External Scripts page's "Suggest" button, only triggered by an administrator explicitly clicking it, fetches a URL the administrator themselves supplies (restricted to a third-party origin already observed on this site) to compute a Subresource Integrity hash for their review. No content from that fetch is stored or sent anywhere else; only the computed hash is returned to the admin screen. Nothing is fetched automatically or in the background as part of this feature.
 
 == Changelog ==
+
+= 2.4.15 =
+
+* Pins the Overview page to the top of the left nav, above the alphabetically-sorted rest of the menu.
 
 = 2.4.14 =
 
