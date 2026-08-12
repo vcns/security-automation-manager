@@ -15,7 +15,9 @@
  *   - security-automation-manager-permissions-policy – Permissions-Policy: per-surface, per-directive picker
  *   - security-automation-manager-hsts              – Strict-Transport-Security: per-surface max-age/includeSubDomains/preload
  *   - security-automation-manager-reverse-tabnabbing – Reverse Tabnabbing: per-surface on/off, rel=noopener injection
- *   - security-automation-manager-external-scripts  – External Scripts: third-party script/stylesheet inventory, SRI, enforcement
+ *   - security-automation-manager-scripts           – Scripts: Start Here, External (third-party script/stylesheet
+ *      inventory, admin-supplied SRI, report/enforce), and Internal (first-party SRI, per-surface on/off,
+ *      read-only hash inventory) tabs
  *   - security-automation-manager-cross-origin      – Cross-Origin Policies: Cross-Origin-Resource-Policy,
  *      X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy,
  *      each a tab on one page (they previously each had their own separate submenu page)
@@ -41,6 +43,7 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
+use WP_SAM\Security\Internal_Script_Integrity_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
 use WP_SAM\Security\Reverse_Tabnabbing_Builder;
@@ -137,15 +140,6 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'External Scripts', 'security-automation-manager' ),
-			__( 'External Scripts', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager-external-scripts',
-			array( $this, 'render_external_scripts' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
 			__( 'Strict-Transport-Security', 'security-automation-manager' ),
 			__( 'HSTS', 'security-automation-manager' ),
 			'manage_options',
@@ -178,6 +172,15 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-reverse-tabnabbing',
 			array( $this, 'render_reverse_tabnabbing' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Scripts', 'security-automation-manager' ),
+			__( 'Scripts', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-scripts',
+			array( $this, 'render_scripts' )
 		);
 
 		add_submenu_page(
@@ -367,7 +370,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-permissions-policy',
 			'security-automation-manager_page_security-automation-manager-hsts',
 			'security-automation-manager_page_security-automation-manager-reverse-tabnabbing',
-			'security-automation-manager_page_security-automation-manager-external-scripts',
+			'security-automation-manager_page_security-automation-manager-scripts',
 			'security-automation-manager_page_security-automation-manager-cross-origin',
 		);
 	}
@@ -514,11 +517,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-reverse-tabnabbing.php';
 	}
 
-	public function render_external_scripts(): void {
+	public function render_scripts(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
 		}
-		require WP_SAM_DIR . 'includes/admin/views/page-external-scripts.php';
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
 	}
 
 	public function handle_reset_data(): void {
@@ -878,6 +881,11 @@ class Admin_UI {
 
 			case Reverse_Tabnabbing_Builder::PILLAR_KEY:
 				// No configurable value -- rel=noopener is either injected or it isn't.
+				break;
+
+			case Internal_Script_Integrity_Builder::PILLAR_KEY:
+				// No configurable value -- the SRI hash is always freshly computed
+				// from the file being served, never admin-supplied.
 				break;
 
 			case X_Frame_Options_Builder::PILLAR_KEY:

@@ -79,7 +79,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What does Security Automation Manager do?</h3>
-            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below. Reverse Tabnabbing and External Scripts round it out as two further protections that rewrite the page itself rather than emit a header; see <a href='#content-rewrites'>Content rewrite protections</a>.</p>
+            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below. Reverse Tabnabbing, External Scripts, and Internal Script Integrity round it out as further protections that act on the page or its assets directly rather than emit a header; see <a href='#content-rewrites'>Content rewrite protections</a>.</p>
           </article>
           <article class='faq-item'>
             <h3>Who is it for?</h3>
@@ -270,11 +270,11 @@
 
       <section id='content-rewrites' class='section'>
         <p class='section-label'>Content rewrite protections</p>
-        <h2>Reverse Tabnabbing and External Scripts.</h2>
+        <h2>Reverse Tabnabbing, External Scripts, and Internal Script Integrity.</h2>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>How are these different from the header pillars?</h3>
-            <p>They rewrite the rendered HTML response instead of adding a header. Both are free, both only act on a successful, non-streamed HTML page response (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests), and both fail open -- any parsing uncertainty leaves the page completely untouched.</p>
+            <p>None of them add a header. Reverse Tabnabbing and External Scripts rewrite the rendered HTML response; Internal Script Integrity adds an <code>integrity</code> attribute to script/stylesheet tags as WordPress builds them. All three are free, all three only act on requests they can act on safely (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests for the two rewriters), and all three fail open -- any uncertainty leaves the page or tag untouched.</p>
           </article>
           <article class='faq-item'>
             <h3>Can Reverse Tabnabbing break a link?</h3>
@@ -286,11 +286,15 @@
           </article>
           <article class='faq-item'>
             <h3>Does this plugin generate Subresource Integrity hashes for me?</h3>
-            <p>No, and deliberately so. Computing a hash by fetching the remote URL would defeat the point of SRI -- if the origin were compromised, the plugin would just hash and trust the tampered file. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust.</p>
+            <p>For third-party scripts, no, and deliberately so -- computing a hash by fetching the remote URL would defeat the point of SRI, since a compromised origin would just have its tampered file hashed and trusted. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust. For your own theme/plugin/core files it's different: Internal Script Integrity (Scripts page, Internal tab) reads the exact local file this site is about to serve and computes its hash automatically, since there's no third party in that loop to defeat SRI's trust model.</p>
           </article>
           <article class='faq-item'>
             <h3>What's stored in the External Scripts inventory?</h3>
             <p>Only the origin -- scheme and host, e.g. <code>https://cdn.example.com</code> -- never a path or query string, so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does Internal Script Integrity need updating every time I update a plugin or theme?</h3>
+            <p>No. The pinned hash is cached against the file's size and modification time; when either changes, the next request that serves the file recomputes the hash automatically. There's nothing to re-approve or re-paste.</p>
           </article>
         </div>
       </section>

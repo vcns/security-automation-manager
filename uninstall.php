@@ -24,6 +24,9 @@ $tables = array(
 	'sam_policy_versions',
 	'sam_decision_rule_evaluations',
 	'sam_pillar_profiles',
+	'sam_dependency_inventory',
+	'sam_pillar_violation_reports',
+	'sam_internal_asset_inventory',
 );
 
 foreach ( $tables as $table ) {

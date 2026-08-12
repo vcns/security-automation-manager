@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.4.15
+ * Version:           2.4.16
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.4.15' );
+define( 'WP_SAM_VERSION', '2.4.16' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -74,8 +74,11 @@ define( 'WP_SAM_VERSION', '2.4.15' );
  *        failed outright (strict SQL mode) or was silently truncated to a
  *        different, unreadable key (non-strict mode) -- the Overview table
  *        always showed it as "Off" regardless of what was saved.
+ * v16 -- adds sam_internal_asset_inventory, a first-party (theme/plugin/core)
+ *        script and stylesheet integrity inventory. See
+ *        Internal_Script_Integrity_Builder.
  */
-define( 'WP_SAM_DB_VERSION', '15' );
+define( 'WP_SAM_DB_VERSION', '16' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

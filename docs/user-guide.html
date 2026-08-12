@@ -142,7 +142,7 @@ flowchart TD
     Menu --> PP["Permissions-Policy"]
     Menu --> HSTS["Strict-Transport-Security"]
     Menu --> RTP["Reverse Tabnabbing"]
-    Menu --> EXT["External Scripts"]
+    Menu --> SCR["Scripts<br/><small>Start Here / External / Internal</small>"]
     Menu --> CORP["Cross-Origin-Resource-Policy"]
     Menu --> XPCDP["X-Permitted-Cross-Domain-Policies"]
     Menu --> COOP["Cross-Origin-Opener-Policy"]
@@ -150,7 +150,7 @@ flowchart TD
     Menu --> RD["Readiness"]
           </div>
         </div>
-        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the eight-tab dashboard described in the rest of this section. Reverse Tabnabbing and External Scripts aren't header pillars at all -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
+        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the eight-tab dashboard described in the rest of this section. Reverse Tabnabbing and Scripts aren't header pillars at all -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>1. Initialise safely</h3>
@@ -448,8 +448,8 @@ flowchart TD
 
       <section id='content-rewrites' class='section'>
         <p class='section-label'>Content rewrite protections</p>
-        <h2>Reverse Tabnabbing and External Scripts.</h2>
-        <p>These two aren't header pillars -- they rewrite the rendered page itself. Both are free, both only ever act on a successful, non-streamed HTML response (never wp-admin, login, AJAX, REST, XML-RPC, cron, or CLI requests), and both fail open: any parsing uncertainty leaves the original page untouched rather than risk breaking it.</p>
+        <h2>Reverse Tabnabbing, External Scripts, and Internal Script Integrity.</h2>
+        <p>None of these three are header pillars. Reverse Tabnabbing and External Scripts rewrite the rendered page itself; Internal Script Integrity instead adds an attribute to script/stylesheet tags as WordPress builds them, the same way this plugin's CSP nonce already does. All three are free, and all three fail open: any uncertainty leaves the page or tag untouched rather than risk breaking it.</p>
         <div class='table-wrap'>
           <table>
             <thead>
@@ -457,7 +457,8 @@ flowchart TD
             </thead>
             <tbody>
               <tr><td>Reverse Tabnabbing</td><td><strong>Security Automation Manager -> Reverse Tabnabbing</strong></td><td>Per surface: on or off. Adds <code>rel="noopener"</code> to any <code>target="_blank"</code> link missing <code>noopener</code>/<code>noreferrer</code>, closing off <code>window.opener</code> access a new tab could otherwise use to redirect the original tab to a phishing page. Purely additive -- it never removes anything or breaks a link.</td></tr>
-              <tr><td>External Scripts</td><td><strong>Security Automation Manager -> External Scripts</strong></td><td>Per surface: on/off plus Report-only or Enforce mode. Inventories third-party <code>&lt;script&gt;</code>/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity (SRI).</td></tr>
+              <tr><td>External Scripts</td><td><strong>Security Automation Manager -> Scripts</strong>, External tab</td><td>Per surface: on/off plus Report-only or Enforce mode. Inventories third-party <code>&lt;script&gt;</code>/stylesheet origins from real page loads, lets you classify each one, and supports Subresource Integrity (SRI).</td></tr>
+              <tr><td>Internal Script Integrity</td><td><strong>Security Automation Manager -> Scripts</strong>, Internal tab</td><td>Per surface: on or off, nothing else to configure. Automatically adds a Subresource Integrity hash to your own theme/plugin/core <code>&lt;script&gt;</code>/stylesheet tags. The hash is read from the exact local file this site is about to serve -- never a network fetch -- and recalculated the next time that file is served after it changes.</td></tr>
             </tbody>
           </table>
         </div>
@@ -470,6 +471,10 @@ flowchart TD
           <div class='callout'>
             <h3>Only the origin is stored</h3>
             <p>The inventory records scheme and host only -- never a path or query string -- so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
+          </div>
+          <div class='callout'>
+            <h3>Internal Script Integrity is a different trust model entirely</h3>
+            <p>Because the hash comes from a local file read rather than a remote fetch, there's no third-party origin to trust and nothing to classify or approve -- turn it on for a surface and every first-party script/stylesheet tag on that surface gets a correct, always-current <code>integrity</code> attribute.</p>
           </div>
         </div>
       </section>

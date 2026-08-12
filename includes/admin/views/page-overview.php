@@ -82,7 +82,13 @@ $simple_pillars = array(
 	),
 	\WP_SAM\Security\Dependency_Governance_Builder::PILLAR_KEY => array(
 		'label' => __( 'External Scripts', 'security-automation-manager' ),
-		'page'  => 'security-automation-manager-external-scripts',
+		'page'  => 'security-automation-manager-scripts',
+		'tab'   => 'external',
+	),
+	\WP_SAM\Security\Internal_Script_Integrity_Builder::PILLAR_KEY => array(
+		'label' => __( 'Internal Script Integrity', 'security-automation-manager' ),
+		'page'  => 'security-automation-manager-scripts',
+		'tab'   => 'internal',
 	),
 	\WP_SAM\Security\Cross_Origin_Resource_Policy_Builder::PILLAR_KEY => array(
 		'label' => __( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),

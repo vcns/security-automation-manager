@@ -27,6 +27,7 @@ use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
 use WP_SAM\Security\Dependency_Integrity_Monitor;
+use WP_SAM\Security\Internal_Script_Integrity_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
 use WP_SAM\Security\Reverse_Tabnabbing_Builder;
@@ -62,6 +63,7 @@ final class Plugin {
 	public X_Permitted_Cross_Domain_Policies_Builder $x_permitted_cross_domain_policies_builder;
 	public Cross_Origin_Opener_Policy_Builder $cross_origin_opener_policy_builder;
 	public Cross_Origin_Embedder_Policy_Builder $cross_origin_embedder_policy_builder;
+	public Internal_Script_Integrity_Builder $internal_script_integrity_builder;
 	private Learning_Window $learning_window;
 
 	/**
@@ -141,6 +143,7 @@ final class Plugin {
 		$this->x_permitted_cross_domain_policies_builder = new X_Permitted_Cross_Domain_Policies_Builder();
 		$this->cross_origin_opener_policy_builder        = new Cross_Origin_Opener_Policy_Builder();
 		$this->cross_origin_embedder_policy_builder      = new Cross_Origin_Embedder_Policy_Builder();
+		$this->internal_script_integrity_builder         = new Internal_Script_Integrity_Builder();
 		$this->learning_window                           = new Learning_Window();
 
 		// Hash manager: instantiated here so Scheduler can read captured_hashes
@@ -162,6 +165,7 @@ final class Plugin {
 		$this->x_permitted_cross_domain_policies_builder->register();
 		$this->cross_origin_opener_policy_builder->register();
 		$this->cross_origin_embedder_policy_builder->register();
+		$this->internal_script_integrity_builder->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already

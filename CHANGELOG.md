@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.16] - 2026-08-12
+
+### Added
+
+- `Internal_Script_Integrity_Builder`: automatic Subresource Integrity for first-party (theme/plugin/core) `<script src>`/`<link rel="stylesheet">` tags, per-surface opt-in. Fundamentally different trust model from third-party SRI -- the hash is read from the exact local file this install is about to serve, never from a remote fetch, so there's no compromised-CDN risk. Cached by file size/mtime so an unchanged file is never re-read; a changed file (a plugin/theme update, a manual edit) is picked up on the very next request that serves it. New `sam_internal_asset_inventory` table (schema v16) backs a read-only inventory of what's currently being hashed.
+- A "Start Here" tab on the renamed Scripts page, explaining what this plugin does for third-party scripts versus first-party ones before either sub-page.
+
+### Changed
+
+- Renamed the "External Scripts" submenu to "Scripts", now with three tabs: Start Here, External (the former standalone page, unchanged behaviour), and Internal (the new first-party SRI feature). Overview's "External Scripts" row now links to the External tab; a new "Internal Script Integrity" row links to the Internal tab.
+- Nonce injection was already automatic and unconditional for every enqueued script/style tag (`Nonce_Manager`, first-party or third-party) -- core CSP plumbing this plugin has always performed, not a new toggle. Internal Script Integrity gets the same opt-in-per-surface treatment as every other pillar since, unlike the nonce, it's purely additive hardening with no downside if left off.
+
 ## [2.4.15] - 2026-08-12
 
 ### Changed

@@ -74,6 +74,7 @@ class SchemaMigrationTest extends TestCase {
 			\WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY,
 			\WP_SAM\Security\Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
 			\WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
+			\WP_SAM\Security\Internal_Script_Integrity_Builder::PILLAR_KEY,
 		);
 
 		foreach ( $pillar_keys as $pillar_key ) {
@@ -148,6 +149,7 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_pillar_profiles',
 			'wp_sam_dependency_inventory',
 			'wp_sam_pillar_violation_reports',
+			'wp_sam_internal_asset_inventory',
 		);
 
 		$this->assertSame(
