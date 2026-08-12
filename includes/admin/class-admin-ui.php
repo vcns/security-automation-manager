@@ -104,9 +104,19 @@ class Admin_UI {
 			80
 		);
 
-		// Submenu order is alphabetical by the label shown in the left nav
-		// (not registration/logical order) -- Readiness is a tab on the
-		// Overview page (see page-overview.php), not a separate menu entry.
+		// Overview is pinned first (the landing page); every other submenu is
+		// alphabetical by the label shown in the left nav (not
+		// registration/logical order) -- Readiness is a tab on the Overview
+		// page (see page-overview.php), not a separate menu entry.
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Overview', 'security-automation-manager' ),
+			__( 'Overview', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager',
+			array( $this, 'render_overview' )
+		);
+
 		add_submenu_page(
 			'security-automation-manager',
 			__( 'Cross-Origin Policies', 'security-automation-manager' ),
@@ -141,15 +151,6 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-hsts',
 			array( $this, 'render_hsts' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
-			__( 'Overview', 'security-automation-manager' ),
-			__( 'Overview', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager',
-			array( $this, 'render_overview' )
 		);
 
 		add_submenu_page(
