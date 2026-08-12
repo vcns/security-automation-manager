@@ -275,6 +275,67 @@ class SchemaMigrationTest extends TestCase {
 		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
 	}
 
+	// ── migrate_tighten_img_src_default() (schema v17) ───────────────────────────
+
+	public function test_migrate_tighten_img_src_default_strips_data_from_untouched_default(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'         => 5,
+				'directives' => wp_json_encode( array( 'default-src' => array( "'none'" ), 'img-src' => array( "'self'", 'data:' ) ) ),
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_tighten_img_src_default' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
+		$updated = json_decode( (string) $GLOBALS['_wpdb_updated_rows'][0]['data']['directives'], true );
+		$this->assertSame( array( "'self'" ), $updated['img-src'] );
+		$this->assertArrayHasKey( 'default-src', $updated, 'other directives must be preserved' );
+		$this->assertSame( array( 'id' => 5 ), $GLOBALS['_wpdb_updated_rows'][0]['where'] );
+	}
+
+	public function test_migrate_tighten_img_src_default_skips_a_customised_img_src(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'         => 5,
+				'directives' => wp_json_encode( array( 'img-src' => array( "'self'", 'data:', 'cdn.example.test' ) ) ),
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_tighten_img_src_default' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'], 'a profile the administrator already customised must be left untouched' );
+	}
+
+	public function test_migrate_tighten_img_src_default_skips_profiles_without_the_key(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'         => 5,
+				'directives' => wp_json_encode( array( 'default-src' => array( "'none'" ) ) ),
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_tighten_img_src_default' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
+	public function test_migrate_tighten_img_src_default_handles_no_profiles_gracefully(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_tighten_img_src_default' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
 	// ── migrate_dedupe_violation_reports_by_host() (schema v14) ──────────────────
 
 	public function test_migrate_dedupe_violation_reports_by_host_skips_when_table_missing(): void {

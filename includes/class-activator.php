@@ -24,6 +24,7 @@ class Activator {
 		self::create_tables();
 		self::migrate_v9_option_renames();
 		self::migrate_remove_fenced_frame_src_directive();
+		self::migrate_tighten_img_src_default();
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_initial_policy_versions();
@@ -79,6 +80,47 @@ class Activator {
 			}
 
 			unset( $directives['fenced-frame-src'] );
+			$wpdb->update(
+				$table,
+				array( 'directives' => wp_json_encode( $directives ) ),
+				array( 'id' => (int) $row['id'] ),
+				array( '%s' ),
+				array( '%d' )
+			);
+		}
+	}
+
+	/**
+	 * Schema v17: default_directives() no longer includes data: in img-src --
+	 * data: URIs can't execute active content so the risk was always low, but
+	 * a site that never customised this directive gets a tighter default.
+	 * default_directives() only affects newly-seeded profiles, so this strips
+	 * 'data:' from any existing profile's stored img-src, but ONLY when it
+	 * still exactly matches the old default (['self', 'data:']) -- a profile
+	 * an administrator has already customised (added a CDN, removed 'self',
+	 * whatever) is left untouched, since there's no way to tell their
+	 * customisation apart from the old default by value alone once it
+	 * diverges. Runs after create_tables() in activate(), so the table is
+	 * always present by the time this executes -- no existence guard needed.
+	 */
+	private static function migrate_tighten_img_src_default(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_policy_profiles';
+
+		$old_default = array( "'self'", 'data:' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( "SELECT id, directives FROM {$table}", ARRAY_A );
+		foreach ( ! empty( $rows ) ? $rows : array() as $row ) {
+			$directives = json_decode( (string) $row['directives'], true );
+			if ( ! is_array( $directives ) || ! array_key_exists( 'img-src', $directives ) ) {
+				continue;
+			}
+			if ( $directives['img-src'] !== $old_default ) {
+				continue;
+			}
+
+			$directives['img-src'] = array( "'self'" );
 			$wpdb->update(
 				$table,
 				array( 'directives' => wp_json_encode( $directives ) ),
@@ -926,7 +968,13 @@ class Activator {
 			'style-src'                 => array( "'report-sample'" ),
 			'style-src-elem'            => array( "'report-sample'" ),
 			'style-src-attr'            => array( "'none'" ),
-			'img-src'                   => array( "'self'", 'data:' ),
+			// img-src: 'self' only. data: was dropped from the default (see
+			// migrate_tighten_img_src_default() below, which tightens profiles
+			// seeded before this change) -- data: URIs can't execute script, so
+			// the risk was always low, but a site that doesn't actually need
+			// inline/base64 images gets a tighter default out of the box; a site
+			// that does can still add it back via the Profiles tab.
+			'img-src'                   => array( "'self'" ),
 			'font-src'                  => array( "'self'" ),
 			'connect-src'               => array( "'self'" ),
 			'frame-src'                 => array( "'none'" ),

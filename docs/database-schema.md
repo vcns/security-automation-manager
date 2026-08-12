@@ -30,7 +30,7 @@ Key columns:
 - `id`
 - `surface` — `frontend`, `admin`, `login`, `api`
 - `mode` — `disabled`, `report-only`, `enforce`
-- `directives` — JSON array map of directive name → source list (e.g. `{"script-src":["'self'"],"img-src":["'self'","data:"]}`)
+- `directives` — JSON array map of directive name → source list (e.g. `{"script-src":["'self'"],"img-src":["'self'"]}`)
 - `overrides` — JSON map of admin-applied temporary directive overrides merged on top of `directives` at emit time
 - `strict_dynamic` — `0` or `1`; when `1` and the `strict_dynamic` feature is licensed, `'strict-dynamic'` is appended to `script-src` and approved host sources are suppressed from `script-src` (host allowlists are silently ignored by browsers when `strict-dynamic` is present — CSP3 §8.2)
 - `override_expires_at` — UTC datetime at which the current override should be considered stale

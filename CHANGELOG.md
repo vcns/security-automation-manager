@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.17] - 2026-08-12
+
+### Changed
+
+- Tightened the default CSP `img-src` directive from `'self' data:` to `'self'` only. `data:` URIs can't execute active content so the risk was always low, but a site that doesn't need inline/base64 images now gets a stricter default out of the box. Applies to newly seeded profiles; an existing profile whose `img-src` still exactly matches the old default is migrated automatically on upgrade (schema v17), while a profile an administrator has already customised is left untouched.
+
 ## [2.4.16] - 2026-08-12
 
 ### Added
