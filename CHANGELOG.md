@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.19] - 2026-08-13
+
+### Changed
+
+- Seeds a vetted, enabled-by-default configuration for X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Reverse Tabnabbing, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies on every surface that doesn't already have a row (schema v18), so a fresh install ships hardened by default instead of requiring nine separate admin pages to be found and enabled individually. Only fills in a missing `(pillar, surface)` row -- a surface already configured, enabled or deliberately left disabled, is never touched by this on upgrade. `X-Frame-Options` is `DENY` on the API surface and `SAMEORIGIN` elsewhere; `Cross-Origin-Resource-Policy` is `same-site` on the API surface and `cross-origin` elsewhere; `Referrer-Policy` is `no-referrer` on the API surface and the existing `strict-origin-when-cross-origin` default elsewhere; `Permissions-Policy` sets every known directive to `none` except `autoplay=self` on the frontend surface; `X-Permitted-Cross-Domain-Policies` is `none` everywhere. `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` ship `unsafe-none` -- the spec's no-op value for both, present only so external scanners see the header rather than adding real cross-origin isolation; a future periodic self-scan (tracked separately) is intended to identify when a site can safely move to a stricter value.
+- HSTS is deliberately excluded from the above: unlike everything else in this list, HSTS is extremely hard to undo once a browser (or, worse, a preload list) has cached it, so it stays a per-surface opt-in rather than a blind default.
+- Changes the default CSP automation-approval mode from Manual to Automatic (high approvals only) for every surface. A new install now auto-approves proposed CSP sources below the high-risk threshold into the report-only policy on their own evidence, with high-risk sources still requiring a human decision -- this only changes who approves a *proposed* source. CSP itself still starts report-only on every surface, and promotion to enforce still requires a deliberate administrator action through the existing learning window and promotion gate, regardless of automation mode.
+
 ## [2.4.18] - 2026-08-13
 
 ### Changed

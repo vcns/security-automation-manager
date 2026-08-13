@@ -25,7 +25,7 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Policy version snapshots, policy diffs, decision provenance, and deterministic rule findings
 - Policy Audit tab (on the CSP page) and privileged admin REST endpoints for current policy, pending reviews, decisions, history, and manual automation configuration
 - Readiness admin view for plugin-specific schema and runtime checks, with an authenticated reset flow that clears CSP data and disables header emission until rollout is restarted
-- Automation configuration scaffold that defaults every surface to `manual`; no proposal is auto-approved on install or upgrade
+- Automation configuration scaffold that defaults every surface to `automatic_high_approval` -- every proposed CSP source below the high-risk threshold is auto-approved into the report-only policy on its own evidence, high-risk sources still require a human decision. This governs approval only, never enforcement: CSP still starts report-only on every surface, and promotion to enforce still requires a deliberate administrator action through the learning window and promotion gate
 - Multi-surface scan support
 - `strict-dynamic` with automatic host-source suppression
 - Per-surface Trusted Types toggle (Profiles tab): sends `require-trusted-types-for 'script'`, always report-only regardless of surface mode

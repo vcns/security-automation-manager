@@ -22,8 +22,23 @@ class Automation_Config {
 	public const MODES                               = array( self::MODE_MANUAL, self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL, self::MODE_AUTOMATIC_HIGH_APPROVAL, self::MODE_FULLY_AUTOMATIC );
 	public const SURFACES                            = array( 'frontend', 'admin', 'login', 'api' );
 
+	/**
+	 * mode defaults to automatic (high approvals only): every proposed CSP
+	 * source below the high-risk threshold is auto-approved into the
+	 * report-only policy on its own evidence, high-risk sources still
+	 * require a human decision. This governs approval only, never
+	 * enforcement -- see Activator::default_automation_config()'s longer
+	 * note. max_automatic_changes_per_scan must be a positive value
+	 * whenever mode isn't manual: automation_config_allows_source() in
+	 * Policy_Change_Manager treats <= 0 as "automation disabled" regardless
+	 * of mode, so leaving this at 0 alongside a non-manual mode would look
+	 * automatic but silently approve nothing. 50 matches the cap the admin
+	 * UI's number input already enforces (max="50") and what
+	 * update_surface_mode() itself seeds when switching a surface onto any
+	 * automatic mode.
+	 */
 	public const DEFAULT_SURFACE_CONFIG = array(
-		'mode'                           => self::MODE_MANUAL,
+		'mode'                           => self::MODE_AUTOMATIC_HIGH_APPROVAL,
 		'enabled_directives'             => array(),
 		'excluded_directives'            => array(),
 		'allowed_source_schemes'         => array( 'https' ),
@@ -37,7 +52,7 @@ class Automation_Config {
 		'approval_confidence_threshold'  => 1.0,
 		'require_ai_agreement'           => false,
 		'automatic_rejection_enabled'    => false,
-		'max_automatic_changes_per_scan' => 0,
+		'max_automatic_changes_per_scan' => 50,
 		'change_rate_guardrail'          => 0,
 	);
 
