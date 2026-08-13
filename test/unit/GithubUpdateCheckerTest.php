@@ -5,6 +5,7 @@
 
 declare( strict_types=1 );
 
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Modules\Github_Update_Checker;
 
@@ -15,7 +16,7 @@ class GithubUpdateCheckerTest extends TestCase {
 	}
 
 	public function test_new_manifest_version_populates_native_update_response(): void {
-		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.21' ) );
+		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.22' ) );
 
 		$checker   = new Github_Update_Checker();
 		$transient = (object) array(
@@ -28,8 +29,8 @@ class GithubUpdateCheckerTest extends TestCase {
 
 		$item = $result->response[ WP_SAM_PLUGIN_BASENAME ] ?? null;
 		$this->assertIsObject( $item );
-		$this->assertSame( '2.4.21', $item->new_version );
-		$this->assertSame( 'https://vcns.github.io/wp-updates/security-automation-manager/security-automation-manager-github-v2.4.21.zip', $item->package );
+		$this->assertSame( '2.4.22', $item->new_version );
+		$this->assertSame( 'https://vcns.github.io/wp-updates/security-automation-manager/security-automation-manager-github-v2.4.22.zip', $item->package );
 		$this->assertArrayNotHasKey( WP_SAM_PLUGIN_BASENAME, $result->no_update );
 	}
 
@@ -53,7 +54,7 @@ class GithubUpdateCheckerTest extends TestCase {
 	}
 
 	public function test_invalid_manifest_does_not_offer_update(): void {
-		$manifest                 = $this->manifest( '2.4.21' );
+		$manifest                 = $this->manifest( '2.4.22' );
 		$manifest['download_url'] = 'https://example.com/security-automation-manager.zip';
 
 		$GLOBALS['_wp_remote_get_response'] = $this->response( $manifest );
@@ -71,8 +72,27 @@ class GithubUpdateCheckerTest extends TestCase {
 		$this->assertSame( array(), $result->no_update );
 	}
 
+	public function test_path_traversal_in_download_url_does_not_offer_update(): void {
+		$manifest                 = $this->manifest( '2.4.22' );
+		$manifest['download_url'] = 'https://vcns.github.io/wp-updates/security-automation-manager/../some-other-product/evil.zip';
+
+		$GLOBALS['_wp_remote_get_response'] = $this->response( $manifest );
+
+		$checker   = new Github_Update_Checker();
+		$transient = (object) array(
+			'checked'   => array( WP_SAM_PLUGIN_BASENAME => WP_SAM_VERSION ),
+			'response'  => array(),
+			'no_update' => array(),
+		);
+
+		$result = $checker->inject_update( $transient );
+
+		$this->assertSame( array(), $result->response );
+		$this->assertSame( array(), $result->no_update );
+	}
+
 	public function test_plugin_information_modal_uses_manifest_sections(): void {
-		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.21' ) );
+		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.22' ) );
 
 		$checker = new Github_Update_Checker();
 		$args    = (object) array( 'slug' => 'security-automation-manager' );
@@ -81,7 +101,7 @@ class GithubUpdateCheckerTest extends TestCase {
 
 		$this->assertIsObject( $result );
 		$this->assertSame( 'CSP Automation Manager', $result->name );
-		$this->assertSame( '2.4.21', $result->version );
+		$this->assertSame( '2.4.22', $result->version );
 		$this->assertSame( 'Release notes', $result->sections['changelog'] );
 	}
 
@@ -90,7 +110,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$content = 'verified package';
 		file_put_contents( $tmp, $content );
 
-		$manifest                 = $this->manifest( '2.4.21' );
+		$manifest                 = $this->manifest( '2.4.22' );
 		$manifest['sha256']       = hash( 'sha256', $content );
 		$package                  = $manifest['download_url'];
 		$GLOBALS['_wp_remote_get_response']   = $this->response( $manifest );
@@ -116,7 +136,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$tmp = tempnam( sys_get_temp_dir(), 'wp-sam-update-' );
 		file_put_contents( $tmp, 'tampered package' );
 
-		$manifest                           = $this->manifest( '2.4.21' );
+		$manifest                           = $this->manifest( '2.4.22' );
 		$GLOBALS['_wp_remote_get_response'] = $this->response( $manifest );
 		$GLOBALS['_wp_download_url_response'] = $tmp;
 
@@ -153,22 +173,41 @@ class GithubUpdateCheckerTest extends TestCase {
 		$this->assertFalse( $checker->auto_update_gate( false, $item ) );
 	}
 
+	/**
+	 * WP_SAM_DISABLE_AUTO_UPDATE is a raw global constant, and PHP constants
+	 * can't be undefined once set -- defining it here would leak into every
+	 * other test in the same process if run in-process. Isolated so this is
+	 * the one test in the suite where the "kill switch engaged" branch is
+	 * actually exercised, closing the gap the standard run left: only the
+	 * constant-absent pass-through path was previously covered.
+	 */
+	#[RunInSeparateProcess]
+	public function test_auto_update_kill_switch_blocks_when_constant_is_true(): void {
+		define( 'WP_SAM_DISABLE_AUTO_UPDATE', true );
+
+		$checker = new Github_Update_Checker();
+		$item    = (object) array( 'plugin' => WP_SAM_PLUGIN_BASENAME );
+
+		$this->assertFalse( $checker->auto_update_gate( true, $item ) );
+		$this->assertFalse( $checker->auto_update_gate( false, $item ) );
+	}
+
 	// ── Update Channel diagnostics ───────────────────────────────────────────
 
 	public function test_a_successful_check_records_diagnostics(): void {
-		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.21' ) );
+		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.22' ) );
 
 		( new Github_Update_Checker() )->get_remote_info();
 
 		$diagnostics = get_option( Github_Update_Checker::DIAGNOSTICS_OPTION );
 		$this->assertSame( 'success', $diagnostics['last_check_result'] );
-		$this->assertSame( '2.4.21', $diagnostics['available_version'] );
+		$this->assertSame( '2.4.22', $diagnostics['available_version'] );
 		$this->assertNotEmpty( $diagnostics['last_check_success_at'] );
 		$this->assertArrayNotHasKey( 'last_check_failure_at', $diagnostics );
 	}
 
 	public function test_invalid_manifest_records_failure_diagnostics(): void {
-		$manifest                 = $this->manifest( '2.4.21' );
+		$manifest                 = $this->manifest( '2.4.22' );
 		$manifest['download_url'] = 'https://example.com/security-automation-manager.zip';
 		$GLOBALS['_wp_remote_get_response'] = $this->response( $manifest );
 
@@ -197,7 +236,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$content = 'verified package';
 		file_put_contents( $tmp, $content );
 
-		$manifest                             = $this->manifest( '2.4.21' );
+		$manifest                             = $this->manifest( '2.4.22' );
 		$manifest['sha256']                   = hash( 'sha256', $content );
 		$GLOBALS['_wp_remote_get_response']   = $this->response( $manifest );
 		$GLOBALS['_wp_download_url_response'] = $tmp;
@@ -222,7 +261,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$tmp = tempnam( sys_get_temp_dir(), 'wp-sam-update-' );
 		file_put_contents( $tmp, 'tampered package' );
 
-		$manifest                             = $this->manifest( '2.4.21' );
+		$manifest                             = $this->manifest( '2.4.22' );
 		$GLOBALS['_wp_remote_get_response']   = $this->response( $manifest );
 		$GLOBALS['_wp_download_url_response'] = $tmp;
 

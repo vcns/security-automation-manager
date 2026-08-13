@@ -183,7 +183,7 @@ final class Github_Update_Checker {
 		delete_transient( self::CACHE_KEY );
 	}
 
-	public function auto_update_gate( mixed $update, object $item ): mixed {
+	public function auto_update_gate( ?bool $update, object $item ): ?bool {
 		if ( ! isset( $item->plugin ) || WP_SAM_PLUGIN_BASENAME !== $item->plugin ) {
 			return $update;
 		}
@@ -350,6 +350,17 @@ final class Github_Update_Checker {
 		$scheme = strtolower( (string) ( $parts['scheme'] ?? '' ) );
 		$host   = strtolower( (string) ( $parts['host'] ?? '' ) );
 		$path   = (string) ( $parts['path'] ?? '' );
+
+		// str_starts_with()/str_ends_with() below are plain string prefix/suffix
+		// checks, not path normalisation -- a path containing a ".." segment
+		// could still textually satisfy both while an HTTP client resolves it
+		// (before the request is even sent) to a different location on this
+		// same trusted host, e.g. escaping UPDATE_PATH into another product's
+		// /wp-updates/<slug>/ folder. Reject any ".." segment outright rather
+		// than relying on prefix/suffix matching alone.
+		if ( str_contains( $path, '..' ) ) {
+			return false;
+		}
 
 		return 'https' === $scheme
 			&& self::UPDATE_HOST === $host
