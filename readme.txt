@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.17
+Stable tag: 2.4.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,11 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.18 =
+
+* Renames the CSP Profiles page's "Trusted Types" column to "Experimental", tightens its checkbox/label layout, and explains why it's pinned to report-only instead of just asserting it.
+* Fixes column widths on the CSP Profiles and Scripts (External tab) inventory tables so dropdowns, inputs, and their labels no longer overlap or get cut off at normal admin widths.
 
 = 2.4.17 =
 

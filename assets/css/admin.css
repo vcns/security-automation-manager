@@ -223,6 +223,79 @@
 	width: 70px;
 }
 
+/*
+ * Profiles table: Automation (a <select> plus an "Upgrade to unlock" link)
+ * and Experimental (a checkbox plus a description paragraph) both need real
+ * room, unlike the four short columns around them -- pin those four to a
+ * fixed width and leave Automation/Experimental unset so they split
+ * whatever's left, instead of six columns splitting the row evenly and
+ * cramming a dropdown and a checkbox+paragraph into a sliver each.
+ */
+.wp-sam-profiles-table th:nth-child(1),
+.wp-sam-profiles-table td:nth-child(1) {
+	width: 90px;
+}
+
+.wp-sam-profiles-table th:nth-child(2),
+.wp-sam-profiles-table td:nth-child(2) {
+	width: 110px;
+}
+
+.wp-sam-profiles-table th:nth-child(5),
+.wp-sam-profiles-table td:nth-child(5) {
+	width: 140px;
+}
+
+.wp-sam-profiles-table th:nth-child(6),
+.wp-sam-profiles-table td:nth-child(6) {
+	width: 160px;
+}
+
+.wp-sam-profiles-table .wp-sam-automation-mode {
+	max-width: 100%;
+}
+
+/*
+ * External Scripts inventory table: Classification (a <select> with long
+ * option labels) and Expected SRI (a hash input, a URL input, and a button,
+ * stacked) both need real room. Pin the short columns to a fixed width and
+ * leave Expected SRI unset to absorb whatever's left, since it holds the
+ * most nested controls.
+ */
+.wp-sam-dependency-inventory-table th:nth-child(1),
+.wp-sam-dependency-inventory-table td:nth-child(1) {
+	width: 70px;
+}
+
+.wp-sam-dependency-inventory-table th:nth-child(2),
+.wp-sam-dependency-inventory-table td:nth-child(2) {
+	width: 70px;
+}
+
+.wp-sam-dependency-inventory-table th:nth-child(3),
+.wp-sam-dependency-inventory-table td:nth-child(3) {
+	width: 160px;
+}
+
+.wp-sam-dependency-inventory-table th:nth-child(4),
+.wp-sam-dependency-inventory-table td:nth-child(4) {
+	width: 220px;
+}
+
+.wp-sam-dependency-inventory-table th:nth-child(6),
+.wp-sam-dependency-inventory-table td:nth-child(6) {
+	width: 70px;
+}
+
+.wp-sam-dependency-inventory-table th:nth-child(7),
+.wp-sam-dependency-inventory-table td:nth-child(7) {
+	width: 120px;
+}
+
+.wp-sam-dependency-inventory-table .wp-sam-dependency-classification {
+	width: 100%;
+}
+
 /* ── Sortable column headers ─────────────────────────────────────────────── */
 .wp-sam-wrap .widefat th a {
 	display: inline-flex;

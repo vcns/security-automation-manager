@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
-## [2.4.17] - 2026-08-12
+## [2.4.18] - 2026-08-13
+
+### Changed
+
+- CSP Profiles page: renamed the "Trusted Types" column to "Experimental" and moved its checkbox inline with the feature's own name rather than a generic "Enabled" label, with a shorter explanation below. The checkbox is still pinned to always-report-only regardless of surface mode -- unlike the other CSP directives on that page, enforcing `require-trusted-types-for 'script'` needs application code (a registered Trusted Types policy) that almost no WordPress site has today, so it isn't safe to let it follow a surface's normal report-only/enforce toggle. The column is named generically so future experimental directives can share it.
+- Fixed column widths on the CSP Profiles table and the Scripts page's External-tab inventory table. Both use a fixed table layout that split width evenly across columns regardless of content, so the Automation/Experimental columns (a `<select>`, a checkbox, and explanatory text) and the Classification/Expected SRI columns (a `<select>`, two inputs, and a button) were being crammed into slivers too narrow for their controls, causing visible overlap and text cutoff at normal admin widths.
+
 
 ### Changed
 

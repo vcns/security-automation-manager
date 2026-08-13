@@ -208,7 +208,7 @@ $classification_labels = array(
 	</form>
 </details>
 
-<table class="widefat fixed striped" style="margin-top:1em">
+<table class="widefat fixed striped wp-sam-dependency-inventory-table" style="margin-top:1em">
 	<thead>
 		<tr>
 			<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
