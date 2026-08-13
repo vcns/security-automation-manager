@@ -169,13 +169,13 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$profiles_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
 		$profiles     = ! empty( $profiles_raw ) ? $profiles_raw : array();
 		?>
-	<table class="widefat fixed striped">
+	<table class="widefat fixed striped wp-sam-profiles-table">
 		<thead>
 			<tr>
 				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Automation', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Trusted Types', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Experimental', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Last Updated', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Actions', 'security-automation-manager' ); ?></th>
 			</tr>
@@ -231,10 +231,10 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 						data-surface="<?php echo esc_attr( $profile['surface'] ); ?>"
 						<?php checked( ! empty( $profile['trusted_types'] ) ); ?>
 					/>
-					<?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?>
+					<?php esc_html_e( 'Trusted Types', 'security-automation-manager' ); ?>
 				</label>
 				<p class="description" style="margin:4px 0 0;">
-					<?php esc_html_e( 'Sends require-trusted-types-for \'script\', always report-only regardless of surface mode.', 'security-automation-manager' ); ?>
+					<?php esc_html_e( "require-trusted-types-for 'script' -- pinned to report-only; enforcing it needs application code most WordPress sites don't have yet.", 'security-automation-manager' ); ?>
 				</p>
 			</td>
 			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>

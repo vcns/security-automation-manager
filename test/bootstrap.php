@@ -15,7 +15,7 @@ declare( strict_types=1 );
 define( 'ABSPATH',               __DIR__ . '/' );
 define( 'WP_CONTENT_DIR',        __DIR__ . '/wp-content' );
 define( 'WPINC',                 'wp-includes' );
-define( 'WP_SAM_VERSION',        '2.4.17' );
+define( 'WP_SAM_VERSION',        '2.4.18' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
