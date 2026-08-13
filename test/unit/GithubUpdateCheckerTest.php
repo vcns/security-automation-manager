@@ -155,7 +155,7 @@ class GithubUpdateCheckerTest extends TestCase {
 
 	// ── Update Channel diagnostics ───────────────────────────────────────────
 
-	public function test_successful_check_records_diagnostics(): void {
+	public function test_a_successful_check_records_diagnostics(): void {
 		$GLOBALS['_wp_remote_get_response'] = $this->response( $this->manifest( '2.4.21' ) );
 
 		( new Github_Update_Checker() )->get_remote_info();
@@ -237,7 +237,7 @@ class GithubUpdateCheckerTest extends TestCase {
 		$this->assertSame( 'mismatch', $diagnostics['last_checksum_result'] );
 	}
 
-	public function test_after_update_records_success_result(): void {
+	public function test_after_update_records_a_successful_result(): void {
 		$upgrader = (object) array(
 			'result' => array( 'source' => '/tmp/x', 'destination' => '/tmp/y' ),
 		);
