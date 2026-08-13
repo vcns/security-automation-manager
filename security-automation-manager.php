@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.4.18
+ * Version:           2.4.19
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.4.18' );
+define( 'WP_SAM_VERSION', '2.4.19' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -83,8 +83,21 @@ define( 'WP_SAM_VERSION', '2.4.18' );
  *        Migrates any existing profile whose img-src still exactly matches
  *        the old default; a profile an administrator has already customised
  *        is left untouched. See migrate_tighten_img_src_default().
+ * v18 -- seeds a vetted, enabled configuration for X-Frame-Options,
+ *        X-Content-Type-Options, Referrer-Policy, Permissions-Policy,
+ *        Reverse Tabnabbing, Cross-Origin-Resource-Policy,
+ *        Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and
+ *        X-Permitted-Cross-Domain-Policies on every surface that doesn't
+ *        already have a row, so a fresh install ships with this hardening
+ *        active by default. HSTS is deliberately excluded -- see
+ *        seed_default_pillar_profiles(). Also changes the default CSP
+ *        automation-approval mode from manual to automatic (high approvals
+ *        only); this only affects who approves a proposed CSP source, not
+ *        CSP enforcement, which still requires a deliberate admin
+ *        promotion through the existing learning window and promotion
+ *        gate regardless of automation mode.
  */
-define( 'WP_SAM_DB_VERSION', '17' );
+define( 'WP_SAM_DB_VERSION', '18' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

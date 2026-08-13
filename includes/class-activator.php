@@ -12,7 +12,17 @@ declare( strict_types=1 );
 
 namespace WP_SAM;
 
+use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
+use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
+use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
+use WP_SAM\Security\Permissions_Policy_Builder;
+use WP_SAM\Security\Referrer_Policy_Builder;
+use WP_SAM\Security\Reverse_Tabnabbing_Builder;
+use WP_SAM\Security\X_Content_Type_Options_Builder;
+use WP_SAM\Security\X_Frame_Options_Builder;
+use WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -27,6 +37,7 @@ class Activator {
 		self::migrate_tighten_img_src_default();
 		self::set_default_options();
 		self::seed_default_profiles();
+		self::seed_default_pillar_profiles();
 		self::seed_initial_policy_versions();
 		self::schedule_events();
 		self::mark_schema_verified();
@@ -864,8 +875,18 @@ class Activator {
 	}
 
 	private static function default_automation_config(): array {
+		// Automatic (high approvals only): every proposal below the high-risk
+		// threshold is auto-approved into the report-only policy on its own
+		// evidence, with only high-risk sources still requiring a human
+		// decision -- this is what "automate security" means for this
+		// pillar. It does not touch CSP enforcement: a surface still starts
+		// in report-only mode (seed_default_profiles() above) and promotion
+		// to enforce still requires an administrator to act, still passes
+		// through the learning window and promotion gate. Automation here
+		// only ever governs what's proposed for approval, never whether a
+		// surface starts blocking anything.
 		$surface_config = array(
-			'mode'                           => 'manual',
+			'mode'                           => Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL,
 			'enabled_directives'             => array(),
 			'excluded_directives'            => array(),
 			'allowed_source_schemes'         => array( 'https' ),
@@ -879,7 +900,13 @@ class Activator {
 			'approval_confidence_threshold'  => 1.0,
 			'require_ai_agreement'           => false,
 			'automatic_rejection_enabled'    => false,
-			'max_automatic_changes_per_scan' => 0,
+			// Must be positive whenever mode isn't manual: Policy_Change_Manager
+			// treats <= 0 as "automation disabled" regardless of mode, so 0 here
+			// would leave a surface claiming automatic approval while silently
+			// approving nothing. 50 matches the admin UI's own input cap
+			// (max="50") and what update_surface_mode() seeds when an admin
+			// switches a surface onto any automatic mode by hand.
+			'max_automatic_changes_per_scan' => 50,
 			'change_rate_guardrail'          => 0,
 		);
 
@@ -917,6 +944,93 @@ class Activator {
 						'updated_at'          => $now,
 					),
 					array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' )
+				);
+			}
+		}
+	}
+
+	/**
+	 * Schema v18: seeds a vetted, enabled-by-default configuration for every
+	 * "simple" header pillar plus Reverse Tabnabbing, on every surface that
+	 * doesn't already have a row -- so a fresh install ships with this
+	 * hardening active out of the box instead of requiring an administrator
+	 * to find and individually enable nine separate admin pages. Only ever
+	 * inserts a missing (pillar, surface) pair, same "fill in what's
+	 * missing, never touch what's already there" pattern as
+	 * seed_default_profiles() above -- a surface an administrator has
+	 * already configured (enabled or deliberately left disabled) already
+	 * has a row and is never touched by this on a later upgrade.
+	 *
+	 * HSTS is deliberately NOT included here. Unlike everything seeded
+	 * below, HSTS is sticky and extremely hard to undo once a browser has
+	 * cached it (worse still with includeSubDomains/preload) -- see
+	 * Strict_Transport_Security_Builder's own DEFAULT_MAX_AGE reasoning.
+	 * It stays a deliberate, informed, per-surface opt-in rather than a
+	 * blind default a fresh install could get burned by.
+	 *
+	 * Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are
+	 * seeded with 'unsafe-none' -- the spec's no-op value for both headers.
+	 * This adds no real cross-origin isolation; it exists purely so the
+	 * header is present for scanners (securityheaders.com, Mozilla
+	 * Observatory) that check for it. A genuinely tighter value needs
+	 * real evidence this site's own scripts/embeds can tolerate isolation,
+	 * which is exactly what a future periodic self-scan is meant to
+	 * establish -- see the "COOP/COEP readiness" idea tracked against the
+	 * roadmap rather than guessed at here.
+	 */
+	private static function seed_default_pillar_profiles(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_pillar_profiles';
+		$now   = current_time( 'mysql', true );
+
+		$empty_payload = wp_json_encode( array() );
+
+		$permissions_directives_default = array(
+			'geolocation' => 'none',
+			'camera'      => 'none',
+			'microphone'  => 'none',
+			'fullscreen'  => 'none',
+			'payment'     => 'none',
+			'usb'         => 'none',
+			'autoplay'    => 'none',
+		);
+		$permissions_payload_default    = wp_json_encode( array( 'directives' => $permissions_directives_default ) );
+		$permissions_payload_frontend   = wp_json_encode( array( 'directives' => array_merge( $permissions_directives_default, array( 'autoplay' => 'self' ) ) ) );
+
+		foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $surface ) {
+			$is_api = 'api' === $surface;
+
+			$rows = array(
+				X_Frame_Options_Builder::PILLAR_KEY        => wp_json_encode( array( 'value' => $is_api ? 'DENY' : 'SAMEORIGIN' ) ),
+				X_Content_Type_Options_Builder::PILLAR_KEY => $empty_payload,
+				Referrer_Policy_Builder::PILLAR_KEY        => wp_json_encode( array( 'value' => $is_api ? 'no-referrer' : Referrer_Policy_Builder::DEFAULT_VALUE ) ),
+				Permissions_Policy_Builder::PILLAR_KEY     => 'frontend' === $surface ? $permissions_payload_frontend : $permissions_payload_default,
+				Reverse_Tabnabbing_Builder::PILLAR_KEY     => $empty_payload,
+				Cross_Origin_Resource_Policy_Builder::PILLAR_KEY => wp_json_encode( array( 'value' => $is_api ? 'same-site' : 'cross-origin' ) ),
+				Cross_Origin_Opener_Policy_Builder::PILLAR_KEY => wp_json_encode( array( 'value' => 'unsafe-none' ) ),
+				Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY => wp_json_encode( array( 'value' => 'unsafe-none' ) ),
+				X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY => wp_json_encode( array( 'value' => 'none' ) ),
+			);
+
+			foreach ( $rows as $pillar => $payload ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE pillar = %s AND surface = %s", $pillar, $surface ) );
+				if ( $exists ) {
+					continue;
+				}
+
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$wpdb->insert(
+					$table,
+					array(
+						'pillar'     => $pillar,
+						'surface'    => $surface,
+						'enabled'    => 1,
+						'payload'    => $payload,
+						'created_at' => $now,
+						'updated_at' => $now,
+					),
+					array( '%s', '%s', '%d', '%s', '%s', '%s' )
 				);
 			}
 		}

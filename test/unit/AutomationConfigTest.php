@@ -15,12 +15,15 @@ class AutomationConfigTest extends TestCase {
 		wp_test_reset_globals();
 	}
 
-	public function test_defaults_are_manual(): void {
+	public function test_defaults_are_automatic_high_approval(): void {
 		$config = ( new Automation_Config() )->all();
 
 		foreach ( Automation_Config::SURFACES as $surface ) {
-			$this->assertSame( 'manual', $config[ $surface ]['mode'] );
-			$this->assertSame( 0, $config[ $surface ]['max_automatic_changes_per_scan'] );
+			$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config[ $surface ]['mode'] );
+			// Must be positive alongside a non-manual default mode -- see
+			// DEFAULT_SURFACE_CONFIG's own docblock for why 0 here would
+			// silently disable automation despite the mode claiming it's on.
+			$this->assertSame( 50, $config[ $surface ]['max_automatic_changes_per_scan'] );
 		}
 	}
 
@@ -57,7 +60,7 @@ class AutomationConfigTest extends TestCase {
 		$this->assertSame( 5, $config['frontend']['max_automatic_changes_per_scan'] );
 		$this->assertSame( array( 'default-src', 'img-src' ), $config['frontend']['enabled_directives'] );
 		$this->assertSame( array( 'https', 'wss' ), $config['frontend']['allowed_source_schemes'] );
-		$this->assertSame( 'manual', $config['admin']['mode'] );
+		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['admin']['mode'] );
 	}
 
 	public function test_legacy_modes_normalise_to_new_approval_postures(): void {

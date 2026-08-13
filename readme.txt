@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.18
+Stable tag: 2.4.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,11 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.19 =
+
+* Ships a vetted, enabled-by-default configuration for X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Reverse Tabnabbing, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies on every surface that doesn't already have a row, so a fresh install ships hardened out of the box instead of requiring nine separate admin pages to be found and enabled individually. Only ever fills in a missing (pillar, surface) row -- a surface you've already configured, enabled or deliberately left disabled, is never touched. HSTS is deliberately not included: it stays a per-surface opt-in given how hard it is to undo once a browser caches it.
+* Changes the default CSP automation-approval mode from Manual to Automatic (high approvals only): a new install now auto-approves proposed CSP sources below the high-risk threshold into the report-only policy on their own evidence, with high-risk sources still requiring a human decision. This only governs who approves a proposed source -- CSP still starts report-only on every surface, and promotion to enforce still requires a deliberate administrator action through the existing learning window and promotion gate.
 
 = 2.4.18 =
 
