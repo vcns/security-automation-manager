@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.20] - 2026-08-13
+
+### Added
+
+- Update Channel admin page (roadmap #158): installed version, active build channel, update manifest URL, last successful/failed update check, available version, manifest validation status, package checksum verification status, last applied-update result, and whether `WP_SAM_DISABLE_AUTO_UPDATE` is defined. A WordPress.org build shows only its own version/channel summary and never references the GitHub update service or the diagnostics option it writes -- `Github_Update_Checker` isn't even present in that build's ZIP.
+- `Github_Update_Checker` now persists check/checksum/applied-update outcomes to a `wp_sam_update_diagnostics` option. The existing manifest cache is a short-lived transient purely to reduce remote requests; once it expired, any record of the last check's outcome disappeared with it, which made a real status page impossible. No secret or credential is ever stored -- every field is a timestamp or a short, fixed-vocabulary status code, and the manifest itself is a public JSON file.
+
 ## [2.4.19] - 2026-08-13
 
 ### Changed
