@@ -159,6 +159,7 @@ class AdminUITest extends TestCase {
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-hsts', $hooks );
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-reverse-tabnabbing', $hooks );
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-scripts', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-update-channel', $hooks );
 		$this->assertNotContains( 'security-automation-manager_page_security-automation-manager-policy-audit', $hooks );
 		foreach ( $hooks as $hook ) {
 			if ( 'toplevel_page_security-automation-manager' === $hook ) {
@@ -195,6 +196,27 @@ class AdminUITest extends TestCase {
 
 		$this->assertSame( '', $ui->filter_admin_footer_text( array( 'unexpected' ) ) );
 		$this->assertSame( '', $ui->filter_admin_footer_text( 42 ) );
+	}
+
+	/**
+	 * WP_SAM_DISTRIBUTION_CHANNEL is defined once, globally, in test/bootstrap.php
+	 * as 'wordpress-org' and PHP constants can't be redefined per-test -- so this
+	 * only ever exercises the WordPress.org branch of the view. That's still the
+	 * one this issue's hard requirement is about: a WordPress.org build must never
+	 * display or use the GitHub update service, and this proves the view's early
+	 * channel branch actually withholds every GitHub-specific field rather than
+	 * just labeling the channel correctly.
+	 */
+	public function test_update_channel_view_omits_github_fields_on_wordpress_org_build(): void {
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-update-channel.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( WP_SAM_VERSION, $output );
+		$this->assertStringContainsString( 'WordPress.org', $output );
+		$this->assertStringNotContainsString( 'Update manifest URL', $output );
+		$this->assertStringNotContainsString( 'Package checksum verification status', $output );
+		$this->assertStringNotContainsString( 'VCNS GitHub', $output );
 	}
 
 	private function make_admin_ui(): Admin_UI {

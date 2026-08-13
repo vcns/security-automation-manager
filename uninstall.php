@@ -55,6 +55,7 @@ $options = array(
 	'wp_sam_stripe_price_id_monthly_live',
 	'wp_sam_stripe_price_id_annual_live',
 	'wp_sam_webhook_secret',
+	'wp_sam_update_diagnostics',
 );
 
 foreach ( $options as $option ) {

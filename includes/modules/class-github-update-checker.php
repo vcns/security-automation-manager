@@ -28,6 +28,19 @@ final class Github_Update_Checker {
 	private const SLUG                = 'security-automation-manager';
 	private const DISABLE_AUTO_UPDATE = 'WP_SAM_DISABLE_AUTO_UPDATE';
 
+	/**
+	 * Durable diagnostic state for the Update Channel admin page. The manifest
+	 * cache above (CACHE_KEY) is a short-lived transient purely for reducing
+	 * remote requests -- once it expires, any record of the last check's
+	 * outcome disappears with it. This option is written on every relevant
+	 * event (manifest check, checksum verification, applied update) and never
+	 * expires on its own, so "Last successful check" / "Last failed check" /
+	 * "Last update result" stay accurate between requests. No secrets are
+	 * ever stored here -- every field is either a timestamp or a short,
+	 * fixed-vocabulary status code.
+	 */
+	public const DIAGNOSTICS_OPTION = 'wp_sam_update_diagnostics';
+
 	public function register(): void {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'inject_update' ) );
 		add_filter( 'site_transient_update_plugins', array( $this, 'suppress_stale_update_offer' ), 20 );
@@ -130,8 +143,6 @@ final class Github_Update_Checker {
 	}
 
 	public function after_update( object $upgrader, array $hook_extra ): void {
-		unset( $upgrader );
-
 		if (
 			isset( $hook_extra['type'], $hook_extra['action'] )
 			&& 'plugin' === $hook_extra['type']
@@ -140,7 +151,32 @@ final class Github_Update_Checker {
 		) {
 			$this->clear_remote_cache();
 			delete_site_transient( 'update_plugins' );
+			$this->record_applied_update_result( $upgrader );
 		}
+	}
+
+	/**
+	 * Determines whether the just-completed update actually succeeded.
+	 * upgrader_process_complete fires regardless of outcome -- $upgrader
+	 * doesn't expose a single success/failure flag directly, so this checks
+	 * both places WordPress core surfaces a failure: a WP_Error result, and
+	 * errors recorded on the upgrader's skin.
+	 */
+	private function record_applied_update_result( object $upgrader ): void {
+		$result = property_exists( $upgrader, 'result' ) ? $upgrader->result : null;
+		$failed = is_wp_error( $result );
+
+		if ( ! $failed && isset( $upgrader->skin ) && is_object( $upgrader->skin ) && method_exists( $upgrader->skin, 'get_errors' ) ) {
+			$skin_errors = $upgrader->skin->get_errors();
+			$failed      = $skin_errors instanceof WP_Error && ! empty( $skin_errors->errors );
+		}
+
+		$this->update_diagnostics(
+			array(
+				'last_applied_at'     => current_time( 'mysql', true ),
+				'last_applied_result' => $failed ? 'failure' : 'success',
+			)
+		);
 	}
 
 	public function clear_remote_cache(): void {
@@ -172,6 +208,7 @@ final class Github_Update_Checker {
 		}
 
 		if ( empty( $remote->sha256 ) || ! $this->is_valid_sha256( (string) $remote->sha256 ) ) {
+			$this->record_checksum_result( 'missing' );
 			return new WP_Error( 'wp_sam_update_checksum_missing', 'Security Automation Manager update package checksum is missing or invalid.' );
 		}
 
@@ -190,10 +227,21 @@ final class Github_Update_Checker {
 				wp_delete_file( $file );
 			}
 
+			$this->record_checksum_result( 'mismatch' );
 			return new WP_Error( 'wp_sam_update_checksum_mismatch', 'Security Automation Manager update package checksum verification failed.' );
 		}
 
+		$this->record_checksum_result( 'verified' );
 		return $file;
+	}
+
+	private function record_checksum_result( string $result ): void {
+		$this->update_diagnostics(
+			array(
+				'last_checksum_at'     => current_time( 'mysql', true ),
+				'last_checksum_result' => $result,
+			)
+		);
 	}
 
 	public function get_remote_info(): ?object {
@@ -210,19 +258,55 @@ final class Github_Update_Checker {
 			)
 		);
 
+		$now = current_time( 'mysql', true );
+
 		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
 			set_transient( self::CACHE_KEY, array( 'data' => null ), self::FAILURE_CACHE_TTL );
+			$this->update_diagnostics(
+				array(
+					'last_check_at'         => $now,
+					'last_check_result'     => 'http_error',
+					'last_check_failure_at' => $now,
+				)
+			);
 			return null;
 		}
 
 		$data = json_decode( (string) wp_remote_retrieve_body( $response ) );
 		if ( ! is_object( $data ) || ! $this->validate_remote_info( $data ) ) {
 			set_transient( self::CACHE_KEY, array( 'data' => null ), self::FAILURE_CACHE_TTL );
+			$this->update_diagnostics(
+				array(
+					'last_check_at'         => $now,
+					'last_check_result'     => 'invalid_manifest',
+					'last_check_failure_at' => $now,
+				)
+			);
 			return null;
 		}
 
 		set_transient( self::CACHE_KEY, array( 'data' => $data ), self::SUCCESS_CACHE_TTL );
+		$this->update_diagnostics(
+			array(
+				'last_check_at'         => $now,
+				'last_check_result'     => 'success',
+				'last_check_success_at' => $now,
+				'available_version'     => (string) $data->version,
+			)
+		);
 		return $data;
+	}
+
+	/**
+	 * @param array<string,string> $changes
+	 */
+	private function update_diagnostics( array $changes ): void {
+		$current = get_option( self::DIAGNOSTICS_OPTION, array() );
+		if ( ! is_array( $current ) ) {
+			$current = array();
+		}
+
+		update_option( self::DIAGNOSTICS_OPTION, array_merge( $current, $changes ) );
 	}
 
 	private function clear_update_entries( object $transient ): void {
