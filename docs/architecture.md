@@ -133,7 +133,7 @@ Responsibilities:
 
 Responsibilities:
 
-- render the Overview page (Overview, Readiness, and About tabs), CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), Cross-Origin Policies page (Cross-Origin-Embedder-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies tabs), Scripts page (Start Here, External, and Internal tabs), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and Reverse Tabnabbing pages
+- render the Overview page (Overview, Readiness, and About tabs), CSP dashboard (Start Here, Profiles, For Review, Policy Changes, Policy Audit, Violations, Scan Log, and Settings tabs), Cross-Origin Policies page (Cross-Origin-Embedder-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies tabs), Scripts page (Start Here, External, and Internal tabs), Update Channel page (installed version, active build channel, manifest/checksum/applied-update diagnostics -- GitHub-channel-only content behind an early branch so a WordPress.org build never references it), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and Reverse Tabnabbing pages
 - support full-dataset sorting and per-column filtering on the Violations, For Review, and Policy Changes tables, plus a per-row metadata popover on Violations (document URI, source file, line/column, referrer, user agent, captured data-URI payload)
 - support source review and mode switching
 - trigger scans and config refreshes

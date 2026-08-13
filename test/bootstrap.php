@@ -15,7 +15,7 @@ declare( strict_types=1 );
 define( 'ABSPATH',               __DIR__ . '/' );
 define( 'WP_CONTENT_DIR',        __DIR__ . '/wp-content' );
 define( 'WPINC',                 'wp-includes' );
-define( 'WP_SAM_VERSION',        '2.4.19' );
+define( 'WP_SAM_VERSION',        '2.4.20' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -168,6 +168,24 @@ if ( ! function_exists( '__' ) ) {
 if ( ! function_exists( 'esc_html__' ) ) {
 	function esc_html__( string $text, string $domain = 'default' ): string {
 		return esc_html( $text );
+	}
+}
+
+if ( ! function_exists( '_e' ) ) {
+	function _e( string $text, string $domain = 'default' ): void {
+		echo __( $text, $domain );
+	}
+}
+
+if ( ! function_exists( 'esc_html_e' ) ) {
+	function esc_html_e( string $text, string $domain = 'default' ): void {
+		echo esc_html__( $text, $domain );
+	}
+}
+
+if ( ! function_exists( 'esc_attr_e' ) ) {
+	function esc_attr_e( string $text, string $domain = 'default' ): void {
+		echo esc_attr( __( $text, $domain ) );
 	}
 }
 
