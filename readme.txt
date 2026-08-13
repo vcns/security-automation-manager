@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.20
+Stable tag: 2.4.21
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,11 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.21 =
+
+* Hardens the GitHub-channel update checker's download-URL validation to reject any path containing a ".." segment, closing a theoretical path-traversal gap the prefix/suffix string checks alone couldn't catch.
+* Adds a kill-switch regression test and tightens the auto-update gate filter's type hint from mixed to the actual WordPress-documented `?bool`.
 
 = 2.4.20 =
 

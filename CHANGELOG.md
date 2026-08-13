@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.21] - 2026-08-14
+
+### Security
+
+- Hardens `Github_Update_Checker::is_allowed_package_url()` to reject any download-URL path containing a `..` segment. `str_starts_with()`/`str_ends_with()` are plain string prefix/suffix checks, not path normalisation -- a path containing `..` could textually satisfy both while an HTTP client resolves it to a different location on the same trusted host before the request is even sent, e.g. escaping the update path into another product's folder. Found via a structural comparison against two sibling VCNS updater implementations (roadmap #157); this plugin's own `is_valid_slug` check in `validate_remote_info()` was confirmed to already be a defense-in-depth layer neither sibling has.
+
+### Changed
+
+- Tightens `auto_update_gate()`'s parameter/return type hint from `mixed` to the actual WordPress-documented `?bool`.
+
 ## [2.4.20] - 2026-08-13
 
 ### Added
