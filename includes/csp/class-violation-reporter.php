@@ -7,9 +7,11 @@
  *   - Deduplicates by a stable fingerprint: hash(surface + blocked_uri + violated_directive).
  *   - Stores one row per unique fingerprint, with first/last reported timestamps.
  *   - Increments occurrence_count on duplicate reports using a single database upsert.
- *   - Rate-limits storage: drops reports after 500 per hour per surface (soft cap).
+ *   - Rate-limits storage: drops reports after 500 per hour per (surface, directive) (soft cap).
  *   - Returns 204 No Content for valid reports (browser expects no body).
  *   - Stores rollup data for administrator review and future export surfaces.
+ *   - Flags a likely competing CSP header when a report's disposition doesn't
+ *     match this surface's own configured mode.
  */
 
 declare( strict_types=1 );
@@ -28,9 +30,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Violation_Reporter {
 
-	private const MAX_PER_HOUR_PER_SURFACE = 500;
-	private const RATE_LIMIT_WINDOW        = HOUR_IN_SECONDS;
-	private const LEARNABLE_DIRECTIVES     = array(
+	private const MAX_PER_HOUR_PER_SURFACE_DIRECTIVE = 500;
+	private const RATE_LIMIT_WINDOW                  = HOUR_IN_SECONDS;
+	private const DISPOSITION_MISMATCH_COOLDOWN      = HOUR_IN_SECONDS;
+	private const LEARNABLE_DIRECTIVES               = array(
 		'script-src',
 		'script-src-elem',
 		'style-src',
@@ -56,6 +59,15 @@ class Violation_Reporter {
 	private ?Learning_Window $learning_window;
 	private Policy_Change_Manager $policy_changes;
 	private Pillar_Violation_Store $pillar_violations;
+
+	/**
+	 * Per-request cache of surface => expected disposition ('enforce'|'report'|null),
+	 * derived from csp_policy_profiles.mode. Avoids one query per report when a
+	 * single batch contains many reports for the same surface.
+	 *
+	 * @var array<string,string|null>
+	 */
+	private array $profile_mode_cache = array();
 
 	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Feature_Gate $gate = null, ?Pillar_Violation_Store $pillar_violations = null ) {
 		$this->audit             = $audit;
@@ -231,10 +243,21 @@ class Violation_Reporter {
 			}
 		}
 
-		// Rate-limit check.
-		$rate_key = 'wp_sam_viol_rate_' . $surface;
+		// Checked ahead of the rate limit below (and regardless of it) so this
+		// diagnostic signal survives even on a surface that's already saturating
+		// its rate cap -- a competing header is exactly the kind of problem that
+		// tends to show up as unusually high report volume in the first place.
+		$this->check_disposition_mismatch( $surface, $violated_directive, isset( $r['disposition'] ) ? (string) $r['disposition'] : 'report' );
+
+		// Rate-limit check. Keyed per (surface, directive) rather than per surface
+		// alone -- a single noisy directive (e.g. hundreds of inline style
+		// violations on one page-builder-heavy page) would otherwise exhaust the
+		// shared surface budget and silently drop reports for every OTHER
+		// directive on that surface too, including a brand-new violation type
+		// that had never been seen before.
+		$rate_key = 'wp_sam_viol_rate_' . $surface . '_' . $violated_directive;
 		$count    = (int) get_transient( $rate_key );
-		if ( $count >= self::MAX_PER_HOUR_PER_SURFACE ) {
+		if ( $count >= self::MAX_PER_HOUR_PER_SURFACE_DIRECTIVE ) {
 			return;
 		}
 		set_transient( $rate_key, $count + 1, self::RATE_LIMIT_WINDOW );
@@ -318,6 +341,82 @@ class Violation_Reporter {
 		if ( 1 === (int) $wpdb->rows_affected ) {
 			$this->learn_source_from_report( $r, $surface, $blocked_uri, $now );
 		}
+	}
+
+	// ── Competing-header detection ───────────────────────────────────────────
+
+	/**
+	 * A browser-reported disposition that doesn't match this surface's own
+	 * configured CSP mode is strong evidence that another source (server
+	 * config, another plugin, a stale cached response) is also emitting a
+	 * Content-Security-Policy header for this surface -- this plugin only ever
+	 * emits one policy, fully enforcing or fully report-only, per surface, so a
+	 * genuine per-directive split can't originate here. Reuses the same
+	 * 'conflict_detector' audit component as Conflict_Detector's own
+	 * header-probe checks, so both land in one place for an administrator to
+	 * review.
+	 */
+	private function check_disposition_mismatch( string $surface, string $directive, string $disposition ): void {
+		if ( ! in_array( $disposition, array( 'enforce', 'report' ), true ) ) {
+			return;
+		}
+
+		$expected = $this->expected_disposition_for_surface( $surface );
+		if ( null === $expected || $expected === $disposition ) {
+			return;
+		}
+
+		// Throttled per (surface, directive): a single busy page can generate
+		// hundreds of mismatched reports within minutes, and the underlying
+		// cause doesn't change from one report to the next.
+		$cooldown_key = 'wp_sam_disposition_mismatch_' . $surface . '_' . $directive;
+		if ( false !== get_transient( $cooldown_key ) ) {
+			return;
+		}
+		set_transient( $cooldown_key, 1, self::DISPOSITION_MISMATCH_COOLDOWN );
+
+		$this->audit->log(
+			'conflict_detector',
+			'csp_disposition_mismatch',
+			sprintf(
+				"Browser reported '%s' disposition for '%s' on the '%s' surface, but this surface's own CSP profile is configured for '%s'. This usually means another source (server configuration or a different plugin) is also emitting a Content-Security-Policy header for this surface.",
+				$disposition,
+				$directive,
+				$surface,
+				$expected
+			),
+			'warning'
+		);
+	}
+
+	/**
+	 * Returns 'enforce' | 'report' | null (disabled, or profile not found) for
+	 * a surface's currently configured CSP mode. Cached per request -- a single
+	 * report batch can contain many reports for the same surface.
+	 */
+	private function expected_disposition_for_surface( string $surface ): ?string {
+		if ( array_key_exists( $surface, $this->profile_mode_cache ) ) {
+			return $this->profile_mode_cache[ $surface ];
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$mode = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT mode FROM {$wpdb->prefix}csp_policy_profiles WHERE surface = %s LIMIT 1",
+				$surface
+			)
+		);
+
+		$expected = null;
+		if ( 'enforce' === $mode ) {
+			$expected = 'enforce';
+		} elseif ( 'report-only' === $mode ) {
+			$expected = 'report';
+		}
+
+		$this->profile_mode_cache[ $surface ] = $expected;
+		return $expected;
 	}
 
 	private function learn_source_from_report( array $r, string $surface, string $blocked_uri, string $now ): void {

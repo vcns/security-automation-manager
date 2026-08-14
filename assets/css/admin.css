@@ -187,6 +187,18 @@
 	max-width: 760px;
 }
 
+.wp-sam-quick-ranges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 0.5em;
+}
+
+.wp-sam-conflict-banner ul {
+	margin: 0.5em 0 0.5em 1.5em;
+	list-style: disc;
+}
+
 /*
  * Violations table: table-layout is fixed (the "fixed" class), so an
  * explicit width on every column except Blocked URI lets that one column

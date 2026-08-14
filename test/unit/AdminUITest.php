@@ -219,6 +219,39 @@ class AdminUITest extends TestCase {
 		$this->assertStringNotContainsString( 'VCNS GitHub', $output );
 	}
 
+	/**
+	 * Regression test for a fatal that reached production: scripts-external.php
+	 * and scripts-internal.php reference namespaced classes (Table_Query,
+	 * Dependency_Governance_Builder) with no `use` import of their own. PHP's
+	 * `use` imports are per-file, not inherited through require() -- the
+	 * parent page-scripts.php having the right imports does not help the
+	 * partial it requires. Rendering page-scripts.php itself (not the partial
+	 * directly) is what actually proves the real require() chain works.
+	 */
+	public function test_scripts_external_tab_renders_without_fatal(): void {
+		$_GET['tab'] = 'external';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Origin', $output );
+	}
+
+	public function test_scripts_internal_tab_renders_without_fatal(): void {
+		$_GET['tab'] = 'internal';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Hash inventory', $output );
+	}
+
 	private function make_admin_ui(): Admin_UI {
 		$reflection = new ReflectionClass( Plugin::class );
 

@@ -8,11 +8,16 @@
  * admin-declared third-party hash can.
  *
  * Included by page-scripts.php; $wpdb and $surfaces are already in scope.
+ * Note: PHP `use` imports are per-file, not inherited through require() --
+ * page-scripts.php's own `use` statements do not extend to this file, so it
+ * needs its own.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+use WP_SAM\Security\Internal_Script_Integrity_Builder;
 
 // ── Per-surface enabled ──────────────────────────────────────────────────────
 $int_profiles_raw = $wpdb->get_results(

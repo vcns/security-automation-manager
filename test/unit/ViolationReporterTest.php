@@ -73,7 +73,7 @@ class ViolationReporterTest extends TestCase {
 		// Still returns 204 — must not reveal rejection to the sender.
 		$this->assertSame( 204, $response->get_status() );
 		// Rate-limit transient must not be set (report was dropped before rate check).
-		$this->assertArrayNotHasKey( 'wp_sam_viol_rate_frontend', $GLOBALS['_wp_transients'] );
+		$this->assertArrayNotHasKey( 'wp_sam_viol_rate_frontend_script-src', $GLOBALS['_wp_transients'] );
 	}
 
 	// ── handle(): Rate limiting ────────────────────────────────────────────────
@@ -89,7 +89,7 @@ class ViolationReporterTest extends TestCase {
 		$this->reporter->handle( $request );
 
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
-		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend', $GLOBALS['_wp_transients'] );
+		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend_img-src', $GLOBALS['_wp_transients'] );
 	}
 
 	public function test_forwarded_host_is_accepted_as_document_origin(): void {
@@ -103,12 +103,12 @@ class ViolationReporterTest extends TestCase {
 		$this->reporter->handle( $request );
 
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
-		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend', $GLOBALS['_wp_transients'] );
+		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend_img-src', $GLOBALS['_wp_transients'] );
 	}
 
 	public function test_report_is_dropped_when_rate_limit_exceeded(): void {
-		$GLOBALS['_wp_rest_headers']['content-type']            = 'application/csp-report';
-		$GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend'] = 500;
+		$GLOBALS['_wp_rest_headers']['content-type']                       = 'application/csp-report';
+		$GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend_script-src'] = 500;
 
 		$request = $this->make_request(
 			'{"csp-report":{"violated-directive":"script-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com"}}'
@@ -116,7 +116,108 @@ class ViolationReporterTest extends TestCase {
 
 		$this->reporter->handle( $request );
 
-		$this->assertSame( 500, $GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend'] );
+		$this->assertSame( 500, $GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend_script-src'] );
+		$this->assertNull( $GLOBALS['_wpdb_last_operation'] );
+	}
+
+	public function test_rate_limit_is_scoped_per_directive_not_shared_across_surface(): void {
+		$GLOBALS['_wp_rest_headers']['content-type']                       = 'application/csp-report';
+		// style-src-attr is saturated, but img-src on the same surface has its own budget.
+		$GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend_style-src-attr'] = 500;
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/pixel.png"}}'
+		);
+
+		$this->reporter->handle( $request );
+
+		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
+		$this->assertArrayHasKey( 'wp_sam_viol_rate_frontend_img-src', $GLOBALS['_wp_transients'] );
+	}
+
+	// ── Competing-header (disposition mismatch) detection ────────────────────
+
+	public function test_mismatched_disposition_logs_conflict_detector_warning(): void {
+		$GLOBALS['_wpdb_get_var']                    = 'report-only';
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		$this->audit->expects( $this->once() )
+			->method( 'log' )
+			->with(
+				'conflict_detector',
+				'csp_disposition_mismatch',
+				$this->stringContains( "reported 'enforce'" ),
+				'warning'
+			);
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/pixel.png","disposition":"enforce"}}'
+		);
+
+		$this->reporter->handle( $request );
+	}
+
+	public function test_matching_disposition_does_not_log_conflict(): void {
+		$GLOBALS['_wpdb_get_var']                    = 'enforce';
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		$this->audit->expects( $this->never() )->method( 'log' );
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/pixel.png","disposition":"enforce"}}'
+		);
+
+		$this->reporter->handle( $request );
+	}
+
+	public function test_no_configured_profile_does_not_log_conflict(): void {
+		$GLOBALS['_wpdb_get_var']                    = null;
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		$this->audit->expects( $this->never() )->method( 'log' );
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/pixel.png","disposition":"enforce"}}'
+		);
+
+		$this->reporter->handle( $request );
+	}
+
+	public function test_disposition_mismatch_is_throttled_within_cooldown(): void {
+		$GLOBALS['_wpdb_get_var']                    = 'report-only';
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		// Two mismatched reports for the same (surface, directive) within the
+		// cooldown window -- the underlying cause doesn't change between them,
+		// so only the first should log.
+		$this->audit->expects( $this->once() )->method( 'log' );
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/a.png","disposition":"enforce"}}'
+		);
+		$this->reporter->handle( $request );
+
+		$request2 = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/b.png","disposition":"enforce"}}'
+		);
+		$this->reporter->handle( $request2 );
+	}
+
+	public function test_rate_limited_report_still_checks_for_disposition_mismatch(): void {
+		$GLOBALS['_wpdb_get_var']                                       = 'report-only';
+		$GLOBALS['_wp_rest_headers']['content-type']                    = 'application/csp-report';
+		$GLOBALS['_wp_transients']['wp_sam_viol_rate_frontend_img-src'] = 500;
+
+		// A saturated rate cap is itself often a symptom of a competing header --
+		// the diagnostic must still fire even though the report is dropped.
+		$this->audit->expects( $this->once() )->method( 'log' );
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com/pixel.png","disposition":"enforce"}}'
+		);
+
+		$this->reporter->handle( $request );
+
 		$this->assertNull( $GLOBALS['_wpdb_last_operation'] );
 	}
 
@@ -622,18 +723,19 @@ class ViolationReporterTest extends TestCase {
 			}
 
 			protected function store_report( array $r ): void {
-				// Apply the rate-limit logic manually using the test cap.
+				if ( empty( $r['violated_directive'] ) ) {
+					return;
+				}
+
+				// Apply the rate-limit logic manually using the test cap, keyed
+				// per (surface, directive) to mirror the real implementation.
 				$surface  = $this->call_surface( $r['document_uri'] ?? '' );
-				$rate_key = 'wp_sam_viol_rate_' . $surface;
+				$rate_key = 'wp_sam_viol_rate_' . $surface . '_' . $r['violated_directive'];
 				$count    = (int) get_transient( $rate_key );
 				if ( $count >= $this->cap ) {
 					return;
 				}
 				set_transient( $rate_key, $count + 1, HOUR_IN_SECONDS );
-
-				if ( empty( $r['violated_directive'] ) ) {
-					return;
-				}
 
 				$blocked_uri          = substr( $r['blocked_uri'] ?? '', 0, 2048 );
 				$violated_directive   = substr( $r['violated_directive'] ?? '', 0, 128 );

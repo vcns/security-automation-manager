@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.22] - 2026-08-14
+
+### Fixed
+
+- Fatal error on both Scripts tabs (`External` and `Internal`): `page-scripts.php` correctly imports `Table_Query`, `Dependency_Governance_Builder`, and `Internal_Script_Integrity_Builder` via `use` statements, but PHP's `use` imports are per-file, not inherited through `require()` -- the two partial files it includes (`includes/admin/views/partials/scripts-external.php`, `scripts-internal.php`) referenced those classes bare, with no import of their own, and fatalled with "Class not found" on every visit. Both partials now import what they use directly. Added render tests for both tabs (`AdminUITest`) that exercise the actual `page-scripts.php` require() chain, plus `checked()`/`disabled()`/`submit_button()` test stubs that were missing from `test/bootstrap.php` -- the reason no existing test caught this.
+- CSP violation report rate limiting was shared across all directives on a surface (500/hour total). A single noisy directive (e.g. hundreds of inline style violations on one page) could exhaust the shared budget and silently drop reports for every other directive on that surface, including a brand-new violation type never seen before. Now scoped per (surface, directive).
+
+### Added
+
+- Quick range buttons (last hour / 6 hours / day / 7 days) on the CSP Violations tab, alongside the existing custom date-range filter.
+- `Violation_Reporter` now flags a likely competing Content-Security-Policy header: when a browser-reported disposition doesn't match this plugin's own configured mode for that surface (this plugin only ever emits one policy per surface, so a genuine per-directive split can't originate here), a throttled warning is logged to the same audit trail `Conflict_Detector` already uses, and the CSP dashboard now shows a persistent banner (not just a dismissible admin notice) summarising recent findings from both sources.
+- "First seen" added to the Violations tab's metadata popover, and the "Occurrences" column is now explicitly labelled as a lifetime total (it never resets, unlike the seen-range filter which only affects which rows are shown).
+
 ## [2.4.21] - 2026-08-14
 
 ### Security
