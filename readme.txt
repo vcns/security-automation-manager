@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.24
+Stable tag: 2.4.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.25 =
+
+* Fixes a bug where a CSP violation's stored disposition (report vs enforce), effective directive, original policy, and status code were only ever written on the first time that violation was seen, and never refreshed afterward. A surface promoted from report-only to enforce would keep showing "report" indefinitely for any violation first recorded before the promotion, even though the browser was correctly sending "enforce" on every new occurrence.
 
 = 2.4.24 =
 
