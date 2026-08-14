@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.30] - 2026-08-14
+
+### Added
+
+- Stage 3 of the Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy report-only learning workflow: the Cross-Origin Policies page's COOP and COEP tabs replace the plain enabled checkbox with a per-surface Mode selector (Disabled / Report-Only / Enforce), and gain a Report-Only Evidence table below -- same `Table_Query` sort/filter/pagination conventions as the CSP Violations tab -- showing what's been observed in `sam_pillar_violation_reports` for that pillar, plus a simple "N violations in the last 7 days" summary. Cross-Origin-Resource-Policy and X-Permitted-Cross-Domain-Policies, which have no report-only or Reporting API mechanism, are unchanged. Promoting a surface from Report-Only to Enforce is always this manual mode-selector choice -- nothing here is auto-promoted.
+
+### Fixed
+
+- `test/bootstrap.php` never stubbed `wp_kses_post()`, which every admin view's intro/warning HTML passes through -- a pre-existing gap that happened to go unnoticed because no test previously rendered a code path calling it. Caught by, and fixed alongside, the new render-without-fatal tests for the Cross-Origin Policies page's four tabs.
+
 ## [2.4.29] - 2026-08-14
 
 ### Added

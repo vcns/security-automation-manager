@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.29
+Stable tag: 2.4.30
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.30 =
+
+* Stage 3 of the Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy report-only learning workflow: the Cross-Origin Policies page's COOP and COEP tabs now show a per-surface Mode selector (Disabled / Report-Only / Enforce) in place of the plain enabled checkbox, plus a Report-Only Evidence table below showing what's actually been observed for that pillar, with a simple "N violations in the last 7 days" summary. Promoting a surface to Enforce is always a deliberate, manual choice.
 
 = 2.4.29 =
 

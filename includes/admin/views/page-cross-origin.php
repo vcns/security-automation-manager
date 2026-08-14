@@ -5,11 +5,20 @@
  * X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy,
  * Cross-Origin-Embedder-Policy) that previously each had their own separate
  * submenu page, onto one page with a tab per pillar -- same tab pattern as
- * the CSP dashboard. Each tab reuses the same per-surface enable+value
- * table markup page-pillar-simple.php uses for the other simple pillars
- * (X-Frame-Options, X-Content-Type-Options, Referrer-Policy), which stay on
- * their own separate pages since they aren't part of this "cross-origin"
- * grouping.
+ * the CSP dashboard.
+ *
+ * Cross-Origin-Resource-Policy and X-Permitted-Cross-Domain-Policies reuse
+ * the plain per-surface enable+value table page-pillar-simple.php uses for
+ * the other simple pillars, since neither has a report-only or Reporting
+ * API mechanism to learn from.
+ *
+ * Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the only
+ * two pillars in this group with a browser-native report-only + Reporting
+ * API delivery mechanism (Chromium only), so their tabs render a richer
+ * per-surface mode selector (Disabled / Report-Only / Enforce) in place of
+ * the plain enabled checkbox, plus a Report-Only Evidence table below --
+ * same Table_Query sort/filter/pagination conventions as the CSP Violations
+ * tab -- showing what's actually been observed for that surface.
  *
  * Rendered by Admin_UI::render_cross_origin().
  */
@@ -18,6 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Admin\Table_Query;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
@@ -25,30 +35,40 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 
 global $wpdb;
 
+$mode_options = array(
+	'disabled'    => __( 'Disabled -- header not sent', 'security-automation-manager' ),
+	'report-only' => __( 'Report-Only -- observe without blocking', 'security-automation-manager' ),
+	'enforce'     => __( 'Enforce -- header sent and blocking', 'security-automation-manager' ),
+);
+
 $tabs = array(
 	'coep'  => array(
-		'label'         => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
-		'pillar_key'    => Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
-		'header_name'   => 'Cross-Origin-Embedder-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'security-automation-manager' ) . '</p>',
-		'value_options' => array(
+		'label'          => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+		'pillar_key'     => Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
+		'header_name'    => 'Cross-Origin-Embedder-Policy',
+		'intro_html'     => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'security-automation-manager' ) . '</p>',
+		'value_options'  => array(
 			'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'security-automation-manager' ),
 			'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'security-automation-manager' ),
 			'require-corp'   => __( 'require-corp -- every cross-origin resource must explicitly opt in, or it is blocked', 'security-automation-manager' ),
 		),
-		'warning_html'  => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Enabling this carelessly silently breaks unrelated page content rather than producing an obvious error. Do not enable this unless this site specifically needs cross-origin isolation.', 'security-automation-manager' ) . '</p>',
+		'warning_html'   => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Start with Report-Only to see what would actually break before enforcing.', 'security-automation-manager' ) . '</p>',
+		'supports_mode'  => true,
+		'mode_extractor' => array( Cross_Origin_Embedder_Policy_Builder::class, 'extract_mode' ),
 	),
 	'coop'  => array(
-		'label'         => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
-		'pillar_key'    => Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
-		'header_name'   => 'Cross-Origin-Opener-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'security-automation-manager' ) . '</p>',
-		'value_options' => array(
+		'label'          => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+		'pillar_key'     => Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
+		'header_name'    => 'Cross-Origin-Opener-Policy',
+		'intro_html'     => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'security-automation-manager' ) . '</p>',
+		'value_options'  => array(
 			'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'security-automation-manager' ),
 			'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'security-automation-manager' ),
 			'same-origin'              => __( 'same-origin -- full isolation', 'security-automation-manager' ),
 		),
-		'warning_html'  => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. If this site uses any of those, start with "same-origin-allow-popups" instead, which keeps isolation for this site\'s own top-level navigation while still letting a popup hold a restricted opener reference back.', 'security-automation-manager' ) . '</p>',
+		'warning_html'   => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. Start with Report-Only to see what would actually break before enforcing.', 'security-automation-manager' ) . '</p>',
+		'supports_mode'  => true,
+		'mode_extractor' => array( Cross_Origin_Opener_Policy_Builder::class, 'extract_mode' ),
 	),
 	'corp'  => array(
 		'label'         => __( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
@@ -61,6 +81,7 @@ $tabs = array(
 			'cross-origin' => __( 'cross-origin -- allow any origin', 'security-automation-manager' ),
 		),
 		'warning_html'  => '',
+		'supports_mode' => false,
 	),
 	'xpcdp' => array(
 		'label'         => __( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
@@ -74,6 +95,7 @@ $tabs = array(
 			'all'             => __( 'all -- any policy file, anywhere', 'security-automation-manager' ),
 		),
 		'warning_html'  => '',
+		'supports_mode' => false,
 	),
 );
 
@@ -102,6 +124,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	$profiles_by_surface[ $row['surface'] ] = array(
 		'enabled' => ! empty( $row['enabled'] ),
 		'value'   => is_array( $payload ) ? (string) ( $payload['value'] ?? '' ) : '',
+		'mode'    => $active['supports_mode'] ? call_user_func( $active['mode_extractor'], $row ) : '',
 	);
 }
 ?>
@@ -132,7 +155,11 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		<thead>
 			<tr>
 				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
+				<?php if ( $active['supports_mode'] ) : ?>
+					<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
+				<?php else : ?>
+					<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
+				<?php endif; ?>
 				<th><?php esc_html_e( 'Value', 'security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
@@ -142,19 +169,36 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 				$current = $profiles_by_surface[ $surface ] ?? array(
 					'enabled' => false,
 					'value'   => '',
+					'mode'    => 'enforce',
 				);
 				?>
 				<tr>
 					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
-						<input
-							type="checkbox"
-							class="wp-sam-pillar-enabled"
-							data-pillar="<?php echo esc_attr( $active['pillar_key'] ); ?>"
-							data-surface="<?php echo esc_attr( $surface ); ?>"
-							<?php checked( $current['enabled'] ); ?>
-						/>
-					</td>
+					<?php if ( $active['supports_mode'] ) : ?>
+						<td>
+							<select
+								class="wp-sam-pillar-mode"
+								data-pillar="<?php echo esc_attr( $active['pillar_key'] ); ?>"
+								data-surface="<?php echo esc_attr( $surface ); ?>"
+							>
+								<?php foreach ( $mode_options as $mode_value => $mode_label ) : ?>
+									<option value="<?php echo esc_attr( $mode_value ); ?>" <?php selected( $current['enabled'] ? $current['mode'] : 'disabled', $mode_value ); ?>>
+										<?php echo esc_html( $mode_label ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					<?php else : ?>
+						<td>
+							<input
+								type="checkbox"
+								class="wp-sam-pillar-enabled"
+								data-pillar="<?php echo esc_attr( $active['pillar_key'] ); ?>"
+								data-surface="<?php echo esc_attr( $surface ); ?>"
+								<?php checked( $current['enabled'] ); ?>
+							/>
+						</td>
+					<?php endif; ?>
 					<td>
 						<select
 							class="wp-sam-pillar-value"
@@ -173,6 +217,240 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		</tbody>
 	</table>
 
+	<?php if ( $active['supports_mode'] ) : ?>
+	<p class="description" style="margin-top: 1em;">
+		<?php
+		echo wp_kses_post(
+			sprintf(
+			/* translators: %s: HTTP header name, e.g. "Cross-Origin-Opener-Policy" */
+				__( 'Report-Only sends %s-Report-Only and records what would have been blocked below, without blocking anything. Promoting a surface to Enforce is always a deliberate, manual choice -- nothing here is auto-promoted.', 'security-automation-manager' ),
+				'<code>' . esc_html( $active['header_name'] ) . '</code>'
+			)
+		);
+		?>
+	</p>
+
+		<?php
+		// ── Report-Only Evidence ─────────────────────────────────────────────
+		$per_page = 20;
+
+		$e_surface   = Table_Query::text_param( 'e_surface' );
+		$e_type      = Table_Query::text_param( 'e_type' );
+		$e_occ_min   = Table_Query::int_param( 'e_occ_min' );
+		$e_seen_from = Table_Query::text_param( 'e_seen_from' );
+		$e_seen_to   = Table_Query::text_param( 'e_seen_to' );
+
+		$evid_where = array( 'pillar = %s' );
+		$evid_args  = array( $active['pillar_key'] );
+		foreach (
+		array(
+			Table_Query::equals_where( 'surface', $e_surface ),
+			Table_Query::like_where( $wpdb, 'report_type', $e_type ),
+			Table_Query::numeric_gte_where( 'occurrence_count', $e_occ_min ),
+			Table_Query::date_range_where( 'last_seen_at', $e_seen_from, $e_seen_to ),
+		) as $evid_fragment
+		) {
+			if ( null === $evid_fragment ) {
+				continue;
+			}
+			$evid_where[] = $evid_fragment['sql'];
+			array_push( $evid_args, ...$evid_fragment['args'] );
+		}
+		$evid_where_sql = implode( ' AND ', $evid_where );
+
+		$evid_sort_whitelist = array(
+			'surface'     => array(
+				'expr'        => 'surface',
+				'default_dir' => 'asc',
+			),
+			'type'        => array(
+				'expr'        => 'report_type',
+				'default_dir' => 'asc',
+			),
+			'disposition' => array(
+				'expr'        => 'disposition',
+				'default_dir' => 'asc',
+			),
+			'occurrences' => array(
+				'expr'        => 'occurrence_count',
+				'default_dir' => 'desc',
+			),
+			'first_seen'  => array(
+				'expr'        => 'first_seen_at',
+				'default_dir' => 'desc',
+			),
+			'last_seen'   => array(
+				'expr'        => 'last_seen_at',
+				'default_dir' => 'desc',
+			),
+		);
+		$evid_sort           = Table_Query::resolve_sort(
+			$evid_sort_whitelist,
+			'last_seen',
+			isset( $_GET['esort'] ) ? sanitize_text_field( wp_unslash( $_GET['esort'] ) ) : null, // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			isset( $_GET['edir'] ) ? sanitize_text_field( wp_unslash( $_GET['edir'] ) ) : null // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		);
+
+		$evid_state_args = array_filter(
+			array(
+				'tab'         => $tab,
+				'esort'       => $evid_sort['key'],
+				'edir'        => strtolower( $evid_sort['dir'] ),
+				'e_surface'   => $e_surface,
+				'e_type'      => $e_type,
+				'e_occ_min'   => $e_occ_min,
+				'e_seen_from' => $e_seen_from,
+				'e_seen_to'   => $e_seen_to,
+			)
+		);
+
+		$evid_count_sql = "SELECT COUNT(*) FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE {$evid_where_sql}";
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$evid_count_sql = $wpdb->prepare( $evid_count_sql, ...$evid_args );
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$evid_total = (int) $wpdb->get_var( $evid_count_sql );
+
+		$evid_pages    = max( 1, (int) ceil( $evid_total / $per_page ) );
+		$evid_page_num = min( max( 1, (int) ( isset( $_GET['e_paged'] ) ? $_GET['e_paged'] : 1 ) ), $evid_pages );
+		$evid_offset   = ( $evid_page_num - 1 ) * $per_page;
+
+		$evid_data_args = array_merge( $evid_args, array( $per_page, $evid_offset ) );
+		$evid_data_sql  = "SELECT * FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE {$evid_where_sql} " . Table_Query::order_by_sql( $evid_sort ) . ' LIMIT %d OFFSET %d';
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$evid_data_sql = $wpdb->prepare( $evid_data_sql, ...$evid_data_args );
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$evidence_raw = $wpdb->get_results( $evid_data_sql, ARRAY_A );
+		$evidence     = ! empty( $evidence_raw ) ? $evidence_raw : array();
+
+		// Simple at-a-glance signal, same spirit as CSP's promotion gate -- purely
+		// informational, never blocking or auto-triggering a mode change.
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$evid_recent_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE pillar = %s AND last_seen_at >= %s",
+				$active['pillar_key'],
+				gmdate( 'Y-m-d H:i:s', time() - ( 7 * DAY_IN_SECONDS ) )
+			)
+		);
+		?>
+
+	<h2><?php esc_html_e( 'Report-Only Evidence', 'security-automation-manager' ); ?></h2>
+	<p>
+		<?php
+		if ( $evid_recent_count > 0 ) {
+			echo esc_html(
+				sprintf(
+					/* translators: %d: number of distinct violation fingerprints */
+					_n(
+						'%d distinct violation in the last 7 days.',
+						'%d distinct violations in the last 7 days.',
+						$evid_recent_count,
+						'security-automation-manager'
+					),
+					$evid_recent_count
+				)
+			);
+		} else {
+			esc_html_e( 'No violations in the last 7 days.', 'security-automation-manager' );
+		}
+		?>
+	</p>
+
+	<details class="wp-sam-filter-form">
+		<summary><?php esc_html_e( 'Filters', 'security-automation-manager' ); ?></summary>
+		<form method="get" action="">
+			<input type="hidden" name="page" value="security-automation-manager-cross-origin" />
+			<input type="hidden" name="tab" value="<?php echo esc_attr( $tab ); ?>" />
+			<label>
+				<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
+				<select name="e_surface">
+					<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
+					<?php foreach ( $surfaces as $s ) : ?>
+					<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $e_surface, $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<?php esc_html_e( 'Report type contains', 'security-automation-manager' ); ?>
+				<input type="text" name="e_type" value="<?php echo esc_attr( $e_type ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Occurrences at least', 'security-automation-manager' ); ?>
+				<input type="number" min="0" name="e_occ_min" style="width:80px" value="<?php echo esc_attr( null !== $e_occ_min ? (string) $e_occ_min : '' ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'Last seen from', 'security-automation-manager' ); ?>
+				<input type="datetime-local" name="e_seen_from" value="<?php echo esc_attr( $e_seen_from ); ?>" />
+			</label>
+			<label>
+				<?php esc_html_e( 'to', 'security-automation-manager' ); ?>
+				<input type="datetime-local" name="e_seen_to" value="<?php echo esc_attr( $e_seen_to ); ?>" />
+			</label>
+			<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_evidence', false ); ?>
+		</form>
+	</details>
+
+	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<thead>
+			<tr>
+				<?php
+				echo Table_Query::sort_header( __( 'Surface', 'security-automation-manager' ), 'surface', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+				echo Table_Query::sort_header( __( 'Report Type', 'security-automation-manager' ), 'type', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Disposition', 'security-automation-manager' ), 'disposition', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Occurrences', 'security-automation-manager' ), 'occurrences', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'First Seen', 'security-automation-manager' ), 'first_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Last Seen', 'security-automation-manager' ), 'last_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				?>
+				<th><?php esc_html_e( 'Details', 'security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+		<?php foreach ( $evidence as $e ) : ?>
+		<tr>
+			<td><?php echo esc_html( ucfirst( (string) $e['surface'] ) ); ?></td>
+			<td><code><?php echo esc_html( (string) $e['report_type'] ); ?></code></td>
+			<td><?php echo esc_html( (string) $e['disposition'] ); ?></td>
+			<td><?php echo esc_html( number_format( (int) $e['occurrence_count'] ) ); ?></td>
+			<td><?php echo esc_html( (string) $e['first_seen_at'] ); ?></td>
+			<td><?php echo esc_html( (string) $e['last_seen_at'] ); ?></td>
+			<td>
+				<?php
+				$e_detail    = json_decode( (string) $e['detail'], true );
+				$meta_fields = is_array( $e_detail ) ? $e_detail : array();
+				$has_meta    = ! empty( $meta_fields );
+				?>
+				<?php if ( $has_meta ) : ?>
+				<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+					<span class="wp-sam-meta-popover" role="tooltip">
+						<?php foreach ( $meta_fields as $meta_label => $meta_value ) : ?>
+						<div class="wp-sam-meta-row">
+							<strong><?php echo esc_html( (string) $meta_label ); ?>:</strong>
+							<code><?php echo esc_html( is_scalar( $meta_value ) ? (string) $meta_value : wp_json_encode( $meta_value ) ); ?></code>
+						</div>
+						<?php endforeach; ?>
+					</span>
+				</span>
+				<?php else : ?>
+				<span class="dashicons dashicons-info-outline wp-sam-meta-icon wp-sam-meta-icon--empty" title="<?php esc_attr_e( 'No metadata captured for this report', 'security-automation-manager' ); ?>"></span>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<?php endforeach; ?>
+		<?php if ( empty( $evidence ) ) : ?>
+		<tr>
+			<td colspan="7">
+				<p><?php esc_html_e( 'No report-only evidence recorded yet.', 'security-automation-manager' ); ?></p>
+				<p><?php esc_html_e( 'Set a surface above to Report-Only, then browse the live site with a Chromium-based browser -- only Chromium currently sends these reports. Evidence appears here as violations are observed.', 'security-automation-manager' ); ?></p>
+			</td>
+		</tr>
+		<?php endif; ?>
+		</tbody>
+	</table>
+
+		<?php echo Table_Query::pagination( $evid_page_num, $evid_pages, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+
+	<?php else : ?>
 	<p class="description" style="margin-top: 1em;">
 		<?php
 		echo wp_kses_post(
@@ -184,4 +462,5 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		);
 		?>
 	</p>
+	<?php endif; ?>
 </div>
