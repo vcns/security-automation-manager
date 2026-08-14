@@ -874,12 +874,17 @@ class Admin_UI {
 		$surface = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
 		$enabled = ! empty( $_POST['enabled'] );
 		$value   = sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) );
+		// Only COOP/COEP currently have a mode concept (disabled/report-only/
+		// enforce); every other pillar leaves this unset and the payload never
+		// gains a 'mode' key, so their behaviour is completely unchanged.
+		$mode = sanitize_text_field( wp_unslash( $_POST['mode'] ?? '' ) );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
 		}
 
 		$sanitized_value = '';
+		$sanitized_mode  = '';
 		switch ( $pillar ) {
 			case X_Content_Type_Options_Builder::PILLAR_KEY:
 				// No configurable value -- nosniff is the only defined value.
@@ -927,12 +932,24 @@ class Admin_UI {
 				if ( $enabled && '' === $sanitized_value ) {
 					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy value.', 'security-automation-manager' ) ) );
 				}
+				if ( '' !== $mode ) {
+					$sanitized_mode = Cross_Origin_Opener_Policy_Builder::sanitize_mode( $mode );
+					if ( '' === $sanitized_mode ) {
+						wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy mode.', 'security-automation-manager' ) ) );
+					}
+				}
 				break;
 
 			case Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY:
 				$sanitized_value = Cross_Origin_Embedder_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
 					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy value.', 'security-automation-manager' ) ) );
+				}
+				if ( '' !== $mode ) {
+					$sanitized_mode = Cross_Origin_Embedder_Policy_Builder::sanitize_mode( $mode );
+					if ( '' === $sanitized_mode ) {
+						wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy mode.', 'security-automation-manager' ) ) );
+					}
 				}
 				break;
 
@@ -941,9 +958,13 @@ class Admin_UI {
 		}
 
 		global $wpdb;
-		$table   = $wpdb->prefix . 'sam_pillar_profiles';
-		$now     = current_time( 'mysql', true );
-		$payload = wp_json_encode( array( 'value' => $sanitized_value ) );
+		$table        = $wpdb->prefix . 'sam_pillar_profiles';
+		$now          = current_time( 'mysql', true );
+		$payload_data = array( 'value' => $sanitized_value );
+		if ( '' !== $sanitized_mode ) {
+			$payload_data['mode'] = $sanitized_mode;
+		}
+		$payload = wp_json_encode( $payload_data );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query(

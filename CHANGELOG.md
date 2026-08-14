@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.29] - 2026-08-14
+
+### Added
+
+- Stage 2 of the Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy report-only learning workflow (see 2.4.24's stage 1 backend plumbing): `Cross_Origin_Opener_Policy_Builder` and `Cross_Origin_Embedder_Policy_Builder` gain a `mode` (`disabled` / `report-only` / `enforce`) alongside their existing `value`, stored in the same `sam_pillar_profiles.payload` JSON. `report-only` emits the `-Report-Only` variant of the header plus the shared `Reporting-Endpoints`/`Report-To` headers (unconditionally -- unlike CSP, COOP/COEP have no `report-uri` fallback, so the Reporting API is the only delivery mechanism); `enforce` emits the real header as before. A profile with no `mode` key (every profile that predates this change) defaults to `enforce`, preserving existing behaviour exactly -- nothing that was already enforcing silently switches to report-only or stops emitting on upgrade.
+- The shared `wp_sam_set_pillar_value` AJAX handler accepts an optional `mode` field, validated per-pillar and gated to COOP/COEP only; every other pillar's payload is completely unaffected since the field is simply never sent for them.
+- No admin-facing UI yet for setting `mode` -- that ships in stage 3, a dedicated view per pillar with an evidence table (replacing the plain enabled-checkbox picker these two currently share with every other simple pillar).
+
 ## [2.4.28] - 2026-08-14
 
 ### Fixed
