@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.27
+Stable tag: 2.4.28
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.28 =
+
+* Fixes two bugs that could leave `script-src-elem` and `style-src-elem` weaker than intended even though `script-src`/`style-src` looked correctly configured: `strict-dynamic` was only ever added to `script-src`, and approved inline-script/style hashes were only ever added to `script-src`/`style-src` -- never to their `-elem` counterparts. Per the CSP spec, once a policy explicitly sets `script-src-elem`/`style-src-elem` (this plugin always does), browsers use it exclusively for `<script>`/`<style>` element checks and never fall back to the base directive. In practice this meant a same-origin script inserted dynamically by trusted code (e.g. WordPress core's own password-strength-meter loader on the login page) could still be blocked despite strict-dynamic being enabled, and an administrator approving an inline script/style hash from the violations review queue could see it have no effect at all. Both now propagate to the matching `-elem` directive alongside the base one.
 
 = 2.4.27 =
 

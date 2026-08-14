@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.28] - 2026-08-14
+
+### Fixed
+
+- `Policy_Builder::build_policy_string()` added `'strict-dynamic'` only to `script-src`, never to `script-src-elem`. `script-src-elem` is always explicitly present in every profile's directives (see `default_directives()`), and per CSP3, once an `-elem` directive is explicitly set it has exclusive authority over element-level checks -- the base directive is never consulted as a fallback for those checks. This meant a strict-dynamic profile still blocked same-origin scripts dynamically inserted by already-trusted code, e.g. WordPress core's own `zxcvbn-async.js` password-strength-meter loader on `wp-login.php`, which injects `<script src="zxcvbn.min.js">` via JavaScript with no nonce. `strict-dynamic` (and the accompanying host-allowlist suppression, since browsers ignore host sources once strict-dynamic is present) now applies to both `script-src` and `script-src-elem`.
+- Approved inline-script/style hashes from `csp_hash_inventory` were appended only to `script-src`/`style-src` -- the literal directive names `Hash_Manager` stores captured hashes under -- never to `script-src-elem`/`style-src-elem`. Since those `-elem` directives are always explicitly present and take the same CSP3 exclusive-authority precedence described above, an administrator approving an inline script or style block from the violations review queue could see the approval have no actual effect: the hash landed in a directive the browser never consults for `<script>`/`<style>` element checks. Approved hashes now propagate to both the base directive and its `-elem` counterpart, mirroring how nonce injection already handles both.
+
 ## [2.4.27] - 2026-08-14
 
 ### Fixed

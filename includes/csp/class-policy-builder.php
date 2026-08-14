@@ -7,13 +7,19 @@
  *   - All 18 directives emitted; empty directives still included to close
  *     implicit fallback to default-src.
  *   - Nonce injected from Nonce_Manager at request time.
- *   - Approved hashes from csp_hash_inventory appended to script-src / style-src.
+ *   - Approved hashes from csp_hash_inventory appended to script-src / style-src
+ *     AND their -elem counterpart, since script-src-elem / style-src-elem are
+ *     always explicitly present and take exclusive authority over element-level
+ *     checks once set (CSP3) -- a hash added only to the base directive would
+ *     never actually apply.
  *   - Approved hosts from csp_source_inventory appended per directive.
  *   - report-uri appended automatically for direct browser reporting.
  *   - Reporting API headers and the report-to directive are optional because direct
  *     report-uri delivery gives administrators faster learning feedback.
- *   - 'strict-dynamic' added to script-src when profile enables it.
- *     When active, approved host sources are suppressed from script-src — browsers
+ *   - 'strict-dynamic' added to both script-src and script-src-elem when the
+ *     profile enables it (same exclusive-authority reasoning as above -- script-src
+ *     alone never reaches element-level enforcement once script-src-elem is set).
+ *     When active, approved host sources are suppressed from both -- browsers
  *     silently ignore host allowlists when strict-dynamic is present (CSP3 §8.2),
  *     so including them is misleading noise.
  *   - FORBIDDEN_DIRECTIVES (deprecated/removed by W3C) are stripped from any
@@ -181,23 +187,41 @@ class Policy_Builder extends Header_Builder {
 			}
 		}
 
-		// Append approved hashes from inventory.
+		// Append approved hashes from inventory. Applied to both the base directive
+		// and its -elem counterpart (mirrors the nonce injection above): script-src-elem
+		// and style-src-elem are always explicitly present (see default_directives()),
+		// and per CSP3, once an -elem directive is explicitly set it has exclusive
+		// authority over element-level checks -- the base directive is never
+		// consulted as a fallback. A hash recorded only under the base directive
+		// (Hash_Manager stores 'script-src'/'style-src') would therefore never
+		// actually allow the inline block it was approved for.
 		$hashes = $this->load_approved_hashes( $surface );
 		foreach ( $hashes as $hash ) {
-			$dir = $hash['directive'];
-			if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
-				$directives[ $dir ][] = "'{$hash['hash_algo']}-{$hash['hash_value']}'";
+			$hash_token = "'{$hash['hash_algo']}-{$hash['hash_value']}'";
+			foreach ( array( $hash['directive'], $hash['directive'] . '-elem' ) as $dir ) {
+				if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
+					$directives[ $dir ][] = $hash_token;
+				}
 			}
 		}
 
-		// When strict-dynamic is active, host-based allowlists in script-src are silently
-		// ignored by browsers (CSP3 §8.2). Suppress them to avoid misleading noise.
+		// When strict-dynamic is active, host-based allowlists in script-src(-elem) are
+		// silently ignored by browsers (CSP3 §8.2). Suppress them to avoid misleading
+		// noise. strict-dynamic must be added to script-src-elem as well as script-src:
+		// script-src-elem is always explicitly present (see default_directives()), and
+		// once it's set it has exclusive authority over <script> element checks -- a
+		// strict-dynamic on script-src alone never reaches element-level enforcement,
+		// so dynamically-inserted same-origin scripts (e.g. WP core's own
+		// zxcvbn-async.js password-strength loader) are blocked even with
+		// strict-dynamic "enabled".
 		$skip_host_sources_for = array();
 		if ( ! empty( $profile['strict_dynamic'] ) && $this->gate->is_allowed( 'strict_dynamic' ) ) {
-			if ( isset( $directives['script-src'] ) && ! in_array( "'strict-dynamic'", $directives['script-src'], true ) ) {
-				$directives['script-src'][] = "'strict-dynamic'";
+			foreach ( array( 'script-src', 'script-src-elem' ) as $dir ) {
+				if ( isset( $directives[ $dir ] ) && ! in_array( "'strict-dynamic'", $directives[ $dir ], true ) ) {
+					$directives[ $dir ][] = "'strict-dynamic'";
+				}
+				$skip_host_sources_for[] = $dir;
 			}
-			$skip_host_sources_for[] = 'script-src';
 		}
 
 		// Append approved source hosts from inventory.
