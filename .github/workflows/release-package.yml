@@ -309,16 +309,26 @@ jobs:
           FEED_DIR="/tmp/pages"
           LAST_UPDATED="$(date -u +%Y-%m-%d)"
 
+          # vcns/wp-updates is a stateless overwrite feed, not an archive: its own
+          # TEMPLATE/ convention (see that repo's README) publishes exactly one
+          # <slug>-latest.zip per product, overwritten on every release -- no
+          # per-version copies kept there (those already exist as GitHub Release
+          # assets on this repo). Matching that filename exactly (no "-github-"
+          # infix, needed on the Release page to disambiguate from the
+          # WordPress.org-channel asset, but redundant here since this feed only
+          # ever serves the GitHub channel) is what lets this product's folder
+          # look like every other product onboarded via that TEMPLATE.
+          LATEST_ZIP_FILENAME="security-automation-manager-latest.zip"
+
           mkdir -p "${FEED_DIR}"
-          cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/${GITHUB_ZIP_FILENAME}"
-          cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/security-automation-manager-github-latest.zip"
-          SHA256="$(sha256sum "${FEED_DIR}/${GITHUB_ZIP_FILENAME}" | awk '{print $1}')"
+          cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/${LATEST_ZIP_FILENAME}"
+          SHA256="$(sha256sum "${FEED_DIR}/${LATEST_ZIP_FILENAME}" | awk '{print $1}')"
 
           python3 - <<PY
           import json
           version = "${VERSION}"
           last_updated = "${LAST_UPDATED}"
-          zip_name = "${GITHUB_ZIP_FILENAME}"
+          zip_name = "${LATEST_ZIP_FILENAME}"
           sha256 = "${SHA256}"
           update_url = "https://vcns.github.io/wp-updates/security-automation-manager/" + zip_name
           data = {
@@ -341,21 +351,36 @@ jobs:
           }
           with open("${FEED_DIR}/update.json", "w", encoding="utf-8") as handle:
               json.dump(data, handle, indent=2)
+          # Mirrors vcns/wp-updates' own TEMPLATE/index.html styling, so this
+          # product's page looks like every other one onboarded via that
+          # template rather than a one-off.
           html = f"""<!doctype html>
-          <html lang="en">
+          <html lang='en'>
           <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width,initial-scale=1'>
             <title>Security Automation Manager Updates</title>
+            <style>
+              body{{font-family:system-ui,sans-serif;max-width:640px;margin:60px auto;padding:0 20px;color:#333;line-height:1.6}}
+              h1{{color:#2D2C94;margin-bottom:4px}}
+              .meta{{color:#555;margin-bottom:24px}}
+              a{{color:#2D2C94}}
+              code{{background:#f5f5f5;padding:2px 6px;border-radius:4px;font-size:.9em;word-break:break-all}}
+              .btn{{display:inline-block;background:#2D2C94;color:#fff;padding:9px 20px;border-radius:6px;text-decoration:none;margin-right:8px;font-weight:600}}
+              hr{{margin:32px 0;border:none;border-top:1px solid #eee}}
+            </style>
           </head>
           <body>
+            <p><a href='../'>&larr; All products</a></p>
             <h1>Security Automation Manager</h1>
-            <p>Latest GitHub-channel release: <strong>{version}</strong> ({last_updated})</p>
-            <ul>
-              <li><a href="{zip_name}">Download GitHub-channel ZIP</a></li>
-              <li><a href="security-automation-manager-github-latest.zip">Latest ZIP alias</a></li>
-              <li><a href="update.json">Update manifest</a></li>
-            </ul>
+            <p class='meta'>Latest: <strong>{version}</strong> &mdash; {last_updated}</p>
+            <p>
+              <a class='btn' href='{zip_name}'>Download ZIP</a>
+              <a href='update.json'>update.json</a>
+            </p>
+            <hr>
+            <p>WordPress update endpoint for <strong>Security Automation Manager</strong> (GitHub-channel installs only).</p>
+            <p>Update URL: <code>{update_url}</code></p>
           </body>
           </html>
           """
