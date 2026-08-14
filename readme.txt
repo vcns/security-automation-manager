@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.26
+Stable tag: 2.4.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.27 =
+
+* Fixes a bug where a genuinely new violation only ever got one chance to become a reviewable source proposal -- the exact moment its violation-report fingerprint was first ever recorded. If the learning window happened to be closed at that one moment, the source never surfaced in For Review again, even though it kept violating on every subsequent visit. Every report now gets a fresh chance, without re-proposing (or re-logging) a source that already has an inventory entry.
 
 = 2.4.26 =
 

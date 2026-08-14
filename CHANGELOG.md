@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.27] - 2026-08-14
+
+### Fixed
+
+- `Violation_Reporter::learn_source_from_report()` was only ever invoked when a violation report happened to be its fingerprint's very first `INSERT` into `csp_violation_reports` -- every later occurrence of the same violation took the `ON DUPLICATE KEY UPDATE` path and never attempted to propose a source again. `Policy_Change_Manager::propose_source()` is itself idempotent (it looks up any existing `csp_source_inventory` row and refreshes evidence rather than duplicating, and separately respects a prior administrator rejection via `is_suppressed()`), so this one-shot gate was never necessary for correctness -- it just meant a source whose first-ever occurrence landed while the learning window was closed (or for any other transient reason) never got a second chance, and kept violating in production with zero path back into the review queue. Source learning is now attempted on every report, gated instead on whether `csp_source_inventory` already has a row for that `(surface, directive, host)` -- closing the gap while still avoiding redundant queries and, for an already-rejected source, repeated audit-log entries on every duplicate report.
+
 ## [2.4.26] - 2026-08-14
 
 ### Changed
