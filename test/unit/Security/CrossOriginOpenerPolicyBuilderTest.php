@@ -54,4 +54,56 @@ class CrossOriginOpenerPolicyBuilderTest extends TestCase {
 		$profile = array( 'payload' => 'not json' );
 		$this->assertSame( '', Cross_Origin_Opener_Policy_Builder::extract_value( $profile ) );
 	}
+
+	// ── mode ──────────────────────────────────────────────────────────────────
+
+	/**
+	 * @dataProvider valid_mode_provider
+	 */
+	public function test_sanitize_mode_accepts_each_valid_mode( string $mode ): void {
+		$this->assertSame( $mode, Cross_Origin_Opener_Policy_Builder::sanitize_mode( $mode ) );
+	}
+
+	public static function valid_mode_provider(): array {
+		return array_map(
+			static fn ( string $mode ): array => array( $mode ),
+			Cross_Origin_Opener_Policy_Builder::VALID_MODES
+		);
+	}
+
+	public function test_sanitize_mode_is_case_insensitive(): void {
+		$this->assertSame( 'report-only', Cross_Origin_Opener_Policy_Builder::sanitize_mode( 'Report-Only' ) );
+	}
+
+	public function test_sanitize_mode_rejects_arbitrary_input(): void {
+		$this->assertSame( '', Cross_Origin_Opener_Policy_Builder::sanitize_mode( 'garbage' ) );
+	}
+
+	public function test_extract_mode_reads_payload_json(): void {
+		$profile = array( 'payload' => wp_json_encode( array( 'mode' => 'report-only' ) ) );
+		$this->assertSame( 'report-only', Cross_Origin_Opener_Policy_Builder::extract_mode( $profile ) );
+	}
+
+	public function test_extract_mode_defaults_to_enforce_when_key_missing(): void {
+		// Every profile that predates the mode field was, by definition,
+		// unconditionally enforcing whenever enabled -- an upgrade must not
+		// silently switch it to report-only or stop emitting the header.
+		$profile = array( 'payload' => wp_json_encode( array( 'value' => 'same-origin' ) ) );
+		$this->assertSame( 'enforce', Cross_Origin_Opener_Policy_Builder::extract_mode( $profile ) );
+	}
+
+	public function test_extract_mode_defaults_to_enforce_for_invalid_value(): void {
+		$profile = array( 'payload' => wp_json_encode( array( 'mode' => 'garbage' ) ) );
+		$this->assertSame( 'enforce', Cross_Origin_Opener_Policy_Builder::extract_mode( $profile ) );
+	}
+
+	public function test_extract_mode_defaults_to_enforce_for_invalid_json(): void {
+		$profile = array( 'payload' => 'not json' );
+		$this->assertSame( 'enforce', Cross_Origin_Opener_Policy_Builder::extract_mode( $profile ) );
+	}
+
+	public function test_extract_mode_returns_disabled_when_explicitly_set(): void {
+		$profile = array( 'payload' => wp_json_encode( array( 'mode' => 'disabled' ) ) );
+		$this->assertSame( 'disabled', Cross_Origin_Opener_Policy_Builder::extract_mode( $profile ) );
+	}
 }
