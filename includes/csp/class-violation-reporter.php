@@ -340,11 +340,10 @@ class Violation_Reporter {
 			)
 		);
 
-		// Only the first occurrence needs to create/refresh a source proposal; duplicate
-		// violation counts are now represented on the violation row itself.
-		if ( 1 === (int) $wpdb->rows_affected ) {
-			$this->learn_source_from_report( $r, $surface, $blocked_uri, $now );
-		}
+		// Attempted on every report, not just the fingerprint's first-ever INSERT --
+		// see learn_source_from_report()'s own docblock for why that one-shot gate
+		// was a real bug, not an optimisation.
+		$this->learn_source_from_report( $r, $surface, $blocked_uri, $now );
 	}
 
 	// ── Competing-header detection ───────────────────────────────────────────
@@ -423,6 +422,26 @@ class Violation_Reporter {
 		return $expected;
 	}
 
+	/**
+	 * Proposes (or refreshes) a source-inventory row for a violation, if the
+	 * learning window is open and this exact (surface, directive, host) has
+	 * never yet reached csp_source_inventory.
+	 *
+	 * Previously this was only ever attempted once per fingerprint -- on the
+	 * exact violation report that happened to be the very first INSERT into
+	 * csp_violation_reports. That one-shot design meant a source whose
+	 * first-ever occurrence landed while the learning window was closed (or
+	 * for any other transient reason propose_source() didn't run) never got
+	 * a second chance: every later occurrence of the same violation took the
+	 * UPDATE path in store_report() and this method was never called again --
+	 * the source just kept violating in production with no path back into
+	 * the review queue. Policy_Change_Manager::propose_source() is itself
+	 * idempotent (it looks up any existing row and refreshes evidence rather
+	 * than duplicating, and separately respects an administrator's prior
+	 * rejection via is_suppressed()), so the only reason to gate here at all
+	 * is to avoid a redundant query -- and, for an already-rejected source,
+	 * a fresh audit-log entry -- on every single duplicate report.
+	 */
 	private function learn_source_from_report( array $r, string $surface, string $blocked_uri, string $now ): void {
 		if ( null === $this->learning_window || ! $this->learning_window->is_open() ) {
 			return;
@@ -430,6 +449,10 @@ class Violation_Reporter {
 
 		$candidate = $this->source_candidate_from_report( $r, $blocked_uri );
 		if ( null === $candidate ) {
+			return;
+		}
+
+		if ( $this->has_existing_source_proposal( $surface, $candidate['directive'], $candidate['host'] ) ) {
 			return;
 		}
 
@@ -443,6 +466,22 @@ class Violation_Reporter {
 			'runtime-report',
 			$notes
 		);
+	}
+
+	private function has_existing_source_proposal( string $surface, string $directive, string $host ): bool {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_source_inventory';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE surface = %s AND directive = %s AND source_host = %s LIMIT 1",
+				$surface,
+				$directive,
+				$host
+			)
+		);
+
+		return ! empty( $id );
 	}
 
 	private function source_candidate_from_report( array $r, string $blocked_uri ): ?array {

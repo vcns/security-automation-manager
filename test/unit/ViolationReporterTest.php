@@ -331,6 +331,59 @@ class ViolationReporterTest extends TestCase {
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
 	}
 
+	/**
+	 * Regression test for the "one-shot" source-learning bug: previously,
+	 * only a violation report that happened to be the fingerprint's very
+	 * first INSERT ever attempted to propose a source. A report for an
+	 * already-existing violation fingerprint (simulated here via
+	 * _wpdb_query_result = 2, matching MySQL's own ON DUPLICATE KEY UPDATE
+	 * convention) must still be able to create a source proposal -- e.g. if
+	 * the learning window was closed the first time this exact violation
+	 * was ever seen, every later occurrence is the only remaining chance.
+	 */
+	public function test_report_endpoint_learning_still_creates_proposal_for_a_duplicate_violation_row(): void {
+		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
+		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		$GLOBALS['_wpdb_query_result']               = 2;
+
+		$reporter = new Violation_Reporter( $this->audit, new Learning_Window() );
+		$request  = $this->make_request(
+			'{"csp-report":{"effective-directive":"connect-src","violated-directive":"connect-src","document-uri":"https://example.com/","blocked-uri":"https://api.vendor.example/v1/ping"}}'
+		);
+
+		$reporter->handle( $request );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_inserted_rows'] );
+		$this->assertSame( 'api.vendor.example', $GLOBALS['_wpdb_inserted_rows'][0]['data']['source_host'] );
+	}
+
+	/**
+	 * The other half of the same fix: once a source has actually reached
+	 * csp_source_inventory (pending, approved, or rejected), repeat reports
+	 * for the same violation must not keep re-proposing it -- that would
+	 * spam the audit log with "previously rejected" entries for an
+	 * administrator-blocked source that keeps firing in production.
+	 */
+	public function test_report_endpoint_learning_skips_when_a_source_proposal_already_exists(): void {
+		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
+		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		// First get_var() call is the disposition-mismatch profile-mode lookup
+		// (null -> no profile found -> no mismatch check); the second is
+		// has_existing_source_proposal()'s own existence check.
+		$GLOBALS['_wpdb_get_var_queue'] = [ null, '7' ];
+
+		$reporter = new Violation_Reporter( $this->audit, new Learning_Window() );
+		$request  = $this->make_request(
+			'{"csp-report":{"effective-directive":"connect-src","violated-directive":"connect-src","document-uri":"https://example.com/","blocked-uri":"https://api.vendor.example/v1/ping"}}'
+		);
+
+		$reporter->handle( $request );
+
+		$this->assertCount( 0, $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
 	// ── Payload normalisation ─────────────────────────────────────────────────
 
 	public function test_normalise_csp_level3_payload(): void {
