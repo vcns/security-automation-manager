@@ -365,6 +365,129 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'cdn.example.com', $policy );
 	}
 
+	public function test_build_strict_dynamic_also_applies_to_script_src_elem(): void {
+		// script-src-elem is always explicitly present (see default_directives())
+		// and has exclusive authority over <script> element checks once set -- a
+		// strict-dynamic added only to script-src never reaches element-level
+		// enforcement, so a dynamically-inserted same-origin <script> (no nonce,
+		// e.g. WP core's own zxcvbn-async.js loader) would stay blocked even
+		// with strict-dynamic "enabled".
+		$this->gate->method( 'is_allowed' )->with( 'strict_dynamic' )->willReturn( true );
+
+		$profile = $this->make_profile(
+			[ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ],
+			strict_dynamic: true
+		);
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$parts             = explode( ';', $policy );
+		$script_src_elem   = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'script-src-elem' ) ) ) );
+		$this->assertStringContainsString( "'strict-dynamic'", $script_src_elem );
+	}
+
+	public function test_build_strict_dynamic_suppresses_host_sources_from_script_src_elem(): void {
+		$this->gate->method( 'is_allowed' )->with( 'strict_dynamic' )->willReturn( true );
+
+		$profile = $this->make_profile(
+			[ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ],
+			strict_dynamic: true
+		);
+
+		$builder = new class(
+			$this->gate,
+			[ [ 'directive' => 'script-src-elem', 'source_host' => 'cdn.example.com' ] ]
+		) extends Policy_Builder {
+			public function __construct( Feature_Gate $gate, private array $stub_sources ) {
+				parent::__construct( $gate );
+			}
+
+			protected function load_approved_sources( string $surface ): array {
+				return $this->stub_sources;
+			}
+		};
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "'strict-dynamic'", $policy );
+		$this->assertStringNotContainsString( 'cdn.example.com', $policy );
+	}
+
+	// ── approved hash propagation to -elem directives ─────────────────────────
+
+	public function test_build_applies_approved_hash_to_base_directive(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [] ] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'script-src', 'hash_algo' => 'sha256', 'hash_value' => 'abc123==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "'sha256-abc123=='", $policy );
+	}
+
+	public function test_build_propagates_approved_hash_to_elem_directive(): void {
+		// Hash_Manager records captured inline blocks under the base directive
+		// ('script-src' / 'style-src'). script-src-elem / style-src-elem are
+		// always explicitly present and take exclusive authority over
+		// element-level checks once set (CSP3) -- an approved hash that never
+		// reaches the -elem directive would silently fail to allow the inline
+		// block an admin just approved.
+		$profile = $this->make_profile( [
+			'default-src'     => [ "'none'" ],
+			'script-src'      => [],
+			'script-src-elem' => [],
+		] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'script-src', 'hash_algo' => 'sha256', 'hash_value' => 'abc123==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$parts           = explode( ';', $policy );
+		$script_src      = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'script-src ' ) ) ) );
+		$script_src_elem = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'script-src-elem' ) ) ) );
+
+		$this->assertStringContainsString( "'sha256-abc123=='", $script_src );
+		$this->assertStringContainsString( "'sha256-abc123=='", $script_src_elem );
+	}
+
+	public function test_build_propagates_approved_style_hash_to_style_src_elem(): void {
+		$profile = $this->make_profile( [
+			'default-src'    => [ "'none'" ],
+			'style-src'      => [],
+			'style-src-elem' => [],
+		] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'style-src', 'hash_algo' => 'sha256', 'hash_value' => 'def456==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$parts          = explode( ';', $policy );
+		$style_src_elem = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-elem' ) ) ) );
+
+		$this->assertStringContainsString( "'sha256-def456=='", $style_src_elem );
+	}
+
+	public function test_build_does_not_fail_when_elem_directive_absent(): void {
+		// A profile without an explicit script-src-elem (e.g. a custom override
+		// that only sets the base directive) must not error when propagating
+		// an approved hash -- the -elem write is simply skipped.
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [] ] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'script-src', 'hash_algo' => 'sha256', 'hash_value' => 'abc123==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "'sha256-abc123=='", $policy );
+	}
+
 	// ── object-src and base-uri hardening ────────────────────────────────────
 
 	public function test_build_includes_object_src_none(): void {
