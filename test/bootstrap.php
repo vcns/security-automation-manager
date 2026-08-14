@@ -15,7 +15,7 @@ declare( strict_types=1 );
 define( 'ABSPATH',               __DIR__ . '/' );
 define( 'WP_CONTENT_DIR',        __DIR__ . '/wp-content' );
 define( 'WPINC',                 'wp-includes' );
-define( 'WP_SAM_VERSION',        '2.4.29' );
+define( 'WP_SAM_VERSION',        '2.4.30' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -156,6 +156,16 @@ if ( ! function_exists( 'esc_attr' ) ) {
 if ( ! function_exists( 'esc_html' ) ) {
 	function esc_html( string $text ): string {
 		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'wp_kses_post' ) ) {
+	// Real wp_kses_post() strips to an allowed-tags subset; admin views only
+	// ever pass their own hardcoded intro/warning HTML through it, so an
+	// identity stub is sufficient here -- tests care whether the view
+	// renders without fataling, not about tag-stripping behaviour.
+	function wp_kses_post( string $html ): string {
+		return $html;
 	}
 }
 

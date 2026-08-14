@@ -258,6 +258,69 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Hash inventory', $output );
 	}
 
+	/**
+	 * Regression coverage for the same class of fatal test_scripts_external_tab_
+	 * renders_without_fatal() guards against, for the two tabs (COOP/COEP) that
+	 * gained a report-only mode selector and a Report-Only Evidence table --
+	 * new use of Table_Query and the mode_extractor static callables, in a file
+	 * that previously only rendered a plain enabled+value picker.
+	 */
+	public function test_cross_origin_coep_tab_renders_without_fatal(): void {
+		$_GET['tab'] = 'coep';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Cross-Origin-Embedder-Policy', $output );
+		$this->assertStringContainsString( 'Report-Only Evidence', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-mode', $output );
+	}
+
+	public function test_cross_origin_coop_tab_renders_without_fatal(): void {
+		$_GET['tab'] = 'coop';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Cross-Origin-Opener-Policy', $output );
+		$this->assertStringContainsString( 'Report-Only Evidence', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-mode', $output );
+	}
+
+	public function test_cross_origin_corp_tab_renders_without_fatal(): void {
+		$_GET['tab'] = 'corp';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Cross-Origin-Resource-Policy', $output );
+		$this->assertStringNotContainsString( 'Report-Only Evidence', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-enabled', $output );
+	}
+
+	public function test_cross_origin_xpcdp_tab_renders_without_fatal(): void {
+		$_GET['tab'] = 'xpcdp';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'X-Permitted-Cross-Domain-Policies', $output );
+		$this->assertStringNotContainsString( 'Report-Only Evidence', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-enabled', $output );
+	}
+
 	private function make_admin_ui(): Admin_UI {
 		$reflection = new ReflectionClass( Plugin::class );
 

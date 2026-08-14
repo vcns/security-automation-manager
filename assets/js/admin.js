@@ -238,10 +238,17 @@
 		const $row     = $control.closest( 'tr' );
 		const pillar   = $control.data( 'pillar' );
 		const surface  = $control.data( 'surface' );
-		const enabled  = $row.find( '.wp-sam-pillar-enabled' ).is( ':checked' );
+		const $mode    = $row.find( '.wp-sam-pillar-mode' );
+		const hasMode  = $mode.length > 0;
+		const mode     = hasMode ? ( $mode.val() || '' ) : '';
+		// Pillars with a mode selector (currently COOP/COEP) derive "enabled"
+		// from the mode instead of a separate checkbox -- the mode select
+		// replaces that checkbox entirely for those two.
+		const enabled  = hasMode ? ( 'disabled' !== mode ) : $row.find( '.wp-sam-pillar-enabled' ).is( ':checked' );
 		const value    = $row.find( '.wp-sam-pillar-value' ).val() || '';
+		const $fields  = $row.find( '.wp-sam-pillar-enabled, .wp-sam-pillar-value, .wp-sam-pillar-mode' );
 
-		$row.find( '.wp-sam-pillar-enabled, .wp-sam-pillar-value' ).prop( 'disabled', true );
+		$fields.prop( 'disabled', true );
 
 		$.post( wpSamAdmin.ajaxUrl, {
 			action:  'wp_sam_set_pillar_value',
@@ -250,6 +257,7 @@
 			surface: surface,
 			enabled: enabled ? '1' : '',
 			value:   value,
+			mode:    mode,
 		} )
 		.done( reportAjaxFailure )
 		.fail( function () {
@@ -257,11 +265,11 @@
 			alert( 'Failed to save.' );
 		} )
 		.always( function () {
-			$row.find( '.wp-sam-pillar-enabled, .wp-sam-pillar-value' ).prop( 'disabled', false );
+			$fields.prop( 'disabled', false );
 		} );
 	}
 
-	$( document ).on( 'change', '.wp-sam-pillar-enabled, .wp-sam-pillar-value', function () {
+	$( document ).on( 'change', '.wp-sam-pillar-enabled, .wp-sam-pillar-value, .wp-sam-pillar-mode', function () {
 		postPillarValue( $( this ) );
 	} );
 
