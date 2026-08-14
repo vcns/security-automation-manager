@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.23] - 2026-08-14
+
+### Changed
+
+- Moves the Update Channel page into the Overview page as a new "Updates" tab, replacing its own separate submenu entry. `Security Automation Manager > Update Channel` is now `Security Automation Manager > Overview > Updates`. No behavioural change to the content itself -- same diagnostics, same WordPress.org/GitHub-channel branching.
+
 ## [2.4.22] - 2026-08-14
 
 ### Fixed

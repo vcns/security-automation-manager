@@ -5,7 +5,8 @@
  * Registers a top-level "Security Automation Manager" menu. Submenu items are
  * ordered alphabetically by their left-nav label (not the list order below):
  *   - security-automation-manager                  – Overview: per-pillar status summary, plus
- *      Readiness (plugin-specific schema/runtime checks and reset) and About tabs
+ *      Readiness (plugin-specific schema/runtime checks and reset), Updates (installed version,
+ *      active build channel, manifest/checksum/applied-update status), and About tabs
  *   - security-automation-manager-dashboard         – CSP: surface profiles, source inventory,
  *      violations, scan history, and settings (promotion gates, learning window, cron schedule,
  *      notify email), all as tabs on one page
@@ -21,13 +22,14 @@
  *   - security-automation-manager-cross-origin      – Cross-Origin Policies: Cross-Origin-Resource-Policy,
  *      X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy,
  *      each a tab on one page (they previously each had their own separate submenu page)
- *   - security-automation-manager-update-channel    – Update Channel: installed version, active build
- *      channel, manifest/checksum/applied-update status. GitHub-channel diagnostics only ever render
- *      when WP_SAM_DISTRIBUTION_CHANNEL is 'github' -- a WordPress.org build shows its own simpler
- *      version/channel summary and never references the GitHub update service.
  *
  * Policy Audit (effective policy, decisions, provenance) is a tab on the CSP
- * page, not a separate top-level page -- it's CSP-specific content.
+ * page, not a separate top-level page -- it's CSP-specific content. Updates
+ * (installed version, active build channel, manifest/checksum/applied-update
+ * status) is a tab on the Overview page, not a separate submenu -- GitHub-channel
+ * diagnostics only ever render when WP_SAM_DISTRIBUTION_CHANNEL is 'github', a
+ * WordPress.org build shows its own simpler version/channel summary and never
+ * references the GitHub update service.
  *
  * All form submissions are protected by check_admin_referer() and
  * current_user_can('manage_options').
@@ -185,15 +187,6 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-scripts',
 			array( $this, 'render_scripts' )
-		);
-
-		add_submenu_page(
-			'security-automation-manager',
-			__( 'Update Channel', 'security-automation-manager' ),
-			__( 'Update Channel', 'security-automation-manager' ),
-			'manage_options',
-			'security-automation-manager-update-channel',
-			array( $this, 'render_update_channel' )
 		);
 
 		add_submenu_page(
@@ -385,7 +378,6 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-reverse-tabnabbing',
 			'security-automation-manager_page_security-automation-manager-scripts',
 			'security-automation-manager_page_security-automation-manager-cross-origin',
-			'security-automation-manager_page_security-automation-manager-update-channel',
 		);
 	}
 
@@ -522,13 +514,6 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-hsts.php';
-	}
-
-	public function render_update_channel(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
-		}
-		require WP_SAM_DIR . 'includes/admin/views/page-update-channel.php';
 	}
 
 	public function render_reverse_tabnabbing(): void {

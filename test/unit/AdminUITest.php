@@ -159,7 +159,6 @@ class AdminUITest extends TestCase {
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-hsts', $hooks );
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-reverse-tabnabbing', $hooks );
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-scripts', $hooks );
-		$this->assertContains( 'security-automation-manager_page_security-automation-manager-update-channel', $hooks );
 		$this->assertNotContains( 'security-automation-manager_page_security-automation-manager-policy-audit', $hooks );
 		foreach ( $hooks as $hook ) {
 			if ( 'toplevel_page_security-automation-manager' === $hook ) {
@@ -205,12 +204,19 @@ class AdminUITest extends TestCase {
 	 * one this issue's hard requirement is about: a WordPress.org build must never
 	 * display or use the GitHub update service, and this proves the view's early
 	 * channel branch actually withholds every GitHub-specific field rather than
-	 * just labeling the channel correctly.
+	 * just labeling the channel correctly. Update Channel is now the Updates tab
+	 * on the Overview page rather than its own submenu, so this renders
+	 * page-overview.php with tab=updates -- the real require() chain
+	 * Admin_UI::render_overview() actually uses.
 	 */
-	public function test_update_channel_view_omits_github_fields_on_wordpress_org_build(): void {
+	public function test_updates_tab_omits_github_fields_on_wordpress_org_build(): void {
+		$_GET['tab'] = 'updates';
+
 		ob_start();
-		require WP_SAM_DIR . 'includes/admin/views/page-update-channel.php';
+		require WP_SAM_DIR . 'includes/admin/views/page-overview.php';
 		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
 
 		$this->assertStringContainsString( WP_SAM_VERSION, $output );
 		$this->assertStringContainsString( 'WordPress.org', $output );

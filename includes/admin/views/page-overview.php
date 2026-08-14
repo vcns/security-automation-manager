@@ -1,9 +1,11 @@
 <?php
 /**
  * Admin view: Security Automation Manager overview.
- * Landing page for the top-level menu, with three tabs: Overview (per-pillar
+ * Landing page for the top-level menu, with four tabs: Overview (per-pillar
  * status summary, the default), Readiness (plugin-specific schema/runtime
- * checks and the data-reset flow -- previously its own submenu page), and
+ * checks and the data-reset flow -- previously its own submenu page),
+ * Updates (installed version, active build channel, manifest/checksum/
+ * applied-update diagnostics -- previously its own submenu page), and
  * About (who built this and why, with links to the public help site).
  * Rendered by Admin_UI::render_overview().
  *
@@ -18,7 +20,7 @@ global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'overview';
-$allowed_tabs = array( 'overview', 'readiness', 'about' );
+$allowed_tabs = array( 'overview', 'readiness', 'updates', 'about' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'overview';
 }
@@ -32,6 +34,10 @@ $tab_help = array(
 	'readiness' => array(
 		'label'       => __( 'Readiness', 'security-automation-manager' ),
 		'description' => __( 'Plugin-specific checks for schema, runtime defaults, reporting configuration, and reset readiness.', 'security-automation-manager' ),
+	),
+	'updates'   => array(
+		'label'       => __( 'Updates', 'security-automation-manager' ),
+		'description' => __( 'Installed version, active build channel, and (GitHub-channel builds only) manifest, checksum, and applied-update diagnostics.', 'security-automation-manager' ),
 	),
 	'about'     => array(
 		'label'       => __( 'About', 'security-automation-manager' ),
@@ -340,6 +346,157 @@ $status_badge = static function ( string $status ): void {
 		</table>
 		<?php submit_button( __( 'Reset CSP Data', 'security-automation-manager' ), 'delete' ); ?>
 	</form>
+
+	<?php elseif ( 'updates' === $tab ) : ?>
+
+		<?php
+		$is_github_channel = 'github' === WP_SAM_DISTRIBUTION_CHANNEL;
+		?>
+
+	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em; max-width: 760px;">
+		<tbody>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Installed version', 'security-automation-manager' ); ?></th>
+				<td><?php echo esc_html( WP_SAM_VERSION ); ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Build channel', 'security-automation-manager' ); ?></th>
+				<td>
+					<?php
+					if ( $is_github_channel ) {
+						esc_html_e( 'VCNS GitHub', 'security-automation-manager' );
+					} elseif ( 'wordpress-org' === WP_SAM_DISTRIBUTION_CHANNEL ) {
+						esc_html_e( 'WordPress.org', 'security-automation-manager' );
+					} else {
+						esc_html_e( 'Development or unknown', 'security-automation-manager' );
+					}
+					?>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+		<?php if ( ! $is_github_channel ) : ?>
+
+	<p class="description" style="max-width: 760px;">
+			<?php esc_html_e( 'This install updates through the WordPress.org plugin directory, the same mechanism as any other WordPress.org plugin. No custom updater runs in this build, and it never contacts any VCNS-operated update service.', 'security-automation-manager' ); ?>
+	</p>
+
+	<?php else : ?>
+
+		<?php
+		$updates_diagnostics = get_option( 'wp_sam_update_diagnostics', array() );
+		$updates_diagnostics = is_array( $updates_diagnostics ) ? $updates_diagnostics : array();
+
+		$updates_check_result_labels    = array(
+			'success'          => __( 'Valid', 'security-automation-manager' ),
+			'http_error'       => __( 'Failed -- could not reach the update endpoint', 'security-automation-manager' ),
+			'invalid_manifest' => __( 'Failed -- manifest rejected (slug, version, host, or checksum format invalid)', 'security-automation-manager' ),
+		);
+		$updates_checksum_result_labels = array(
+			'verified' => __( 'Verified', 'security-automation-manager' ),
+			'mismatch' => __( 'Failed -- downloaded package did not match the declared checksum', 'security-automation-manager' ),
+			'missing'  => __( 'Failed -- manifest did not declare a valid checksum', 'security-automation-manager' ),
+		);
+		$updates_applied_result_labels  = array(
+			'success' => __( 'Succeeded', 'security-automation-manager' ),
+			'failure' => __( 'Failed', 'security-automation-manager' ),
+		);
+
+		$updates_never             = __( 'Never', 'security-automation-manager' );
+		$updates_none_recorded     = __( 'None recorded', 'security-automation-manager' );
+		$updates_not_yet_attempted = __( 'Not yet attempted', 'security-automation-manager' );
+		$updates_no_update_applied = __( 'No update applied yet', 'security-automation-manager' );
+
+		$updates_kill_switch_defined = defined( 'WP_SAM_DISABLE_AUTO_UPDATE' );
+		$updates_kill_switch_engaged = $updates_kill_switch_defined && (bool) constant( 'WP_SAM_DISABLE_AUTO_UPDATE' );
+
+		$updates_available_version = (string) ( $updates_diagnostics['available_version'] ?? '' );
+		$updates_pending           = '' !== $updates_available_version && version_compare( WP_SAM_VERSION, $updates_available_version, '<' );
+		?>
+
+	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1.5em; max-width: 760px;">
+		<tbody>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Update manifest URL', 'security-automation-manager' ); ?></th>
+				<td><code><?php echo esc_html( defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ? WP_SAM_UPDATE_MANIFEST_URL : '' ); ?></code></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Available version', 'security-automation-manager' ); ?></th>
+				<td>
+					<?php if ( '' === $updates_available_version ) : ?>
+						<?php esc_html_e( 'Unknown -- no successful check yet', 'security-automation-manager' ); ?>
+					<?php elseif ( $updates_pending ) : ?>
+						<?php echo esc_html( $updates_available_version ); ?> <strong>(<?php esc_html_e( 'update available', 'security-automation-manager' ); ?>)</strong>
+					<?php else : ?>
+						<?php echo esc_html( $updates_available_version ); ?> (<?php esc_html_e( 'up to date', 'security-automation-manager' ); ?>)
+					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Last successful update check', 'security-automation-manager' ); ?></th>
+				<td><?php echo esc_html( (string) ( $updates_diagnostics['last_check_success_at'] ?? $updates_never ) ); ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Last failed update check', 'security-automation-manager' ); ?></th>
+				<td><?php echo esc_html( (string) ( $updates_diagnostics['last_check_failure_at'] ?? $updates_none_recorded ) ); ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Manifest validation status', 'security-automation-manager' ); ?></th>
+				<td><?php echo esc_html( $updates_check_result_labels[ $updates_diagnostics['last_check_result'] ?? '' ] ?? $updates_never ); ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Package checksum verification status', 'security-automation-manager' ); ?></th>
+				<td>
+					<?php echo esc_html( $updates_checksum_result_labels[ $updates_diagnostics['last_checksum_result'] ?? '' ] ?? $updates_not_yet_attempted ); ?>
+					<?php if ( ! empty( $updates_diagnostics['last_checksum_at'] ) ) : ?>
+						<span class="description"> (<?php echo esc_html( (string) $updates_diagnostics['last_checksum_at'] ); ?>)</span>
+					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Last update result', 'security-automation-manager' ); ?></th>
+				<td>
+					<?php echo esc_html( $updates_applied_result_labels[ $updates_diagnostics['last_applied_result'] ?? '' ] ?? $updates_no_update_applied ); ?>
+					<?php if ( ! empty( $updates_diagnostics['last_applied_at'] ) ) : ?>
+						<span class="description"> (<?php echo esc_html( (string) $updates_diagnostics['last_applied_at'] ); ?>)</span>
+					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'WP_SAM_DISABLE_AUTO_UPDATE defined', 'security-automation-manager' ); ?></th>
+				<td>
+					<?php
+					if ( ! $updates_kill_switch_defined ) {
+						esc_html_e( 'No', 'security-automation-manager' );
+					} elseif ( $updates_kill_switch_engaged ) {
+						esc_html_e( 'Yes -- true', 'security-automation-manager' );
+					} else {
+						esc_html_e( 'Yes -- false', 'security-automation-manager' );
+					}
+					?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Background updates', 'security-automation-manager' ); ?></th>
+				<td>
+					<?php
+					if ( $updates_kill_switch_engaged ) {
+						esc_html_e( 'Blocked by WP_SAM_DISABLE_AUTO_UPDATE.', 'security-automation-manager' );
+					} else {
+						esc_html_e( "Not blocked by this plugin. Still subject to WordPress' own per-plugin auto-update setting on the Plugins screen.", 'security-automation-manager' );
+					}
+					?>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p class="description" style="max-width: 760px; margin-top: 1em;">
+		<?php esc_html_e( 'This updater never transmits or stores any credential or secret -- the manifest above is a public JSON file, and package integrity is verified with a SHA-256 checksum published in that same public manifest.', 'security-automation-manager' ); ?>
+	</p>
+
+	<?php endif; ?>
 
 	<?php else /* about */ : ?>
 
