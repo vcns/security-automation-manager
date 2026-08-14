@@ -79,7 +79,7 @@ class Violation_Reporter {
 	// ── REST handler ──────────────────────────────────────────────────────────
 
 	/**
-	 * Handles POST /security-manager/v1/report (and the legacy /csp-manager/v1/report alias)
+	 * Handles POST /sam/v1/report (and the legacy /security-manager/v1/report alias)
 	 * Accepts application/csp-report (legacy) and application/reports+json (Reporting API).
 	 * Rejects any other Content-Type — browsers must send one of these two (R10).
 	 */

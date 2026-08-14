@@ -79,7 +79,7 @@ class ViolationReporterTest extends TestCase {
 	// ── handle(): Rate limiting ────────────────────────────────────────────────
 
 	public function test_configured_report_endpoint_host_is_accepted_as_document_origin(): void {
-		update_option( 'wp_sam_report_endpoint_url', 'https://staging.example.net/wp-json/csp-manager/v1/report' );
+		update_option( 'wp_sam_report_endpoint_url', 'https://staging.example.net/wp-json/custom-endpoint/v1/report' );
 		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
 
 		$request = $this->make_request(
@@ -451,7 +451,7 @@ class ViolationReporterTest extends TestCase {
 			'csp-report' => [
 				'blocked-uri'        => 'https://evil.example.com/x.js',
 				'violated-directive' => 'script-src',
-				'document-uri'       => 'https://example.com/wp-json/csp-manager/v1/report',
+				'document-uri'       => 'https://example.com/wp-json/sam/v1/report',
 			],
 		];
 
@@ -720,7 +720,7 @@ class ViolationReporterTest extends TestCase {
 
 	private function make_request( string $body ): WP_REST_Request {
 		$GLOBALS['_wp_rest_body'] = $body;
-		return new WP_REST_Request( 'POST', '/security-manager/v1/report' );
+		return new WP_REST_Request( 'POST', '/sam/v1/report' );
 	}
 
 	/**

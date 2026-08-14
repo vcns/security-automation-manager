@@ -106,6 +106,25 @@ class ConflictDetectorTest extends TestCase {
 		$GLOBALS['_wp_remote_head_response'] = array(
 			'response' => array( 'code' => 200 ),
 			'headers'  => array(
+				'content-security-policy-report-only' => "default-src 'none'; script-src 'nonce-abc123'; report-uri https://example.com/wp-json/sam/v1/report",
+			),
+		);
+
+		$found = $this->detector->run_probe( 'https://example.com/' );
+
+		$this->assertSame( array(), $found );
+		$this->assertSame( array(), $this->audit->get_buffer() );
+	}
+
+	/**
+	 * A cached response from before the sam/v1 rename -- security-manager/v1
+	 * is a still-supported legacy alias, not a competing source, and must not
+	 * be misreported either.
+	 */
+	public function test_probe_ignores_own_cached_header_carrying_the_legacy_alias_url(): void {
+		$GLOBALS['_wp_remote_head_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'headers'  => array(
 				'content-security-policy-report-only' => "default-src 'none'; script-src 'nonce-abc123'; report-uri https://example.com/wp-json/security-manager/v1/report",
 			),
 		);

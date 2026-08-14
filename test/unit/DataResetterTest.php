@@ -38,7 +38,7 @@ class DataResetterTest extends TestCase {
 		$GLOBALS['_wpdb_get_var']       = 'wp_csp_policy_profiles';
 		$GLOBALS['_wp_options']         = array(
 			'wp_sam_db_version'          => '7',
-			'wp_sam_report_endpoint_url' => 'https://public.example.com/wp-json/csp-manager/v1/report',
+			'wp_sam_report_endpoint_url' => 'https://public.example.com/wp-json/custom-endpoint/v1/report',
 		);
 		$GLOBALS['_wp_transients']      = array(
 			'wp_sam_conflict_probe_ran'  => 1,

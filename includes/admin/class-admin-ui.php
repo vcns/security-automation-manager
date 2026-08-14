@@ -406,7 +406,7 @@ class Admin_UI {
 			'wpSamAdmin',
 			array(
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'restUrl'   => esc_url_raw( rest_url( 'security-manager/v1/admin/' ) ),
+				'restUrl'   => esc_url_raw( rest_url( 'sam/v1/admin/' ) ),
 				'nonce'     => wp_create_nonce( 'wp_sam_admin_nonce' ),
 				'restNonce' => wp_create_nonce( 'wp_rest' ),
 				'i18n'      => array(

@@ -41,10 +41,10 @@ class Reporting_Endpoint {
 		}
 
 		if ( function_exists( 'did_action' ) && did_action( 'init' ) > 0 ) {
-			return esc_url_raw( rest_url( 'security-manager/v1/report' ) );
+			return esc_url_raw( rest_url( 'sam/v1/report' ) );
 		}
 
-		return esc_url_raw( home_url( '/wp-json/security-manager/v1/report' ) );
+		return esc_url_raw( home_url( '/wp-json/sam/v1/report' ) );
 	}
 
 	public static function is_allowed_url( string $url ): bool {
