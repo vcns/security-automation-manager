@@ -29,7 +29,7 @@ final class Github_Update_Checker {
 	private const DISABLE_AUTO_UPDATE = 'WP_SAM_DISABLE_AUTO_UPDATE';
 
 	/**
-	 * Durable diagnostic state for the Update Channel admin page. The manifest
+	 * Durable diagnostic state for the Overview page's Updates tab. The manifest
 	 * cache above (CACHE_KEY) is a short-lived transient purely for reducing
 	 * remote requests -- once it expires, any record of the last check's
 	 * outcome disappears with it. This option is written on every relevant
