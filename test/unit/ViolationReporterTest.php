@@ -249,6 +249,35 @@ class ViolationReporterTest extends TestCase {
 		$this->assertStringContainsString( 'ON DUPLICATE KEY UPDATE', $GLOBALS['_wpdb_last_query'] );
 	}
 
+	/**
+	 * Regression test: disposition (and effective_directive, original_policy,
+	 * status_code) were written on first INSERT but never refreshed by the
+	 * ON DUPLICATE KEY UPDATE clause -- once a fingerprint row existed, its
+	 * stored disposition was frozen forever at whatever the very first report
+	 * happened to carry, even after a surface was promoted from report-only
+	 * to enforce and every subsequent browser report genuinely started
+	 * arriving with disposition=enforce. The Violations tab kept showing
+	 * "report" indefinitely for any fingerprint first seen before promotion,
+	 * which read as a competing-CSP-header symptom but was actually just this.
+	 */
+	public function test_duplicate_report_refreshes_disposition_on_update(): void {
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		// get_var returns a non-null row ID -> duplicate detected, UPDATE path taken.
+		$GLOBALS['_wpdb_get_var'] = '42';
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"style-src-attr","document-uri":"https://example.com/","blocked-uri":"inline","disposition":"enforce"}}'
+		);
+
+		$this->reporter->handle( $request );
+
+		$query = (string) $GLOBALS['_wpdb_last_query'];
+		$this->assertStringContainsString( 'disposition = VALUES(disposition)', $query );
+		$this->assertStringContainsString( 'effective_directive = VALUES(effective_directive)', $query );
+		$this->assertStringContainsString( 'original_policy = VALUES(original_policy)', $query );
+		$this->assertStringContainsString( 'status_code = VALUES(status_code)', $query );
+	}
+
 	public function test_report_endpoint_learning_creates_pending_source_candidate_when_window_open(): void {
 		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
 		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.25] - 2026-08-14
+
+### Fixed
+
+- `Violation_Reporter::store_report()`'s `INSERT ... ON DUPLICATE KEY UPDATE` never refreshed `disposition`, `effective_directive`, `original_policy`, or `status_code` on the UPDATE path -- only `occurrence_count`, timestamps, and a handful of other evidence fields were kept current. Since a violation's fingerprint is stable (surface + host/blocked_uri + directive) but not time-bound, these four fields stayed frozen at whatever the very first report for that fingerprint happened to carry, for as long as that row existed. In practice this meant: promote a surface from report-only to enforce, and every violation fingerprint first recorded *before* that promotion kept showing `disposition: report` on the Violations tab forever afterward, even though the browser was correctly sending `enforce` on every new occurrence -- reading exactly like a competing CSP header, when it was actually just stale display data. Existing rows self-correct on their next occurrence once this ships; no backfill migration needed given how quickly new reports arrive on an active site.
+
 ## [2.4.24] - 2026-08-14
 
 ### Added
