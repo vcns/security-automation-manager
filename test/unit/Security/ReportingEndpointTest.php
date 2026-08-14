@@ -21,25 +21,25 @@ class ReportingEndpointTest extends TestCase {
 	public function test_url_uses_home_url_before_init(): void {
 		$GLOBALS['_wp_rest_url_should_throw'] = true;
 
-		$this->assertSame( 'https://example.com/wp-json/security-manager/v1/report', Reporting_Endpoint::url() );
+		$this->assertSame( 'https://example.com/wp-json/sam/v1/report', Reporting_Endpoint::url() );
 	}
 
 	public function test_url_uses_rest_url_after_init(): void {
 		$GLOBALS['_wp_did_actions']['init'] = 1;
 
-		$this->assertSame( 'https://example.com/wp-json/security-manager/v1/report', Reporting_Endpoint::url() );
+		$this->assertSame( 'https://example.com/wp-json/sam/v1/report', Reporting_Endpoint::url() );
 	}
 
 	public function test_url_prefers_valid_configured_override(): void {
-		update_option( 'wp_sam_report_endpoint_url', 'https://public.example.net/wp-json/csp-manager/v1/report' );
+		update_option( 'wp_sam_report_endpoint_url', 'https://public.example.net/wp-json/custom-endpoint/v1/report' );
 
-		$this->assertSame( 'https://public.example.net/wp-json/csp-manager/v1/report', Reporting_Endpoint::url() );
+		$this->assertSame( 'https://public.example.net/wp-json/custom-endpoint/v1/report', Reporting_Endpoint::url() );
 	}
 
 	public function test_url_ignores_invalid_configured_override(): void {
 		update_option( 'wp_sam_report_endpoint_url', 'javascript:alert(1)' );
 
-		$this->assertSame( 'https://example.com/wp-json/security-manager/v1/report', Reporting_Endpoint::url() );
+		$this->assertSame( 'https://example.com/wp-json/sam/v1/report', Reporting_Endpoint::url() );
 	}
 
 	public function test_is_allowed_url_accepts_https(): void {

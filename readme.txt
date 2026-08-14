@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.25
+Stable tag: 2.4.26
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,7 +26,7 @@ GitHub release builds are published separately for administrators who install fr
 
 By default, the plugin emits CSP reporting headers that point browsers back to this WordPress site's own REST endpoint:
 
-* `/wp-json/security-manager/v1/report`
+* `/wp-json/sam/v1/report`
 
 Administrators may override the reporting server URL when the public HTTPS endpoint differs from the WordPress-detected site URL, such as behind a proxy, CDN, or load balancer. If the override points to another host, browsers will send CSP reports to that configured endpoint; local report learning only works when the URL routes back to this plugin's report endpoint.
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.26 =
+
+* Renames the REST API namespace from `security-manager/v1` to `sam/v1`, matching the plugin's internal `wp_sam_`/`WP_SAM` naming everywhere else. The report endpoint is now `/wp-json/sam/v1/report`. Browsers holding a CSP header issued before this release keep POSTing to `/wp-json/security-manager/v1/report`, which remains registered as a legacy alias. The older `csp-manager/v1` alias, from the original CSP Manager plugin rename, has been fully retired.
 
 = 2.4.25 =
 

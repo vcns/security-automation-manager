@@ -120,7 +120,7 @@ Every piece of this runtime calls the Stripe API directly from the WordPress ins
 Responsibilities:
 
 - `Checkout_Service`: create a Stripe Checkout Session (subscription mode) by calling `https://api.stripe.com/v1/checkout/sessions` directly with a locally-configured secret key and Price ID for the selected billing interval and Stripe mode (test/live)
-- `Webhook_Controller`: receive Stripe's webhook directly at `/wp-json/security-manager/v1/webhook/stripe`, verify its signature against the locally-configured webhook secret, and grant entitlements on `checkout.session.completed` / `checkout.session.async_payment_succeeded`
+- `Webhook_Controller`: receive Stripe's webhook directly at `/wp-json/sam/v1/webhook/stripe`, verify its signature against the locally-configured webhook secret, and grant entitlements on `checkout.session.completed` / `checkout.session.async_payment_succeeded`
 - `Entitlement_Store`: read/write local entitlement rows (`sam_entitlements`) -- entitlement state never leaves this site's own database
 - `Feature_Gate`: gates exactly one feature -- `fully_automatic` -- behind an active entitlement; everything else is free regardless of entitlement state
 - provide structured operational logging (append-only DB audit trail via `Audit_Log`)
@@ -162,7 +162,7 @@ Responsibilities:
 8. `sandbox` is skipped if null or if the profile is in report-only mode (CSP spec — `sandbox` is ignored in `Content-Security-Policy-Report-Only`).
 9. `upgrade-insecure-requests` is skipped if the profile is in report-only mode -- browsers ignore it there too, same rationale as `sandbox`.
 10. The per-surface Trusted Types toggle (Profiles tab) sets `require-trusted-types-for 'script'` when enabled. Trusted Types directives (`require-trusted-types-for`, `trusted-types`) are each skipped independently when empty; when `require-trusted-types-for` is enabled it is always emitted as report-only regardless of surface mode. `trusted-types` is stripped on its own whenever empty, so enabling the toggle alone never emits a bare, valueless `trusted-types` token.
-11. The reporting endpoint is resolved from `wp_sam_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'security-manager/v1/report' )`.
+11. The reporting endpoint is resolved from `wp_sam_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'sam/v1/report' )`.
 12. The CSP includes `report-uri <report_uri>` by default so browser reports are delivered directly and promptly to the local learning endpoint.
 13. If `wp_sam_reporting_transport` is set to `both` or `report-to`, two additional Reporting API headers are emitted before the CSP header:
     - `Reporting-Endpoints: csp-endpoint="<report_uri>"` — Structured Fields Dictionary (RFC 9651); required for browsers to honour `report-to csp-endpoint` in the CSP
@@ -194,7 +194,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 
 ### 4. Violation ingestion flow
 
-1. Browser submits a violation report to the configured reporting endpoint. By default this is `/wp-json/security-manager/v1/report`; proxy/CDN deployments can advertise an administrator-provided public URL that must route back to this plugin endpoint for local learning. A legacy alias at `/wp-json/csp-manager/v1/report` (the pre-rename REST namespace) remains registered against the same handler, since browsers holding a CSP header issued before the rename keep POSTing to it until they receive a fresh policy; remove the alias a couple of releases after the rename ships.
+1. Browser submits a violation report to the configured reporting endpoint. By default this is `/wp-json/sam/v1/report`; proxy/CDN deployments can advertise an administrator-provided public URL that must route back to this plugin endpoint for local learning. A legacy alias at `/wp-json/security-manager/v1/report` (the immediately-prior REST namespace) remains registered against the same handler, since browsers holding a CSP header issued before the rename keep POSTing to it until they receive a fresh policy; remove the alias a couple of releases after the rename ships. The even older `/wp-json/csp-manager/v1/report` alias, from the original CSP Manager plugin rename, has already been retired.
 2. `Violation_Reporter` validates the `Content-Type` header; requests with a content type other than `application/csp-report`, `application/reports+json`, or `application/json` are rejected with HTTP 400.
 3. The payload is normalised from either the legacy `application/csp-report` format (hyphenated field names: `document-uri`, `blocked-uri`, `script-sample`, etc.) or the Reporting API `application/reports+json` format (camelCase field names: `documentURL`, `blockedURL`, `sample`, etc.).
 4. The `document-uri` hostname is compared against the WordPress site origin (RFC 6454); reports from a different origin are silently discarded — CSP reports are client-generated and spoofable.
@@ -222,7 +222,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 1. Administrators open **Security Automation Manager -> CSP -> Policy Audit** (a tab on the CSP page, not a separate top-level menu item -- it's CSP-specific content).
 2. The current surface summary shows CSP mode, automation mode, latest policy version, pending proposal count, unresolved high-risk count, and the latest captured header.
 3. The pending review queue lives on the adjacent For Review tab (surface, directive, source, risk, evidence count, first seen, last seen); the full decision ledger lives on the Policy Changes tab (actor, state, surface, directive, source, risk, decision-engine version, linked policy version) -- Policy Audit itself only shows the at-a-glance summary, not either underlying list.
-4. Privileged REST endpoints under `/wp-json/security-manager/v1/admin/*` expose policy history, policy diffs, decisions, pending reviews, and automation configuration for richer future UI workflows.
+4. Privileged REST endpoints under `/wp-json/sam/v1/admin/*` expose policy history, policy diffs, decisions, pending reviews, and automation configuration for richer future UI workflows.
 
 ### 7. Readiness and reset flow
 

@@ -863,7 +863,7 @@ class Activator {
 			// Report-endpoint learning closes after this many hours from the latest
 			// post, page, or plugin material change.
 			'wp_sam_learning_window_hours'         => 48,
-			// Blank uses rest_url( 'security-manager/v1/report' ); set only when a
+			// Blank uses rest_url( 'sam/v1/report' ); set only when a
 			// public proxy/CDN hostname must be advertised to browsers.
 			'wp_sam_report_endpoint_url'           => '',
 			// Direct report-uri reporting is the default because it gives the

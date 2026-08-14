@@ -251,7 +251,7 @@ The builder must include `'report-sample'` in fetch directives that cover inline
 
 ### 5.13 Violation Report Endpoint and Processing
 
-- The plugin must expose a REST endpoint at `/wp-json/security-manager/v1/report`.
+- The plugin must expose a REST endpoint at `/wp-json/sam/v1/report`.
 - The endpoint must validate the `Content-Type` request header before processing. Requests with a content type other than `application/csp-report`, `application/reports+json`, or `application/json` must be rejected with HTTP 400.
 - The endpoint must accept:
   - Legacy `application/csp-report` payloads (hyphenated field names per CSP Level 2)

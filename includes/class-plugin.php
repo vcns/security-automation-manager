@@ -202,14 +202,17 @@ final class Plugin {
 			'permission_callback' => '__return_true',
 		);
 
-		register_rest_route( 'security-manager/v1', '/report', $report_route_args );
+		register_rest_route( 'sam/v1', '/report', $report_route_args );
 
 		// Legacy alias: browsers holding a CSP header issued before the
-		// csp-manager/v1 -> security-manager/v1 rename still POST to the old
-		// URL until they receive a fresh policy. Keep this alongside the new
+		// security-manager/v1 -> sam/v1 rename still POST to the old URL
+		// until they receive a fresh policy. Keep this alongside the new
 		// route (not a redirect -- redirects on a report-uri are unreliable
-		// across browsers) for a couple of releases, then remove it.
-		register_rest_route( 'csp-manager/v1', '/report', $report_route_args );
+		// across browsers) for a couple of releases, then remove it. The
+		// even older csp-manager/v1 alias (from the original CSP Manager ->
+		// Security Automation Manager plugin rename) has been retired --
+		// its own transition window closed long ago.
+		register_rest_route( 'security-manager/v1', '/report', $report_route_args );
 
 		( new Admin_Controller( $this->audit, gate: $this->gate ) )->register_routes();
 

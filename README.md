@@ -118,7 +118,7 @@ The GitHub-channel ZIP checks `https://vcns.github.io/wp-updates/security-automa
 
 By default, the plugin emits CSP reporting headers that point browsers back to this WordPress site's own REST endpoint:
 
-- `/wp-json/security-manager/v1/report`
+- `/wp-json/sam/v1/report`
 
 Administrators may override the reporting server URL when the public HTTPS endpoint differs from the WordPress-detected site URL, such as behind a proxy, CDN, or load balancer. If the override points to another host, browsers will send CSP reports to that configured endpoint; local report learning only works when the URL routes back to this plugin's report endpoint.
 

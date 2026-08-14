@@ -199,7 +199,8 @@ class Conflict_Detector {
 		$own_endpoint = Reporting_Endpoint::url();
 
 		return ! ( '' !== $own_endpoint && str_contains( $value, $own_endpoint ) )
-			&& ! str_contains( $value, 'security-manager/v1/report' );
+			&& ! str_contains( $value, 'sam/v1/report' )
+			&& ! str_contains( $value, 'security-manager/v1/report' ); // still-supported legacy alias
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────────

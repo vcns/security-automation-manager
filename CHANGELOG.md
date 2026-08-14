@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.26] - 2026-08-14
+
+### Changed
+
+- Renames the REST API namespace from `security-manager/v1` to `sam/v1`, matching the plugin's internal `wp_sam_`/`WP_SAM` naming convention used everywhere else. The public violation-report endpoint is now `/wp-json/sam/v1/report`; the privileged admin endpoints are now under `/wp-json/sam/v1/admin/*`; the Stripe webhook endpoint (private/commercial build only) is now `/wp-json/sam/v1/webhook/stripe`.
+- `security-manager/v1/report` remains registered as a legacy alias against the same handler, since a browser holding a CSP header issued before this release keeps POSTing to that URL until it receives a fresh policy -- the same treatment given to the original `csp-manager/v1` rename. `Conflict_Detector`'s self-recognition check now accepts either URL, so a stale cached response carrying the old alias is not misreported as a competing CSP source.
+- The older `csp-manager/v1` alias (from the original CSP Manager -> Security Automation Manager plugin rename) has been fully retired -- its own transition window closed long ago and it no longer reflects any current name.
+
 ## [2.4.25] - 2026-08-14
 
 ### Fixed

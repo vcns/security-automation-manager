@@ -913,7 +913,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<?php
 		$report_endpoint_url = (string) get_option( 'wp_sam_report_endpoint_url', '' );
 		if ( '' === trim( $report_endpoint_url ) ) {
-			$report_endpoint_url = rest_url( 'security-manager/v1/report' );
+			$report_endpoint_url = rest_url( 'sam/v1/report' );
 		}
 
 		$v_surface   = Table_Query::text_param( 'v_surface' );
@@ -1220,7 +1220,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<?php
 		$learning_window            = new \WP_SAM\CSP\Learning_Window();
 		$learning_status            = $learning_window->is_open() ? __( 'Open', 'security-automation-manager' ) : __( 'Locked', 'security-automation-manager' );
-		$current_report_endpoint    = esc_url_raw( rest_url( 'security-manager/v1/report' ) );
+		$current_report_endpoint    = esc_url_raw( rest_url( 'sam/v1/report' ) );
 		$configured_report_endpoint = (string) get_option( 'wp_sam_report_endpoint_url', '' );
 		$configured_policy_header   = (string) get_option( 'wp_sam_policy_header_name', '' );
 		$reporting_transport        = \WP_SAM\CSP\Policy_Builder::sanitize_reporting_transport( get_option( 'wp_sam_reporting_transport', 'report-uri' ) );
@@ -1334,7 +1334,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 							sprintf(
 								/* translators: %s: the webhook URL to register in the Stripe dashboard */
 								__( 'In the Stripe dashboard, add a webhook endpoint at %s listening for checkout.session.completed and checkout.session.async_payment_succeeded, then paste its signing secret here. One endpoint covers both Test and Live mode.', 'security-automation-manager' ),
-								'<code>' . esc_html( rest_url( 'security-manager/v1/webhook/stripe' ) ) . '</code>'
+								'<code>' . esc_html( rest_url( 'sam/v1/webhook/stripe' ) ) . '</code>'
 							)
 						);
 						?>

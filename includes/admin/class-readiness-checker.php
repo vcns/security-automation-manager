@@ -83,7 +83,7 @@ class Readiness_Checker {
 	private function get_runtime_health(): array {
 		$report_endpoint = (string) get_option( 'wp_sam_report_endpoint_url', '' );
 		if ( '' === trim( $report_endpoint ) ) {
-			$report_endpoint = rest_url( 'security-manager/v1/report' );
+			$report_endpoint = rest_url( 'sam/v1/report' );
 		}
 
 		$profile_count = $this->count_table_rows_where(
