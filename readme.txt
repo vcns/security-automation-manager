@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.21
+Stable tag: 2.4.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,13 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.22 =
+
+* Fixes a fatal error on both Scripts tabs (External and Internal): the tab content files were missing PHP class imports of their own, since imports declared in the parent page do not carry over to a file it requires. Both tabs are now covered by an automated test that renders them end to end, closing the gap that let this ship unnoticed.
+* Adds quick range buttons (last hour / 6 hours / day / 7 days) to the CSP Violations tab.
+* Scopes the CSP violation report rate limit per directive instead of per surface, so one noisy directive can no longer crowd out visibility into every other directive on the same surface.
+* Flags a likely competing Content-Security-Policy header: if a browser reports a disposition that doesn't match this plugin's own configured mode for that surface, a warning now appears on every CSP dashboard tab.
 
 = 2.4.21 =
 

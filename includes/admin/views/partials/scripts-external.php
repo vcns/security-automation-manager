@@ -5,11 +5,17 @@
  * Integrity. Formerly the standalone page-external-scripts.php.
  *
  * Included by page-scripts.php; $wpdb and $surfaces are already in scope.
+ * Note: PHP `use` imports are per-file, not inherited through require() --
+ * page-scripts.php's own `use` statements do not extend to this file, so it
+ * needs its own.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+use WP_SAM\Admin\Table_Query;
+use WP_SAM\Security\Dependency_Governance_Builder;
 
 // ── Per-surface enabled + mode ──────────────────────────────────────────────
 $profiles_raw = $wpdb->get_results(

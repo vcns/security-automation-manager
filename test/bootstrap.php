@@ -15,7 +15,7 @@ declare( strict_types=1 );
 define( 'ABSPATH',               __DIR__ . '/' );
 define( 'WP_CONTENT_DIR',        __DIR__ . '/wp-content' );
 define( 'WPINC',                 'wp-includes' );
-define( 'WP_SAM_VERSION',        '2.4.21' );
+define( 'WP_SAM_VERSION',        '2.4.22' );
 define( 'WP_SAM_DB_VERSION',     '10' );
 define( 'WP_SAM_FILE',           dirname( __DIR__ ) . '/security-automation-manager.php' );
 define( 'WP_SAM_DIR',            dirname( __DIR__ ) . '/' );
@@ -237,6 +237,37 @@ if ( ! function_exists( 'selected' ) ) {
 			echo $result; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- test stub.
 		}
 		return $result;
+	}
+}
+
+if ( ! function_exists( 'checked' ) ) {
+	function checked( mixed $a, mixed $b = true, bool $echo = true ): string {
+		$result = ( (string) $a === (string) $b ) ? " checked='checked'" : '';
+		if ( $echo ) {
+			echo $result; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- test stub.
+		}
+		return $result;
+	}
+}
+
+if ( ! function_exists( 'disabled' ) ) {
+	function disabled( mixed $a, mixed $b = true, bool $echo = true ): string {
+		$result = ( (string) $a === (string) $b ) ? " disabled='disabled'" : '';
+		if ( $echo ) {
+			echo $result; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- test stub.
+		}
+		return $result;
+	}
+}
+
+if ( ! function_exists( 'submit_button' ) ) {
+	function submit_button( string $text = 'Save Changes', string $type = 'primary', string $name = 'submit', bool $wrap = true, mixed $other_attributes = null ): void {
+		printf(
+			'<input type="submit" name="%s" class="button button-%s" value="%s">',
+			esc_attr( $name ),
+			esc_attr( $type ),
+			esc_attr( $text )
+		);
 	}
 }
 

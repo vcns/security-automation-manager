@@ -76,6 +76,26 @@ $offset   = ( $page_num - 1 ) * $per_page;
 $violations_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_violation_reports ORDER BY reported_at DESC LIMIT 50", ARRAY_A );
 $violations     = ! empty( $violations_raw ) ? $violations_raw : array();
 
+// Recent competing-CSP-header findings (persistent banner below, visible on
+// every tab). Conflict_Detector's header/htaccess/probe checks and
+// Violation_Reporter's disposition-mismatch check both log to the same
+// 'conflict_detector' audit component, throttled at the source, so this is
+// safe to show without an admin having to notice or keep a dismissible
+// wp-admin notice around.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+$conflict_notices_raw = $wpdb->get_results(
+	$wpdb->prepare(
+		"SELECT detail, created_at FROM {$wpdb->prefix}sam_audit_log
+			WHERE component = %s AND severity = %s AND created_at >= %s
+			ORDER BY created_at DESC LIMIT 5",
+		'conflict_detector',
+		'warning',
+		gmdate( 'Y-m-d H:i:s', time() - ( 48 * HOUR_IN_SECONDS ) )
+	),
+	ARRAY_A
+);
+$conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw : array();
+
 // Scan log – last 20 runs.
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $scan_logs_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}sam_scan_logs ORDER BY started_at DESC LIMIT 20", ARRAY_A );
@@ -112,6 +132,20 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<strong><?php echo esc_html( $tab_help[ $tab ]['label'] ); ?>:</strong>
 		<?php echo esc_html( $tab_help[ $tab ]['description'] ); ?>
 	</div>
+
+	<?php if ( ! empty( $conflict_notices ) ) : ?>
+	<div class="notice notice-warning wp-sam-conflict-banner">
+		<p>
+			<strong><?php esc_html_e( 'Possible competing Content-Security-Policy source detected.', 'security-automation-manager' ); ?></strong>
+			<?php esc_html_e( 'Another source (server configuration, a different plugin, or a stale cached response) may be emitting its own CSP header alongside this plugin\'s. Check your server config and any other security plugins for a competing header.', 'security-automation-manager' ); ?>
+		</p>
+		<ul>
+			<?php foreach ( $conflict_notices as $conflict_notice ) : ?>
+			<li><code><?php echo esc_html( $conflict_notice['created_at'] ); ?></code> — <?php echo esc_html( $conflict_notice['detail'] ); ?></li>
+			<?php endforeach; ?>
+		</ul>
+	</div>
+	<?php endif; ?>
 
 	<div class="tab-content" style="margin-top:1em">
 
@@ -974,7 +1008,37 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
 		$violations_raw = $wpdb->get_results( $viol_data_sql, ARRAY_A );
 		$violations     = ! empty( $violations_raw ) ? $violations_raw : array();
+
+		// Quick range buttons: set "Last seen from" to now-minus-N and leave the
+		// upper bound open, matching current_time( 'mysql', true ) (UTC), the
+		// same basis reported_at is stored under -- so these line up with what's
+		// actually in the database regardless of the site's display timezone.
+		$viol_quick_ranges = array(
+			'1h'  => array( 1, __( 'Last hour', 'security-automation-manager' ) ),
+			'6h'  => array( 6, __( 'Last 6 hours', 'security-automation-manager' ) ),
+			'24h' => array( 24, __( 'Last day', 'security-automation-manager' ) ),
+			'7d'  => array( 24 * 7, __( 'Last 7 days', 'security-automation-manager' ) ),
+		);
 		?>
+	<p class="wp-sam-quick-ranges">
+		<?php foreach ( $viol_quick_ranges as [ $viol_range_hours_ago, $viol_range_label ] ) : ?>
+			<?php
+			$viol_range_from = gmdate( 'Y-m-d\TH:i', time() - ( $viol_range_hours_ago * HOUR_IN_SECONDS ) );
+			$viol_range_url  = add_query_arg(
+				array_merge(
+					$viol_state_args,
+					array(
+						'v_seen_from' => $viol_range_from,
+						'v_seen_to'   => '',
+						'v_paged'     => 1,
+					)
+				),
+				$base_url
+			);
+			?>
+		<a href="<?php echo esc_url( $viol_range_url ); ?>" class="button"><?php echo esc_html( $viol_range_label ); ?></a>
+		<?php endforeach; ?>
+	</p>
 	<details class="wp-sam-filter-form">
 		<summary><?php esc_html_e( 'Filters', 'security-automation-manager' ); ?></summary>
 		<form method="get" action="">
@@ -1019,7 +1083,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				echo Table_Query::sort_header( __( 'Surface', 'security-automation-manager' ), 'surface', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
 				echo Table_Query::sort_header( __( 'Blocked URI', 'security-automation-manager' ), 'blocked_uri', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				echo Table_Query::sort_header( __( 'Directive', 'security-automation-manager' ), 'directive', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Occurrences', 'security-automation-manager' ), 'occurrences', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Occurrences (lifetime)', 'security-automation-manager' ), 'occurrences', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- count never resets; the seen-range filter only affects which rows are *shown*, not this total.
 				echo Table_Query::sort_header( __( 'Last Seen', 'security-automation-manager' ), 'last_seen', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				echo Table_Query::sort_header( __( 'Disposition', 'security-automation-manager' ), 'disposition', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				?>
@@ -1038,6 +1102,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<td>
 				<?php
 				$meta_fields = array();
+				if ( ! empty( $v['first_reported_at'] ) ) {
+					$meta_fields[ __( 'First seen', 'security-automation-manager' ) ] = (string) $v['first_reported_at'];
+				}
 				if ( 0 === strpos( (string) $v['blocked_uri'], 'data:' ) ) {
 					$meta_fields[ __( 'Data URI payload', 'security-automation-manager' ) ] = mb_substr( (string) $v['blocked_uri'], 0, 200 );
 				} elseif ( ! empty( $v['blocked_host'] ) ) {
