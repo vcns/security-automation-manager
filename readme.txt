@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.23
+Stable tag: 2.4.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.24 =
+
+* Scripts > External now retains the most recently observed full URL (not just the origin) for each third-party script/stylesheet, so the "Suggest" SRI hash helper is pre-filled with an exact file to fetch instead of requiring you to find that URL yourself first.
 
 = 2.4.23 =
 

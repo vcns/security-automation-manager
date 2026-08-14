@@ -469,8 +469,8 @@ flowchart TD
             <p>"Approved -- immutable" only ever compares against a hash you paste in yourself -- from a local copy of the file you already trust, or the vendor's own published hash -- never one this plugin computes by fetching the remote URL itself. If a provider's script changes behind a stable URL (common for tag managers, analytics, and similar mutable services), classify it <strong>Approved -- mutable provider</strong> instead; SRI genuinely doesn't apply there.</p>
           </div>
           <div class='callout'>
-            <h3>Only the origin is stored</h3>
-            <p>The inventory records scheme and host only -- never a path or query string -- so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
+            <h3>Deduplication stays at the origin level</h3>
+            <p>Each row is keyed by scheme and host, so a CDN serving content-hashed filenames still collapses to one row per origin instead of a permanent row per file variant. The most recently observed full URL (path and query included) is also kept alongside it, so the "Suggest" hash helper -- which needs an exact file to fetch and hash -- doesn't require you to already know or go find that URL yourself. If a script URL's query string could contain something sensitive, be aware it may be retained in this field.</p>
           </div>
           <div class='callout'>
             <h3>Internal Script Integrity is a different trust model entirely</h3>

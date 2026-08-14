@@ -290,7 +290,7 @@
           </article>
           <article class='faq-item'>
             <h3>What's stored in the External Scripts inventory?</h3>
-            <p>Only the origin -- scheme and host, e.g. <code>https://cdn.example.com</code> -- never a path or query string, so nothing sensitive that might appear in a script URL's query parameters ends up in your database.</p>
+            <p>Each row is keyed by origin -- scheme and host, e.g. <code>https://cdn.example.com</code> -- so entries stay deduplicated even for a CDN serving a different filename per request. The most recently observed full URL (path and query included) is also kept, so the "Suggest" hash helper has an exact file to fetch without you having to find that URL yourself. If a query string could contain something sensitive, be aware it may be retained in that field.</p>
           </article>
           <article class='faq-item'>
             <h3>Does Internal Script Integrity need updating every time I update a plugin or theme?</h3>

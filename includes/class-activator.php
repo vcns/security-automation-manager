@@ -545,12 +545,20 @@ class Activator {
 
 		// 13. Passive inventory of third-party <script src> / <link rel=stylesheet>
 		// origins observed on real page loads (never a dedicated crawl or extra
-		// request). Only the origin (scheme+host) is ever stored -- no path, no
-		// query string. classification defaults to 'unclassified': a fresh
-		// discovery is neither trusted nor blocked until an administrator
-		// decides, matching this plugin's report-first philosophy everywhere
-		// else. expected_sri is admin-supplied only -- this plugin never
-		// fetches a remote resource to compute a hash itself.
+		// request). Deduplication stays at the origin (scheme+host) level --
+		// unchanged -- so a CDN serving content-hashed filenames still collapses
+		// to one row per origin rather than a permanent row per file variant.
+		// classification defaults to 'unclassified': a fresh discovery is
+		// neither trusted nor blocked until an administrator decides, matching
+		// this plugin's report-first philosophy everywhere else. expected_sri is
+		// admin-supplied only -- this plugin never fetches a remote resource to
+		// compute a hash itself.
+		// v19: adds last_seen_url -- the most recently observed full URL (path
+		// and query included) for this origin. Needed because the "Suggest"
+		// hash helper (ajax_suggest_dependency_sri()) fetches a real file and
+		// computes its hash for review, which requires an exact file URL, not
+		// just an origin -- previously the administrator had to already know
+		// or go find that URL themselves before they could use Suggest at all.
 		dbDelta(
 			"CREATE TABLE {$p}sam_dependency_inventory (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -559,6 +567,7 @@ class Activator {
   origin varchar(255) NOT NULL,
   classification varchar(32) NOT NULL DEFAULT 'unclassified',
   expected_sri varchar(128) DEFAULT NULL,
+  last_seen_url varchar(2048) DEFAULT NULL,
   evidence_count bigint(20) UNSIGNED NOT NULL DEFAULT 1,
   first_seen_at datetime NOT NULL,
   last_seen_at datetime NOT NULL,
