@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.4.23
+ * Version:           2.4.24
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.4.23' );
+define( 'WP_SAM_VERSION', '2.4.24' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -96,8 +96,13 @@ define( 'WP_SAM_VERSION', '2.4.23' );
  *        CSP enforcement, which still requires a deliberate admin
  *        promotion through the existing learning window and promotion
  *        gate regardless of automation mode.
+ * v19 -- adds last_seen_url to sam_dependency_inventory: the most recently
+ *        observed full URL (path and query included) for a governed
+ *        third-party origin. The dedup key stays origin-only (scheme+host),
+ *        but the "Suggest" SRI hash helper needs an exact file URL to fetch
+ *        and hash, which the origin alone can't provide.
  */
-define( 'WP_SAM_DB_VERSION', '18' );
+define( 'WP_SAM_DB_VERSION', '19' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

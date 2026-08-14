@@ -108,6 +108,18 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 	}
 
 	/**
+	 * Resolves a protocol-relative URL (//host/path) to https://host/path,
+	 * matching the same assume-https convention normalize_origin() already
+	 * uses. An already-absolute URL is returned unchanged. Used to make the
+	 * stored last_seen_url directly usable by ajax_suggest_dependency_sri(),
+	 * which requires an explicit https:// scheme.
+	 */
+	public static function absolutize_url( string $url ): string {
+		$url = trim( $url );
+		return str_starts_with( $url, '//' ) ? 'https:' . $url : $url;
+	}
+
+	/**
 	 * @return string[] Normalised hosts of this site (home_url + site_url).
 	 */
 	private static function first_party_origins(): array {
@@ -234,6 +246,7 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 				'origin'         => $origin,
 				'classification' => 'unclassified',
 				'expected_sri'   => null,
+				'last_seen_url'  => null,
 				'evidence_count' => 0,
 				'is_new'         => true,
 				'touched'        => false,
@@ -245,6 +258,12 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 			$inventory[ $key ]['touched'] = true;
 			$seen[ $key ]                 = true;
 		}
+
+		// Always refresh to the most recently observed exact URL, even on a
+		// dedup-only touch (evidence bump already happened above) -- a stale
+		// cache-busted URL from weeks ago is less useful to the "Suggest" hash
+		// helper than whatever this origin is serving right now.
+		$inventory[ $key ]['last_seen_url'] = self::absolutize_url( $url );
 
 		if ( 'enforce' !== $mode ) {
 			return;
@@ -332,6 +351,8 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 				continue;
 			}
 
+			$last_seen_url = ! empty( $row['last_seen_url'] ) ? substr( (string) $row['last_seen_url'], 0, 2048 ) : null;
+
 			if ( ! empty( $row['is_new'] ) ) {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 				$wpdb->insert(
@@ -341,13 +362,14 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 						'resource_type'  => $row['resource_type'],
 						'origin'         => $row['origin'],
 						'classification' => 'unclassified',
+						'last_seen_url'  => $last_seen_url,
 						'evidence_count' => 1,
 						'first_seen_at'  => $now,
 						'last_seen_at'   => $now,
 						'created_at'     => $now,
 						'updated_at'     => $now,
 					),
-					array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
+					array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
 				);
 				continue;
 			}
@@ -357,11 +379,12 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 				$table,
 				array(
 					'evidence_count' => (int) $row['evidence_count'],
+					'last_seen_url'  => $last_seen_url,
 					'last_seen_at'   => $now,
 					'updated_at'     => $now,
 				),
 				array( 'id' => (int) $row['id'] ),
-				array( '%d', '%s', '%s' ),
+				array( '%d', '%s', '%s', '%s' ),
 				array( '%d' )
 			);
 		}

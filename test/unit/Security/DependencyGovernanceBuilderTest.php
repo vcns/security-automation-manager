@@ -79,6 +79,29 @@ class DependencyGovernanceBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'abc123', (string) $origin );
 	}
 
+	// ── absolutize_url() ──────────────────────────────────────────────────────
+
+	public function test_absolutize_url_resolves_protocol_relative_to_https(): void {
+		$this->assertSame(
+			'https://cdn.example.com/script.js',
+			Dependency_Governance_Builder::absolutize_url( '//cdn.example.com/script.js' )
+		);
+	}
+
+	public function test_absolutize_url_leaves_absolute_https_url_unchanged(): void {
+		$this->assertSame(
+			'https://cdn.example.com/script.js?v=2',
+			Dependency_Governance_Builder::absolutize_url( 'https://cdn.example.com/script.js?v=2' )
+		);
+	}
+
+	public function test_absolutize_url_trims_surrounding_whitespace(): void {
+		$this->assertSame(
+			'https://cdn.example.com/script.js',
+			Dependency_Governance_Builder::absolutize_url( '  https://cdn.example.com/script.js  ' )
+		);
+	}
+
 	// ── is_first_party() ──────────────────────────────────────────────────────
 
 	public function test_is_first_party_true_for_relative_marker(): void {

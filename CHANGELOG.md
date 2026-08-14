@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.24] - 2026-08-14
+
+### Added
+
+- `sam_dependency_inventory` (schema v19) gains `last_seen_url`: the most recently observed full URL (path and query included) for a governed third-party origin. Deduplication stays at the origin (scheme+host) level -- unchanged -- but the "Suggest" SRI hash helper needs an exact file URL to fetch and hash, which the origin alone can't provide. The Scripts > External inventory's Suggest field is now pre-filled with this URL, and a metadata popover on the Origin column surfaces it for every row regardless of classification.
+
+### Changed
+
+- Documentation (`README.md`, `docs/architecture.md`, `docs/user-guide.html`, `docs/faq.html`) updated to describe the retained last-seen URL and its query-string privacy tradeoff, rather than claiming only the bare origin is ever stored.
+
 ## [2.4.23] - 2026-08-14
 
 ### Changed

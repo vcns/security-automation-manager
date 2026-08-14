@@ -231,7 +231,19 @@ $classification_labels = array(
 			<tr data-id="<?php echo esc_attr( (string) $item['id'] ); ?>">
 				<td><?php echo esc_html( ucfirst( $item['surface'] ) ); ?></td>
 				<td><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'security-automation-manager' ) : __( 'Stylesheet', 'security-automation-manager' ) ); ?></td>
-				<td><code><?php echo esc_html( $item['origin'] ); ?></code></td>
+				<td>
+					<code><?php echo esc_html( $item['origin'] ); ?></code>
+					<?php if ( ! empty( $item['last_seen_url'] ) ) : ?>
+					<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+						<span class="wp-sam-meta-popover" role="tooltip">
+							<div class="wp-sam-meta-row">
+								<strong><?php esc_html_e( 'Last seen URL', 'security-automation-manager' ); ?>:</strong>
+								<code><?php echo esc_html( (string) $item['last_seen_url'] ); ?></code>
+							</div>
+						</span>
+					</span>
+					<?php endif; ?>
+				</td>
 				<td>
 					<select class="wp-sam-dependency-classification" data-id="<?php echo esc_attr( (string) $item['id'] ); ?>">
 						<?php foreach ( $classification_labels as $value => $label ) : ?>
@@ -255,6 +267,7 @@ $classification_labels = array(
 							class="wp-sam-dependency-suggest-url"
 							placeholder="<?php esc_attr_e( 'https://exact/script/url to hash & pin', 'security-automation-manager' ); ?>"
 							style="flex:1;font-size:11px"
+							value="<?php echo esc_attr( (string) ( $item['last_seen_url'] ?? '' ) ); ?>"
 							<?php disabled( 'immutable_pinned' !== $item['classification'] ); ?>
 						/>
 						<button
