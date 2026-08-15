@@ -4,7 +4,8 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.2.x | Yes |
+| 2.4.x | Yes |
+| < 2.4.0 | No |
 
 ## Reporting a vulnerability
 
@@ -46,11 +47,11 @@ Good-faith security research is welcome provided you:
 
 Current design assumptions for this plugin:
 
-- The Stripe webhook verification secret is stored only in WordPress options and never published in client-side code. Stripe API secret keys are held exclusively in the Cloudflare Worker as Worker secrets and are never transmitted to or stored by the WordPress plugin.
 - Premium entitlement decisions are made locally from database state and verified Stripe webhook events.
 - Remote product configuration must never contain secrets.
-- Signed remote configuration uses Ed25519 signatures and should be verified with libsodium whenever available.
 - Enforce-mode CSP rollout is intentionally gated behind an approval workflow to reduce lockout risk.
+
+**Known gap (tracked, not yet remediated):** in the current commercial build, the Stripe API secret key and webhook signing secret are entered through the CSP dashboard's Settings tab and stored as WordPress options (`wp_sam_stripe_secret_key_test`, `wp_sam_stripe_secret_key_live`, `wp_sam_webhook_secret`) on the WordPress install that runs checkout, rather than held exclusively in VCNS-controlled infrastructure. This is a regression from an earlier architecture where these secrets lived only in a Cloudflare Worker's Worker secrets and were never transmitted to or stored by the WordPress plugin. A VCNS-hosted checkout/entitlement proxy that restores that separation is in design; see the roadmap tracking issue for status. Until remediated, treat a report of Stripe-secret exposure via database access, backup exfiltration, or a co-installed plugin on a commercial-build install as an in-scope, already-known finding — please still report it so we can prioritise the fix, but expect us to reference this note rather than treat it as new information.
 
 ## Non-vulnerability reports
 
