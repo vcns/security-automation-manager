@@ -97,12 +97,11 @@ never leaves VCNS-controlled infrastructure in the first place.**
    pattern already used by `Webhook_Controller` today.
 4. The proxy looks up which site the `site_identity` in the event metadata
    belongs to, builds a small JSON payload (`site_identity`, `product_key`,
-   `tier`, `granted_at`, a nonce), signs it with its Ed25519 private key, and
-   either (a) the plugin polls a `GET /entitlement/{site_identity}` endpoint
-   on its next admin-page load and verifies the signature against its
-   embedded public key, or (b) the proxy calls back to a plugin-registered
-   REST endpoint with the signed payload. **Open question for sign-off: poll
-   vs. callback — see "Open questions" below.**
+   `tier`, `granted_at`, a nonce), and signs it with its Ed25519 private key.
+   The plugin polls `GET /entitlement/{site_identity}` once, shortly after
+   the checkout redirect returns to wp-admin, and verifies the signature
+   against its embedded public key (decided — see "Decided" below; a
+   callback model was considered and rejected).
 
 The plugin's local `sam_entitlements` table is written only after signature
 verification succeeds, exactly as `Webhook_Controller` does today for direct
@@ -175,11 +174,10 @@ POST https://wp-sam.vcns.tech/webhook/stripe   (Stripe → proxy only)
 
 GET https://wp-sam.vcns.tech/entitlement/{site_identity}
   Response: { payload: {...}, signature: "<base64 Ed25519 detached sig>" }
-  (only if poll model is chosen — see open questions)
 ```
 
 Exact field names, error codes, and rate limits are implementation detail to
-finalise once the poll-vs-callback question below is settled — this contract
+finalise during implementation — this contract
 is illustrative, not final.
 
 ## Migration for existing commercial installs
@@ -204,26 +202,27 @@ need a transition path, not a silent breaking change:
    beyond its intended trust boundary, regardless of whether misuse is ever
    observed.
 
-## Open questions for sign-off
+## Decided
 
-1. **Poll vs. callback** for entitlement delivery (step 4 above). Poll is
-   simpler (no need for the proxy to reach an arbitrary customer site,
-   avoids SSRF-adjacent concerns, works behind firewalls/local dev) but adds
-   latency between payment and entitlement appearing active. Callback is
-   faster but requires the proxy to make outbound requests to
-   customer-controlled URLs — recommend **poll**, matching the "no
-   per-request remote licence check during normal plugin runtime" principle
-   already established (the plugin would poll once, shortly after checkout
-   redirect, not on every page load).
-2. Should the Ed25519 keypair here be the same one specified (but never
-   implemented) in `docs/remote-config-and-signing.md` for product-config
-   signing, or a separate keypair? Recommend **separate keypairs** — an
-   entitlement-signing key and a config-signing key have different blast
-   radii if compromised, and rotating one shouldn't force rotating the other.
+1. **Entitlement delivery: poll.** The plugin polls
+   `GET /entitlement/{site_identity}` once, shortly after the checkout
+   redirect returns control to wp-admin (not on every page load), and
+   verifies the signed response before writing to `sam_entitlements`. The
+   proxy never makes outbound requests to customer-controlled URLs, avoiding
+   SSRF-adjacent concerns and working behind firewalls/local dev.
+2. **Ed25519 keypair: separate from remote-config signing.** This proxy uses
+   its own entitlement-signing keypair, distinct from the (still
+   unimplemented) product-config-signing keypair in
+   `docs/remote-config-and-signing.md`. Different blast radius if compromised;
+   rotating one must not force rotating the other.
+
+## Still open
+
 3. Repo name and Cloudflare account/ownership details — yours to decide.
 4. Timeline for the migration/deprecation window in the section above.
 
 ## Sign-off
 
-This document should not move to implementation until goals, the
-poll-vs-callback decision, and the new repo's existence are confirmed.
+Poll-based delivery and separate keypairs are confirmed. This document should
+not move to implementation until the new repo exists and items 3-4 above are
+settled.
