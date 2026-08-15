@@ -18,11 +18,18 @@ This document captures the trust boundaries, threat actors, and security-critica
 
 | Input | Validation applied |
 |---|---|
-| DNS TXT record | Used only to obtain the URL of the signed config payload; never executed |
-| HTTPS remote config JSON | Ed25519 signature verified with `WP_SAM_CONFIG_PUBLIC_KEY` before any field is consumed |
-| Stripe webhooks | HMAC-SHA256 signature verified against `wp_csp_webhook_secret`; 5-minute timestamp replay window enforced |
+| GitHub-channel update manifest and package | Manifest fetched only from a hardcoded host (`vcns.github.io`); package download URL must exactly match the manifest's `download_url`; SHA-256 checksum verified with `hash_equals()` after download, before the file is handed to WordPress's installer (`Github_Update_Checker::verify_package_download()`) |
+| Stripe webhooks | HMAC-SHA256 signature verified against `wp_sam_webhook_secret`; 5-minute timestamp replay window enforced |
 | Browser CSP violation reports | Content-Type enforced; `document-uri` hostname checked against `home_url()`; rate-limited at 500/hour per surface; deduplicated by SHA-256 fingerprint |
 | Crawled HTML (discovery scan) | External origins extracted from resource tags; never executed or auto-approved |
+
+**Design stage, not yet implemented:** a DNS-discovered, Ed25519-signed remote
+config JSON (`docs/remote-config-and-signing.md`) and a VCNS-hosted
+checkout/entitlement proxy (`docs/checkout-proxy-design.md`) are designed but
+their implementing code (`Config_Resolver`, the Cloudflare Worker) was removed
+in PR #143 and does not currently exist. Do not treat the "Compromised
+delivery infrastructure" mitigation below, or invariant #5, as descriptions of
+current code — they describe the target design once #172 is implemented.
 
 ### Explicitly untrusted
 
@@ -36,9 +43,9 @@ This document captures the trust boundaries, threat actors, and security-critica
 
 **Unauthenticated external attacker** — can POST to the violation report endpoint. Mitigated by Content-Type enforcement, cross-origin `document-uri` rejection, rate limiting, and parameterised DB writes. Spoofed reports cannot trigger auto-approval; discovered sources remain `pending` until an admin reviews them.
 
-**Compromised delivery infrastructure** — DNS hijacking, TLS interception, or CDN compromise of the remote config origin. Mitigated by Ed25519 signature verification: a compromised delivery channel cannot forge a valid signature without the private key.
+**Compromised delivery infrastructure (target design, see above)** — DNS hijacking, TLS interception, or CDN compromise of the remote config origin. To be mitigated by Ed25519 signature verification: a compromised delivery channel cannot forge a valid signature without the private key. Not implemented today.
 
-**Malicious co-installed plugin** — a plugin could intercept `apply_filters()` calls. The three infrastructure constants (`WP_SAM_CONFIG_PUBLIC_KEY`, `WP_SAM_CONFIG_DNS_RECORD`, `WP_SAM_WORKER_URL`) are PHP constants, not WordPress options or filterable values. A plugin cannot redirect config fetches or alter the verification key at runtime.
+**Malicious co-installed plugin (target design, see above)** — a plugin could intercept `apply_filters()` calls. The design calls for infrastructure constants (e.g. `WP_SAM_CONFIG_PUBLIC_KEY`) rather than WordPress options or filterable values, so a plugin cannot redirect config fetches or alter the verification key at runtime. These constants do not exist in the current codebase.
 
 **Stripe webhook replay** — a captured valid webhook event replayed later. Mitigated by the 5-minute timestamp window in `verify_signature()`.
 
@@ -56,9 +63,157 @@ The following must never be changed without a full security review:
 
 4. **Cross-origin violation reports are discarded silently.** Reports whose `document-uri` hostname does not match `home_url()` are dropped without revealing a rejection response, to avoid advertising the check to an attacker probing the endpoint.
 
-5. **Infrastructure constants are PHP constants, not filters.** `WP_SAM_CONFIG_PUBLIC_KEY`, `WP_SAM_CONFIG_DNS_RECORD`, and `WP_SAM_WORKER_URL` use `defined() || define()` so they can be overridden only in `wp-config.php` (server-level). Making them filterable would allow any plugin to redirect signature verification or config fetches to an attacker-controlled endpoint.
+5. **Infrastructure constants must be PHP constants, not filters (target design).** Any future config-verification public key or control-plane URL must use `defined() || define()` so it can be overridden only in `wp-config.php` (server-level), never through `apply_filters()`. Making such a value filterable would allow any co-installed plugin to redirect signature verification or config fetches to an attacker-controlled endpoint. No such constant exists in the codebase today; this is a requirement for when one is introduced, not a description of current code.
 
 6. **Violation report fields are never auto-approved.** Discovered `blocked-uri` values are stored with `approval_state = 'pending'`. Only an explicit admin action via the REST API (capability-checked, nonce-validated) can change the state to `approved`.
+
+## Update pipeline
+
+Scope: the GitHub-channel updater (`Github_Update_Checker`). The
+WordPress.org-channel build ships no custom updater at all and inherits
+WordPress.org's own update infrastructure and threat model instead
+(mechanically enforced by `release-package.yml`'s package-content check — see
+#171).
+
+**Assets:** the plugin code running with the site's own privileges after an
+update is applied; the update manifest; the package ZIP.
+
+**Threat actors and mitigations:**
+
+- **Manifest host compromise or substitution.** The manifest is fetched only
+  from a hardcoded host (`vcns.github.io`) over HTTPS; there is no filter or
+  option that can redirect this. An attacker would need to compromise that
+  GitHub Pages deployment itself (see #171/#40's hardening of the Pages
+  deployment workflow) or perform a CA-level TLS interception.
+- **Package substitution / manifest–package mismatch.** The download URL used
+  is the manifest's own `download_url` field, compared for an exact string
+  match before use; nothing else can be substituted in.
+- **Manifest tampering (version/checksum fields).** SHA-256 checksum,
+  verified with `hash_equals()` against the actual downloaded file, is
+  required before the file is ever handed to WordPress's installer. A missing
+  or malformed checksum field fails closed (`wp_sam_update_checksum_missing`).
+  There is currently no signature over the manifest itself, only the checksum
+  of the package it points to — an attacker who fully compromises the
+  manifest host controls both the checksum and the package it validates
+  against, so checksum verification defends against a corrupted-in-transit
+  package, not a compromised manifest origin. Manifest-origin compromise is
+  currently mitigated only by host allowlisting and Pages-deployment
+  hardening, not by a signature.
+- **Checksum bypass.** Verification uses `hash_equals()` (constant-time) and
+  fails the update (rather than silently proceeding) on mismatch or missing
+  checksum; there is no code path that installs an unverified package.
+- **Downgrade / rollback abuse.** No in-plugin downgrade mechanism exists
+  (see #160) — an attacker cannot use the updater itself to push a known
+  vulnerable older version, because the updater only ever offers versions
+  newer than the currently-installed one (`inject_update()`).
+
+**Known gap:** only 2 of the 18 release-verification scenarios described in
+spec §1.4 have automated test coverage today (manifest-host rejection,
+checksum-mismatch rejection) — see `docs/testing-requirements.md` and #159.
+Untested does not mean broken, but every install/upgrade-via-WP-core,
+interrupted-update, and rollback scenario is currently unverified by CI.
+
+## Entitlements and commercial control plane
+
+Scope: the commercial-build billing/entitlement flow (`Feature_Gate`,
+Stripe checkout and webhook handling) and its planned successor, the
+VCNS-hosted checkout/entitlement proxy (`docs/checkout-proxy-design.md`, #172).
+
+**Assets:** VCNS's Stripe account (create charges, issue refunds, read
+account-wide data); individual customers' entitlement state; the integrity of
+the free/commercial feature boundary.
+
+**Current-state threat actors and mitigations:**
+
+- **Entitlement forgery via redirect parameters.** Mitigated — entitlements
+  are granted only from a verified Stripe webhook event, never from a
+  browser-redirect query parameter (invariant #1 below).
+- **Webhook replay.** Mitigated — 5-minute timestamp tolerance window in
+  webhook signature verification.
+- **Stripe secret exposure on customer installs.** **Not mitigated — live
+  finding.** The commercial build's checkout flow requires VCNS's own
+  account-wide Stripe API secret key to be entered into the CSP dashboard's
+  Settings tab and stored as a plaintext WordPress option
+  (`wp_sam_stripe_secret_key_live`) on whichever site runs checkout. This key
+  can create charges and issue refunds against VCNS's entire Stripe account,
+  not just that one site's entitlement — it is not a per-customer or
+  scoped credential. Any attacker who obtains database access to that one
+  site (a separate plugin vulnerability, a leaked backup, a malicious
+  co-admin, a compromised host) obtains the key. This is a regression from an
+  earlier architecture (a Cloudflare Worker holding the same key as a Worker
+  secret, never transmitted to the WordPress install — see `SECURITY.md` and
+  PR #143's removal of it). Remediation is designed in
+  `docs/checkout-proxy-design.md` and tracked as #172; until implemented,
+  this is the single highest-severity open item in this threat model and the
+  primary blocker on the public-hosting readiness gate (#156).
+- **Webhook secret exposure.** Lower severity than the API secret key (a
+  webhook secret can only be used to forge a *verification* of a fake event
+  toward the one endpoint it's configured for, not to call the Stripe API
+  directly), but it has the same storage-location problem — plaintext
+  WordPress option, no rotation tooling. Also addressed by the checkout-proxy
+  design, which moves webhook receipt to VCNS-controlled infrastructure
+  entirely.
+- **Site-identity spoofing.** The entitlement's site-identity binding is a
+  truncated SHA-256 hash of the site URL (`docs/stripe-operations.md`), not a
+  secret — it is a low-assurance binding intended to catch accidental
+  cross-site reuse, not a security boundary. This should not be treated as
+  authentication.
+
+**Forward-looking (once #172 lands):**
+
+- **Signature forgery on the "entitlement granted" callback.** Mitigated by
+  design — the proxy signs the callback with a private key held only on
+  VCNS infrastructure; the plugin verifies against an embedded public key
+  (reusing the pattern already specified in
+  `docs/remote-config-and-signing.md`).
+- **Compromise of the VCNS-hosted proxy itself.** Becomes the new highest-value
+  target once implemented — it holds the live Stripe secret key that no
+  longer exists anywhere else. See `docs/checkout-proxy-design.md` for its own
+  dedicated threat model; that document's threat model is a required input to
+  #172 implementation review, not a formality.
+- **Key compromise (proxy's Stripe secret or signing private key).** No
+  rotation/revocation/incident-response procedure exists yet for either — see
+  the "Follow-up" checklist in `docs/security-privacy-checklist.md`. This
+  must be written before #172 ships, not after.
+
+## Remote fleet management (forward-looking — Phase 6, greenfield)
+
+Scope: the estate/fleet-management capability described in spec §13 (#186-190)
+and any future remote change-application channel. Nothing in this section
+describes existing code — `SPECIFICATION.md` explicitly flags multisite and
+fleet management as unsupported today. This section exists so implementation
+work on #188-190 starts from an agreed set of attacker assumptions rather than
+inventing them mid-implementation.
+
+**Assets:** every managed site's security configuration, potentially across an
+entire fleet at once — the blast radius of a compromise here is
+multiplicative in a way nothing else in this plugin is.
+
+**Threat actors to design against:**
+
+- **Unauthorised remote configuration change.** A fleet-management channel
+  that can push policy/config changes to managed sites is, by construction, a
+  remote-write primitive. It must be authenticated at least as strongly as
+  the entitlement signing scheme above, must be scoped (a compromised
+  credential for one site must not grant write access to the whole fleet),
+  and every applied change must be recorded in that site's own audit log as
+  if an admin had made it locally.
+- **Remote code execution via the update or config channel.** A
+  fleet-management channel is a more attractive RCE target than the existing
+  per-site updater, because a single compromise could affect every managed
+  site simultaneously. It must not introduce any new deserialization of
+  remote data into executable PHP, and should reuse the existing
+  checksum/signature verification patterns rather than inventing a new one.
+- **Fleet-wide credential compromise.** If a single shared secret authenticates
+  fleet-wide remote changes, its compromise compromises every managed site at
+  once. Prefer per-site credentials issued by the control plane over one
+  shared fleet-wide secret, even if that's operationally more complex.
+- **Remote change bypassing local admin review.** The existing invariant that
+  enforce-mode CSP requires local admin approval (invariant #3 below) must
+  not be overridable by a remote fleet-management action — a compromised
+  control plane must not be able to force a site into a lockout-risk state
+  without a local human in the loop, or must at minimum be constrained by the
+  same safety gates a local admin would go through.
 
 ## Out of scope
 
