@@ -394,7 +394,19 @@ class Discovery {
 	private function get_crawl_urls( string $surface ): array {
 		return match ( $surface ) {
 			'frontend' => array( get_home_url( '/' ) ),
-			'admin'    => array( admin_url() ),
+			// No admin_url() target: an anonymous wp_remote_get() to wp-admin
+			// never sees real admin content -- WordPress redirects a logged-out
+			// request to wp-login.php, which the 'login' surface already crawls
+			// directly. Anonymously requesting wp-admin has also been observed
+			// to trigger a fatal error on some hosts/security plugins that
+			// don't expect a bot-like request there, surfacing as a confusing
+			// crawl_http_error for admins running a scan. Real admin-surface
+			// inline content is still captured passively by Hash_Manager on
+			// every genuine logged-in admin page view (admin_head/admin_footer);
+			// external admin-surface sources have no discovery path today and
+			// must come from violation reports in the interim, same as
+			// connect-src/worker-src.
+			'admin'    => array(),
 			'login'    => array( wp_login_url() ),
 			'api'      => array( rest_url() ),
 			default    => array(),
