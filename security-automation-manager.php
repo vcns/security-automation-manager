@@ -107,6 +107,12 @@ define( 'WP_SAM_VERSION', '2.8.0' );
  *        directive+token relaxations (data: URIs in img-src/font-src) that
  *        are safe despite being high-risk for automation. See
  *        Policy_Builder::BYPASS_CATALOG.
+ * v21 -- adds bypass_style_attr_unsafe_hashes tinyint column to
+ *        csp_policy_profiles, and moves 'unsafe-hashes' emission on
+ *        style-src-attr out of automatic (whenever a hash exists) and into
+ *        BYPASS_CATALOG as its own explicit, labelled opt-in -- a scanner
+ *        will flag this keyword, so enabling it must be a conscious admin
+ *        decision, not something the plugin decided on its own.
  */
 define( 'WP_SAM_DB_VERSION', '21' );
 

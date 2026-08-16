@@ -219,20 +219,32 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$profiles_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
 		$profiles     = ! empty( $profiles_raw ) ? $profiles_raw : array();
 
-		// Violation counts for the specific (surface, directive) pairs the Bypass
-		// Best Practices catalog covers, so the toggle can show "why" -- these are
-		// the same rows already visible on the Violations tab, not a new query
-		// concept, just grouped for this catalog's two entries specifically.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- no user input; only $wpdb->prefix and a fixed directive list used in the query.
-		$bypass_violation_rows   = $wpdb->get_results(
-			"SELECT profile_surface, violated_directive, occurrence_count FROM {$wpdb->prefix}csp_violation_reports
-			 WHERE blocked_uri = 'data' AND violated_directive IN ( 'img-src', 'font-src' )",
-			ARRAY_A
-		);
+		// Violation counts for the (directive, blocked_uri) pairs the Bypass
+		// Best Practices catalog covers, so each toggle can show "why" -- these
+		// are the same rows already visible on the Violations tab, grouped per
+		// catalog entry. Built from BYPASS_CATALOG rather than hardcoded so a
+		// future catalog entry doesn't silently show a zero count here.
 		$bypass_violation_counts = array();
-		foreach ( (array) $bypass_violation_rows as $row ) {
-			$key                             = $row['profile_surface'] . '|' . $row['violated_directive'];
-			$bypass_violation_counts[ $key ] = ( $bypass_violation_counts[ $key ] ?? 0 ) + (int) $row['occurrence_count'];
+		$bypass_conditions       = array();
+		foreach ( \WP_SAM\CSP\Policy_Builder::BYPASS_CATALOG as $bypass_entry ) {
+			$bypass_conditions[] = $wpdb->prepare(
+				'( violated_directive = %s AND blocked_uri = %s )',
+				$bypass_entry['directive'],
+				$bypass_entry['violation_blocked_uri']
+			);
+		}
+		if ( ! empty( $bypass_conditions ) ) {
+			$bypass_where = implode( ' OR ', $bypass_conditions );
+			// Each OR clause above is individually built via $wpdb->prepare(); this
+			// is just their concatenation, not raw interpolation of external input.
+			$bypass_violation_rows = $wpdb->get_results(
+				"SELECT profile_surface, violated_directive, blocked_uri, occurrence_count FROM {$wpdb->prefix}csp_violation_reports WHERE {$bypass_where}", // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				ARRAY_A
+			);
+			foreach ( (array) $bypass_violation_rows as $row ) {
+				$key                             = $row['profile_surface'] . '|' . $row['violated_directive'] . '|' . $row['blocked_uri'];
+				$bypass_violation_counts[ $key ] = ( $bypass_violation_counts[ $key ] ?? 0 ) + (int) $row['occurrence_count'];
+			}
 		}
 		?>
 	<table class="widefat fixed striped wp-sam-profiles-table">
@@ -315,11 +327,15 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 						<?php checked( ! empty( $profile[ $bypass_entry['column'] ] ) ); ?>
 					/>
 					<?php echo esc_html( $bypass_entry['label'] ); ?>
+					<span class="wp-sam-risk-badge risk-<?php echo esc_attr( $bypass_entry['risk_level'] ); ?>">
+						<?php echo esc_html( ucfirst( $bypass_entry['risk_level'] ) ); ?>
+					</span>
 				</label>
 				<p class="description" style="margin:0 0 8px;">
 					<?php echo esc_html( $bypass_entry['risk_note'] ); ?>
 					<?php
-					$bypass_count = $bypass_violation_counts[ $profile['surface'] . '|' . $bypass_entry['directive'] ] ?? 0;
+					$bypass_key   = $profile['surface'] . '|' . $bypass_entry['directive'] . '|' . $bypass_entry['violation_blocked_uri'];
+					$bypass_count = $bypass_violation_counts[ $bypass_key ] ?? 0;
 					if ( $bypass_count > 0 ) :
 						?>
 					<br />

@@ -12,10 +12,12 @@
  *     always explicitly present and take exclusive authority over element-level
  *     checks once set (CSP3) -- a hash added only to the base directive would
  *     never actually apply. style-src-attr hashes apply only to themselves
- *     (there is no -elem counterpart for an attribute-scoped directive), and
- *     'unsafe-hashes' is added automatically wherever an *-attr directive
- *     receives at least one hash (CSP3 §6.1.2 requires it for attribute-context
- *     hash matching).
+ *     (there is no -elem counterpart for an attribute-scoped directive).
+ *     'unsafe-hashes' is NOT added automatically -- it's its own
+ *     BYPASS_CATALOG entry, since it's a scanner-flaggable keyword an admin
+ *     must explicitly opt into per surface, same as any other entry -- CSP3
+ *     §6.1.2 requires it before any approved hash takes effect in an
+ *     attribute context.
  *   - Approved hosts from csp_source_inventory appended per directive.
  *   - report-uri appended automatically for direct browser reporting.
  *   - Reporting API headers and the report-to directive are optional because direct
@@ -29,9 +31,11 @@
  *   - FORBIDDEN_DIRECTIVES (deprecated/removed by W3C) are stripped from any
  *     admin override before serialisation; a warning is written to the audit log.
  *   - BYPASS_CATALOG: a small, hardcoded set of per-surface "Bypass Best
- *     Practices" toggles (Profiles tab) for specific directive+token
- *     relaxations that are safe despite being high-risk for automation
- *     (e.g. img-src/font-src data: -- see the constant's docblock).
+ *     Practices" toggles (Profiles tab) for specific, individually-reasoned
+ *     directive+token relaxations that go against CSP best practice -- some
+ *     safe despite being high-risk for automation (e.g. img-src/font-src
+ *     data:), some a deliberate, labelled, opt-in risk acceptance (e.g.
+ *     style-src-attr unsafe-hashes) -- see the constant's docblock.
  *
  * FIX: source host values are sanitised with sanitize_text_field() rather than
  * esc_attr(). esc_attr() HTML-encodes characters such as & which are invalid
@@ -76,39 +80,73 @@ class Policy_Builder extends Header_Builder {
 	/**
 	 * Deliberately small, hardcoded catalog of specific directive+token
 	 * relaxations an admin can opt into per surface from the Profiles tab's
-	 * "Bypass Best Practices" column -- for cases where a specific page's
-	 * design legitimately needs something Decision_Engine classifies as
-	 * high-risk for automation purposes (data:/blob: schemes are hard-blocked
-	 * from auto-approval, see CSP-SCHEME-002), but which is actually safe for
-	 * the *specific directive* it's being added to.
+	 * "Bypass Best Practices" column, for cases where a scanner or
+	 * Decision_Engine reasonably flags something as going against best
+	 * practice, but a specific site's real, legitimate design needs it.
 	 *
-	 * data: URIs cannot execute as script in img-src or font-src -- they can
-	 * only ever render pixel/glyph data -- so this catalog is deliberately
-	 * limited to those two entries. This must never be extended to a
-	 * directive where a data:/blob: source has real execution or navigation
-	 * risk (script-src, object-src, frame-src, worker-src, base-uri): those
-	 * stay hard-blocked, matching Decision_Engine's own classification, and
-	 * must go through explicit hash/source review instead.
+	 * Every entry carries a 'risk_level' (low/medium/high) and is shown to
+	 * the admin with that label before they opt in -- this catalog does NOT
+	 * only contain low-risk entries. The safety property is not "nothing
+	 * risky is ever offered here"; it's "nothing is ever silently or
+	 * automatically enabled, and every entry is individually reasoned about
+	 * and documented, not generated from a raw risk-classifier finding."
+	 * Two examples of the two different shapes this takes:
+	 *
+	 * - img-src/font-src data: (low risk): Decision_Engine classifies
+	 *   data:/blob: schemes as high-risk for *automation* purposes
+	 *   (CSP-SCHEME-002, hard-excluded from auto-approval), but data: URIs
+	 *   in img-src/font-src specifically can only ever render pixel/glyph
+	 *   data -- they cannot execute as script, unlike data: in
+	 *   script-src/object-src/frame-src/worker-src/base-uri, where the same
+	 *   scheme is genuinely dangerous. Those directives must never gain a
+	 *   catalog entry; they stay hard-blocked and go through explicit
+	 *   hash/source review instead.
+	 * - style-src-attr unsafe-hashes (medium risk): a real, if narrower,
+	 *   security-scanner-flaggable posture change -- it only ever affects
+	 *   style-src-attr, never script-src-attr or script execution of any
+	 *   kind (CSP directives don't cross-contaminate), and it's a no-op
+	 *   without an approved hash to pair with. See the "Inline style
+	 *   attributes" entry in docs/threat-model.md for the full reasoning.
+	 *   Kept in this catalog specifically so enabling it is a conscious,
+	 *   visible, per-surface admin decision, not something the plugin
+	 *   decided unilaterally (see PR #213's history for why it originally
+	 *   wasn't).
 	 *
 	 * Each entry's 'column' is a literal, hardcoded csp_policy_profiles
 	 * column name -- never derived from request input -- read directly via
 	 * $profile[$entry['column']] below and validated against this same
 	 * catalog before being written to in Admin_UI::ajax_set_bypass_flag().
+	 * 'violation_blocked_uri' is the csp_violation_reports.blocked_uri value
+	 * used to show the surface's real observed count for this entry on the
+	 * Profiles tab -- not consumed by build_policy_string() itself.
 	 */
 	public const BYPASS_CATALOG = array(
-		'img_src_data'  => array(
-			'column'    => 'bypass_img_src_data',
-			'directive' => 'img-src',
-			'token'     => 'data:',
-			'label'     => 'Allow data: URIs for images',
-			'risk_note' => 'Low risk: inline image data cannot execute as script.',
+		'img_src_data'                 => array(
+			'column'                => 'bypass_img_src_data',
+			'directive'             => 'img-src',
+			'token'                 => 'data:',
+			'label'                 => 'Allow data: URIs for images',
+			'risk_level'            => 'low',
+			'risk_note'             => 'Low risk: inline image data cannot execute as script.',
+			'violation_blocked_uri' => 'data',
 		),
-		'font_src_data' => array(
-			'column'    => 'bypass_font_src_data',
-			'directive' => 'font-src',
-			'token'     => 'data:',
-			'label'     => 'Allow data: URIs for fonts',
-			'risk_note' => 'Low risk: inline font data cannot execute as script.',
+		'font_src_data'                => array(
+			'column'                => 'bypass_font_src_data',
+			'directive'             => 'font-src',
+			'token'                 => 'data:',
+			'label'                 => 'Allow data: URIs for fonts',
+			'risk_level'            => 'low',
+			'risk_note'             => 'Low risk: inline font data cannot execute as script.',
+			'violation_blocked_uri' => 'data',
+		),
+		'style_src_attr_unsafe_hashes' => array(
+			'column'                => 'bypass_style_attr_unsafe_hashes',
+			'directive'             => 'style-src-attr',
+			'token'                 => "'unsafe-hashes'",
+			'label'                 => "Allow inline style attributes via hash approval (adds 'unsafe-hashes')",
+			'risk_level'            => 'medium',
+			'risk_note'             => 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2); does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.',
+			'violation_blocked_uri' => 'inline',
 		),
 	);
 
@@ -245,8 +283,11 @@ class Policy_Builder extends Header_Builder {
 		//
 		// Directives already scoped to attribute context (style-src-attr) apply
 		// only to themselves -- there is no "style-src-attr-elem" counterpart.
-		$hashes                      = $this->load_approved_hashes( $surface );
-		$attr_directives_with_hashes = array();
+		// Note: a hash recorded under style-src-attr has no effect unless the
+		// admin has also enabled the style_src_attr_unsafe_hashes bypass entry
+		// below (CSP3 §6.1.2) -- captured hashes sit inert until then, same as
+		// they did before any hash-capture support existed.
+		$hashes = $this->load_approved_hashes( $surface );
 		foreach ( $hashes as $hash ) {
 			$hash_token = "'{$hash['hash_algo']}-{$hash['hash_value']}'";
 			$base_dir   = $hash['directive'];
@@ -257,21 +298,7 @@ class Policy_Builder extends Header_Builder {
 			foreach ( $targets as $dir ) {
 				if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
 					$directives[ $dir ][] = $hash_token;
-					if ( str_ends_with( $dir, '-attr' ) ) {
-						$attr_directives_with_hashes[ $dir ] = true;
-					}
 				}
-			}
-		}
-
-		// A hash source only takes effect in an attribute context (style
-		// attributes, event handlers, javascript: URLs) when 'unsafe-hashes' is
-		// also present in the directive -- CSP3 §6.1.2. Add it only to *-attr
-		// directives that actually received a hash, so the bypass stays scoped
-		// to exactly the approved content rather than being added speculatively.
-		foreach ( array_keys( $attr_directives_with_hashes ) as $dir ) {
-			if ( ! in_array( "'unsafe-hashes'", $directives[ $dir ], true ) ) {
-				$directives[ $dir ][] = "'unsafe-hashes'";
 			}
 		}
 
@@ -335,8 +362,9 @@ class Policy_Builder extends Header_Builder {
 		}
 
 		// Per-surface "Bypass Best Practices" toggles (Profiles tab). See
-		// BYPASS_CATALOG's docblock for why this catalog is deliberately small
-		// and directive-specific rather than a general risk-tier bypass.
+		// BYPASS_CATALOG's docblock: entries span low through medium risk,
+		// but every one is individually reasoned about and requires this
+		// explicit per-surface opt-in -- nothing here is ever automatic.
 		foreach ( self::BYPASS_CATALOG as $entry ) {
 			if ( empty( $profile[ $entry['column'] ] ) ) {
 				continue;
