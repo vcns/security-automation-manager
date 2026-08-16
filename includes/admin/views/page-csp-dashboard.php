@@ -202,6 +202,22 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- No user input; only $wpdb->prefix used in query.
 		$profiles_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
 		$profiles     = ! empty( $profiles_raw ) ? $profiles_raw : array();
+
+		// Violation counts for the specific (surface, directive) pairs the Bypass
+		// Best Practices catalog covers, so the toggle can show "why" -- these are
+		// the same rows already visible on the Violations tab, not a new query
+		// concept, just grouped for this catalog's two entries specifically.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- no user input; only $wpdb->prefix and a fixed directive list used in the query.
+		$bypass_violation_rows   = $wpdb->get_results(
+			"SELECT profile_surface, violated_directive, occurrence_count FROM {$wpdb->prefix}csp_violation_reports
+			 WHERE blocked_uri = 'data' AND violated_directive IN ( 'img-src', 'font-src' )",
+			ARRAY_A
+		);
+		$bypass_violation_counts = array();
+		foreach ( (array) $bypass_violation_rows as $row ) {
+			$key                             = $row['profile_surface'] . '|' . $row['violated_directive'];
+			$bypass_violation_counts[ $key ] = ( $bypass_violation_counts[ $key ] ?? 0 ) + (int) $row['occurrence_count'];
+		}
 		?>
 	<table class="widefat fixed striped wp-sam-profiles-table">
 		<thead>
@@ -210,6 +226,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Automation', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Experimental', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Bypass Best Practices', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Last Updated', 'security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Actions', 'security-automation-manager' ); ?></th>
 			</tr>
@@ -271,6 +288,36 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					<?php esc_html_e( "require-trusted-types-for 'script' -- pinned to report-only; enforcing it needs application code most WordPress sites don't have yet.", 'security-automation-manager' ); ?>
 				</p>
 			</td>
+			<td>
+				<?php foreach ( \WP_SAM\CSP\Policy_Builder::BYPASS_CATALOG as $bypass_flag => $bypass_entry ) : ?>
+				<label style="display:block;margin-bottom:6px;">
+					<input
+						type="checkbox"
+						class="wp-sam-bypass-flag-toggle"
+						data-surface="<?php echo esc_attr( $profile['surface'] ); ?>"
+						data-flag="<?php echo esc_attr( $bypass_flag ); ?>"
+						<?php checked( ! empty( $profile[ $bypass_entry['column'] ] ) ); ?>
+					/>
+					<?php echo esc_html( $bypass_entry['label'] ); ?>
+				</label>
+				<p class="description" style="margin:0 0 8px;">
+					<?php echo esc_html( $bypass_entry['risk_note'] ); ?>
+					<?php
+					$bypass_count = $bypass_violation_counts[ $profile['surface'] . '|' . $bypass_entry['directive'] ] ?? 0;
+					if ( $bypass_count > 0 ) :
+						?>
+					<br />
+						<?php
+						printf(
+						/* translators: %s: formatted violation occurrence count */
+							esc_html__( '%s violations observed on this surface.', 'security-automation-manager' ),
+							esc_html( number_format( $bypass_count ) )
+						);
+						?>
+					<?php endif; ?>
+				</p>
+				<?php endforeach; ?>
+			</td>
 			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>
 			<td>
 				<?php foreach ( array( 'report-only', 'enforce', 'disabled' ) as $m ) : ?>
@@ -287,7 +334,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</tr>
 		<?php endforeach; ?>
 		<?php if ( empty( $profiles ) ) : ?>
-		<tr><td colspan="6"><?php esc_html_e( 'No profiles found. Deactivate and reactivate the plugin to seed defaults.', 'security-automation-manager' ); ?></td></tr>
+		<tr><td colspan="7"><?php esc_html_e( 'No profiles found. Deactivate and reactivate the plugin to seed defaults.', 'security-automation-manager' ); ?></td></tr>
 		<?php endif; ?>
 		</tbody>
 	</table>

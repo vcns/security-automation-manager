@@ -566,6 +566,90 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringContainsString( "require-trusted-types-for 'script'", $policy );
 	}
 
+	// ── Bypass Best Practices catalog ─────────────────────────────────────────
+
+	public function test_build_appends_data_scheme_to_img_src_when_bypass_flag_enabled(): void {
+		$profile                         = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'" ] ] );
+		$profile['bypass_img_src_data']  = 1;
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$img_src = $this->extract_directive( $policy, 'img-src' );
+		$this->assertStringContainsString( 'data:', $img_src );
+	}
+
+	public function test_build_omits_data_scheme_from_img_src_when_bypass_flag_disabled(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'" ] ] );
+
+		$policy  = $this->builder->build_policy_string( $profile, 'frontend' );
+		$img_src = $this->extract_directive( $policy, 'img-src' );
+
+		$this->assertStringNotContainsString( 'data:', $img_src );
+	}
+
+	public function test_build_appends_data_scheme_to_font_src_when_bypass_flag_enabled(): void {
+		$profile                          = $this->make_profile( [ 'default-src' => [ "'none'" ], 'font-src' => [ "'self'" ] ] );
+		$profile['bypass_font_src_data']  = 1;
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$font_src = $this->extract_directive( $policy, 'font-src' );
+		$this->assertStringContainsString( 'data:', $font_src );
+	}
+
+	public function test_build_does_not_duplicate_data_scheme_already_present(): void {
+		$profile                        = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'", 'data:' ] ] );
+		$profile['bypass_img_src_data'] = 1;
+
+		$policy  = $this->builder->build_policy_string( $profile, 'frontend' );
+		$img_src = $this->extract_directive( $policy, 'img-src' );
+
+		$this->assertSame( 1, substr_count( $img_src, 'data:' ) );
+	}
+
+	public function test_build_bypass_flag_does_not_affect_unrelated_directive(): void {
+		// Enabling the img-src flag must never leak the data: token into
+		// font-src or any other directive -- BYPASS_CATALOG entries are
+		// directive-specific by design (see its docblock).
+		$profile                        = $this->make_profile( [
+			'default-src' => [ "'none'" ],
+			'img-src'     => [ "'self'" ],
+			'font-src'    => [ "'self'" ],
+		] );
+		$profile['bypass_img_src_data'] = 1;
+
+		$policy   = $this->builder->build_policy_string( $profile, 'frontend' );
+		$font_src = $this->extract_directive( $policy, 'font-src' );
+
+		$this->assertStringNotContainsString( 'data:', $font_src );
+	}
+
+	public function test_build_skips_bypass_token_when_directive_absent(): void {
+		// A profile without an explicit img-src (e.g. a custom override that
+		// only sets default-src) must not error when a bypass flag is enabled
+		// -- the token append is simply skipped, same as the hash-propagation
+		// "elem directive absent" case above.
+		$profile                        = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
+		$profile['bypass_img_src_data'] = 1;
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "default-src 'none'", $policy );
+	}
+
+	/**
+	 * Extracts a single directive's value segment from a built policy string.
+	 */
+	private function extract_directive( string $policy, string $directive ): string {
+		$parts = explode( ';', $policy );
+		foreach ( $parts as $part ) {
+			if ( str_starts_with( trim( $part ), $directive . ' ' ) || trim( $part ) === $directive ) {
+				return trim( $part );
+			}
+		}
+		return '';
+	}
+
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	private function make_profile( array $directives, bool $strict_dynamic = false ): array {

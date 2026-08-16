@@ -233,6 +233,8 @@ class Activator {
   overrides longtext NOT NULL,
   strict_dynamic tinyint(1) NOT NULL DEFAULT 0,
   trusted_types tinyint(1) NOT NULL DEFAULT 0,
+  bypass_img_src_data tinyint(1) NOT NULL DEFAULT 0,
+  bypass_font_src_data tinyint(1) NOT NULL DEFAULT 0,
   override_expires_at datetime DEFAULT NULL,
   override_owner varchar(255) DEFAULT NULL,
   created_at datetime NOT NULL,
@@ -941,18 +943,20 @@ class Activator {
 				$wpdb->insert(
 					$table,
 					array(
-						'surface'             => $surface,
-						'mode'                => 'report-only',
-						'directives'          => wp_json_encode( self::default_directives( $surface ) ),
-						'overrides'           => wp_json_encode( array() ),
-						'strict_dynamic'      => 0,
-						'trusted_types'       => 0,
-						'override_expires_at' => null,
-						'override_owner'      => null,
-						'created_at'          => $now,
-						'updated_at'          => $now,
+						'surface'              => $surface,
+						'mode'                 => 'report-only',
+						'directives'           => wp_json_encode( self::default_directives( $surface ) ),
+						'overrides'            => wp_json_encode( array() ),
+						'strict_dynamic'       => 0,
+						'trusted_types'        => 0,
+						'bypass_img_src_data'  => 0,
+						'bypass_font_src_data' => 0,
+						'override_expires_at'  => null,
+						'override_owner'       => null,
+						'created_at'           => $now,
+						'updated_at'           => $now,
 					),
-					array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' )
+					array( '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s' )
 				);
 			}
 		}

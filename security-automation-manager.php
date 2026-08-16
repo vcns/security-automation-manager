@@ -101,8 +101,14 @@ define( 'WP_SAM_VERSION', '2.4.30' );
  *        third-party origin. The dedup key stays origin-only (scheme+host),
  *        but the "Suggest" SRI hash helper needs an exact file URL to fetch
  *        and hash, which the origin alone can't provide.
+ * v20 -- adds bypass_img_src_data, bypass_font_src_data tinyint columns to
+ *        csp_policy_profiles for the Profiles tab's "Bypass Best Practices"
+ *        toggles: a small, hardcoded, per-surface opt-in for specific
+ *        directive+token relaxations (data: URIs in img-src/font-src) that
+ *        are safe despite being high-risk for automation. See
+ *        Policy_Builder::BYPASS_CATALOG.
  */
-define( 'WP_SAM_DB_VERSION', '19' );
+define( 'WP_SAM_DB_VERSION', '20' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );
