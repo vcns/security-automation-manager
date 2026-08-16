@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.30
+Stable tag: 2.4.31
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,13 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.31 =
+
+* Fixed a bug where running Manual Scan could fail with an HTTP 500 error, caused by the admin-surface scan anonymously requesting wp-admin. That crawl target has been removed; it never discovered real admin content anyway, since a logged-out request just redirects to the login page.
+* Added automatic hash capture and approval support for inline `style="..."` attributes, closing a gap where this content had no path to approval under an enforce-mode policy.
+* Added a "Bypass Best Practices" option on the Profiles tab, letting you explicitly allow `data:` image and font URIs per surface when your site's design legitimately needs them -- shown alongside how many times each has actually been blocked.
+* Clarified the Violations tab's occurrence counts for inline content so it's clear when a single row represents many different blocked items, not just one.
 
 = 2.4.30 =
 
