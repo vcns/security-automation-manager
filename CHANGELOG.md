@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.31] - 2026-08-16
+
+### Fixed
+
+- `Discovery`'s 'admin' surface crawl target was `admin_url()`, fetched anonymously via `wp_remote_get()`. This never saw real admin-only content (a logged-out request redirects to `wp-login.php`, which the 'login' surface already crawls directly), and on at least one production site triggered a fatal error (surfaced as `crawl_http_error: HTTP 500`) when hit by a bot-like anonymous request, interrupting Run Manual Scan entirely. The 'admin' crawl target is removed; real admin-surface inline content is unaffected, since `Hash_Manager` already captures it passively on every genuine logged-in admin page view.
+- The violations dashboard's Details popover now notes, for any row whose `blocked_uri` has no host (`inline`, `eval`, `data:`, etc.), that `occurrence_count` aggregates every occurrence of that directive+token combination rather than counting distinct content blocks -- a page with many different inline scripts/styles still shows as one row. Points admins at the Scripts (Internal Script Integrity) tab, where individually captured content hashes actually live.
+
+### Added
+
+- `Hash_Manager` now also captures inline `style="..."` **attribute** values (previously only `<script>`/`<style>` **element** blocks were extracted), recording their hashes under a new `style-src-attr` directive value. `Policy_Builder` adds the CSP3-required `'unsafe-hashes'` keyword to `style-src-attr` automatically, and only, when it has at least one approved hash. Together these close a gap where `style-src-attr` had no discovery or approval path at all -- on one production site this was the single largest source of CSP violations under enforce mode.
+- Profiles tab gains a "Bypass Best Practices" column: a small, deliberately curated, per-surface opt-in for `img-src: data:` and `font-src: data:` -- directive+token combinations that `Decision_Engine` correctly excludes from *automatic* approval (`CSP-SCHEME-002`) but which are safe for these two specific directives, since inline image/font data cannot execute as script. Each checkbox shows the surface's actual observed violation count for that directive. Schema v20 adds `bypass_img_src_data`, `bypass_font_src_data` columns to `csp_policy_profiles` (default off).
+
 ## [2.4.30] - 2026-08-14
 
 ### Added
