@@ -184,6 +184,69 @@ class HashManagerTest extends TestCase {
 		$this->assertSame( array_keys( $hashes_unix ), array_keys( $hashes_windows ) );
 	}
 
+	// ── inline style attribute extraction (via reflection) ───────────────────
+
+	public function test_extract_style_attributes_captures_inline_style_attr(): void {
+		$manager = $this->make_db_stub_manager();
+		$html    = '<div style="color:red;margin-top:10px">hi</div>';
+
+		$this->invoke_extract_style_attributes( $manager, $html, 'frontend' );
+
+		$this->assertCount( 1, $manager->get_captured_hashes() );
+	}
+
+	public function test_extract_style_attributes_ignores_empty_style_attr(): void {
+		$manager = $this->make_db_stub_manager();
+		$html    = '<div style="">hi</div>';
+
+		$this->invoke_extract_style_attributes( $manager, $html, 'frontend' );
+
+		$this->assertEmpty( $manager->get_captured_hashes() );
+	}
+
+	public function test_extract_style_attributes_captures_multiple_distinct_values(): void {
+		$manager = $this->make_db_stub_manager();
+		$html    = '<div style="color:red">a</div><span style="color:blue">b</span>';
+
+		$this->invoke_extract_style_attributes( $manager, $html, 'frontend' );
+
+		$this->assertCount( 2, $manager->get_captured_hashes() );
+	}
+
+	public function test_extract_style_attributes_dedupes_identical_values(): void {
+		$manager = $this->make_db_stub_manager();
+		$html    = '<div style="color:red">a</div><span style="color:red">b</span>';
+
+		$this->invoke_extract_style_attributes( $manager, $html, 'frontend' );
+
+		$this->assertCount( 1, $manager->get_captured_hashes() );
+	}
+
+	public function test_extract_style_attributes_supports_single_quoted_values(): void {
+		$manager = $this->make_db_stub_manager();
+		$html    = "<div style='color:red'>a</div>";
+
+		$this->invoke_extract_style_attributes( $manager, $html, 'frontend' );
+
+		$this->assertCount( 1, $manager->get_captured_hashes() );
+	}
+
+	public function test_extract_style_attributes_hashes_the_html_entity_decoded_value(): void {
+		// Browsers evaluate the parsed (entity-decoded) attribute value, so the
+		// stored hash must be computed from the decoded string, not raw source
+		// bytes, or it will never match what the browser hashes.
+		$manager = $this->make_db_stub_manager();
+		$html    = '<div style="content:&quot;x&quot;">a</div>';
+
+		$this->invoke_extract_style_attributes( $manager, $html, 'frontend' );
+
+		$captured     = $manager->get_captured_hashes();
+		$decoded      = 'content:"x"';
+		$expected_b64 = base64_encode( hash( 'sha256', $decoded, true ) );
+
+		$this->assertArrayHasKey( $expected_b64, $captured );
+	}
+
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	/**
@@ -244,5 +307,15 @@ class HashManagerTest extends TestCase {
 		$ref = new ReflectionMethod( $manager, 'extract_and_record' );
 		$ref->setAccessible( true );
 		$ref->invoke( $manager, $html, $tag, $directive, $surface );
+	}
+
+	/**
+	 * Calls the private extract_and_record_style_attributes() method via
+	 * reflection.
+	 */
+	private function invoke_extract_style_attributes( Hash_Manager $manager, string $html, string $surface ): void {
+		$ref = new ReflectionMethod( $manager, 'extract_and_record_style_attributes' );
+		$ref->setAccessible( true );
+		$ref->invoke( $manager, $html, $surface );
 	}
 }

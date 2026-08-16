@@ -89,7 +89,7 @@ Key columns:
 
 - `id`
 - `surface`
-- `directive` — `script-src` or `style-src`
+- `directive` — `script-src`, `style-src`, or `style-src-attr` (inline `style="..."` attribute values; unlike the element directives, Policy_Builder must also add `'unsafe-hashes'` to `style-src-attr` for a hash there to take effect, per CSP3 §6.1.2)
 - `hash_algo` — `sha256`, `sha384`, or `sha512`
 - `hash_value` — Base64-encoded hash of the raw block content
 - `content_fingerprint` — deterministic fingerprint of the raw content used for deduplication and change detection

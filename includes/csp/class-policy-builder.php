@@ -11,7 +11,11 @@
  *     AND their -elem counterpart, since script-src-elem / style-src-elem are
  *     always explicitly present and take exclusive authority over element-level
  *     checks once set (CSP3) -- a hash added only to the base directive would
- *     never actually apply.
+ *     never actually apply. style-src-attr hashes apply only to themselves
+ *     (there is no -elem counterpart for an attribute-scoped directive), and
+ *     'unsafe-hashes' is added automatically wherever an *-attr directive
+ *     receives at least one hash (CSP3 §6.1.2 requires it for attribute-context
+ *     hash matching).
  *   - Approved hosts from csp_source_inventory appended per directive.
  *   - report-uri appended automatically for direct browser reporting.
  *   - Reporting API headers and the report-to directive are optional because direct
@@ -195,13 +199,36 @@ class Policy_Builder extends Header_Builder {
 		// consulted as a fallback. A hash recorded only under the base directive
 		// (Hash_Manager stores 'script-src'/'style-src') would therefore never
 		// actually allow the inline block it was approved for.
-		$hashes = $this->load_approved_hashes( $surface );
+		//
+		// Directives already scoped to attribute context (style-src-attr) apply
+		// only to themselves -- there is no "style-src-attr-elem" counterpart.
+		$hashes                      = $this->load_approved_hashes( $surface );
+		$attr_directives_with_hashes = array();
 		foreach ( $hashes as $hash ) {
 			$hash_token = "'{$hash['hash_algo']}-{$hash['hash_value']}'";
-			foreach ( array( $hash['directive'], $hash['directive'] . '-elem' ) as $dir ) {
+			$base_dir   = $hash['directive'];
+			$targets    = str_ends_with( $base_dir, '-attr' )
+				? array( $base_dir )
+				: array( $base_dir, $base_dir . '-elem' );
+
+			foreach ( $targets as $dir ) {
 				if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
 					$directives[ $dir ][] = $hash_token;
+					if ( str_ends_with( $dir, '-attr' ) ) {
+						$attr_directives_with_hashes[ $dir ] = true;
+					}
 				}
+			}
+		}
+
+		// A hash source only takes effect in an attribute context (style
+		// attributes, event handlers, javascript: URLs) when 'unsafe-hashes' is
+		// also present in the directive -- CSP3 §6.1.2. Add it only to *-attr
+		// directives that actually received a hash, so the bypass stays scoped
+		// to exactly the approved content rather than being added speculatively.
+		foreach ( array_keys( $attr_directives_with_hashes ) as $dir ) {
+			if ( ! in_array( "'unsafe-hashes'", $directives[ $dir ], true ) ) {
+				$directives[ $dir ][] = "'unsafe-hashes'";
 			}
 		}
 
