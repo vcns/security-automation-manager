@@ -121,6 +121,48 @@ class Hash_Manager {
 	private function process_inline_blocks( string $html, string $surface ): void {
 		$this->extract_and_record( $html, 'script', 'script-src', $surface );
 		$this->extract_and_record( $html, 'style', 'style-src', $surface );
+		$this->extract_and_record_style_attributes( $html, $surface );
+	}
+
+	/**
+	 * Extracts inline style="" attribute values from arbitrary tags and records
+	 * their hashes under style-src-attr.
+	 *
+	 * Unlike <style> element blocks, a hash source only takes effect in an
+	 * attribute context (style attributes, event handlers, javascript: URLs)
+	 * when the 'unsafe-hashes' keyword is also present in the directive --
+	 * CSP3 §6.1.2. Policy_Builder adds 'unsafe-hashes' to style-src-attr
+	 * automatically whenever at least one hash is present for it.
+	 *
+	 * Regex-based extraction over raw HTML (matching this class's existing
+	 * approach for <script>/<style> elements), not a real DOM parse -- a
+	 * literal "style=" substring inside unrelated script/text content could
+	 * in principle produce a spurious, never-matched hash entry. That's
+	 * cosmetic noise, not a security concern: an unused hash only ever
+	 * narrows what it exactly matches, it never broadens the policy.
+	 *
+	 * @param string $html    Raw HTML.
+	 * @param string $surface CSP surface identifier.
+	 */
+	private function extract_and_record_style_attributes( string $html, string $surface ): void {
+		if ( ! preg_match_all( '/\sstyle\s*=\s*(["\'])(.*?)\1/is', $html, $matches, PREG_SET_ORDER ) ) {
+			return;
+		}
+
+		foreach ( $matches as $match ) {
+			$content = trim( $match[2] );
+			if ( '' === $content ) {
+				continue;
+			}
+
+			// Browsers hash the parsed (HTML-entity-decoded) attribute value, not
+			// the raw source bytes -- decode here so the stored hash matches what
+			// the browser actually computes.
+			$decoded   = html_entity_decode( $content, ENT_QUOTES | ENT_HTML5 );
+			$canonical = str_replace( array( "\r\n", "\r" ), "\n", $decoded );
+
+			$this->record_hash( $canonical, 'style-src-attr', $surface );
+		}
 	}
 
 	/**
@@ -177,8 +219,9 @@ class Hash_Manager {
 	/**
 	 * Computes an inline hash and stores it in the DB inventory.
 	 *
-	 * @param string $content     Raw inline script or style content (without tags).
-	 * @param string $directive   'script-src' or 'style-src'.
+	 * @param string $content     Raw inline script/style content, or a style
+	 *                            attribute's value for 'style-src-attr'.
+	 * @param string $directive   'script-src', 'style-src', or 'style-src-attr'.
 	 * @param string $surface     'frontend' | 'admin' | 'login' | 'api'.
 	 * @param string $source_file Optional: file where the inline block originates.
 	 * @return string             'sha256-{base64}' value for direct use in CSP header.

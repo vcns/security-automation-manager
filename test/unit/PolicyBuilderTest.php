@@ -488,6 +488,85 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringContainsString( "'sha256-abc123=='", $policy );
 	}
 
+	public function test_build_applies_approved_style_attr_hash_only_to_itself(): void {
+		// style-src-attr is already scoped to attribute context -- unlike
+		// script-src/style-src, it has no "-elem" counterpart to propagate to.
+		$profile = $this->make_profile( [
+			'default-src'     => [ "'none'" ],
+			'style-src-attr'  => [ "'none'" ],
+		] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$parts          = explode( ';', $policy );
+		$style_src_attr = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr' ) ) ) );
+
+		$this->assertStringContainsString( "'sha256-ghi789=='", $style_src_attr );
+	}
+
+	public function test_build_adds_unsafe_hashes_when_style_src_attr_has_a_hash(): void {
+		// CSP3 §6.1.2: a hash source only takes effect in an attribute context
+		// (style attributes, event handlers, javascript: URLs) when
+		// 'unsafe-hashes' is also present in the directive.
+		$profile = $this->make_profile( [
+			'default-src'    => [ "'none'" ],
+			'style-src-attr' => [ "'none'" ],
+		] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$parts          = explode( ';', $policy );
+		$style_src_attr = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr' ) ) ) );
+
+		$this->assertStringContainsString( "'unsafe-hashes'", $style_src_attr );
+	}
+
+	public function test_build_omits_unsafe_hashes_when_style_src_attr_has_no_hash(): void {
+		// Never add 'unsafe-hashes' speculatively -- only when it's scoping an
+		// actual approved hash, otherwise it's a pure posture downgrade with no
+		// corresponding benefit.
+		$profile = $this->make_profile( [
+			'default-src'    => [ "'none'" ],
+			'style-src-attr' => [ "'none'" ],
+		] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$parts          = explode( ';', $policy );
+		$style_src_attr = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr' ) ) ) );
+
+		$this->assertStringNotContainsString( 'unsafe-hashes', $style_src_attr );
+	}
+
+	public function test_build_does_not_add_unsafe_hashes_to_unrelated_directives(): void {
+		$profile = $this->make_profile( [
+			'default-src'     => [ "'none'" ],
+			'style-src-attr'  => [ "'none'" ],
+			'script-src'      => [],
+			'script-src-elem' => [],
+		] );
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
+			[ 'directive' => 'script-src', 'hash_algo' => 'sha256', 'hash_value' => 'abc123==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$parts      = explode( ';', $policy );
+		$script_src = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'script-src ' ) ) ) );
+
+		$this->assertStringNotContainsString( 'unsafe-hashes', $script_src );
+	}
+
 	// ── object-src and base-uri hardening ────────────────────────────────────
 
 	public function test_build_includes_object_src_none(): void {
