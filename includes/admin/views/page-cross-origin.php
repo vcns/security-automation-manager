@@ -92,7 +92,7 @@ $tabs = array(
 			'none'            => __( 'none -- no policy files allowed (recommended)', 'security-automation-manager' ),
 			'master-only'     => __( 'master-only -- only the root crossdomain.xml', 'security-automation-manager' ),
 			'by-content-type' => __( 'by-content-type', 'security-automation-manager' ),
-			'all'             => __( 'all -- any policy file, anywhere', 'security-automation-manager' ),
+			'all'             => __( 'all -- any policy file, anywhere (not recommended)', 'security-automation-manager' ),
 		),
 		'warning_html'  => '',
 		'supports_mode' => false,

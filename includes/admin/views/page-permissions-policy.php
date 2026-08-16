@@ -36,7 +36,7 @@ $token_labels = array(
 	''     => __( '(browser default)', 'security-automation-manager' ),
 	'none' => __( 'None', 'security-automation-manager' ),
 	'self' => __( 'Self', 'security-automation-manager' ),
-	'all'  => __( 'All', 'security-automation-manager' ),
+	'all'  => __( 'All -- any origin, including third-party iframes and embeds (not recommended)', 'security-automation-manager' ),
 );
 ?>
 <div class="wrap wp-sam-wrap">

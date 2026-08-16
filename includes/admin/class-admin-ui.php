@@ -469,15 +469,29 @@ class Admin_UI {
 	}
 
 	public function render_referrer_policy(): void {
+		// Values the spec itself singles out as risky get an explicit warning
+		// suffix rather than appearing as a bare token indistinguishable from
+		// the safe options around it -- unsafe-url always sends the full URL,
+		// including path and query string, even cross-origin and even on a
+		// downgrade from HTTPS to plain HTTP.
+		$risky_value_labels = array(
+			/* translators: %s: policy value token */
+			'unsafe-url' => __( '%s (not recommended -- always sends the full URL, including query string, even cross-origin and over plain HTTP)', 'security-automation-manager' ),
+		);
+
 		$options = array();
 		foreach ( Referrer_Policy_Builder::VALID_VALUES as $value ) {
-			$options[ $value ] = Referrer_Policy_Builder::DEFAULT_VALUE === $value
-				? sprintf(
+			if ( Referrer_Policy_Builder::DEFAULT_VALUE === $value ) {
+				$options[ $value ] = sprintf(
 					/* translators: %s: policy value token */
 					__( '%s (recommended)', 'security-automation-manager' ),
 					$value
-				)
-				: $value;
+				);
+			} elseif ( isset( $risky_value_labels[ $value ] ) ) {
+				$options[ $value ] = sprintf( $risky_value_labels[ $value ], $value );
+			} else {
+				$options[ $value ] = $value;
+			}
 		}
 
 		$this->render_pillar_page(
