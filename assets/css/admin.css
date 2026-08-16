@@ -237,11 +237,15 @@
 
 /*
  * Profiles table: Automation (a <select> plus an "Upgrade to unlock" link)
- * and Experimental (a checkbox plus a description paragraph) both need real
- * room, unlike the four short columns around them -- pin those four to a
- * fixed width and leave Automation/Experimental unset so they split
- * whatever's left, instead of six columns splitting the row evenly and
- * cramming a dropdown and a checkbox+paragraph into a sliver each.
+ * and Experimental/Bypass Best Practices (each a checkbox or two plus a
+ * description paragraph) all need real room, unlike the short columns around
+ * them -- pin the short columns to a fixed width and leave
+ * Automation/Experimental/Bypass Best Practices unset so they split whatever
+ * space is left, instead of seven columns splitting the row evenly and
+ * cramming a dropdown or a checkbox+paragraph into a sliver each.
+ *
+ * Column order: 1 Surface, 2 Mode, 3 Automation, 4 Experimental,
+ * 5 Bypass Best Practices, 6 Last Updated, 7 Actions.
  */
 .wp-sam-profiles-table th:nth-child(1),
 .wp-sam-profiles-table td:nth-child(1) {
@@ -253,13 +257,13 @@
 	width: 110px;
 }
 
-.wp-sam-profiles-table th:nth-child(5),
-.wp-sam-profiles-table td:nth-child(5) {
+.wp-sam-profiles-table th:nth-child(6),
+.wp-sam-profiles-table td:nth-child(6) {
 	width: 140px;
 }
 
-.wp-sam-profiles-table th:nth-child(6),
-.wp-sam-profiles-table td:nth-child(6) {
+.wp-sam-profiles-table th:nth-child(7),
+.wp-sam-profiles-table td:nth-child(7) {
 	width: 160px;
 }
 
