@@ -90,6 +90,7 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_undo_source_decision', array( $this, 'ajax_undo_source_decision' ) );
 		add_action( 'wp_ajax_wp_sam_toggle_mode', array( $this, 'ajax_toggle_mode' ) );
 		add_action( 'wp_ajax_wp_sam_set_trusted_types', array( $this, 'ajax_set_trusted_types' ) );
+		add_action( 'wp_ajax_wp_sam_set_bypass_flag', array( $this, 'ajax_set_bypass_flag' ) );
 		add_action( 'wp_ajax_wp_sam_set_automation_mode', array( $this, 'ajax_set_automation_mode' ) );
 		add_action( 'wp_ajax_wp_sam_create_checkout_session', array( $this, 'ajax_create_checkout_session' ) );
 		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
@@ -781,6 +782,48 @@ class Admin_UI {
 			array(
 				'trusted_types' => $enabled ? 1 : 0,
 				'updated_at'    => current_time( 'mysql', true ),
+			),
+			array( 'surface' => $surface ),
+			array( '%d', '%s' ),
+			array( '%s' )
+		);
+		wp_send_json_success();
+	}
+
+	/**
+	 * Toggles one "Bypass Best Practices" flag (Profiles tab) for a surface.
+	 *
+	 * $_POST['flag'] is validated against Policy_Builder::BYPASS_CATALOG's
+	 * keys and resolved through it to a literal, hardcoded column name --
+	 * never taken from request input directly -- so this can never be used
+	 * to toggle an arbitrary column via a crafted request.
+	 */
+	public function ajax_set_bypass_flag(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$surface = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
+		$flag    = sanitize_key( wp_unslash( $_POST['flag'] ?? '' ) );
+		$enabled = ! empty( $_POST['enabled'] );
+
+		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+		}
+
+		if ( ! isset( Policy_Builder::BYPASS_CATALOG[ $flag ] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid bypass flag.', 'security-automation-manager' ) ) );
+		}
+
+		$column = Policy_Builder::BYPASS_CATALOG[ $flag ]['column'];
+
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix . 'csp_policy_profiles',
+			array(
+				$column      => $enabled ? 1 : 0,
+				'updated_at' => current_time( 'mysql', true ),
 			),
 			array( 'surface' => $surface ),
 			array( '%d', '%s' ),

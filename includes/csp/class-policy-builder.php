@@ -28,6 +28,10 @@
  *     so including them is misleading noise.
  *   - FORBIDDEN_DIRECTIVES (deprecated/removed by W3C) are stripped from any
  *     admin override before serialisation; a warning is written to the audit log.
+ *   - BYPASS_CATALOG: a small, hardcoded set of per-surface "Bypass Best
+ *     Practices" toggles (Profiles tab) for specific directive+token
+ *     relaxations that are safe despite being high-risk for automation
+ *     (e.g. img-src/font-src data: -- see the constant's docblock).
  *
  * FIX: source host values are sanitised with sanitize_text_field() rather than
  * esc_attr(). esc_attr() HTML-encodes characters such as & which are invalid
@@ -67,6 +71,45 @@ class Policy_Builder extends Header_Builder {
 		'block-all-mixed-content', // obsolete; superseded by default browser auto-upgrade
 		'navigate-to',            // removed from CSP3 spec (was at-risk)
 		'prefetch-src',           // deprecated/non-standard; Chromium intent-to-remove
+	);
+
+	/**
+	 * Deliberately small, hardcoded catalog of specific directive+token
+	 * relaxations an admin can opt into per surface from the Profiles tab's
+	 * "Bypass Best Practices" column -- for cases where a specific page's
+	 * design legitimately needs something Decision_Engine classifies as
+	 * high-risk for automation purposes (data:/blob: schemes are hard-blocked
+	 * from auto-approval, see CSP-SCHEME-002), but which is actually safe for
+	 * the *specific directive* it's being added to.
+	 *
+	 * data: URIs cannot execute as script in img-src or font-src -- they can
+	 * only ever render pixel/glyph data -- so this catalog is deliberately
+	 * limited to those two entries. This must never be extended to a
+	 * directive where a data:/blob: source has real execution or navigation
+	 * risk (script-src, object-src, frame-src, worker-src, base-uri): those
+	 * stay hard-blocked, matching Decision_Engine's own classification, and
+	 * must go through explicit hash/source review instead.
+	 *
+	 * Each entry's 'column' is a literal, hardcoded csp_policy_profiles
+	 * column name -- never derived from request input -- read directly via
+	 * $profile[$entry['column']] below and validated against this same
+	 * catalog before being written to in Admin_UI::ajax_set_bypass_flag().
+	 */
+	public const BYPASS_CATALOG = array(
+		'img_src_data'  => array(
+			'column'    => 'bypass_img_src_data',
+			'directive' => 'img-src',
+			'token'     => 'data:',
+			'label'     => 'Allow data: URIs for images',
+			'risk_note' => 'Low risk: inline image data cannot execute as script.',
+		),
+		'font_src_data' => array(
+			'column'    => 'bypass_font_src_data',
+			'directive' => 'font-src',
+			'token'     => 'data:',
+			'label'     => 'Allow data: URIs for fonts',
+			'risk_note' => 'Low risk: inline font data cannot execute as script.',
+		),
 	);
 
 	private Feature_Gate $gate;
@@ -289,6 +332,19 @@ class Policy_Builder extends Header_Builder {
 		// or a CSP linter reviewing the header.
 		if ( $is_report_only ) {
 			unset( $directives['upgrade-insecure-requests'] );
+		}
+
+		// Per-surface "Bypass Best Practices" toggles (Profiles tab). See
+		// BYPASS_CATALOG's docblock for why this catalog is deliberately small
+		// and directive-specific rather than a general risk-tier bypass.
+		foreach ( self::BYPASS_CATALOG as $entry ) {
+			if ( empty( $profile[ $entry['column'] ] ) ) {
+				continue;
+			}
+			$dir = $entry['directive'];
+			if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) && ! in_array( $entry['token'], $directives[ $dir ], true ) ) {
+				$directives[ $dir ][] = $entry['token'];
+			}
 		}
 
 		// The per-surface Trusted Types toggle (Profiles tab) sets require-trusted-types-for

@@ -16,6 +16,7 @@ The plugin creates custom tables on activation. All table names are prefixed wit
 | v8 | adds `last_seen_at` and `source_host` indexes to `csp_source_inventory`, and an `occurrence_count` index to `csp_violation_reports`, for the sortable/filterable dashboard tables |
 | v9 | renames the shared/generic tables (`csp_scan_logs`→`sam_scan_logs`, `csp_entitlements`→`sam_entitlements`, `csp_processed_events`→`sam_processed_events`, `csp_audit_log`→`sam_audit_log`, `csp_policy_change_decisions`→`sam_policy_change_decisions`, `csp_policy_versions`→`sam_policy_versions`, `csp_decision_rule_evaluations`→`sam_decision_rule_evaluations`) via `RENAME TABLE`, ahead of multi-pillar support. The four CSP-owned tables (`csp_policy_profiles`, `csp_source_inventory`, `csp_hash_inventory`, `csp_violation_reports`) are unchanged. |
 | v10 | adds `sam_pillar_profiles`, a shared per-surface profile table for header pillars simple enough not to need CSP's directive/override/strict-dynamic shape (X-Frame-Options, X-Content-Type-Options, Referrer-Policy). Created empty; unused until those pillars ship. |
+| v11 | adds `bypass_img_src_data`, `bypass_font_src_data` tinyint columns to `csp_policy_profiles` for the Profiles tab's "Bypass Best Practices" toggles -- a small, hardcoded, per-surface opt-in for specific directive+token relaxations (`data:` URIs in `img-src`/`font-src`) that are safe despite being classified high-risk for automation purposes. See `Policy_Builder::BYPASS_CATALOG`. |
 
 ## Table list
 
@@ -33,6 +34,8 @@ Key columns:
 - `directives` — JSON array map of directive name → source list (e.g. `{"script-src":["'self'"],"img-src":["'self'"]}`)
 - `overrides` — JSON map of admin-applied temporary directive overrides merged on top of `directives` at emit time
 - `strict_dynamic` — `0` or `1`; when `1` and the `strict_dynamic` feature is licensed, `'strict-dynamic'` is appended to `script-src` and approved host sources are suppressed from `script-src` (host allowlists are silently ignored by browsers when `strict-dynamic` is present — CSP3 §8.2)
+- `trusted_types` — `0` or `1`; when `1`, emits `require-trusted-types-for 'script'` (always report-only regardless of surface mode)
+- `bypass_img_src_data`, `bypass_font_src_data` — `0` or `1`; per-surface "Bypass Best Practices" toggles that append `data:` to `img-src`/`font-src` respectively. See `Policy_Builder::BYPASS_CATALOG` — deliberately limited to these two safe, non-executable-context entries; never extended to a directive where a `data:`/`blob:` source has real execution risk
 - `override_expires_at` — UTC datetime at which the current override should be considered stale
 - `override_owner` — identifier of the admin user who applied the override
 - `created_at`, `updated_at`
