@@ -1132,6 +1132,14 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				if ( ! empty( $v['sample'] ) ) {
 					$meta_fields[ __( 'Sample', 'security-automation-manager' ) ] = (string) $v['sample'];
 				}
+				if ( empty( $v['blocked_host'] ) ) {
+					// blocked_uri values with no host (inline, eval, data:, etc.) fingerprint
+					// on the literal token itself -- every distinct inline block matching
+					// this surface+directive combination collapses into this one row, so
+					// occurrence_count is not a count of distinct blocks. Point admins at
+					// the actual per-block record instead of leaving this undercount silent.
+					$meta_fields[ __( 'Note', 'security-automation-manager' ) ] = __( 'This row aggregates every occurrence of this directive with this blocked-uri token (e.g. "inline"), not distinct content blocks -- a page with many different inline scripts/styles still shows as one row here. Check the Scripts (Internal Script Integrity) tab for individually captured content hashes awaiting review.', 'security-automation-manager' );
+				}
 
 				$has_meta = ! empty( $meta_fields );
 				?>
