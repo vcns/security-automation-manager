@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.4.32
+Stable tag: 2.4.33
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
 == Changelog ==
+
+= 2.4.33 =
+
+* Fixed a bug where inline `<style>` blocks printed by WordPress core's style queue -- including the per-page CSS emitted by themes and page builders -- were never captured for hashing, so they were blocked on enforce-mode surfaces. The capture buffer now opens before core prints enqueued styles. After updating, load an affected page once (with any page cache bypassed) so its styles are captured; the policy then includes them automatically.
 
 = 2.4.32 =
 
