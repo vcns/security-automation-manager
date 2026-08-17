@@ -31,7 +31,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The SVN repository only exists once WordPress.org approves the plugin
+      # submission. Until then every tag push would fail red (E170000) and
+      # bury real failures in noise -- so check first and skip gracefully,
+      # keeping the automatic deploy armed for the day the slug goes live.
+      - name: Check WordPress.org SVN repository exists
+        id: svn_check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if svn info "https://plugins.svn.wordpress.org/security-automation-manager" --non-interactive > /dev/null 2>&1; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning::WordPress.org SVN repository for 'security-automation-manager' does not exist yet (plugin review pending?). Skipping SVN deploy; GitHub Release and update feed are unaffected."
+          fi
+
       - name: Deploy to WordPress.org SVN
+        if: steps.svn_check.outputs.exists == 'true'
         uses: 10up/action-wordpress-plugin-deploy@stable
         with:
           generate-zip: true
