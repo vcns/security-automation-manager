@@ -191,6 +191,7 @@ class Activator {
 			'wp_sam_last_material_change_at',
 			'wp_sam_automation_config',
 			'wp_sam_admin_notices',
+			'wp_sam_conflict_dismissed_at',
 			// Stripe configuration for the (commercial-build-only) Fully
 			// Automatic checkout flow -- see Checkout_Service and
 			// Webhook_Controller in offline/modules/.

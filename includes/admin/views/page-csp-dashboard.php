@@ -79,18 +79,25 @@ $violations     = ! empty( $violations_raw ) ? $violations_raw : array();
 // Recent competing-CSP-header findings (persistent banner below, visible on
 // every tab). Conflict_Detector's header/htaccess/probe checks and
 // Violation_Reporter's disposition-mismatch check both log to the same
-// 'conflict_detector' audit component, throttled at the source, so this is
-// safe to show without an admin having to notice or keep a dismissible
-// wp-admin notice around.
+// 'conflict_detector' audit component, throttled at the source. Findings age
+// out of the banner after 48 hours, and the banner's Dismiss button hides
+// everything logged before the dismissal moment (recorded by
+// Admin_UI::handle_dismiss_conflicts()) without touching the audit log
+// itself; only a finding NEWER than the dismissal re-opens the banner.
+$conflict_cutoff       = gmdate( 'Y-m-d H:i:s', time() - ( 48 * HOUR_IN_SECONDS ) );
+$conflict_dismissed_at = (string) get_option( 'wp_sam_conflict_dismissed_at', '' );
+if ( $conflict_dismissed_at > $conflict_cutoff ) { // Lexicographic compare is chronological for this fixed datetime format.
+	$conflict_cutoff = $conflict_dismissed_at;
+}
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 $conflict_notices_raw = $wpdb->get_results(
 	$wpdb->prepare(
 		"SELECT detail, created_at FROM {$wpdb->prefix}sam_audit_log
-			WHERE component = %s AND severity = %s AND created_at >= %s
+			WHERE component = %s AND severity = %s AND created_at > %s
 			ORDER BY created_at DESC LIMIT 5",
 		'conflict_detector',
 		'warning',
-		gmdate( 'Y-m-d H:i:s', time() - ( 48 * HOUR_IN_SECONDS ) )
+		$conflict_cutoff
 	),
 	ARRAY_A
 );
@@ -144,6 +151,15 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<li><code><?php echo esc_html( $conflict_notice['created_at'] ); ?></code> — <?php echo esc_html( $conflict_notice['detail'] ); ?></li>
 			<?php endforeach; ?>
 		</ul>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<?php wp_nonce_field( 'wp_sam_dismiss_conflicts' ); ?>
+			<input type="hidden" name="action" value="wp_sam_dismiss_conflicts" />
+			<input type="hidden" name="wp_sam_return_tab" value="<?php echo esc_attr( $tab ); ?>" />
+			<p>
+				<button type="submit" class="button"><?php esc_html_e( 'Dismiss these findings', 'security-automation-manager' ); ?></button>
+				<span class="description"><?php esc_html_e( 'Hides the findings above without deleting them from the audit log. The banner returns automatically if a new competing-header signal is detected.', 'security-automation-manager' ); ?></span>
+			</p>
+		</form>
 	</div>
 	<?php endif; ?>
 

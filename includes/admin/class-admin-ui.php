@@ -83,6 +83,7 @@ class Admin_UI {
 
 		// AJAX handlers.
 		add_action( 'admin_post_wp_sam_reset_data', array( $this, 'handle_reset_data' ) );
+		add_action( 'admin_post_wp_sam_dismiss_conflicts', array( $this, 'handle_dismiss_conflicts' ) );
 		add_action( 'wp_ajax_wp_sam_manual_scan', array( $this, 'ajax_manual_scan' ) );
 		add_action( 'wp_ajax_wp_sam_approve_source', array( $this, 'ajax_approve_source' ) );
 		add_action( 'wp_ajax_wp_sam_deny_source', array( $this, 'ajax_deny_source' ) );
@@ -563,6 +564,33 @@ class Admin_UI {
 		$this->redirect_to_readiness(
 			empty( $result['tables_failed'] ) ? 'success' : 'partial'
 		);
+	}
+
+	/**
+	 * Dismisses the competing-CSP-header banner on the CSP dashboard by
+	 * recording the dismissal moment. The banner query only shows audit
+	 * findings newer than this timestamp, so everything logged so far is
+	 * hidden while the audit log itself is left untouched; a NEW finding
+	 * (Conflict_Detector or Violation_Reporter both throttle at the source,
+	 * so a still-live conflict re-logs within about an hour of new traffic)
+	 * brings the banner back on its own.
+	 */
+	public function handle_dismiss_conflicts(): void {
+		check_admin_referer( 'wp_sam_dismiss_conflicts' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to dismiss these notices.', 'security-automation-manager' ) );
+		}
+
+		update_option( 'wp_sam_conflict_dismissed_at', current_time( 'mysql', true ), false );
+
+		$url = admin_url( 'admin.php?page=security-automation-manager-dashboard' );
+		$tab = sanitize_key( wp_unslash( $_POST['wp_sam_return_tab'] ?? '' ) );
+		if ( '' !== $tab ) {
+			$url = add_query_arg( 'tab', $tab, $url ); // Unknown values fall back to the default tab in the view.
+		}
+
+		wp_safe_redirect( $url );
+		exit;
 	}
 
 	private function current_user_password_is_valid( string $password ): bool {
