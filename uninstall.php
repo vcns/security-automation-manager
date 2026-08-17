@@ -47,6 +47,7 @@ $options = array(
 	'wp_sam_last_material_change_at',
 	'wp_sam_automation_config',
 	'wp_sam_admin_notices',
+	'wp_sam_conflict_dismissed_at',
 	'wp_sam_stripe_mode',
 	'wp_sam_stripe_secret_key_test',
 	'wp_sam_stripe_secret_key_live',
