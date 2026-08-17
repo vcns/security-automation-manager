@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.5.0] - 2026-08-17
+
+### Added
+
+- TLS certificate automation over ACME v2 (RFC 8555), implemented entirely in PHP over `wp_remote_*` -- no shell-outs, no certbot, shared-hosting compatible. The new Certificates admin page configures domains (wildcards supported), contact email, key type (ECDSA P-256 default / RSA-2048), a Let's Encrypt staging/production toggle, DNS provider credentials, and deployment mode; "Issue / Renew Now" queues the order through WP-Cron so DNS-propagation waits never block a browser request, and a daily `wp_sam_cert_renewal_check` re-issues production certificates inside the 30-day expiry window.
+- DNS-01 challenge support with seven built-in provider drivers (Cloudflare, DigitalOcean, Gandi LiveDNS, GoDaddy, Hetzner DNS, Linode/Akamai, Porkbun), a shared zone-resolution/relative-name base class, and a `wp_sam_dns_providers` filter for third-party drivers. HTTP-01 is the automatic fallback when no provider is configured, served at `parse_request` priority 0 so it works regardless of permalink or `.htaccess` state. (ACME v1 is not implemented: Let's Encrypt retired those endpoints in June 2021; "HTTP fallback" means the http-01 challenge type within v2.)
+- Deployment adapters for the privilege boundary that certificate *installation* (unlike issuance) runs into: cPanel UAPI `SSL::install_ssl` (fully automatic where the host exposes it), an export directory (refuses paths under the web root) feeding a root-side install hook, and manual PEM download. Platform-by-platform steps, the install_ssl dependency caveat, and the real-cron renewal recommendation live in `docs/certificates.md`.
+- `Credential_Vault`: sodium `crypto_secretbox` encryption at rest for DNS credentials, cPanel tokens, ACME account keys, and certificate private keys (schema v21 adds the `sam_certificates` table). The vault key derives from `WP_SAM_CERT_VAULT_KEY` in wp-config.php when defined (recommended), falling back to `wp_salt('auth')`; either way a database dump alone yields no usable secret. Settings forms treat blank password fields as "keep stored secret", so plaintext never round-trips to the browser.
+
 ## [2.4.33] - 2026-08-17
 
 ### Fixed

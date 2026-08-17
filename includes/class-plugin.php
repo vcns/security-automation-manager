@@ -51,6 +51,9 @@ final class Plugin {
 	public Feature_Gate $gate;
 	public Audit_Log $audit;
 	public Nonce_Manager $nonce_manager;
+	public Certificates\Challenge_Http $cert_http;
+	public Certificates\Certificate_Manager $cert_manager;
+	public Certificates\Renewal_Scheduler $cert_schedule;
 	public Policy_Builder $policy_builder;
 	public X_Frame_Options_Builder $x_frame_options_builder;
 	public X_Content_Type_Options_Builder $x_content_type_options_builder;
@@ -178,6 +181,21 @@ final class Plugin {
 
 		// WP Cron: daily policy rescan.
 		( new Scheduler( $this->audit ) )->register();
+
+		// ACME certificate automation: http-01 responder runs on every request
+		// (the CA's validation fetch is an anonymous front-end GET); the
+		// manager, cron hooks, and renewal check ride the same bootstrap.
+		$cert_store          = new Certificates\Certificate_Store();
+		$this->cert_http     = new Certificates\Challenge_Http();
+		$this->cert_manager  = new Certificates\Certificate_Manager(
+			$cert_store,
+			$this->cert_http,
+			new Certificates\Deployer( $this->audit ),
+			$this->audit
+		);
+		$this->cert_schedule = new Certificates\Renewal_Scheduler( $this->cert_manager );
+		$this->cert_http->register();
+		$this->cert_schedule->register();
 
 		// Conflict detection runs once per admin pageload.
 		if ( is_admin() ) {

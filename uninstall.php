@@ -27,6 +27,7 @@ $tables = array(
 	'sam_dependency_inventory',
 	'sam_pillar_violation_reports',
 	'sam_internal_asset_inventory',
+	'sam_certificates',
 );
 
 foreach ( $tables as $table ) {
@@ -48,6 +49,10 @@ $options = array(
 	'wp_sam_automation_config',
 	'wp_sam_admin_notices',
 	'wp_sam_conflict_dismissed_at',
+	'wp_sam_cert_config',
+	'wp_sam_acme_account_keys',
+	'wp_sam_acme_http_tokens',
+	'wp_sam_cert_last_run',
 	'wp_sam_stripe_mode',
 	'wp_sam_stripe_secret_key_test',
 	'wp_sam_stripe_secret_key_live',
@@ -68,3 +73,5 @@ delete_transient( 'wp_sam_conflict_probe_ran' );
 
 // ── Clear scheduled hooks ─────────────────────────────────────────────────────
 wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
+wp_clear_scheduled_hook( 'wp_sam_cert_issue' );
+wp_clear_scheduled_hook( 'wp_sam_cert_renewal_check' );

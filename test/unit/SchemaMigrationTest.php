@@ -150,6 +150,7 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_dependency_inventory',
 			'wp_sam_pillar_violation_reports',
 			'wp_sam_internal_asset_inventory',
+			'wp_sam_certificates',
 		);
 
 		$this->assertSame(

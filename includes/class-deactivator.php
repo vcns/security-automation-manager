@@ -16,5 +16,7 @@ class Deactivator {
 
 	public static function deactivate(): void {
 		wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
+		wp_clear_scheduled_hook( 'wp_sam_cert_issue' );
+		wp_clear_scheduled_hook( 'wp_sam_cert_renewal_check' );
 	}
 }

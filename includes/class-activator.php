@@ -173,6 +173,7 @@ class Activator {
 			'sam_dependency_inventory',
 			'sam_pillar_violation_reports',
 			'sam_internal_asset_inventory',
+			'sam_certificates',
 		);
 	}
 
@@ -192,6 +193,10 @@ class Activator {
 			'wp_sam_automation_config',
 			'wp_sam_admin_notices',
 			'wp_sam_conflict_dismissed_at',
+			'wp_sam_cert_config',
+			'wp_sam_acme_account_keys',
+			'wp_sam_acme_http_tokens',
+			'wp_sam_cert_last_run',
 			// Stripe configuration for the (commercial-build-only) Fully
 			// Automatic checkout flow -- see Checkout_Service and
 			// Webhook_Controller in offline/modules/.
@@ -642,6 +647,29 @@ class Activator {
   PRIMARY KEY  (id),
   UNIQUE KEY resource_path (resource_type, path),
   KEY surface (surface)
+) {$cc};"
+		);
+
+		// Schema v21: ACME-issued certificates. key_pem holds the private key
+		// SEALED by Credential_Vault (sodium secretbox), never plaintext -- a
+		// database dump alone must not yield usable key material. fullchain_pem
+		// is public by definition. environment separates Let's Encrypt staging
+		// orders (configuration testing) from production ones.
+		dbDelta(
+			"CREATE TABLE {$p}sam_certificates (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  domains text NOT NULL,
+  environment varchar(16) NOT NULL DEFAULT 'production',
+  status varchar(16) NOT NULL DEFAULT 'issued',
+  key_pem text NOT NULL,
+  fullchain_pem text NOT NULL,
+  not_before datetime DEFAULT NULL,
+  not_after datetime DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY environment_status (environment, status),
+  KEY not_after (not_after)
 ) {$cc};"
 		);
 

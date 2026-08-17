@@ -1,0 +1,161 @@
+# TLS Certificates (ACME / Let's Encrypt)
+
+Security Automation Manager can request, validate, and renew TLS certificates
+from Let's Encrypt (or any RFC 8555 ACME v2 directory) entirely from inside
+WordPress — no shell access, no daemons, no certbot. This document explains
+how the pieces fit, and — critically — what the plugin **can and cannot do on
+your hosting platform**.
+
+> **ACME v1 note:** there is no ACME v1 support and there never will be.
+> Let's Encrypt switched its v1 endpoints off in June 2021. What is often
+> called "the HTTP fallback" is the **http-01 challenge type inside ACME v2**,
+> which this plugin fully supports.
+
+## How it works
+
+1. **Account** — an ACME account key (EC P-256) is generated on first use and
+   registered with the CA. Staging and production use separate accounts.
+2. **Order** — one order covers every domain you list; the first name becomes
+   the certificate's Common Name, all of them appear as Subject Alternative
+   Names.
+3. **Challenges** — for each name the CA demands proof of control:
+   - **dns-01** (preferred; required for wildcards): the plugin creates a
+     `_acme-challenge` TXT record through your DNS provider's API, waits for
+     propagation, then removes it afterwards. Built-in providers: Cloudflare,
+     DigitalOcean, Gandi (LiveDNS), GoDaddy, Hetzner DNS, Linode/Akamai, and
+     Porkbun. Other plugins can register additional providers through the
+     `wp_sam_dns_providers` filter.
+   - **http-01** (automatic fallback when no DNS provider is configured): the
+     plugin answers `/.well-known/acme-challenge/<token>` itself, before
+     WordPress routing, so it works with or without pretty permalinks. The CA
+     must be able to reach the site on port 80. Wildcard names cannot be
+     validated this way.
+4. **Issuance** — a CSR is generated (ECDSA P-256 by default, RSA-2048
+   selectable), finalized, and the full chain downloaded.
+5. **Storage** — the private key is encrypted at rest (sodium secretbox)
+   before it touches the database. Define `WP_SAM_CERT_VAULT_KEY` in
+   `wp-config.php` to keep the vault key out of the database entirely
+   (recommended; any long random string).
+6. **Renewal** — a daily WP-Cron task re-issues production certificates
+   inside the 30-day window before expiry.
+
+## ⚠ Installing the certificate: platform-dependent
+
+**Issuing** a certificate is pure PHP and works everywhere. **Installing** it
+into the web server is where platforms diverge, because the server's TLS
+configuration is not writable by the PHP user and reloading the server
+requires privileges PHP does not have — this is a privilege boundary, not an
+Apache limitation.
+
+Automatic installation therefore depends entirely on which hosting platform
+you use, and specifically on whether it exposes an installation API such as
+**cPanel's UAPI `SSL::install_ssl`**. The plugin ships three deployment
+modes; pick the one that matches your platform, and treat the steps below as
+the *basic* shape — control panels vary between versions and hosts.
+
+### cPanel (including most LiteSpeed shared hosting) — automatic
+
+1. In cPanel: **Security → Manage API Tokens → Create**. The token only needs
+   SSL feature access.
+2. In the plugin's Certificates page choose **Deployment: cPanel UAPI
+   install_ssl** and enter the host (`server.example.net:2083`), your cPanel
+   username, and the token.
+3. Every issue/renewal calls `SSL::install_ssl` for the first listed domain.
+   Nothing else to do.
+
+Caveat: some resellers disable API tokens or the SSL UAPI module; if the
+deploy step fails with an authorization error, that is a host policy issue,
+not a plugin one. Note also that hosts running **AutoSSL** may already renew
+certificates for you — check before doubling up.
+
+### Plesk — semi-automatic
+
+Plesk has its own REST API (`/api/v2/domains/{id}/certificates`), which this
+plugin does not call yet. Use **Export** mode and either:
+
+- upload the PEMs under **Websites & Domains → SSL/TLS Certificates**, or
+- script the Plesk CLI on the host: `plesk bin certificate --update` pointing
+  at the exported `privkey.pem`/`fullchain.pem`.
+
+### DirectAdmin — semi-automatic
+
+Use **Export** mode and paste the PEMs under **SSL Certificates**, or script
+`/CMD_API_SSL` with a login key if your host allows API access.
+
+### Self-managed Apache / nginx / LiteSpeed (root access) — export + hook
+
+1. Choose **Deployment: Export** and set a directory **outside the web root**
+   (the plugin refuses paths under it), e.g. `/home/account/ssl-drop`.
+2. Install a small root-side cron that watches the drop directory and
+   installs on change — the plugin does 95% of the work, root does the last
+   copy + reload:
+
+   ```bash
+   #!/bin/sh
+   # /etc/cron.daily/install-wp-sam-cert
+   DROP=/home/account/ssl-drop
+   LIVE=/etc/ssl/site
+   if [ "$DROP/fullchain.pem" -nt "$LIVE/fullchain.pem" ]; then
+     install -m 600 "$DROP/privkey.pem"   "$LIVE/privkey.pem"
+     install -m 644 "$DROP/fullchain.pem" "$LIVE/fullchain.pem"
+     apachectl graceful   # or: nginx -s reload / systemctl reload lsws
+   fi
+   ```
+
+3. Point your vhost at `$LIVE/fullchain.pem` / `$LIVE/privkey.pem` once.
+
+### Anything else — manual download
+
+**Download** mode issues and stores the certificate; fetch `fullchain.pem`
+and `privkey.pem` from the Certificates page and install them wherever your
+platform expects. Renewal still happens automatically — only the final
+install step is yours.
+
+## Scheduling and WP-Cron reality
+
+Renewal checks ride WP-Cron, which only fires when the site receives
+traffic. A quiet staging site can sleep straight through a renewal window.
+Point a real cron at WP-Cron and the problem disappears:
+
+```
+*/15 * * * * curl -s https://example.com/wp-cron.php?doing_wp_cron > /dev/null
+```
+
+(and optionally `define( 'DISABLE_WP_CRON', true );` in `wp-config.php` so
+page loads stop double-firing it).
+
+## Testing safely
+
+Keep the **staging** toggle on until an order succeeds end-to-end. Let's
+Encrypt production rate limits are strict (5 duplicate certificates per
+week; failed validations are limited too); the staging directory is for
+exactly this. Staging certificates are not trusted by browsers — that is
+expected.
+
+## Security notes
+
+- DNS API credentials are **domain-takeover-grade secrets**. Use the
+  narrowest scope your provider offers (e.g. a Cloudflare token restricted
+  to Zone → DNS → Edit on one zone), and rotate them if you ever remove the
+  plugin without uninstalling cleanly.
+- All secrets (DNS credentials, cPanel token, private keys, account keys)
+  are sealed with sodium `crypto_secretbox` before storage. Define
+  `WP_SAM_CERT_VAULT_KEY` in `wp-config.php` so a database dump alone can
+  never yield key material.
+- The private-key download link is audit-logged at warning severity.
+
+## Need a second pair of eyes?
+
+Certificate automation touches DNS control, privileged host configuration,
+and the trust anchor of your entire site — it is worth getting right the
+first time. **VCNS Tech Ltd** (the team behind this plugin) offers
+fixed-scope security consultation engagements covering:
+
+- end-to-end certificate automation wired up for your specific hosting
+  platform (cPanel, Plesk, self-managed, or behind Cloudflare),
+- security header rollout and CSP enforcement using this plugin's full
+  workflow, and
+- broader WordPress hardening and hosting-platform security reviews.
+
+If you would rather have a security engineer own this than burn an
+afternoon on it: **[vcns.tech](https://vcns.tech/?utm_source=wp-sam&utm_medium=docs&utm_campaign=certificates)**.
