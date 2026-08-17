@@ -51,16 +51,25 @@ class Hash_Manager {
 	 * Called from Plugin::bootstrap().
 	 */
 	public function register(): void {
+		// The buffer must open before ANY other callback on each head hook:
+		// WordPress core prints every enqueued style -- including all
+		// wp_add_inline_style() blocks, which is how themes and page builders
+		// emit their per-page <style> CSS -- via wp_print_styles at wp_head
+		// priority 8, and head scripts at priority 9. At the default priority
+		// 10 those blocks were already sent before ob_start() ran, so they
+		// were never hashed and were blocked under an enforce-mode policy.
 		// Front-end surfaces.
-		add_action( 'wp_head', array( $this, 'start_buffer' ) );
+		add_action( 'wp_head', array( $this, 'start_buffer' ), PHP_INT_MIN );
 		add_action( 'wp_footer', array( $this, 'end_buffer_frontend' ), PHP_INT_MAX );
 
-		// Admin surface.
-		add_action( 'admin_head', array( $this, 'start_buffer' ) );
+		// Admin surface. Note admin_head fires after admin_print_styles, so
+		// admin-enqueued styles still escape capture -- acceptable for now
+		// because wp-admin strict CSP is best-effort (core Trac #59446).
+		add_action( 'admin_head', array( $this, 'start_buffer' ), PHP_INT_MIN );
 		add_action( 'admin_footer', array( $this, 'end_buffer_admin' ), PHP_INT_MAX );
 
 		// Login surface (wp-login.php emits login_head / login_footer).
-		add_action( 'login_head', array( $this, 'start_buffer' ) );
+		add_action( 'login_head', array( $this, 'start_buffer' ), PHP_INT_MIN );
 		add_action( 'login_footer', array( $this, 'end_buffer_login' ), PHP_INT_MAX );
 	}
 

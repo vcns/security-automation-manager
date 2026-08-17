@@ -28,6 +28,40 @@ class HashManagerTest extends TestCase {
 		$this->manager = new Hash_Manager( $this->audit, $gate );
 	}
 
+	// ── register ──────────────────────────────────────────────────────────────
+
+	/**
+	 * WordPress core prints enqueued styles -- every wp_add_inline_style()
+	 * block, which is how themes and page builders emit per-page <style>
+	 * CSS -- via wp_print_styles at head priority 8, and head scripts at
+	 * priority 9. The capture buffer must open before both on every head
+	 * hook, or those blocks are emitted before ob_start() runs and never
+	 * get hashed: the exact gap that left page-builder head CSS blocked
+	 * under an enforce-mode policy.
+	 */
+	public function test_register_opens_buffer_before_core_style_printing(): void {
+		$this->manager->register();
+
+		foreach ( array( 'wp_head', 'admin_head', 'login_head' ) as $hook ) {
+			$registrations = array_filter(
+				$GLOBALS['_wp_actions'][ $hook ] ?? array(),
+				static function ( array $registration ): bool {
+					return is_array( $registration[0] ) && 'start_buffer' === ( $registration[0][1] ?? '' );
+				}
+			);
+
+			$this->assertNotEmpty( $registrations, "start_buffer is not registered on {$hook}." );
+
+			foreach ( $registrations as $registration ) {
+				$this->assertLessThan(
+					8,
+					$registration[1],
+					"start_buffer on {$hook} must run before wp_print_styles (priority 8)."
+				);
+			}
+		}
+	}
+
 	// ── record_hash ───────────────────────────────────────────────────────────
 
 	public function test_record_hash_returns_sha256_prefixed_string(): void {

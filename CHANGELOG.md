@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.33] - 2026-08-17
+
+### Fixed
+
+- `Hash_Manager`'s capture buffer opened on the head hooks at default priority 10, but WordPress core prints every enqueued style -- including all `wp_add_inline_style()` blocks, which is how themes and page builders emit their per-page `<style>` CSS -- via `wp_print_styles` at `wp_head` priority 8 (head scripts at 9). Those blocks were already sent before `ob_start()` ran, so they were never hashed, never entered the policy, and were blocked on enforce-mode surfaces (observed in production as repeated `style-src-elem` violations for head styles the policy knew nothing about). The buffer now opens at `PHP_INT_MIN` on `wp_head`, `admin_head`, and `login_head`. Known limitation: `admin_head` fires after `admin_print_styles`, so admin-enqueued styles still escape capture -- acceptable while wp-admin strict CSP remains best-effort (core Trac #59446).
+
 ## [2.4.32] - 2026-08-17
 
 ### Added
