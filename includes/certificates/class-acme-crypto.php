@@ -47,15 +47,23 @@ class Acme_Crypto {
 				'curve_name'       => 'prime256v1',
 			);
 
-		$config['config'] = self::openssl_conf();
-
+		// Try the platform's default OpenSSL config first (correct on virtually
+		// every Linux host); fall back to our own minimal config only when the
+		// default is missing (Windows always, some minimal containers). Doing
+		// it the other way round breaks hosts where loading ANY explicit
+		// config triggers RANDFILE seed-file initialisation.
 		$key = openssl_pkey_new( $config );
+		if ( false === $key ) {
+			$config['config'] = self::openssl_conf();
+			$key              = openssl_pkey_new( $config );
+		}
 		if ( false === $key ) {
 			throw new \RuntimeException( 'openssl_pkey_new failed: ' . (string) openssl_error_string() );
 		}
 
 		$pem = '';
-		if ( ! openssl_pkey_export( $key, $pem, null, array( 'config' => self::openssl_conf() ) ) ) {
+		if ( ! openssl_pkey_export( $key, $pem )
+			&& ! openssl_pkey_export( $key, $pem, null, array( 'config' => self::openssl_conf() ) ) ) {
 			throw new \RuntimeException( 'openssl_pkey_export failed: ' . (string) openssl_error_string() );
 		}
 
@@ -74,9 +82,14 @@ class Acme_Crypto {
 
 		if ( null === $path || ! is_readable( $path ) ) {
 			$path = wp_tempnam( 'wp-sam-openssl-cnf' );
+			// RANDFILE points at a writable location explicitly: on some
+			// OpenSSL builds, loading a config initialises the RNG seed file,
+			// and the default ($HOME/.rnd) may not be writable in web/cron
+			// contexts.
+			$rand = str_replace( '\\', '/', dirname( $path ) ) . '/wp-sam-openssl.rnd';
 			file_put_contents( // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- local temp config for ext/openssl.
 				$path,
-				"[req]\ndistinguished_name = req_distinguished_name\n[req_distinguished_name]\n"
+				"RANDFILE = {$rand}\n[req]\ndistinguished_name = req_distinguished_name\n[req_distinguished_name]\n"
 			);
 		}
 
