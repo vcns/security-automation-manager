@@ -326,6 +326,24 @@ if ( ! function_exists( 'wp_delete_file' ) ) {
 	}
 }
 
+if ( ! function_exists( 'apply_filters' ) ) {
+	function apply_filters( string $hook, mixed $value, mixed ...$args ): mixed {
+		return $value;
+	}
+}
+
+if ( ! function_exists( 'wp_salt' ) ) {
+	function wp_salt( string $scheme = 'auth' ): string {
+		return 'test-salt-' . $scheme;
+	}
+}
+
+if ( ! function_exists( 'wp_tempnam' ) ) {
+	function wp_tempnam( string $filename = '' ): string {
+		return (string) tempnam( sys_get_temp_dir(), '' !== $filename ? $filename : 'wp-test' );
+	}
+}
+
 if ( ! function_exists( 'wp_remote_head' ) ) {
 	function wp_remote_head( string $url, array $args = [] ): array|WP_Error {
 		$GLOBALS['_wp_remote_head_requests'][] = array(

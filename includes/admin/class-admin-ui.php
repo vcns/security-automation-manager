@@ -84,6 +84,9 @@ class Admin_UI {
 		// AJAX handlers.
 		add_action( 'admin_post_wp_sam_reset_data', array( $this, 'handle_reset_data' ) );
 		add_action( 'admin_post_wp_sam_dismiss_conflicts', array( $this, 'handle_dismiss_conflicts' ) );
+		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
+		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
+		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
 		add_action( 'wp_ajax_wp_sam_manual_scan', array( $this, 'ajax_manual_scan' ) );
 		add_action( 'wp_ajax_wp_sam_approve_source', array( $this, 'ajax_approve_source' ) );
 		add_action( 'wp_ajax_wp_sam_deny_source', array( $this, 'ajax_deny_source' ) );
@@ -126,6 +129,15 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager',
 			array( $this, 'render_overview' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'TLS Certificates (ACME)', 'security-automation-manager' ),
+			__( 'Certificates', 'security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-certificates',
+			array( $this, 'render_certificates' )
 		);
 
 		add_submenu_page(
@@ -590,6 +602,114 @@ class Admin_UI {
 		}
 
 		wp_safe_redirect( $url );
+		exit;
+	}
+
+	// ── Certificates (ACME) ───────────────────────────────────────────────────
+
+	public function render_certificates(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-certificates.php';
+	}
+
+	public function handle_save_cert_settings(): void {
+		check_admin_referer( 'wp_sam_save_cert_settings' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to change certificate settings.', 'security-automation-manager' ) );
+		}
+
+		$domains_raw   = (string) wp_unslash( $_POST['wp_sam_cert_domains'] ?? '' );
+		$domains_split = preg_split( '/[\s,]+/', $domains_raw );
+		$domains       = array_values(
+			array_filter(
+				array_map(
+					static fn( string $d ): string => strtolower( trim( $d ) ),
+					false === $domains_split ? array() : $domains_split
+				),
+				// Hostnames plus the leading-wildcard form. sanitize_text_field
+				// alone would wave through things a CSR must never contain.
+				static fn( string $d ): bool => (bool) preg_match( '/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $d )
+			)
+		);
+
+		$providers = \WP_SAM\Certificates\Dns_Provider::providers();
+		$provider  = sanitize_key( wp_unslash( $_POST['wp_sam_cert_provider'] ?? '' ) );
+		if ( '' !== $provider && ! isset( $providers[ $provider ] ) ) {
+			$provider = '';
+		}
+
+		// Only the selected provider's credential fields are read; an empty
+		// submitted value means "keep the stored secret" (Certificate_Store
+		// merge semantics), so redisplayed forms never round-trip plaintext.
+		$credentials = array();
+		if ( '' !== $provider ) {
+			foreach ( array_keys( $providers[ $provider ]::fields() ) as $field_key ) {
+				$credentials[ $field_key ] = (string) wp_unslash( $_POST[ 'wp_sam_cert_cred_' . $field_key ] ?? '' );
+			}
+		}
+
+		$deployment = sanitize_key( wp_unslash( $_POST['wp_sam_cert_deployment'] ?? 'download' ) );
+		if ( ! in_array( $deployment, array( 'download', 'export', 'cpanel' ), true ) ) {
+			$deployment = 'download';
+		}
+
+		( new \WP_SAM\Certificates\Certificate_Store() )->save_config(
+			array(
+				'domains'         => $domains,
+				'contact_email'   => sanitize_email( wp_unslash( $_POST['wp_sam_cert_email'] ?? '' ) ),
+				'provider'        => $provider,
+				'challenge'       => '' !== $provider ? 'dns-01' : 'http-01',
+				'key_type'        => 'rsa-2048' === ( $_POST['wp_sam_cert_key_type'] ?? '' ) ? 'rsa-2048' : 'ec-256',
+				'staging'         => ! empty( $_POST['wp_sam_cert_staging'] ),
+				'deployment'      => $deployment,
+				'export_path'     => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_export_path'] ?? '' ) ),
+				'cpanel_host'     => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_host'] ?? '' ) ),
+				'cpanel_user'     => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_user'] ?? '' ) ),
+				'cpanel_token'    => (string) wp_unslash( $_POST['wp_sam_cert_cpanel_token'] ?? '' ),
+				'dns_credentials' => $credentials,
+			)
+		);
+
+		$this->plugin->audit->log( 'certificates', 'cert_settings_saved', 'Certificate settings updated.', 'info' );
+
+		wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=security-automation-manager-certificates' ) ) );
+		exit;
+	}
+
+	public function handle_issue_certificate(): void {
+		check_admin_referer( 'wp_sam_issue_certificate' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to issue certificates.', 'security-automation-manager' ) );
+		}
+
+		$this->plugin->cert_schedule->queue_issue_now();
+
+		wp_safe_redirect( add_query_arg( 'queued', '1', admin_url( 'admin.php?page=security-automation-manager-certificates' ) ) );
+		exit;
+	}
+
+	public function handle_download_certificate(): void {
+		check_admin_referer( 'wp_sam_download_certificate' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to download certificates.', 'security-automation-manager' ) );
+		}
+
+		$which  = sanitize_key( wp_unslash( $_GET['file'] ?? '' ) );
+		$latest = ( new \WP_SAM\Certificates\Certificate_Store() )->latest_certificate();
+		if ( null === $latest || ! in_array( $which, array( 'fullchain', 'privkey' ), true ) ) {
+			wp_die( esc_html__( 'No issued certificate available.', 'security-automation-manager' ) );
+		}
+
+		$content = 'privkey' === $which ? (string) $latest['key_pem'] : (string) $latest['fullchain_pem'];
+
+		$this->plugin->audit->log( 'certificates', 'cert_downloaded', "Certificate {$which}.pem downloaded by an administrator.", 'privkey' === $which ? 'warning' : 'info' );
+
+		nocache_headers();
+		header( 'Content-Type: application/x-pem-file' );
+		header( 'Content-Disposition: attachment; filename="' . $which . '.pem"' );
+		echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- PEM file download, not an HTML context.
 		exit;
 	}
 
