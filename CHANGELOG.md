@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.6.0] - 2026-08-17
+
+### Added
+
+- 34 additional DNS-01 provider drivers (41 total): AWS Route 53 (full SigV4 request signing), Azure DNS (OAuth2 client-credentials against ARM), Google Cloud DNS (service-account JWT flow, signed with the existing `Acme_Crypto` RS256 path), Akamai Edge DNS (EdgeGrid EG1-HMAC-SHA256), Alibaba Cloud DNS (RPC HMAC-SHA1 signatures), OVH (time-drift-corrected request signatures, EU/CA/US endpoints), DNS Made Easy (HMAC header auth), plus token/basic-auth drivers for Bunny.net, ClouDNS, deSEC, DNSimple, DNSPod, Domeneshop, DreamHost, Dynu, easyDNS, GleSYS, INWX (JSON-RPC session), IONOS, Joker.com (their documented svc TXT-replace ACME mechanism), Mythic Beasts, Namecheap (safe read-modify-write around its replace-everything setHosts, refusing to write when the read fails), Name.com, NameSilo, netcup (CCP session API), Netlify, Njalla, NS1, PowerDNS's built-in HTTP API (self-hosted), Scaleway, Vercel, and Vultr.
+- Two universal mechanisms that cover effectively every provider not listed: an **acme-dns** driver (one-time `_acme-challenge` CNAME delegation to an acme-dns instance -- works with any DNS host, including ones with no API) and an **RFC 2136** driver speaking TSIG-signed (RFC 8945, hmac-sha256/sha512/sha1/md5) dynamic updates over raw TCP wire format to BIND, Knot, PowerDNS, Windows Server DNS, and any other standards-compliant authoritative server.
+- Provider credential field definitions now carry input-type metadata (`secret`, `textarea`), so the Certificates page renders endpoints/usernames as text, secrets as password fields, and Google's service-account JSON as a textarea. Everything is still sealed by `Credential_Vault` before storage.
+
 ## [2.5.0] - 2026-08-17
 
 ### Added

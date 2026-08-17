@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.5.0
+Stable tag: 2.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,11 @@ The Scripts page's Internal tab, when enabled for a surface, reads this site's o
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
 
 == Changelog ==
+
+= 2.6.0 =
+
+* DNS-01 provider support expanded from 7 to 41 built-in providers, now covering AWS Route 53, Azure DNS, Google Cloud DNS, Akamai Edge DNS, Alibaba Cloud DNS, Bunny.net, ClouDNS, deSEC, DNSimple, DNS Made Easy, DNSPod, Domeneshop, DreamHost, Dynu, easyDNS, GleSYS, INWX, IONOS, Joker.com, Mythic Beasts, Namecheap, Name.com, NameSilo, netcup, Netlify, Njalla, NS1, OVH, PowerDNS (self-hosted), Scaleway, Vercel, and Vultr alongside the original seven -- plus two universal mechanisms that cover effectively every remaining provider: acme-dns (one-time CNAME delegation; works with any DNS host, even ones without an API) and RFC 2136 TSIG-signed dynamic updates (BIND, Knot, Windows Server DNS, and other self-hosted servers).
+* Provider credential forms now render appropriate field types (text for endpoints/usernames, password for secrets, textarea for service-account JSON); all values remain encrypted at rest.
 
 = 2.5.0 =
 

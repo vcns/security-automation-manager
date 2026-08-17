@@ -35,7 +35,12 @@ abstract class Dns_Provider {
 	/**
 	 * Credential fields the GUI must collect.
 	 *
-	 * @return array<string,array{label:string,placeholder?:string}> keyed by field key.
+	 * Each entry may set 'secret' => false to render a plain text input
+	 * (endpoints, usernames, zone names) instead of a password field, and
+	 * 'textarea' => true for multi-line values (service-account JSON). All
+	 * values are sealed at rest regardless of input type.
+	 *
+	 * @return array<string,array{label:string,placeholder?:string,secret?:bool,textarea?:bool}> keyed by field key.
 	 */
 	abstract public static function fields(): array;
 
@@ -60,13 +65,47 @@ abstract class Dns_Provider {
 	 */
 	public static function providers(): array {
 		$builtin = array(
+			'acmedns'      => Providers\Provider_Acmedns::class,
+			'akamai'       => Providers\Provider_Akamai::class,
+			'alidns'       => Providers\Provider_Alidns::class,
+			'azure'        => Providers\Provider_Azure::class,
+			'bunny'        => Providers\Provider_Bunny::class,
 			'cloudflare'   => Providers\Provider_Cloudflare::class,
+			'cloudns'      => Providers\Provider_Cloudns::class,
+			'desec'        => Providers\Provider_Desec::class,
 			'digitalocean' => Providers\Provider_DigitalOcean::class,
+			'dnsimple'     => Providers\Provider_Dnsimple::class,
+			'dnsmadeeasy'  => Providers\Provider_Dnsmadeeasy::class,
+			'dnspod'       => Providers\Provider_Dnspod::class,
+			'domeneshop'   => Providers\Provider_Domeneshop::class,
+			'dreamhost'    => Providers\Provider_Dreamhost::class,
+			'dynu'         => Providers\Provider_Dynu::class,
+			'easydns'      => Providers\Provider_Easydns::class,
 			'gandi'        => Providers\Provider_Gandi::class,
+			'glesys'       => Providers\Provider_Glesys::class,
 			'godaddy'      => Providers\Provider_GoDaddy::class,
+			'googlecloud'  => Providers\Provider_Google_Cloud::class,
 			'hetzner'      => Providers\Provider_Hetzner::class,
+			'inwx'         => Providers\Provider_Inwx::class,
+			'ionos'        => Providers\Provider_Ionos::class,
+			'joker'        => Providers\Provider_Joker::class,
 			'linode'       => Providers\Provider_Linode::class,
+			'mythicbeasts' => Providers\Provider_Mythicbeasts::class,
+			'namecheap'    => Providers\Provider_Namecheap::class,
+			'namecom'      => Providers\Provider_Namecom::class,
+			'namesilo'     => Providers\Provider_Namesilo::class,
+			'netcup'       => Providers\Provider_Netcup::class,
+			'netlify'      => Providers\Provider_Netlify::class,
+			'njalla'       => Providers\Provider_Njalla::class,
+			'ns1'          => Providers\Provider_Ns1::class,
+			'ovh'          => Providers\Provider_Ovh::class,
 			'porkbun'      => Providers\Provider_Porkbun::class,
+			'powerdns'     => Providers\Provider_Powerdns::class,
+			'rfc2136'      => Providers\Provider_Rfc2136::class,
+			'route53'      => Providers\Provider_Route53::class,
+			'scaleway'     => Providers\Provider_Scaleway::class,
+			'vercel'       => Providers\Provider_Vercel::class,
+			'vultr'        => Providers\Provider_Vultr::class,
 		);
 
 		/**
@@ -163,5 +202,39 @@ abstract class Dns_Provider {
 
 	protected function credential( string $key ): string {
 		return isset( $this->credentials[ $key ] ) ? (string) $this->credentials[ $key ] : '';
+	}
+
+	protected function basic_auth( string $user, string $password ): string {
+		return 'Basic ' . base64_encode( $user . ':' . $password );
+	}
+
+	/**
+	 * Raw (non-JSON) request helper for providers speaking XML or
+	 * form-encoded protocols. Returns the body; throws on transport errors
+	 * and >=400 statuses.
+	 */
+	protected function request_raw( string $method, string $url, array $headers = array(), ?string $body = null ): string {
+		$args = array(
+			'method'  => $method,
+			'timeout' => 30,
+			'headers' => $headers,
+		);
+		if ( null !== $body ) {
+			$args['body'] = $body;
+		}
+
+		$response = wp_remote_request( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			throw new \RuntimeException( static::label() . ' API transport error: ' . $response->get_error_message() );
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( $status >= 400 ) {
+			throw new \RuntimeException(
+				static::label() . " API error (HTTP {$status}): " . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 )
+			);
+		}
+
+		return (string) wp_remote_retrieve_body( $response );
 	}
 }

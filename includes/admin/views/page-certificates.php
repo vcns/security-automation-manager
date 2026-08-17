@@ -122,13 +122,32 @@ $wp_sam_action_url  = admin_url( 'admin-post.php' );
 			<tr class="wp-sam-cert-provider-fields" data-provider="<?php echo esc_attr( $wp_sam_slug ); ?>" style="display:none">
 				<th scope="row"><?php echo esc_html( $wp_sam_class::label() ); ?></th>
 				<td>
-					<?php foreach ( $wp_sam_class::fields() as $wp_sam_field_key => $wp_sam_field ) : ?>
+					<?php
+					foreach ( $wp_sam_class::fields() as $wp_sam_field_key => $wp_sam_field ) :
+						$wp_sam_field_id    = 'wp_sam_cert_cred_' . $wp_sam_slug . '_' . $wp_sam_field_key;
+						$wp_sam_is_active   = $wp_sam_slug === $wp_sam_cert_config['provider'];
+						$wp_sam_name_attr   = $wp_sam_is_active ? 'name="wp_sam_cert_cred_' . esc_attr( $wp_sam_field_key ) . '"' : 'data-cred-name="wp_sam_cert_cred_' . esc_attr( $wp_sam_field_key ) . '"';
+						$wp_sam_has_stored  = $wp_sam_is_active && '' !== ( $wp_sam_cert_config['dns_credentials'][ $wp_sam_field_key ] ?? '' );
+						$wp_sam_placeholder = $wp_sam_has_stored ? __( '•••••• (stored — leave blank to keep)', 'security-automation-manager' ) : (string) ( $wp_sam_field['placeholder'] ?? '' );
+						$wp_sam_is_secret   = $wp_sam_field['secret'] ?? true;
+						// Non-secret fields (endpoints, usernames, zone names) show their
+						// stored value for editing; secret fields never round-trip.
+						$wp_sam_text_value = ( ! $wp_sam_is_secret && $wp_sam_is_active ) ? (string) ( $wp_sam_cert_config['dns_credentials'][ $wp_sam_field_key ] ?? '' ) : '';
+						?>
 					<p>
-						<label for="wp_sam_cert_cred_<?php echo esc_attr( $wp_sam_slug . '_' . $wp_sam_field_key ); ?>"><?php echo esc_html( $wp_sam_field['label'] ); ?></label><br />
-						<input type="password" autocomplete="off" class="regular-text"
-							id="wp_sam_cert_cred_<?php echo esc_attr( $wp_sam_slug . '_' . $wp_sam_field_key ); ?>"
-							<?php echo $wp_sam_slug === $wp_sam_cert_config['provider'] ? 'name="wp_sam_cert_cred_' . esc_attr( $wp_sam_field_key ) . '"' : 'data-cred-name="wp_sam_cert_cred_' . esc_attr( $wp_sam_field_key ) . '"'; ?>
-							placeholder="<?php echo esc_attr( isset( $wp_sam_cert_config['dns_credentials'][ $wp_sam_field_key ] ) && '' !== $wp_sam_cert_config['dns_credentials'][ $wp_sam_field_key ] && $wp_sam_slug === $wp_sam_cert_config['provider'] ? __( '•••••• (stored — leave blank to keep)', 'security-automation-manager' ) : ( $wp_sam_field['placeholder'] ?? '' ) ); ?>" />
+						<label for="<?php echo esc_attr( $wp_sam_field_id ); ?>"><?php echo esc_html( $wp_sam_field['label'] ); ?></label><br />
+						<?php if ( ! empty( $wp_sam_field['textarea'] ) ) : ?>
+						<textarea autocomplete="off" class="large-text" rows="6"
+							id="<?php echo esc_attr( $wp_sam_field_id ); ?>"
+							<?php echo $wp_sam_name_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attribute pair escaped above. ?>
+							placeholder="<?php echo esc_attr( $wp_sam_placeholder ); ?>"></textarea>
+						<?php else : ?>
+						<input type="<?php echo $wp_sam_is_secret ? 'password' : 'text'; ?>" autocomplete="off" class="regular-text"
+							id="<?php echo esc_attr( $wp_sam_field_id ); ?>"
+							<?php echo $wp_sam_name_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- attribute pair escaped above. ?>
+							value="<?php echo esc_attr( $wp_sam_text_value ); ?>"
+							placeholder="<?php echo esc_attr( $wp_sam_placeholder ); ?>" />
+						<?php endif; ?>
 					</p>
 					<?php endforeach; ?>
 					<p class="description"><?php esc_html_e( 'Stored encrypted at rest (sodium secretbox). Use the narrowest token scope your provider offers — a DNS API credential is a domain-takeover-grade secret.', 'security-automation-manager' ); ?></p>
