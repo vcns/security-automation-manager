@@ -21,10 +21,27 @@ your hosting platform**.
 3. **Challenges** — for each name the CA demands proof of control:
    - **dns-01** (preferred; required for wildcards): the plugin creates a
      `_acme-challenge` TXT record through your DNS provider's API, waits for
-     propagation, then removes it afterwards. Built-in providers: Cloudflare,
-     DigitalOcean, Gandi (LiveDNS), GoDaddy, Hetzner DNS, Linode/Akamai, and
-     Porkbun. Other plugins can register additional providers through the
-     `wp_sam_dns_providers` filter.
+     propagation, then removes it afterwards. **41 built-in providers**:
+
+     AWS Route 53, Azure DNS, Google Cloud DNS, Cloudflare, Akamai Edge DNS,
+     Alibaba Cloud DNS, Bunny.net, ClouDNS, deSEC, DigitalOcean, DNSimple,
+     DNS Made Easy, DNSPod, Domeneshop, DreamHost, Dynu, easyDNS, Gandi
+     (LiveDNS), GleSYS, GoDaddy, Hetzner DNS, INWX, IONOS, Joker.com,
+     Linode/Akamai, Mythic Beasts, Namecheap, Name.com, NameSilo, netcup,
+     Netlify, Njalla, NS1, OVH, Porkbun, PowerDNS (self-hosted), Scaleway,
+     Vercel, Vultr — plus two universal mechanisms:
+
+     - **acme-dns** (CNAME delegation): point a single
+       `_acme-challenge` CNAME at an acme-dns instance once, and every
+       challenge is fulfilled there — **works with any DNS provider on the
+       planet**, including ones with no API at all.
+     - **RFC 2136 dynamic updates** (TSIG-signed): any self-hosted or
+       enterprise authoritative server — BIND, Knot, PowerDNS, Windows
+       Server DNS — no vendor API needed.
+
+     Anything still not covered can be added by any plugin through the
+     `wp_sam_dns_providers` filter (one small class: label, credential
+     fields, create/delete TXT).
    - **http-01** (automatic fallback when no DNS provider is configured): the
      plugin answers `/.well-known/acme-challenge/<token>` itself, before
      WordPress routing, so it works with or without pretty permalinks. The CA

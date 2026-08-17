@@ -32,10 +32,26 @@ class DnsProviderTest extends TestCase {
 	public function test_registry_contains_builtin_providers_with_valid_classes(): void {
 		$providers = Dns_Provider::providers();
 
-		foreach ( array( 'cloudflare', 'digitalocean', 'gandi', 'godaddy', 'hetzner', 'linode', 'porkbun' ) as $slug ) {
+		$expected = array(
+			'acmedns', 'akamai', 'alidns', 'azure', 'bunny', 'cloudflare', 'cloudns',
+			'desec', 'digitalocean', 'dnsimple', 'dnsmadeeasy', 'dnspod', 'domeneshop',
+			'dreamhost', 'dynu', 'easydns', 'gandi', 'glesys', 'godaddy', 'googlecloud',
+			'hetzner', 'inwx', 'ionos', 'joker', 'linode', 'mythicbeasts', 'namecheap',
+			'namecom', 'namesilo', 'netcup', 'netlify', 'njalla', 'ns1', 'ovh',
+			'porkbun', 'powerdns', 'rfc2136', 'route53', 'scaleway', 'vercel', 'vultr',
+		);
+
+		$this->assertCount( 41, $expected );
+		foreach ( $expected as $slug ) {
 			$this->assertArrayHasKey( $slug, $providers );
 			$this->assertTrue( is_subclass_of( $providers[ $slug ], Dns_Provider::class ) );
 			$this->assertNotSame( '', $providers[ $slug ]::label() );
+		}
+	}
+
+	public function test_every_provider_is_instantiable_with_empty_credentials(): void {
+		foreach ( Dns_Provider::providers() as $slug => $class ) {
+			$this->assertInstanceOf( Dns_Provider::class, Dns_Provider::make( $slug, array() ), "{$slug} failed to instantiate" );
 		}
 	}
 
