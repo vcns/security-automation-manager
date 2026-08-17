@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.4.32] - 2026-08-17
+
+### Added
+
+- The CSP dashboard's competing-CSP-header banner gains a "Dismiss these findings" button. Dismissal records `wp_sam_conflict_dismissed_at` and the banner query only surfaces `conflict_detector` audit findings newer than that moment -- the audit log itself is untouched. Because both sources throttle their logging (`Violation_Reporter`'s disposition-mismatch check at most once per surface/directive per hour), a still-live conflict re-opens the banner on its own within about an hour of real traffic, while a stale one (e.g. cached responses from before an enforce promotion) stays dismissed. The option is removed by Reset Data and on uninstall.
+
+### Changed
+
+- Risky dropdown values are now labelled as such instead of reading identically to the safe options around them: Referrer-Policy's `unsafe-url` (always sends the full URL, including query string, even cross-origin and over plain HTTP) and Permissions-Policy's `all` token (grants the feature to any origin, including third-party iframes and embeds).
+
+### Fixed
+
+- Profiles table column widths: the fixed-width `nth-child` rules written for the pre-2.4.31 six-column layout pinned the new "Bypass Best Practices" column to a narrow 140px while leaving the real Last Updated/Actions columns unruled, producing the cramped, oversized layout reported against the live site. (#217)
+
 ## [2.4.31] - 2026-08-16
 
 ### Fixed
