@@ -271,17 +271,34 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload "${TAG}" "dist/${ZIP_FILENAME}" "dist/${GITHUB_ZIP_FILENAME}" --repo "${GITHUB_REPOSITORY}" --clobber
-          else
-            gh release create "${TAG}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --title "Security Automation Manager ${TAG}" \
-              --generate-notes \
-              ${PRERELEASE_FLAG} \
-              "dist/${ZIP_FILENAME}" \
-              "dist/${GITHUB_ZIP_FILENAME}"
-          fi
+          # GitHub's API returns transient 5xx errors often enough (a full
+          # outage burned two release attempts for v2.6.0) that a publish
+          # step without retries is a reliability bug. Exponential-ish
+          # backoff, ~6 minutes worst case, before declaring a real failure.
+          publish() {
+            if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              gh release upload "${TAG}" "dist/${ZIP_FILENAME}" "dist/${GITHUB_ZIP_FILENAME}" --repo "${GITHUB_REPOSITORY}" --clobber
+            else
+              gh release create "${TAG}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "Security Automation Manager ${TAG}" \
+                --generate-notes \
+                ${PRERELEASE_FLAG} \
+                "dist/${ZIP_FILENAME}" \
+                "dist/${GITHUB_ZIP_FILENAME}"
+            fi
+          }
+
+          for delay in 0 15 30 60 120 180; do
+            sleep "${delay}"
+            if publish; then
+              exit 0
+            fi
+            echo "::warning::Release publish attempt failed; retrying in a moment."
+          done
+
+          echo "::error::Release publish failed after all retries."
+          exit 1
 
   update-feed:
     name: Publish GitHub-channel update feed
@@ -425,4 +442,15 @@ jobs:
           fi
 
           git -C "${WORKTREE}" commit -m "security-automation-manager ${GITHUB_REF_NAME}"
-          git -C "${WORKTREE}" push origin gh-pages
+
+          # Same transient-5xx hardening as the release-publish step.
+          for delay in 0 15 30 60 120; do
+            sleep "${delay}"
+            if git -C "${WORKTREE}" push origin gh-pages; then
+              exit 0
+            fi
+            echo "::warning::Update-feed push failed; retrying in a moment."
+          done
+
+          echo "::error::Update-feed push failed after all retries."
+          exit 1
