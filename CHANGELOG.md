@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.5] - 2026-08-18
+
+### Changed
+
+- `Acme_Crypto::generation_capability()` no longer returns the raw OpenSSL exception message as the administrator-facing explanation for why automatic key generation failed. It now returns a fixed, stable message (`Acme_Crypto::GENERATION_FAILURE_MESSAGE`) plus a separate `detail` key carrying the original diagnostic; `page-certificates.php` shows the stable message as the primary explanation and the raw detail inside a collapsed "Technical detail" disclosure.
+- Normalizes stray em dashes (`—`) to plain hyphens in comments and translated admin-facing strings across `docs/`, `includes/`, and `test/`. Comment/string content only; no logic or identifiers touched.
+
+### Added
+
+- `docs/credential-vault-assessment.md`: a formal assessment of `Credential_Vault`'s SHA-256-based key derivation against entropy, domain separation, ciphertext compatibility, rotation, and recovery. Conclusion: the derivation is defensible as-is and is not changed by this release; two real gaps (no rotation support, silent data loss on a vault-key change) are documented as follow-up work, not fixed here.
+- `.github/workflows/release-verification.yml`: real `wordpress` + MySQL install/upgrade lifecycle tests via WP-CLI -- clean install for both distribution channels, upgrade from the previous release, upgrade from the last pre-certificate release (v2.4.33), data-preservation and upgrade-idempotency checks, and a real-network manifest-rejection test against a mock HTTP server. Addresses the gap `docs/testing-requirements.md` named as the single biggest structural gap: no test previously ran against a real WordPress instance.
+- Two regression tests in `test/unit/AcmeCryptoTest.php` covering the OpenSSL-error-message change.
+
+### CI
+
+- `ci.yml`'s PHP matrix expands from a single hardcoded PHP 8.1 to PHP 8.1, 8.2, 8.3, and 8.4 for the `test/unit/` suite (PHPCS still runs once, on 8.1).
+
+No DB schema change; `WP_SAM_DB_VERSION` stays at 22.
+
 ## [2.9.4] - 2026-08-18
 
 ### Fixed
