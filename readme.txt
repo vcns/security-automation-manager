@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.6.0
+Stable tag: 2.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,10 @@ The Scripts page's Internal tab, when enabled for a surface, reads this site's o
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
 
 == Changelog ==
+
+= 2.6.1 =
+
+* The Certificates page's Export deployment mode now explains exactly what the export path needs to be (outside the web root, writable by the PHP user, usually a sibling of the web root), how to create it, and what to ask your hosting provider for if you lack a suitable path or the permissions to make one -- including the wording for the request and the upgrade path to fully automatic installation via a control-panel API token.
 
 = 2.6.0 =
 

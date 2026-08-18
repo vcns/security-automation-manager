@@ -103,6 +103,25 @@ Use **Export** mode and paste the PEMs under **SSL Certificates**, or script
 
 1. Choose **Deployment: Export** and set a directory **outside the web root**
    (the plugin refuses paths under it), e.g. `/home/account/ssl-drop`.
+
+   Requirements for the path — ultimately all this mode needs is a path and
+   write permission to it:
+   - **Outside the document root.** The private key must never be reachable
+     over HTTP; the plugin enforces this rather than trusting a deny rule.
+     A sibling directory of the web root is the usual choice (web root
+     `/home/account/public_html` → export `/home/account/ssl-drop`).
+   - **Writable by the PHP user** the site runs as. The plugin creates the
+     directory itself when it can; otherwise create it once via SSH, SFTP,
+     or the control panel file manager one level above the web root.
+     `privkey.pem` is written `0600` (best effort — some hosts ignore chmod).
+   - **Don't know the paths, or can't write outside the web root?** Ask
+     your hosting provider — this is a routine request. Word it as:
+     *"Please give me a directory outside the document root that PHP can
+     write to, for storing TLS certificate files"* — and while you have
+     them, ask **(a)** whether they can install the certificate from that
+     directory on renewal (the cron hook below, run by them), or **(b)**
+     whether they can issue an API credential (e.g. a cPanel API token)
+     instead, which upgrades you to the fully automatic deployment mode.
 2. Install a small root-side cron that watches the drop directory and
    installs on change — the plugin does 95% of the work, root does the last
    copy + reload:

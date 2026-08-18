@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.6.1] - 2026-08-18
+
+### Changed
+
+- The Export deployment mode's guidance no longer assumes the administrator knows their host's filesystem layout. The Certificates page now spells out the three requirements (absolute path outside the web root -- shown against the site's actual `ABSPATH` -- writable by the PHP user, directory pre-created if the plugin can't), and adds a "not sure / lacking permissions?" paragraph with the exact request to send a hosting provider, including the alternative of asking for a control-panel API token to upgrade to fully automatic installation. `docs/certificates.md`'s export section gains the same expansion.
+
 ## [2.6.0] - 2026-08-17
 
 ### Added
