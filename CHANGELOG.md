@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.3] - 2026-08-18
+
+### Added
+
+- `docs/consolidation-ledger.md`: a verified repository assessment and roadmap reconciliation for all open roadmap issues at the time of writing, checked directly against code, tests, and CI rather than issue titles or changelog claims. Corrects repository identity (`vcns/csp-automation-manager` is a historical name for `vcns/security-automation-manager`, not a separate repository) and establishes the baseline for the ongoing public-release consolidation work.
+
+No functional or runtime changes in this release.
+
 ## [2.9.2] - 2026-08-18
 
 ### Added
