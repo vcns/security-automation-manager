@@ -23,6 +23,7 @@
     <exclude-pattern>includes/admin/views/*</exclude-pattern>
     <exclude-pattern>includes/class-activator.php</exclude-pattern>
     <exclude-pattern>includes/class-rollback-guard.php</exclude-pattern>
+    <exclude-pattern>includes/class-config-portability.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-hash-manager.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-policy-builder.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-policy-change-manager.php</exclude-pattern>

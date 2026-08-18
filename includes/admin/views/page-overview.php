@@ -1,12 +1,14 @@
 <?php
 /**
  * Admin view: Security Automation Manager overview.
- * Landing page for the top-level menu, with four tabs: Overview (per-pillar
+ * Landing page for the top-level menu, with five tabs: Overview (per-pillar
  * status summary, the default), Readiness (plugin-specific schema/runtime
- * checks and the data-reset flow -- previously its own submenu page),
- * Updates (installed version, active build channel, manifest/checksum/
- * applied-update diagnostics -- previously its own submenu page), and
- * About (who built this and why, with links to the public help site).
+ * checks only), Recovery (schema-downgrade status, configuration snapshot
+ * restore, full data reset, and configuration export/import -- previously
+ * split across Readiness and nowhere), Updates (installed version, active
+ * build channel, manifest/checksum/applied-update diagnostics -- previously
+ * its own submenu page), and About (who built this and why, with links to
+ * the public help site).
  * Rendered by Admin_UI::render_overview().
  *
  * @var array $readiness Readiness report from Readiness_Checker.
@@ -22,7 +24,7 @@ global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'overview';
-$allowed_tabs = array( 'overview', 'readiness', 'updates', 'about' );
+$allowed_tabs = array( 'overview', 'readiness', 'recovery', 'updates', 'about' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'overview';
 }
@@ -35,7 +37,11 @@ $tab_help = array(
 	),
 	'readiness' => array(
 		'label'       => __( 'Readiness', 'security-automation-manager' ),
-		'description' => __( 'Plugin-specific checks for schema, runtime defaults, reporting configuration, and reset readiness.', 'security-automation-manager' ),
+		'description' => __( 'Plugin-specific checks for schema, runtime defaults, and reporting configuration.', 'security-automation-manager' ),
+	),
+	'recovery'  => array(
+		'label'       => __( 'Recovery', 'security-automation-manager' ),
+		'description' => __( 'Schema-downgrade status, configuration snapshot restore, full data reset, and configuration export/import.', 'security-automation-manager' ),
 	),
 	'updates'   => array(
 		'label'       => __( 'Updates', 'security-automation-manager' ),
@@ -128,10 +134,12 @@ uasort(
 	static fn( array $a, array $b ): int => strcasecmp( $a['label'], $b['label'] )
 );
 
-// ── Readiness tab data ──────────────────────────────────────────────────────
+// ── Recovery tab data ────────────────────────────────────────────────────────
 $reset_result       = sanitize_text_field( wp_unslash( $_GET['wp_sam_reset'] ?? '' ) );
 $restore_result     = sanitize_text_field( wp_unslash( $_GET['wp_sam_restore'] ?? '' ) );
 $restore_reason     = rawurldecode( sanitize_text_field( wp_unslash( $_GET['wp_sam_restore_reason'] ?? '' ) ) );
+$import_result      = sanitize_text_field( wp_unslash( $_GET['wp_sam_import'] ?? '' ) );
+$import_reason      = rawurldecode( sanitize_text_field( wp_unslash( $_GET['wp_sam_import_reason'] ?? '' ) ) );
 $downgrade_flag     = get_option( Rollback_Guard::DOWNGRADE_OPTION, array() );
 $rollback_snapshots = Rollback_Guard::list_snapshots();
 $status_badge       = static function ( string $status ): void {
@@ -241,20 +249,6 @@ $status_badge       = static function ( string $status ): void {
 
 	<?php elseif ( 'readiness' === $tab ) : ?>
 
-		<?php if ( 'success' === $reset_result ) : ?>
-		<div class="notice notice-success is-dismissible">
-			<p><?php esc_html_e( 'Security Automation Manager data has been reset and default profiles have been reseeded.', 'security-automation-manager' ); ?></p>
-		</div>
-	<?php elseif ( 'partial' === $reset_result ) : ?>
-		<div class="notice notice-warning is-dismissible">
-			<p><?php esc_html_e( 'Reset completed, but one or more plugin tables could not be cleared. Review schema health below.', 'security-automation-manager' ); ?></p>
-		</div>
-	<?php elseif ( 'failed' === $reset_result ) : ?>
-		<div class="notice notice-error is-dismissible">
-			<p><?php esc_html_e( 'Reset was not performed. Confirm the typed phrase and re-authenticate with your current WordPress password.', 'security-automation-manager' ); ?></p>
-		</div>
-	<?php endif; ?>
-
 	<h2><?php esc_html_e( 'Plugin and Database', 'security-automation-manager' ); ?></h2>
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
@@ -321,7 +315,34 @@ $status_badge       = static function ( string $status ): void {
 		</tbody>
 	</table>
 
-	<hr>
+	<?php elseif ( 'recovery' === $tab ) : ?>
+
+		<?php if ( 'success' === $reset_result ) : ?>
+		<div class="notice notice-success is-dismissible">
+			<p><?php esc_html_e( 'Security Automation Manager data has been reset and default profiles have been reseeded.', 'security-automation-manager' ); ?></p>
+		</div>
+	<?php elseif ( 'partial' === $reset_result ) : ?>
+		<div class="notice notice-warning is-dismissible">
+			<p><?php esc_html_e( 'Reset completed, but one or more plugin tables could not be cleared. Review schema health below.', 'security-automation-manager' ); ?></p>
+		</div>
+	<?php elseif ( 'failed' === $reset_result ) : ?>
+		<div class="notice notice-error is-dismissible">
+			<p><?php esc_html_e( 'Reset was not performed. Confirm the typed phrase and re-authenticate with your current WordPress password.', 'security-automation-manager' ); ?></p>
+		</div>
+	<?php endif; ?>
+
+		<?php if ( 'success' === $import_result ) : ?>
+		<div class="notice notice-success is-dismissible">
+			<p><?php esc_html_e( 'Configuration imported.', 'security-automation-manager' ); ?></p>
+		</div>
+	<?php elseif ( 'failed' === $import_result ) : ?>
+		<div class="notice notice-error is-dismissible">
+			<p>
+				<?php esc_html_e( 'Configuration was not imported.', 'security-automation-manager' ); ?>
+				<?php echo '' !== $import_reason ? esc_html( $import_reason ) : ''; ?>
+			</p>
+		</div>
+	<?php endif; ?>
 
 	<h2 id="wp-sam-rollback"><?php esc_html_e( 'Rollback and Recovery', 'security-automation-manager' ); ?></h2>
 
@@ -424,9 +445,54 @@ $status_badge       = static function ( string $status ): void {
 
 	<hr>
 
+	<hr>
+
+	<h2 id="wp-sam-portability"><?php esc_html_e( 'Export and Import Configuration', 'security-automation-manager' ); ?></h2>
+	<p>
+		<?php esc_html_e( 'Move administrator-authored configuration -- policy profiles, source/hash approvals, other pillar profiles, dependency classifications, certificate settings, and automation/reporting options -- to another site, or archive it outside the database. Never includes secrets, credentials, private key material, the audit log, or violation history.', 'security-automation-manager' ); ?>
+	</p>
+
+	<h3><?php esc_html_e( 'Export', 'security-automation-manager' ); ?></h3>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<?php wp_nonce_field( 'wp_sam_export_config' ); ?>
+		<input type="hidden" name="action" value="wp_sam_export_config">
+		<?php submit_button( __( 'Download configuration export', 'security-automation-manager' ), 'secondary', '', false ); ?>
+	</form>
+
+	<h3 style="margin-top: 1.5em;"><?php esc_html_e( 'Import', 'security-automation-manager' ); ?></h3>
+	<p class="description">
+		<?php esc_html_e( 'Importing replaces the current contents of every table covered by the export (see above) and overwrites the matching options. This cannot be undone by this feature -- take a configuration export of the current site first if you may want to go back.', 'security-automation-manager' ); ?>
+	</p>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
+		<?php wp_nonce_field( 'wp_sam_import_config' ); ?>
+		<input type="hidden" name="action" value="wp_sam_import_config">
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row">
+					<label for="wp_sam_import_file"><?php esc_html_e( 'Configuration file', 'security-automation-manager' ); ?></label>
+				</th>
+				<td>
+					<input type="file" id="wp_sam_import_file" name="wp_sam_import_file" accept="application/json" required>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Confirmation', 'security-automation-manager' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="wp_sam_import_confirmation" value="1" required>
+						<?php esc_html_e( 'I understand this overwrites the matching configuration tables and options on this site.', 'security-automation-manager' ); ?>
+					</label>
+				</td>
+			</tr>
+		</table>
+		<?php submit_button( __( 'Import configuration', 'security-automation-manager' ), 'delete' ); ?>
+	</form>
+
+	<hr>
+
 	<h2 id="wp-sam-reset"><?php esc_html_e( 'Reset Plugin Data', 'security-automation-manager' ); ?></h2>
 	<p>
-		<?php esc_html_e( 'This clears Security Automation Manager custom-table rows and plugin-owned runtime options, then reseeds the default policy profiles needed for a clean start.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'This clears every Security Automation Manager custom-table row and plugin-owned runtime option across the entire plugin -- not just CSP -- then reseeds the default policy profiles needed for a clean start.', 'security-automation-manager' ); ?>
 	</p>
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wp-sam-reset-form">
 		<?php wp_nonce_field( 'wp_sam_reset_data' ); ?>
@@ -446,12 +512,12 @@ $status_badge       = static function ( string $status ): void {
 					<label for="wp_sam_reset_confirmation"><?php esc_html_e( 'Confirmation', 'security-automation-manager' ); ?></label>
 				</th>
 				<td>
-					<input type="text" id="wp_sam_reset_confirmation" name="wp_sam_reset_confirmation" class="regular-text" pattern="RESET CSP DATA" required>
-					<p class="description"><?php esc_html_e( 'Type RESET CSP DATA to start from a blank CSP canvas.', 'security-automation-manager' ); ?></p>
+					<input type="text" id="wp_sam_reset_confirmation" name="wp_sam_reset_confirmation" class="regular-text" pattern="RESET ALL PLUGIN DATA" required>
+					<p class="description"><?php esc_html_e( 'Type RESET ALL PLUGIN DATA to wipe the entire plugin -- all pillars, not just CSP -- and start from a blank canvas.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 		</table>
-		<?php submit_button( __( 'Reset CSP Data', 'security-automation-manager' ), 'delete' ); ?>
+		<?php submit_button( __( 'Reset Plugin Data', 'security-automation-manager' ), 'delete' ); ?>
 	</form>
 
 	<?php elseif ( 'updates' === $tab ) : ?>

@@ -224,15 +224,17 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 3. The pending review queue lives on the adjacent For Review tab (surface, directive, source, risk, evidence count, first seen, last seen); the full decision ledger lives on the Policy Changes tab (actor, state, surface, directive, source, risk, decision-engine version, linked policy version) -- Policy Audit itself only shows the at-a-glance summary, not either underlying list.
 4. Privileged REST endpoints under `/wp-json/sam/v1/admin/*` expose policy history, policy diffs, decisions, pending reviews, and automation configuration for richer future UI workflows.
 
-### 7. Readiness and reset flow
+### 7. Readiness, recovery, and reset flow
 
-1. Administrators open **Security Automation Manager -> Readiness**.
+1. Administrators open **Security Automation Manager -> Readiness** for plugin/schema/operational health, or **Security Automation Manager -> Recovery** for schema-downgrade status, snapshot restore, configuration export/import, and the destructive reset panel.
 2. `Readiness_Checker` reports plugin version, installed schema version, expected custom tables, plugin-owned row counts, reporting endpoint validity, policy header emission mode, scheduled scan status, policy-profile presence, policy-version snapshot presence, and automation posture.
-3. The Installed Plugins row exposes **Settings** and **Reset** action links; Settings opens the CSP dashboard's Settings tab, and Reset opens the readiness page at the destructive reset panel.
-4. Reset requires `manage_options`, a valid WordPress nonce, the current logged-in administrator's password, and the typed phrase `RESET CSP DATA`.
-5. `Data_Resetter` clears rows from plugin-owned custom tables, deletes plugin-owned runtime options and transients, clears the plugin daily scan schedule, and then runs `Activator::activate()` to reseed default options, policy profiles, policy snapshots, and cron.
-6. After reseeding, reset sets every policy profile to `disabled` so the plugin does not emit CSP headers until an administrator deliberately restarts rollout in report-only or enforce mode.
-7. Reset is intentionally stronger than ordinary policy rollback: it is for pre-launch clean-room restarts and removes historical CSP records from this local installation.
+3. The Installed Plugins row exposes **Settings** and **Reset** action links; Settings opens the CSP dashboard's Settings tab, and Reset opens the Recovery tab at the destructive reset panel.
+4. `Rollback_Guard` refuses to run a migration when the installed schema is already ahead of the running code, and takes an automatic snapshot immediately before every schema upgrade; the Recovery tab lists restorable snapshots and lets an administrator undo a migration's data effects while staying on the current plugin code.
+5. `Config_Portability` exports and imports administrator-authored configuration -- policy profiles, source/hash approvals, other pillar profiles, dependency classifications, non-secret certificate settings, and automation/reporting options -- for moving between sites or archiving outside the database; it never includes secrets, credentials, private key material, the audit log, or violation history, and import only ever writes tables/options on its own allowlist.
+6. Reset requires `manage_options`, a valid WordPress nonce, the current logged-in administrator's password, and the typed phrase `RESET ALL PLUGIN DATA`.
+7. `Data_Resetter` clears rows from every plugin-owned custom table across all pillars (not just CSP), deletes plugin-owned runtime options and transients, clears the plugin daily scan schedule, and then runs `Activator::activate()` to reseed default options, policy profiles, policy snapshots, and cron.
+8. After reseeding, reset sets every policy profile to `disabled` so the plugin does not emit CSP headers until an administrator deliberately restarts rollout in report-only or enforce mode.
+9. Reset is intentionally stronger than ordinary policy rollback: it is for pre-launch clean-room restarts and removes historical records for every pillar from this local installation, not just CSP.
 
 ### 8. Premium entitlement flow
 

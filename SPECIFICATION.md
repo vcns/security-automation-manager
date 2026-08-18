@@ -199,8 +199,10 @@ only continues to work if that host routes back to this plugin's endpoint.
 in the append-only audit log (e.g. `auto_approved`, `wp_sam_reset`) - see §8.
 
 **Rollback behaviour.** A decision can be undone without rewriting history.
-The Readiness admin view offers an authenticated reset that clears CSP data
-and disables header emission until rollout is deliberately restarted.
+The Recovery admin view offers an authenticated reset that clears all plugin
+data (every pillar, not just CSP) and disables header emission until rollout
+is deliberately restarted; it also offers pre-migration snapshot restore and
+configuration export/import. See §13.
 
 **Known limitations.** Conflict detection covers competing CSP headers from
 `.htaccess`, server config, or other security-header plugins, but cannot see
@@ -564,9 +566,9 @@ failed order/renewal does not retry until the next scheduled cycle; no
 separate notification channel exists yet beyond the audit log and
 admin-visible status.
 
-**Reset and recovery.** The Readiness admin view offers an authenticated
-reset that clears CSP data and disables header emission until rollout is
-deliberately restarted.
+**Reset and recovery.** The Recovery admin view offers an authenticated
+reset that clears all plugin data (every pillar, not just CSP) and disables
+header emission until rollout is deliberately restarted.
 
 **Schema-downgrade protection and configuration rollback (`Rollback_Guard`,
 schema v23).** A plugin cannot swap its own PHP files back to an older
@@ -586,12 +588,28 @@ other pillar profiles, dependency classifications, certificate records --
 explicitly never the audit log or other append-only/log-shaped tables,
 which need no snapshot because nothing ever overwrites them) into a
 bounded (last 5) history; (3) an administrator can restore a snapshot from
-the Readiness tab, but only when the running code's schema still matches
+the Recovery tab, but only when the running code's schema still matches
 exactly what the snapshot was taken for -- restoring across a schema
 change is refused with a clear reason rather than attempted partially.
 This covers a migration whose *data* effects turn out to be unwanted while
 staying on current code; it does not cover restoring older plugin code
 itself, which remains a manual process (`docs/rollback-and-recovery.md`).
+
+**Cross-site configuration export/import (`Config_Portability`).** Distinct
+from `Rollback_Guard`'s snapshot/restore above -- that is same-site,
+same-exact-schema-version only, and exists to undo a migration's data
+effects. `Config_Portability` moves administrator-authored configuration
+(policy profiles, source/hash approvals, other pillar profiles, dependency
+classifications, non-secret certificate settings, and automation/reporting
+options) between sites, or archives it outside the database entirely, and
+is schema-version-independent within reason. Export and import are both
+allowlist-based on both table and option names: neither will ever touch a
+table or option outside its declared list, and import treats every key in
+an uploaded file as untrusted, writing only what was already on the
+allowlist regardless of what else the file contains. Never included:
+secrets, credentials, private key material (`Certificate_Store::
+SECRET_FIELDS`, stripped on export and never written by import), the audit
+log, or any other log/ledger-shaped table. Available from the Recovery tab.
 
 **Known limitations.** No release-verification test suite covering every
 named scenario runs against a real WordPress instance yet (partial

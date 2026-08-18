@@ -45,7 +45,7 @@ provide, automatically:
    deliberately excludes the audit log and other log-shaped tables --
    nothing ever overwrites those, so they need no snapshot.
 4. **Lets you restore a snapshot** from **Security Automation Manager →
-   Overview → Readiness → Rollback and Recovery**, but only when the
+   Recovery → Rollback and Recovery**, but only when the
    running code's schema still matches exactly what that snapshot was taken
    for. This undoes a migration's *data* effects (e.g. a default that
    changed in a way you don't want) while staying on current code. It
@@ -56,7 +56,7 @@ provide, automatically:
 
 | Situation | What to do |
 |---|---|
-| A migration changed data you don't like, but the *new* plugin version is otherwise fine | Use the snapshot restore in the Readiness tab -- see above. No manual steps needed. |
+| A migration changed data you don't like, but the *new* plugin version is otherwise fine | Use the snapshot restore on the Recovery tab -- see above. No manual steps needed. |
 | You need to go back to an *older plugin version* (a regression, an incompatibility) | Follow "Manual code rollback" below. |
 | The site shows the schema-downgrade notice after an unplanned reinstall of older code | Follow "Recovering from an unintended downgrade" below. |
 | A migration itself failed partway (PHP timeout, fatal error, server crash) | See "Recovery after an interrupted migration" below -- this is usually self-healing, no action needed. |
@@ -105,10 +105,10 @@ provide, automatically:
    to attempt silently -- guessing at how to reverse a schema change safely
    is exactly the kind of behaviour that could corrupt certificate records
    or encrypted credentials.
-8. **Verify** on the Readiness tab: schema version matches what the
-   reactivated code expects, the downgrade notice is gone, and spot-check
-   that policy profiles, certificates, and any DNS-provider credentials
-   still look correct.
+8. **Verify**: on the Readiness tab, the schema version matches what the
+   reactivated code expects; on the Recovery tab, the downgrade notice is
+   gone; and spot-check that policy profiles, certificates, and any
+   DNS-provider credentials still look correct.
 
 ## Recovering from an unintended downgrade
 

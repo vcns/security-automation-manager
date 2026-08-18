@@ -232,7 +232,7 @@ these differ from the first pass of this assessment):
 | #182 | Scheduled external verification service | Not started | Remain open - deferred |
 | #183 | Webhook and SIEM integrations | Not started (inbound Stripe webhook setting exists, unrelated) | Remain open - deferred |
 | #184 | WP-CLI command support | Not started (only a `defined('WP_CLI')` SAPI guard) | Remain open - deferred |
-| #185 | Configuration-as-code import/export | Not started | Remain open - deferred |
+| #185 | Configuration-as-code import/export | Implemented | `Config_Portability` exports/imports administrator-authored configuration (policy profiles, source/hash approvals, other pillar profiles, dependency classifications, non-secret certificate settings, automation/reporting options) as JSON via the Recovery tab; allowlist-based on both table and option names, never secrets/credentials/audit log/violation history | Update - close pending authorisation |
 
 ### Phase 6 - fleet & multisite (deferred)
 

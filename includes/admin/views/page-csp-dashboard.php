@@ -207,7 +207,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 
 	<h2 class="title"><?php esc_html_e( 'Readiness and Policy Audit', 'security-automation-manager' ); ?></h2>
 	<p class="description">
-		<?php esc_html_e( 'The Readiness page (in the sidebar) runs plugin and database health checks - schema integrity, table health, and operational checks - and, separately, offers a destructive full data reset if you need to start over.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'The Readiness page (in the sidebar) runs plugin and database health checks - schema integrity, table health, and operational checks. The Recovery page (also in the sidebar) covers schema-downgrade status, configuration snapshot restore, configuration export/import, and a destructive full plugin data reset if you need to start over.', 'security-automation-manager' ); ?>
 	</p>
 	<p class="description">
 		<?php esc_html_e( 'The Policy Audit tab above shows the current effective policy for every surface at a glance - mode, automation level, policy version, and pending/high-risk counts. For the pending review queue see For Review, and for the full, immutable decision ledger - who approved, rejected, or reverted each source, and why - see Policy Changes.', 'security-automation-manager' ); ?>

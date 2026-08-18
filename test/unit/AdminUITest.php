@@ -28,7 +28,7 @@ class AdminUITest extends TestCase {
 		$this->assertArrayHasKey( 'reset', $links );
 		$this->assertStringContainsString( 'admin.php?page=security-automation-manager-dashboard', $links['settings'] );
 		$this->assertStringContainsString( 'tab=settings', $links['settings'] );
-		$this->assertStringContainsString( 'admin.php?page=security-automation-manager&tab=readiness#wp-sam-reset', $links['reset'] );
+		$this->assertStringContainsString( 'admin.php?page=security-automation-manager&tab=recovery#wp-sam-reset', $links['reset'] );
 		$this->assertStringContainsString( 'Settings', $links['settings'] );
 		$this->assertStringContainsString( 'Reset', $links['reset'] );
 		$this->assertSame( 'settings', array_key_first( $links ) );
