@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use WP_SAM\Admin\Table_Query;
 use WP_SAM\Admin\Policy_Events_Builder;
+use WP_SAM\Admin\Risk_Badge;
 
 global $wpdb;
 
@@ -327,27 +328,20 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 						<?php checked( ! empty( $profile[ $bypass_entry['column'] ] ) ); ?>
 					/>
 					<?php echo esc_html( $bypass_entry['label'] ); ?>
-					<span class="wp-sam-risk-badge risk-<?php echo esc_attr( $bypass_entry['risk_level'] ); ?>">
-						<?php echo esc_html( ucfirst( $bypass_entry['risk_level'] ) ); ?>
-					</span>
-				</label>
-				<p class="description" style="margin:0 0 8px;">
-					<?php echo esc_html( $bypass_entry['risk_note'] ); ?>
 					<?php
 					$bypass_key   = $profile['surface'] . '|' . $bypass_entry['directive'] . '|' . $bypass_entry['violation_blocked_uri'];
 					$bypass_count = $bypass_violation_counts[ $bypass_key ] ?? 0;
-					if ( $bypass_count > 0 ) :
-						?>
-					<br />
-						<?php
-						printf(
-						/* translators: %s: formatted violation occurrence count */
-							esc_html__( '%s violations observed on this surface.', 'security-automation-manager' ),
-							esc_html( number_format( $bypass_count ) )
+					$bypass_note  = $bypass_entry['risk_note'];
+					if ( $bypass_count > 0 ) {
+						$bypass_note .= ' ' . sprintf(
+							/* translators: %s: formatted violation occurrence count */
+							__( '%s violations observed on this surface.', 'security-automation-manager' ),
+							number_format( $bypass_count )
 						);
-						?>
-					<?php endif; ?>
-				</p>
+					}
+					echo Risk_Badge::render( $bypass_entry['risk_level'], $bypass_note ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+					?>
+				</label>
 				<?php endforeach; ?>
 			</td>
 			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>
@@ -570,9 +564,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<td><code><?php echo esc_html( $src['directive'] ); ?></code></td>
 			<td><code><?php echo esc_html( $src['source_host'] ); ?></code></td>
 			<td>
-				<span class="wp-sam-risk-badge risk-<?php echo esc_attr( $src['risk_level'] ?? 'low' ); ?>" title="<?php echo esc_attr( $src['risk_reason'] ?? '' ); ?>">
-					<?php echo esc_html( ucfirst( $src['risk_level'] ?? 'low' ) ); ?>
-				</span>
+				<?php echo Risk_Badge::render( (string) ( $src['risk_level'] ?? 'low' ), (string) ( $src['risk_reason'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
 			</td>
 			<td>
 				<span class="wp-sam-state-badge state-<?php echo esc_attr( $src['approval_state'] ); ?>">
@@ -902,13 +894,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				<?php endif; ?>
 			</td>
 			<td>
-				<?php if ( '' !== $event['risk_level'] ) : ?>
-				<span class="wp-sam-risk-badge risk-<?php echo esc_attr( $event['risk_level'] ); ?>" title="<?php echo esc_attr( $event['risk_reason'] ); ?>">
-					<?php echo esc_html( ucfirst( $event['risk_level'] ) ); ?>
-				</span>
-				<?php else : ?>
-					&mdash;
-				<?php endif; ?>
+				<?php echo '' !== $event['risk_level'] ? Risk_Badge::render( $event['risk_level'], $event['risk_reason'] ) : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Risk_Badge::render() escapes internally; the literal &mdash; needs no escaping. ?>
 			</td>
 			<td><?php echo '' !== $event['policy_version'] ? esc_html( $event['policy_version'] ) : '&mdash;'; ?></td>
 			<td>

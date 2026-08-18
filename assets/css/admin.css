@@ -75,13 +75,34 @@
 	color: #86181d;
 }
 
-/* Risk badges */
+/* Risk badges. Rendered by WP_SAM\Admin\Risk_Badge::render() -- when it has
+   an explanation to show, the badge itself is the hover/focus trigger for a
+   .wp-sam-meta-popover nested inside it (same accessible popover mechanism
+   as the metadata-icon below); badges with nothing to explain render plain,
+   with no trigger styling. */
 .wp-sam-risk-badge {
 	display: inline-block;
 	padding: 2px 8px;
 	border-radius: 3px;
 	font-size: 0.85em;
 	font-weight: 600;
+}
+.wp-sam-risk-badge--has-note {
+	position: relative;
+	cursor: help;
+}
+.wp-sam-risk-badge--has-note:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+.wp-sam-risk-badge--has-note:hover .wp-sam-meta-popover,
+.wp-sam-risk-badge--has-note:focus .wp-sam-meta-popover {
+	display: block;
+}
+.risk-critical {
+	background: #fbe4e4;
+	color: #5c0a0a;
+	border: 1px solid #d98c8c;
 }
 .risk-high {
 	background: #ffeef0;
@@ -97,6 +118,11 @@
 	background: #eef7ff;
 	color: #0a4b78;
 	border: 1px solid #b8d9f3;
+}
+.risk-unknown {
+	background: #f0f0f1;
+	color: #50575e;
+	border: 1px solid #dcdcde;
 }
 
 /* ── Product cards ───────────────────────────────────────────────────────── */
@@ -402,7 +428,9 @@ details.wp-sam-filter-form form {
 	text-align: left;
 	white-space: normal;
 	font-size: 0.85em;
+	font-weight: normal;
 	line-height: 1.5;
+	color: #1d2327;
 }
 
 .wp-sam-meta-icon:hover .wp-sam-meta-popover,
