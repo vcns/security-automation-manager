@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.7.0] - 2026-08-18
+
+### Added
+
+- Explicit DNS-01 / HTTP-01 validation-method radio on the Certificates Configuration tab. Previously the challenge type was silently derived from whether a DNS provider was configured; now it's a first-class choice, and selecting HTTP-01 hides the 41-provider dropdown and credential fields (stored credentials survive the round trip for switching back). `Certificate_Manager` already honoured `challenge` from config, so no order-flow changes.
+- CSR subject (distinguished name) fields: organisation, organisational unit, country (validated ISO alpha-2), state, and locality flow from the Configuration tab through `Acme_Crypto::csr_der()` into the signing request, with blanks omitted. Documented honestly: DV CAs (Let's Encrypt included) issue on domain names only and strip these from the final certificate; they matter for CAs/workflows that consume the CSR itself.
+
+### Changed
+
+- The Certificates page is split into three tabs — Configuration, Issue / Renew, Install — using the same nav-tab conventions as the CSP dashboard, and content now uses the full window width (the old single page constrained everything to 640-860px). Settings save per-tab: each tab's form carries a section marker and the handler only overrides that section's keys, so saving Install settings can never clobber Configuration and vice versa.
+- The Domains box pre-fills from the site's own host (plus `www.` for bare registrable domains) when unconfigured.
+
 ## [2.6.1] - 2026-08-18
 
 ### Changed

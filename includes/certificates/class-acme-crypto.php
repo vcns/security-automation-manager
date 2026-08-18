@@ -204,9 +204,16 @@ class Acme_Crypto {
 	 * Generates a CSR for the given domains, returning DER bytes ready for
 	 * base64url-encoding into an ACME finalize request.
 	 *
-	 * @param array<int,string> $domains At least one; first becomes the CN.
+	 * @param array<int,string>    $domains At least one; first becomes the CN.
+	 * @param string               $private_key_pem Certificate private key.
+	 * @param array<string,string> $subject Optional distinguished-name parts:
+	 *        organization, organizational_unit, country (ISO 3166-1 alpha-2),
+	 *        state, locality. Included in the CSR when non-empty. Note that
+	 *        domain-validated CAs (Let's Encrypt included) ignore everything
+	 *        except the domain names in the issued certificate; these fields
+	 *        matter for CAs and workflows that consume the CSR itself.
 	 */
-	public static function csr_der( array $domains, string $private_key_pem ): string {
+	public static function csr_der( array $domains, string $private_key_pem, array $subject = array() ): string {
 		if ( empty( $domains ) ) {
 			throw new \InvalidArgumentException( 'At least one domain is required.' );
 		}
@@ -214,6 +221,21 @@ class Acme_Crypto {
 		$key = openssl_pkey_get_private( $private_key_pem );
 		if ( false === $key ) {
 			throw new \RuntimeException( 'Unable to load certificate private key.' );
+		}
+
+		$dn        = array( 'commonName' => $domains[0] );
+		$dn_fields = array(
+			'organization'        => 'organizationName',
+			'organizational_unit' => 'organizationalUnitName',
+			'country'             => 'countryName',
+			'state'               => 'stateOrProvinceName',
+			'locality'            => 'localityName',
+		);
+		foreach ( $dn_fields as $config_key => $openssl_key ) {
+			$value = trim( (string) ( $subject[ $config_key ] ?? '' ) );
+			if ( '' !== $value ) {
+				$dn[ $openssl_key ] = $value;
+			}
 		}
 
 		$san = implode(
@@ -234,7 +256,7 @@ class Acme_Crypto {
 
 		try {
 			$csr = openssl_csr_new(
-				array( 'commonName' => $domains[0] ),
+				$dn,
 				$key,
 				array(
 					'config'     => $config_path,

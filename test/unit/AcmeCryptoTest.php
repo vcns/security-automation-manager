@@ -62,6 +62,28 @@ class AcmeCryptoTest extends TestCase {
 		$this->assertSame( 256, strlen( Acme_Crypto::sign( 'payload', $pem ) ) ); // 2048-bit RSA -> 256-byte signature.
 	}
 
+	public function test_csr_subject_includes_organisation_details_and_skips_blanks(): void {
+		$der = Acme_Crypto::csr_der(
+			array( 'example.com' ),
+			Acme_Crypto::generate_key( 'ec-256' ),
+			array(
+				'organization' => 'VCNS Tech Ltd',
+				'country'      => 'GB',
+				'locality'     => 'London',
+				'state'        => '', // Blank fields must be omitted, not sent empty.
+			)
+		);
+
+		$pem     = "-----BEGIN CERTIFICATE REQUEST-----\n" . chunk_split( base64_encode( $der ), 64, "\n" ) . '-----END CERTIFICATE REQUEST-----';
+		$subject = openssl_csr_get_subject( $pem );
+
+		$this->assertSame( 'example.com', $subject['CN'] );
+		$this->assertSame( 'VCNS Tech Ltd', $subject['O'] );
+		$this->assertSame( 'GB', $subject['C'] );
+		$this->assertSame( 'London', $subject['L'] );
+		$this->assertArrayNotHasKey( 'ST', $subject );
+	}
+
 	public function test_csr_contains_every_domain_as_san(): void {
 		$domains = array( 'example.com', 'www.example.com', '*.dev.example.com' );
 		$der     = Acme_Crypto::csr_der( $domains, Acme_Crypto::generate_key( 'ec-256' ) );

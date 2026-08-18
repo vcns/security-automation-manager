@@ -37,18 +37,27 @@ class Certificate_Store {
 	 */
 	public function get_config(): array {
 		$defaults = array(
-			'domains'         => array(),
-			'contact_email'   => '',
-			'provider'        => '',
-			'challenge'       => 'dns-01',
-			'key_type'        => 'ec-256',
-			'staging'         => true,
-			'deployment'      => 'download',
-			'export_path'     => '',
-			'cpanel_host'     => '',
-			'cpanel_user'     => '',
-			'cpanel_token'    => '',
-			'dns_credentials' => array(),
+			'domains'             => array(),
+			'contact_email'       => '',
+			'provider'            => '',
+			'challenge'           => 'dns-01',
+			'key_type'            => 'ec-256',
+			'staging'             => true,
+			'deployment'          => 'download',
+			'export_path'         => '',
+			'cpanel_host'         => '',
+			'cpanel_user'         => '',
+			'cpanel_token'        => '',
+			'dns_credentials'     => array(),
+			// CSR subject (distinguished name) parts. DV CAs such as Let's
+			// Encrypt ignore these in the issued certificate; they are
+			// included in the CSR for organisations whose workflows or CAs
+			// consume them.
+			'organization'        => '',
+			'organizational_unit' => '',
+			'country'             => '',
+			'state'               => '',
+			'locality'            => '',
 		);
 
 		$stored = get_option( self::CONFIG_OPTION, array() );
