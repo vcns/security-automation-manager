@@ -1431,7 +1431,10 @@ class Admin_UI {
 	 * never computed by this plugin on its own initiative: it is only ever
 	 * what the administrator explicitly typed/pasted in directly, or what
 	 * ajax_suggest_dependency_sri() computed for a URL the administrator
-	 * themselves supplied and then chose to save here.
+	 * themselves supplied. The admin UI's "Suggest" button calls this
+	 * endpoint automatically as soon as ajax_suggest_dependency_sri()
+	 * returns a hash (see admin.js) -- there is no separate confirmation
+	 * step between "fetch and hash" and "save as the pinned value."
 	 */
 	public function ajax_classify_dependency(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
@@ -1479,10 +1482,13 @@ class Admin_UI {
 	/**
 	 * Computes a suggested SRI hash for a URL the administrator explicitly
 	 * supplies, to save them running an external hash generator by hand.
-	 * Never saved automatically -- the computed value is only ever returned
-	 * to the browser; the administrator still has to accept it via the
-	 * existing "Expected SRI" field (ajax_classify_dependency()) before it's
-	 * ever compared against anything.
+	 * This method itself only ever returns the computed hash to the browser
+	 * and writes nothing -- but the admin UI's "Suggest" button (admin.js)
+	 * immediately posts that returned hash on to ajax_classify_dependency()
+	 * and saves it as the pinned "Expected SRI" value, with no separate
+	 * confirmation click in between. The trust boundary here is "you typed
+	 * or accepted this exact URL," not "you separately reviewed the
+	 * resulting hash before it took effect."
 	 *
 	 * Deliberately restricted to a URL whose origin already matches an
 	 * origin this plugin has itself observed on a real page load (the
