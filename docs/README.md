@@ -17,6 +17,7 @@ The following files are published through GitHub Pages and are intended for Word
 These documents are written for maintainers, release managers, security reviewers, and operators managing release infrastructure:
 
 - `architecture.md` - high-level system design, runtime flow, and responsibility boundaries
+- `consolidation-ledger.md` - repository assessment and roadmap reconciliation for the public-release consolidation effort; baseline for all later consolidation PRs
 - `database-schema.md` - custom table definitions, relationships, policy decision ledger, and operational notes
 - `testing-and-quality.md` - expected validation workflow, CI scope, and manual verification checklist
 - `release-and-publishing.md` - versioning, branching, packaging, and WordPress.org publishing flow
