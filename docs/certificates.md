@@ -213,7 +213,10 @@ expected.
 - All secrets (DNS credentials, cPanel token, private keys, account keys)
   are sealed with sodium `crypto_secretbox` before storage. Define
   `WP_SAM_CERT_VAULT_KEY` in `wp-config.php` so a database dump alone can
-  never yield key material.
+  never yield key material. Rotating this constant, or WordPress's own
+  `AUTH_KEY`/`AUTH_SALT`, invalidates every already-sealed secret with no
+  automatic recovery -- see `docs/credential-vault-assessment.md` before
+  changing either.
 - The private-key download link is audit-logged at warning severity.
 
 ## Need a second pair of eyes?

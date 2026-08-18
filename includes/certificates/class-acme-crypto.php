@@ -71,6 +71,19 @@ class Acme_Crypto {
 	}
 
 	/**
+	 * Stable, translatable message shown as the primary reason automatic
+	 * key generation isn't available. Deliberately generic rather than
+	 * echoing whatever openssl_error_string() happened to return -- that
+	 * string is host- and OpenSSL-version-dependent free text meant for a
+	 * developer reading a log, not phrasing meant for an administrator
+	 * deciding whether to paste in their own key. The underlying detail is
+	 * still available (see describe_generation_failure()'s 'detail' key);
+	 * it's demoted to a diagnostic aside in the admin view, not presented as
+	 * the primary explanation.
+	 */
+	public const GENERATION_FAILURE_MESSAGE = 'This server could not generate a certificate key automatically.';
+
+	/**
 	 * Live capability probe: can this server actually generate a key right
 	 * now? extension_loaded('openssl') alone is not a reliable signal --
 	 * the extension can be compiled in and still fail at runtime (a missing
@@ -80,28 +93,46 @@ class Acme_Crypto {
 	 * throwaway generation is the only test that answers the real
 	 * question, and it is cheap (a few milliseconds for EC-256).
 	 *
-	 * @return array{ok:bool, error:?string}
+	 * @return array{ok:bool, error:?string, detail:?string}
 	 */
 	public static function generation_capability(): array {
 		if ( ! extension_loaded( 'openssl' ) ) {
 			return array(
-				'ok'    => false,
-				'error' => 'The openssl PHP extension is not available on this server.',
+				'ok'     => false,
+				'error'  => self::GENERATION_FAILURE_MESSAGE,
+				'detail' => 'The openssl PHP extension is not available on this server.',
 			);
 		}
 
 		try {
 			self::generate_key( 'ec-256' );
 			return array(
-				'ok'    => true,
-				'error' => null,
+				'ok'     => true,
+				'error'  => null,
+				'detail' => null,
 			);
 		} catch ( \Throwable $e ) {
-			return array(
-				'ok'    => false,
-				'error' => $e->getMessage(),
-			);
+			return self::describe_generation_failure( $e );
 		}
+	}
+
+	/**
+	 * Splits a caught key-generation failure into a stable administrator-
+	 * facing message and the raw diagnostic detail, kept separate so a
+	 * template can render them with different weight (see
+	 * page-certificates.php: the stable message is the headline, the detail
+	 * is a collapsed technical aside). Pure and side-effect-free -- exposed
+	 * publicly so it's directly testable without forcing a real OpenSSL
+	 * failure, which isn't reliably reproducible across CI hosts.
+	 *
+	 * @return array{ok:false, error:string, detail:string}
+	 */
+	public static function describe_generation_failure( \Throwable $e ): array {
+		return array(
+			'ok'     => false,
+			'error'  => self::GENERATION_FAILURE_MESSAGE,
+			'detail' => $e->getMessage(),
+		);
 	}
 
 	/**

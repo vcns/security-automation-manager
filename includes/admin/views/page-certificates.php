@@ -38,10 +38,7 @@ if ( ! in_array( $wp_sam_cert_tab, array( 'configuration', 'renew', 'install' ),
 // only appears when generation genuinely fails, or a key is already stored
 // (so a site that starts working again still has a way to remove it).
 if ( 'configuration' === $wp_sam_cert_tab ) {
-	$wp_sam_key_capability = extension_loaded( 'openssl' ) ? Acme_Crypto::generation_capability() : array(
-		'ok'    => false,
-		'error' => 'The openssl PHP extension is not available.',
-	);
+	$wp_sam_key_capability = Acme_Crypto::generation_capability();
 	$wp_sam_show_byo_key   = ! $wp_sam_key_capability['ok'] || '' !== $wp_sam_cert_config['custom_key_pem'];
 }
 
@@ -218,9 +215,14 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				<td>
 					<?php if ( ! $wp_sam_key_capability['ok'] ) : ?>
 					<p class="description" style="color:#a00;margin-top:0">
-						<strong><?php esc_html_e( 'This server could not generate a certificate key automatically:', 'security-automation-manager' ); ?></strong>
-						<?php echo esc_html( (string) $wp_sam_key_capability['error'] ); ?>
+						<strong><?php echo esc_html( (string) $wp_sam_key_capability['error'] ); ?></strong>
 					</p>
+						<?php if ( ! empty( $wp_sam_key_capability['detail'] ) ) : ?>
+						<details class="wp-sam-cert-keygen-detail">
+							<summary><?php esc_html_e( "Technical detail (for your host's support team)", 'security-automation-manager' ); ?></summary>
+							<p class="description"><code><?php echo esc_html( (string) $wp_sam_key_capability['detail'] ); ?></code></p>
+						</details>
+						<?php endif; ?>
 					<?php endif; ?>
 					<textarea id="wp_sam_cert_custom_key" name="wp_sam_cert_custom_key" class="large-text code" rows="5" autocomplete="off" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['custom_key_pem'] ? __( '•••••• (a key is stored — leave blank to keep it)', 'security-automation-manager' ) : '-----BEGIN PRIVATE KEY-----' ); ?>"></textarea>
 					<?php if ( '' !== $wp_sam_cert_config['custom_key_pem'] && $wp_sam_key_capability['ok'] ) : ?>

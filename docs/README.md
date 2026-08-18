@@ -18,6 +18,7 @@ These documents are written for maintainers, release managers, security reviewer
 
 - `architecture.md` - high-level system design, runtime flow, and responsibility boundaries
 - `consolidation-ledger.md` - repository assessment and roadmap reconciliation for the public-release consolidation effort; baseline for all later consolidation PRs
+- `credential-vault-assessment.md` - formal assessment of the certificate credential vault's key derivation (entropy, domain separation, rotation, recovery); concludes it should not change without the migration this document specifies
 - `database-schema.md` - custom table definitions, relationships, policy decision ledger, and operational notes
 - `testing-and-quality.md` - expected validation workflow, CI scope, and manual verification checklist
 - `release-and-publishing.md` - versioning, branching, packaging, and WordPress.org publishing flow
