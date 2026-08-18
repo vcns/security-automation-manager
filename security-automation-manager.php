@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.8.0
+ * Version:           2.9.0
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.8.0' );
+define( 'WP_SAM_VERSION', '2.9.0' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -107,8 +107,18 @@ define( 'WP_SAM_VERSION', '2.8.0' );
  *        directive+token relaxations (data: URIs in img-src/font-src) that
  *        are safe despite being high-risk for automation. See
  *        Policy_Builder::BYPASS_CATALOG.
+ * v21 -- adds sam_certificates for ACME (Let's Encrypt) certificate
+ *        automation: issued certificate metadata, sealed private key, and
+ *        expiry tracking for the renewal scheduler. See
+ *        Certificates\Certificate_Store.
+ * v22 -- adds bypass_style_attr_unsafe_hashes tinyint column to
+ *        csp_policy_profiles, and moves 'unsafe-hashes' emission on
+ *        style-src-attr out of automatic (whenever a hash exists) and into
+ *        BYPASS_CATALOG as its own explicit, labelled opt-in -- a scanner
+ *        will flag this keyword, so enabling it must be a conscious admin
+ *        decision, not something the plugin decided on its own.
  */
-define( 'WP_SAM_DB_VERSION', '21' );
+define( 'WP_SAM_DB_VERSION', '22' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

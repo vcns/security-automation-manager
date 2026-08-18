@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.0] - 2026-08-18
+
+### Changed
+
+- `Policy_Builder::build_policy_string()` no longer adds `'unsafe-hashes'` to `style-src-attr` automatically whenever a hash is present for it. A security scanner correctly flagged this as a scanner-worthy posture change on a production site after it shipped as automatic behaviour in v2.4.31 (#213) -- it needed to be a conscious, reversible admin decision, not the plugin's own call. It is now its own `BYPASS_CATALOG` entry (`style_src_attr_unsafe_hashes`), reusing the same per-surface opt-in mechanism as the existing `img-src`/`font-src` `data:` entries; a captured style-attribute hash sits inert until enabled. Schema v22 adds `bypass_style_attr_unsafe_hashes` to `csp_policy_profiles`.
+- `BYPASS_CATALOG` entries now carry a `risk_level` (low/medium), rendered as a badge next to each Profiles-tab checkbox. The catalog is no longer implicitly restricted to only low-risk entries -- the safety property was always "nothing is silently automatic," not "nothing risky is ever offered." Documented at length in `Policy_Builder::BYPASS_CATALOG`'s docblock and a new "Bypass Best Practices catalog" section in `docs/threat-model.md`, including why this entry cannot affect `script-src-attr` or script execution (CSP directives don't cross-contaminate).
+- The Profiles tab's bypass violation-count query is now built generically from `BYPASS_CATALOG`'s `directive`+`violation_blocked_uri` pairs instead of being hardcoded to `img-src`/`font-src`, so a future catalog entry shows a real count instead of a silent zero.
+
+### Fixed
+
+- The plugin version-history docblock never documented schema v21 (added for ACME certificate storage in 2.5.0) and this change would otherwise have collided with it, reusing "v21" for a second, unrelated schema bump. Rebasing onto current main surfaced the gap: v21 is now documented, and this release's column addition correctly lands as v22 (`WP_SAM_DB_VERSION` bumped accordingly) -- without that bump, a site already upgraded to 2.8.0 (`wp_sam_db_version=21`) would have silently never run the migration that adds `bypass_style_attr_unsafe_hashes`, since `maybe_upgrade_db()`'s version check would already read as satisfied. Verified live: a site pinned at `db_version=21` correctly advances to 22 and gains the column on first boot of this release.
+
 ## [2.8.0] - 2026-08-18
 
 ### Added

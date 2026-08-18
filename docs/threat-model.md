@@ -67,6 +67,22 @@ The following must never be changed without a full security review:
 
 6. **Violation report fields are never auto-approved.** Discovered `blocked-uri` values are stored with `approval_state = 'pending'`. Only an explicit admin action via the REST API (capability-checked, nonce-validated) can change the state to `approved`.
 
+7. **Bypass Best Practices entries are never auto-enabled.** Every `Policy_Builder::BYPASS_CATALOG` entry is off by default (`0` in `csp_policy_profiles`) and only takes effect after an explicit per-surface admin toggle via `Admin_UI::ajax_set_bypass_flag()` (capability-checked, nonce-validated). No entry may be derived generically from a risk-classifier finding or added automatically because approved content exists elsewhere (e.g. `style-src-attr`'s `'unsafe-hashes'` entry does not turn on just because a hash was captured) — see "Bypass Best Practices catalog" below.
+
+## Bypass Best Practices catalog
+
+`Policy_Builder::BYPASS_CATALOG` (Profiles tab, "Bypass Best Practices" column) is a small, hardcoded, individually-reasoned set of directive+token relaxations for cases where a specific site's real design goes against CSP best practice in a way `Decision_Engine` or an external scanner would flag. Every entry carries a `risk_level` (`low`/`medium`) shown to the admin before they opt in — this catalog is not restricted to only low-risk entries; the safety property is that nothing is ever silently or automatically enabled, not that nothing risky is ever offered (invariant #7 above).
+
+### Inline style attributes (`style-src-attr` + `'unsafe-hashes'`)
+
+**Threat actors and mitigations:**
+
+- **The keyword itself.** `'unsafe-hashes'` (CSP3 §6.1.2) allows hash-source matching to apply in attribute contexts — inline event handlers, `javascript:` URLs, and style attributes — which CSP does not cover by default. Security scanners correctly flag it as a keyword worth reviewing.
+- **Blast radius is scoped to the directive it's added to.** CSP directives don't cross-contaminate: `'unsafe-hashes'` present in `style-src-attr`'s value has no effect on `script-src-attr`, `script-src`, or any script-execution path. `script-src-attr` remains hard-set to `'none'` everywhere in this codebase; inline event handlers stay fully blocked regardless of this entry's state.
+- **No-op without a paired hash.** The entry only adds the keyword; `style-src-attr` still needs an actual approved hash (from `Hash_Manager`'s attribute capture, `docs/database-schema.md`'s `csp_hash_inventory` `style-src-attr` rows) before anything can match. Enabling the flag with zero approved hashes changes nothing observable.
+- **Residual risk: CSS-based data exfiltration.** If an attacker separately achieves HTML injection elsewhere on the page, and the injected `style="..."` content happens to byte-for-byte match a hash already approved for a different, legitimate purpose, it would be permitted. This is real but low-probability — it requires an independent injection primitive plus a hash collision with existing legitimate content — and is meaningfully narrower than "arbitrary code execution": CSS cannot execute code in any current browser. The realistic abuse case is attribute-selector-based data exfiltration (e.g. leaking input values via `input[value^="a"] { background: url(...) }`), not script execution.
+- **Why this mechanism over the alternatives.** The other options CSP provides are `'unsafe-inline'` on `style-src-attr` (approves *any* style attribute content, a materially broader bypass) or leaving `style-src-attr` permanently blocked (breaks any page whose template legitimately uses inline style attributes). Hash-plus-`unsafe-hashes` is the narrowest mechanism CSP3 offers for this case.
+
 ## Update pipeline
 
 Scope: the GitHub-channel updater (`Github_Update_Checker`). The

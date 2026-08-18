@@ -508,10 +508,12 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringContainsString( "'sha256-ghi789=='", $style_src_attr );
 	}
 
-	public function test_build_adds_unsafe_hashes_when_style_src_attr_has_a_hash(): void {
-		// CSP3 §6.1.2: a hash source only takes effect in an attribute context
-		// (style attributes, event handlers, javascript: URLs) when
-		// 'unsafe-hashes' is also present in the directive.
+	public function test_build_omits_unsafe_hashes_when_hash_present_but_bypass_flag_disabled(): void {
+		// 'unsafe-hashes' is no longer added just because a style-src-attr hash
+		// exists -- it's its own BYPASS_CATALOG entry (bypass_style_attr_unsafe_hashes)
+		// requiring an explicit per-surface opt-in, since it's a keyword security
+		// scanners flag. A captured hash sits inert until the admin also enables
+		// the toggle.
 		$profile = $this->make_profile( [
 			'default-src'    => [ "'none'" ],
 			'style-src-attr' => [ "'none'" ],
@@ -526,13 +528,50 @@ class PolicyBuilderTest extends TestCase {
 		$parts          = explode( ';', $policy );
 		$style_src_attr = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr' ) ) ) );
 
+		$this->assertStringContainsString( "'sha256-ghi789=='", $style_src_attr );
+		$this->assertStringNotContainsString( 'unsafe-hashes', $style_src_attr );
+	}
+
+	public function test_build_adds_unsafe_hashes_when_bypass_flag_enabled(): void {
+		$profile                                     = $this->make_profile( [
+			'default-src'    => [ "'none'" ],
+			'style-src-attr' => [ "'none'" ],
+		] );
+		$profile['bypass_style_attr_unsafe_hashes']  = 1;
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$parts          = explode( ';', $policy );
+		$style_src_attr = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr' ) ) ) );
+
 		$this->assertStringContainsString( "'unsafe-hashes'", $style_src_attr );
 	}
 
-	public function test_build_omits_unsafe_hashes_when_style_src_attr_has_no_hash(): void {
-		// Never add 'unsafe-hashes' speculatively -- only when it's scoping an
-		// actual approved hash, otherwise it's a pure posture downgrade with no
-		// corresponding benefit.
+	public function test_build_hash_and_bypass_flag_together_produce_a_working_directive(): void {
+		// The end-to-end case the bypass flag exists for: an approved hash plus
+		// the explicit opt-in together actually allow the approved inline style
+		// attribute -- neither alone is sufficient.
+		$profile                                     = $this->make_profile( [
+			'default-src'    => [ "'none'" ],
+			'style-src-attr' => [ "'none'" ],
+		] );
+		$profile['bypass_style_attr_unsafe_hashes']  = 1;
+
+		$builder = $this->make_db_stub_builder( approved_hashes: [
+			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
+		] );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$parts          = explode( ';', $policy );
+		$style_src_attr = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr' ) ) ) );
+
+		$this->assertStringContainsString( "'sha256-ghi789=='", $style_src_attr );
+		$this->assertStringContainsString( "'unsafe-hashes'", $style_src_attr );
+	}
+
+	public function test_build_omits_unsafe_hashes_by_default(): void {
+		// Neither a hash nor the bypass flag are present -- nothing speculative.
 		$profile = $this->make_profile( [
 			'default-src'    => [ "'none'" ],
 			'style-src-attr' => [ "'none'" ],
@@ -546,13 +585,14 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'unsafe-hashes', $style_src_attr );
 	}
 
-	public function test_build_does_not_add_unsafe_hashes_to_unrelated_directives(): void {
-		$profile = $this->make_profile( [
+	public function test_build_does_not_leak_unsafe_hashes_to_unrelated_directives(): void {
+		$profile                                     = $this->make_profile( [
 			'default-src'     => [ "'none'" ],
 			'style-src-attr'  => [ "'none'" ],
 			'script-src'      => [],
 			'script-src-elem' => [],
 		] );
+		$profile['bypass_style_attr_unsafe_hashes']  = 1;
 
 		$builder = $this->make_db_stub_builder( approved_hashes: [
 			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
