@@ -633,8 +633,13 @@ jobs:
             "UPDATE wp_options SET option_value='${LIVE_SCHEMA}' WHERE option_name='wp_sam_db_version';"
           docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
 
-          docker exec sam-cli wp option get wp_sam_schema_downgrade_detected --path=/var/www/html --allow-root 2>&1 | grep -q "Could not get" \
-            || { echo "Downgrade flag was not cleared after the schema mismatch resolved" >&2; exit 1; }
+          # Query wp_options directly rather than parse `wp option get`'s
+          # error text for a missing option -- that text isn't a stable
+          # contract across WP-CLI versions, and asserting on it here
+          # already proved fragile once.
+          FLAG_COUNT=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT COUNT(*) FROM wp_options WHERE option_name='wp_sam_schema_downgrade_detected';")
+          [ "$FLAG_COUNT" = "0" ] || { echo "Downgrade flag was not cleared after the schema mismatch resolved (row count: $FLAG_COUNT)" >&2; exit 1; }
 
           docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
             "SELECT event FROM wp_sam_audit_log WHERE event='schema_downgrade_resolved';" | grep -q schema_downgrade_resolved
