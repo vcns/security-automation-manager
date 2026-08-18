@@ -1,424 +1,623 @@
-# Functional Requirement Specification
+# Product Specification
 
 ## Plugin: Security Automation Manager
 
-**Version:** 0.3  
-**Date:** 7 June 2026  
-**Status:** Active - aligned to codebase DB schema v4 and architecture.md
+**Version:** 1.0
+**Date:** 2026-08-18
+**DB schema alignment:** v22
+**Status:** Active
+
+**Supersedes:** v0.3 (2026-06-07), which described a CSP-only product aligned to
+DB schema v4. That version is preserved in git history
+(`git show v2.4.0:SPECIFICATION.md` or earlier) for anyone who needs it; it is
+not retained in the working tree because a stale copy sitting alongside the
+current one is exactly the kind of drift this revision exists to close (see
+`docs/consolidation-ledger.md`).
+
+This document, `README.md`, `readme.txt`, and `docs/*` are required to agree.
+`test/unit/VersionConsistencyTest.php` enforces the version/schema numbers
+above against the live code on every CI run — see "Keeping this document
+honest" at the end.
 
 ---
 
-## 1. Purpose
+## 1. Product Purpose
 
-This plugin automates generation, maintenance, and enforcement of a strict Content Security Policy (CSP) for WordPress sites. The goal is to maximise browser-enforced script execution controls without relying on `'unsafe-inline'`, `'unsafe-eval'`, or broad host allowlists, while providing a safe incremental rollout path through report-only mode and configurable promotion gates.
+Security Automation Manager is a WordPress plugin covering three product
+areas that share one administrative surface, one audit log, and one
+free/commercial boundary, but are otherwise independent of each other:
+
+1. **Security-header controls** — Content Security Policy (CSP) plus nine
+   simpler per-surface headers, each rolled out with a report-only-first,
+   evidence-based promotion path where the header mechanism supports one.
+2. **Script and stylesheet integrity governance** — third-party origin
+   classification with Subresource Integrity, and first-party integrity
+   hashing, both rewriting the rendered page rather than emitting a header.
+3. **TLS certificate lifecycle management** — a self-contained ACME v2
+   client, unrelated to the header pillars beyond shared plumbing.
+
+The unifying design principle across all three: nothing the plugin does not
+already know is safe gets applied silently. Discovery and observation always
+happen before a decision is asked for; a decision is always visible in the
+audit log; and enforcement — where the underlying mechanism has a
+report-only concept at all — is always a deliberate, separately-gated step
+from approval.
+
+The plugin does not implement a web application firewall, authentication
+hardening, malware scanning/cleanup, or automated core/plugin patching. It
+does not manage TLS for services outside this WordPress installation, and it
+does not manage certificates for anything other than the domains an
+administrator explicitly configures.
 
 ---
 
 ## 2. Governing Standards
 
-CSP is governed by the W3C Web Application Security Working Group, not by IETF. This plugin targets the following normative references.
+**Security headers (W3C):**
 
-**W3C specifications:**
+- Content Security Policy Level 2 — W3C Recommendation (2015)
+- Content Security Policy Level 3 — W3C Working Draft
+- Trusted Types — W3C Working Draft
+- Upgrade Insecure Requests — W3C Candidate Recommendation
+- Mixed Content — W3C Recommendation
+- Reporting API — W3C Working Draft (governs both CSP's Reporting API mode
+  and the COOP/COEP report-only evidence mechanism)
+- Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are defined
+  across the HTML Living Standard (browsing-context group isolation) and the
+  Fetch Living Standard (`Cross-Origin-Resource-Policy`); neither is a
+  finished W3C/WHATWG Recommendation, and implementations vary — see
+  "Cross-Origin Policy Learning" below for the concrete consequence
+  (Reporting API delivery is Chromium-only today).
 
-- Content Security Policy Level 2 - W3C Recommendation (2015)
-- Content Security Policy Level 3 - W3C Working Draft, 5 May 2026 (`WD-CSP3-20260505`)
-- Trusted Types - W3C Working Draft
-- Upgrade Insecure Requests - W3C Candidate Recommendation
-- Mixed Content - W3C Recommendation
-- Reporting API - W3C Working Draft
+**Security headers (IETF):**
 
-**IETF documents:**
+- RFC 7762 — Content Security Policy Directives registry (Informational);
+  lags the living standard, not authoritative for the full directive set.
+- RFC 7034 — X-Frame-Options (Informational); superseded in capable browsers
+  by CSP `frame-ancestors`, retained here as a fallback.
+- RFC 6454 — The Web Origin Concept; origin serialisation used throughout.
+- RFC 9110 — HTTP Semantics, STD 97.
+- RFC 9651 — Structured Field Values for HTTP; governs `Reporting-Endpoints`
+  header construction.
+- RFC 6797 — HTTP Strict Transport Security; complementary to, not replaced
+  by, `upgrade-insecure-requests`.
+- BCP 14 (RFC 2119 / RFC 8174) — normative language.
 
-- RFC 7762 - Initial Assignment for the Content Security Policy Directives Registry (Informational). Establishes the IANA "Content Security Policy Directives" registry (last updated 2023-02-03). The registry lags the living standard and is not authoritative for the full directive set.
-- RFC 7034 - HTTP Header Field X-Frame-Options (Informational). Documents the header superseded by CSP `frame-ancestors`.
-- RFC 6454 - The Web Origin Concept (Proposed Standard). Defines origin serialisation used throughout CSP source-expression matching.
-- RFC 9110 - HTTP Semantics, STD 97 (Internet Standard). HTTP field semantics referenced by CSP3 header ABNF.
-- RFC 9651 - Structured Field Values for HTTP (Proposed Standard). Obsoletes RFC 8941. The `Reporting-Endpoints` header is a Structured Fields Dictionary per RFC 9651 and must be constructed accordingly.
-- RFC 6797 - HTTP Strict Transport Security (Proposed Standard). Complementary to `upgrade-insecure-requests`; the upgrade directive does not replace HSTS.
-- BCP 14 (RFC 2119 / RFC 8174) - Normative language conventions.
+**Certificates (IETF):**
 
-**Key clarification:** CSP Level 3 remains a Working Draft as of the date of this document. Directive availability is browser-dependent. Directive presence in this specification does not imply universal browser support. Safari in particular lacks support for `script-src-elem`, `script-src-attr`, `style-src-elem`, and `style-src-attr`; the plugin must maintain `script-src` and `style-src` as portable fallbacks.
+- RFC 8555 — Automatic Certificate Management Environment (ACME) v2. This
+  plugin implements ACME v2 only; there is no ACME v1 code path.
+- RFC 8737 — TLS-ALPN-01 is not implemented; only `http-01` and `dns-01`
+  challenge types are supported.
+- RFC 2136 — DNS Update, used by the `rfc2136` DNS provider driver for
+  authoritative-server-direct DNS-01 record management.
 
----
-
-## 3. Scope
-
-The plugin covers:
-
-- Per-request nonce generation and injection for scripts and styles.
-- Static hash management for stable inline script and style blocks.
-- Runtime and crawl-based discovery of effective resource requirements.
-- Policy generation for multiple WordPress surfaces: `frontend`, `admin`, `login`, `api`.
-- Report-only and enforcement modes with configurable promotion gates.
-- CSP violation ingestion, deduplication, rate limiting, and retention management.
-- Detection of competing CSP headers from plugins, server layers, and platform layers.
-- Append-only operational audit logging.
-- Optional premium features: multi-surface scan, `strict-dynamic`, Trusted Types, and additional analytics.
-
-The plugin is limited to CSP hardening. It does not implement WAF rules, authentication hardening, malware cleanup, or patch automation.
-
----
-
-## 4. Security Objectives
-
-- Enforce strict script execution controls using nonces and optional hashes.
-- Prevent uncontrolled inline execution paths (event-handler attributes, `javascript:` URLs).
-- Minimise source allowlists to only observed and approved origins.
-- Ensure policy changes are auditable, reversible, and testable before enforcement.
-- Treat browser-submitted violation reports as advisory signal, not ground truth (they are client-generated and spoofable).
+**Directive/browser-support caveat carried over from the prior specification:**
+CSP Level 3 remains a Working Draft. Directive availability is
+browser-dependent; directive presence in this specification does not imply
+universal support. Safari lacks `script-src-elem`, `script-src-attr`,
+`style-src-elem`, and `style-src-attr`; the plugin maintains `script-src` and
+`style-src` as portable fallbacks.
 
 ---
 
-## 5. Functional Requirements
-
-### 5.1 Per-Request Nonce Generation
-
-- The plugin must generate a cryptographically secure random nonce for every eligible HTTP response using a CSPRNG providing at least 128 bits of entropy, Base64-encoded. The implementation uses `random_bytes(32)` (256 bits), which satisfies this floor.
-- The nonce must never be reused across requests.
-- The nonce must be inserted into the CSP as `'nonce-{value}'` for `script-src`, `script-src-elem`, `style-src`, and `style-src-elem` where applicable.
-
-### 5.2 Script and Style Attribute Injection
-
-- The plugin must inject nonce attributes using WordPress-native attribute hooks first:
-  - `wp_script_attributes` (WordPress 6.4+)
-  - `wp_inline_script_attributes` (WordPress 6.4+)
-- The plugin must support compatibility fallback via:
-  - `script_loader_tag`
-  - `style_loader_tag`
-- The plugin must not perform blind global string replacement across all `<script>` or `<style>` tags.
-- The plugin must support opt-out for specific script handles with explicit admin justification recorded in the audit log.
-- Scripts emitted outside the WordPress script API (e.g. hardcoded in templates or admin pages) will not receive nonce attributes. This is a platform constraint, not a plugin defect. See §9 for the known constraint on the admin surface.
-
-### 5.3 Multi-Surface Policy Profiles
-
-- The plugin must generate and apply separate CSP profiles for at minimum the following surfaces:
-  - `frontend` - public front-end pages
-  - `admin` - `wp-admin` pages (best-effort; see §9)
-  - `login` - `wp-login.php`
-  - `api` - REST API and `admin-ajax.php` responses
-- Each surface profile must have independent directives, overrides, mode, history, and rollout state.
-- Surface detection must be performed at request time before header emission.
-
-### 5.4 Strict CSP Directive Builder
-
-The builder produces a semicolon-delimited directive string per the CSP3 serialisation grammar.
-
-**Directives the builder must support:**
-
-Fetch directives (each falls back to `default-src` when unset):
-
-- `default-src` - fallback for all unset fetch directives
-- `script-src` - JavaScript execution; portable fallback for `script-src-elem` and `script-src-attr`
-- `script-src-elem` - `<script>` elements (CSP3; not supported in Safari - keep `script-src` as fallback)
-- `script-src-attr` - inline event-handler attributes (CSP3; not supported in Safari)
-- `style-src` - CSS sources; portable fallback for `style-src-elem` and `style-src-attr`
-- `style-src-elem` - `<style>` and `<link rel="stylesheet">` (CSP3)
-- `style-src-attr` - inline `style=` attributes (CSP3)
-- `img-src`
-- `font-src`
-- `connect-src` - `fetch()`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `<a ping>`
-- `frame-src` - iframes (deprecated in CSP2, un-deprecated in CSP3)
-- `child-src` - legacy fallback for `frame-src` and `worker-src`; retained for Safari worker-src compatibility
-- `worker-src` - `Worker`, `SharedWorker`, `ServiceWorker` (CSP3)
-- `manifest-src` - web app manifests (CSP3)
-- `media-src` - `<audio>`, `<video>`, `<track>`
-- `object-src` - `<object>`, `<embed>`
-- `fenced-frame-src` - `<fencedframe>` (experimental; privacy-focused)
-
-Document directives (do not fall back to `default-src`):
-
-- `base-uri` - restricts `<base>` element URLs; prevents base-tag hijacking
-- `sandbox` - applies iframe-style sandbox flags; emitted in HTTP header only; silently ignored in `Content-Security-Policy-Report-Only` and in `<meta http-equiv>`
-
-Navigation directives (do not fall back to `default-src`):
-
-- `form-action` - restricts `<form>` submission targets
-- `frame-ancestors` - permitted parent frames; supersedes `X-Frame-Options` (RFC 7034); cannot be delivered via `<meta http-equiv>`
-
-Standalone directives:
-
-- `upgrade-insecure-requests` - upgrades `http:` subresource requests to `https:` at the browser before loading; evaluated before mixed-content blocking; does not replace HSTS (RFC 6797)
-
-Reporting directives:
-
-- `report-to` - references an endpoint name defined by the `Reporting-Endpoints` response header; uses the Reporting API (payload: `application/reports+json`)
-- `report-uri` - deprecated in CSP3 but retained as a required legacy fallback for browsers without Reporting API support; POSTs `application/csp-report`
-
-**Directives the builder must never emit:**
-
-- `plugin-types` - removed from CSP3
-- `block-all-mixed-content` - obsolete; superseded by browser-native auto-upgrade; a no-op when `upgrade-insecure-requests` is set
-- `navigate-to` - removed from CSP3
-- `prefetch-src` - deprecated and never formally shipped; Chromium intent-to-remove
-
-Any `plugin-types`, `block-all-mixed-content`, `navigate-to`, or `prefetch-src` values present in admin override configurations must be stripped at emit time and the removal logged to `sam_audit_log` at `warning` severity.
-
-**Strict-mode defaults:**
-
-- `default-src 'none'`
-- `object-src 'none'`
-- `base-uri 'none'`
-- `script-src-attr 'none'`
-- `style-src-attr 'none'`
-
-**Source expression keywords supported:**
-
-`'self'`, `'none'`, `'unsafe-inline'` (blocked in enforce mode unless overridden), `'unsafe-eval'` (blocked in enforce mode unless overridden), `'strict-dynamic'` (premium; see §5.16), `'unsafe-hashes'`, `'report-sample'`, nonce sources `'nonce-{base64}'`, hash sources `'sha256-{base64}'` / `'sha384-{base64}'` / `'sha512-{base64}'`, scheme sources, host sources.
-
-The plugin must forbid `'unsafe-inline'` and `'unsafe-eval'` in enforce mode unless explicitly approved by an administrator override with expiration timestamp, reason, and owner identity, all recorded in `sam_audit_log`.
-
-**`'report-sample'` keyword:**
-
-The builder must include `'report-sample'` in fetch directives that cover inline content (`script-src`, `style-src`, and their `-elem` variants). When present, browsers include a short inline snippet in the `sample` field of violation reports. This field is captured and stored per §5.13.
-
-### 5.5 Hash Computation for Static Inline Blocks
-
-- For stable inline script and style blocks, the plugin must compute SHA-256 hashes using `hash('sha256', $content, true)` with Base64 encoding, producing `'sha256-{base64}'` source expressions.
-- Hash records must include a canonicalised content fingerprint, source context, and timestamp.
-- Canonicalisation must normalise line endings (`\r\n` and `\r` to `\n`) only. Aggressive whitespace stripping must not be applied, as it changes the hash value relative to the browser's calculation.
-- Changed content must automatically retire the old hash entry and produce a new one.
-- Hash-based approval is an alternative to nonces for truly static inline content. For dynamic inline blocks, nonces remain the preferred approach.
-
-### 5.6 Runtime Discovery and Crawl Discovery
-
-- The plugin must combine two discovery inputs:
-  - Runtime observation from CSP violation reports and rendered response analysis.
-  - Scheduled and manual crawl of representative URLs per surface.
-- Static PHP or theme scanning may be used as supplemental signal only and must not be the sole basis for policy decisions.
-- Discovery must classify candidate sources by CSP directive and owning component (plugin, theme, core, custom).
-- Discovery for surfaces other than `frontend` is a premium feature.
-
-### 5.7 External Source Governance
-
-- Every non-self source must carry:
-  - Directive
-  - First-seen and last-seen timestamps
-  - Owning component
-  - Approval state (`pending`, `approved`, `denied`)
-  - Optional expiry
-- The policy builder must include only `approved` sources in enforce mode.
-- Sources not observed within a configurable staleness window must be flagged for review and removal.
-
-### 5.8 Header Emission and Precedence
-
-- The plugin must emit CSP headers through the WordPress `send_headers` hook, with conditional logic per surface.
-- The plugin must support:
-  - `Content-Security-Policy` - enforcement mode
-  - `Content-Security-Policy-Report-Only` - testing and staged rollout mode
-- The `sandbox` directive must be omitted in report-only mode (per the CSP specification; it is ignored in `Content-Security-Policy-Report-Only`).
-- The plugin must emit `Reporting-Endpoints` and legacy `Report-To` headers alongside every CSP header that contains `report-to`:
-  - `Reporting-Endpoints: csp-endpoint="{report_uri}"` - Structured Fields Dictionary per RFC 9651; required for browsers to honour `report-to csp-endpoint`
-  - `Report-To: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"{report_uri}"}]}` - deprecated JSON format retained for browsers without Reporting API support
-- The plugin must note that `Report-To` (the JSON header) is deprecated in favour of `Reporting-Endpoints` (RFC 9651). Both must be emitted for maximum compatibility.
-- Emitting `report-to` without a corresponding `Reporting-Endpoints` header is a silent failure in most browsers. The plugin must always emit `Reporting-Endpoints` when `report-to` is present.
-- `report-uri` must always be included alongside `report-to` as a legacy fallback, since Reporting API support remains incomplete across browsers.
-- Header delivery via `<meta http-equiv>` must never be used for `frame-ancestors`, `sandbox`, `report-uri`, or the `Content-Security-Policy-Report-Only` header, as the CSP specification prohibits these in `<meta>` delivery.
-
-### 5.9 Conflict Detection
-
-- On activation and scheduled audit, the plugin must detect duplicate or competing CSP headers from:
-  - WordPress plugins and themes
-  - `.htaccess` and web server configuration (where observable)
-  - Reverse proxy and CDN response headers (where observable via HTTP HEAD probe)
-- The plugin must warn when multiple CSP headers create accidental over-restriction.
-- The plugin must provide guided remediation steps appropriate to the source of the conflict, not only `.htaccess` edits.
-- Conflict detection probes must be throttled to avoid excessive HTTP requests; a 24-hour transient gate is the minimum throttle interval.
-
-### 5.10 Daily Scheduled Rescan and Rebuild
-
-- The plugin must schedule a full discovery and rebuild job every 24 hours via WordPress cron.
-- The default run time is 02:00 server time and must be configurable.
-- Jobs must execute asynchronously and must not block front-end requests.
-- Each run must produce an audit record in `csp_scan_logs` containing policy diff summary, source changes, hash changes, and warnings.
-- Each daily scan run must trigger a purge of `csp_violation_reports` rows older than `wp_sam_violation_retention_days` days (default 90 days). Setting this option to `0` disables automatic purging. The count of purged rows must be written to `sam_audit_log`.
-
-### 5.11 Manual Rescan and Rebuild
-
-- The dashboard must provide an immediate rescan and rebuild trigger.
-- The process must run in the background via WordPress AJAX and stream progress status to the dashboard.
-- On completion, results must include a human-readable policy diff.
-- Manual scan runs also trigger the violation report purge per §5.10.
-
-### 5.12 Report-Only and Enforcement Promotion Gates
-
-- Report-only mode must be independently configurable per surface profile.
-- Enforcement promotion must require all of the following configurable gates to pass:
-  - No unresolved high-severity violations within a configurable time window.
-  - All active non-self sources in the inventory for the surface are in `approved` state.
-  - No active temporary override has passed its expiry timestamp.
-- The plugin must block mode promotion and surface a clear reason when any gate fails.
-- The plugin must support staged rollout percentages where feasible.
-
-### 5.13 Violation Report Endpoint and Processing
-
-- The plugin must expose a REST endpoint at `/wp-json/sam/v1/report`.
-- The endpoint must validate the `Content-Type` request header before processing. Requests with a content type other than `application/csp-report`, `application/reports+json`, or `application/json` must be rejected with HTTP 400.
-- The endpoint must accept:
-  - Legacy `application/csp-report` payloads (hyphenated field names per CSP Level 2)
-  - Reporting API `application/reports+json` payloads (camelCase field names per Reporting API)
-- The `document-uri` (legacy) or `documentURL` (Reporting API) field must be validated against the WordPress site origin per RFC 6454. Reports from a different origin must be silently discarded. CSP reports are client-generated and spoofable.
-- The processor must apply per-surface transient-based rate limiting (500 reports per hour).
-- Repeat reports must be deduplicated by a fingerprint over `(profile_surface, blocked_uri, violated_directive)`, incrementing `occurrence_count` on duplicates.
-- Stored report fields must include:
-
-| Field | Source - legacy | Source - Reporting API |
-|-------|----------------|----------------------|
-| `profile_surface` | derived from `document-uri` | derived from `documentURL` |
-| `blocked_uri` | `blocked-uri` | `blockedURL` |
-| `document_uri` | `document-uri` | `documentURL` |
-| `violated_directive` | `violated-directive` | `violatedDirective` |
-| `effective_directive` | `effective-directive` | `effectiveDirective` |
-| `original_policy` | `original-policy` | `originalPolicy` |
-| `source_file` | `source-file` | `sourceFile` |
-| `line_number` | `line-number` | `lineNumber` |
-| `column_number` | `column-number` | `columnNumber` |
-| `status_code` | `status-code` | `statusCode` |
-| `disposition` | `disposition` | `disposition` |
-| `referrer` | `referrer` | `referrer` |
-| `sample` | `script-sample` | `sample` |
-| `user_agent` | HTTP `User-Agent` request header | HTTP `User-Agent` request header |
-| `fingerprint` | computed | computed |
-| `occurrence_count` | maintained locally | maintained locally |
-| `reported_at` | server timestamp | server timestamp |
-
-The `sample` field is only populated by the browser when `'report-sample'` is present in the emitting directive.
-
-### 5.14 Trusted Types (Premium)
-
-- The plugin must support the Trusted Types directives as a premium feature, always defaulting to report-only mode regardless of the surface profile's enforcement state.
-- Supported directives:
-  - `require-trusted-types-for 'script'` - enforces typed values into DOM XSS sinks (`innerHTML`, `document.write`, etc.)
-  - `trusted-types {policy-list}` - allowlists Trusted Types policy names created via `trustedTypes.createPolicy()`
-- Trusted Types support is Chromium/Chrome/Edge 83+ only as of the date of this document. MDN (February 2026) states cross-browser support. W3C web-features/Baseline projects broad availability approximately August 2028. The plugin must not promote Trusted Types to enforce mode automatically; the administrator must explicitly enable enforcement when satisfied with report-only coverage.
-- When Trusted Types arrays are empty, these directives must be omitted from the header entirely.
-
-### 5.15 Upgrade Insecure Requests
-
-- The plugin must support `upgrade-insecure-requests` as a configurable directive per surface profile.
-- When enabled, the browser upgrades `http:` subresource requests, same-origin navigations, and form submissions to `https:` before loading.
-- The plugin must note in the admin UI that `upgrade-insecure-requests` does not replace HSTS (RFC 6797) for top-level navigation.
-- `block-all-mixed-content` must never be offered or emitted. It is obsolete and is a no-op when `upgrade-insecure-requests` is present.
-
-### 5.16 Strict-Dynamic (Premium)
-
-- The plugin must support `'strict-dynamic'` as an optional addition to `script-src`, gated behind the `strict_dynamic` premium capability.
-- When `'strict-dynamic'` is present, browsers ignore host-based allowlist entries in `script-src`. The plugin must suppress host sources from `script-src` at emit time when `'strict-dynamic'` is active, per CSP3 §8.2, to avoid misleading policy noise.
-- A nonce- or hash-trusted script may propagate trust to scripts it loads dynamically without each requiring its own nonce.
-
-### 5.17 Administrator Dashboard
-
-- The dashboard must include:
-  - Current enforced and report-only policies per surface
-  - Policy history and diffs
-  - Discovery inventory by directive and owning component
-  - Hash inventory with change history
-  - Violation analytics and top offenders by surface and directive
-  - Override workflow with reason, owner, and expiry
-  - Rollout gate status per surface
-  - Manual rescan controls with live progress feedback
-  - Notification settings
-  - One-per-session warning when the admin surface is in enforce mode (wp-admin strict CSP constraint; see §9)
-
-### 5.18 Compatibility Profiles
-
-- The plugin must include optional compatibility presets for common WordPress ecosystem components (security plugins, tag managers, analytics) while keeping strict defaults.
-- Any preset inclusion must be transparent, reviewable, and overrideable by the administrator.
-
-### 5.19 Append-Only Audit Log
-
-- All significant plugin events must be written to the `sam_audit_log` table via `Audit_Log::log()`.
-- The audit log must be append-only. No `UPDATE` or `DELETE` statements may be issued against it.
-- Auditable events include: source approvals, override grants and expirations, mode promotions and demotions, scan start and completion, scan exceptions, directive strip warnings, violation purge counts, conflict detections, and entitlement grants and revocations.
-
-### 5.20 Remote Config and Signature Verification
-
-- The plugin must discover the remote configuration URL by querying a DNS TXT record.
-- The remote configuration document must be verified using Ed25519 signature verification when `libsodium` is available.
-- The remote configuration must contain public product metadata only. It must never contain Stripe secrets, webhook secrets, or private signing keys.
-- When verification fails, the plugin must fall back to a cached copy if available and log the failure to `sam_audit_log`.
-
-### 4.16 Known Platform Constraints
-
-The following limitations are structural and must be surfaced to administrators rather than silently worked around:
-
-- **wp-admin strict CSP (WordPress core Trac #59446):** WordPress core does not yet nonce-stamp all inline scripts in the admin interface. The admin surface CSP profile is therefore **best-effort**; some admin UI components may be blocked under strict enforcement. The plugin must display an informational notice when the admin surface is promoted to enforce mode.
-- **Hardcoded `<script>` tags in core themes (Trac #63806):** Some bundled WordPress themes emit `<script>` tags that bypass the script enqueueing APIs and will not receive nonces. These will be blocked by a strict nonce-based CSP.
-- **Script API requirement:** Only scripts registered via the WordPress script APIs (`wp_enqueue_script`, `wp_add_inline_script`, `wp_print_inline_script_tag`, `wp_enqueue_script_module`) are automatically nonce-stamped. Third-party inline scripts that bypass these APIs must be approved via hash or source allowlist.
-- **`sandbox` directive limitations:** The `sandbox` directive is ignored by browsers in `Content-Security-Policy-Report-Only` mode and in `<meta http-equiv>` delivery. The plugin must suppress `sandbox` in both contexts.
-- **Trusted Types cross-browser availability:** As of June 2026, Trusted Types has strong Chromium/Chrome/Edge support (≥83) but lacks Safari support. The Baseline "widely available" milestone is projected around August 2028. The plugin must default Trusted Types to report-only and must not promote it to enforce mode automatically.
-
-### 4.16 Known Platform Constraints
-
-The following limitations are structural and must be surfaced to administrators rather than silently worked around:
-
-- **wp-admin strict CSP (WordPress core Trac #59446):** WordPress core does not yet nonce-stamp all inline scripts in the admin interface. The admin surface CSP profile is therefore **best-effort**; some admin UI components may be blocked under strict enforcement. The plugin must display an informational notice when the admin surface is promoted to enforce mode.
-- **Hardcoded `<script>` tags in core themes (Trac #63806):** Some bundled WordPress themes emit `<script>` tags that bypass the script enqueueing APIs and will not receive nonces. These will be blocked by a strict nonce-based CSP.
-- **Script API requirement:** Only scripts registered via the WordPress script APIs (`wp_enqueue_script`, `wp_add_inline_script`, `wp_print_inline_script_tag`, `wp_enqueue_script_module`) are automatically nonce-stamped. Third-party inline scripts that bypass these APIs must be approved via hash or source allowlist.
-- **`sandbox` directive limitations:** The `sandbox` directive is ignored by browsers in `Content-Security-Policy-Report-Only` mode and in `<meta http-equiv>` delivery. The plugin must suppress `sandbox` in both contexts.
-- **Trusted Types cross-browser availability:** As of June 2026, Trusted Types has strong Chromium/Chrome/Edge support (≥83) but lacks Safari support. The Baseline "widely available" milestone is projected around August 2028. The plugin must default Trusted Types to report-only and must not promote it to enforce mode automatically.
+## 3. Security Header Controls
+
+Ten header pillars in total: CSP (§4, the most capable) and nine simpler
+per-surface pillars, each configured independently for the `frontend`,
+`admin`, `login`, and `api` surfaces from its own admin page.
+
+| Pillar | Values | Notes |
+|---|---|---|
+| X-Frame-Options | `DENY` / `SAMEORIGIN` | Fallback for browsers that don't honour CSP `frame-ancestors` |
+| X-Content-Type-Options | on/off | `nosniff` |
+| Referrer-Policy | 8 standard tokens | Defaults to `strict-origin-when-cross-origin` |
+| Permissions-Policy | `none`/`self`/`all` per directive | Starter set of 7 features: geolocation, camera, microphone, fullscreen, payment, usb, autoplay — not the full W3C registry |
+| Strict-Transport-Security | `max-age`, `includeSubDomains`, `preload` | HTTPS-only emission; `preload` gated behind `max-age`/`includeSubDomains` already meeting hstspreload.org's submission minimum, since preload removal can take months once a domain is listed |
+| Cross-Origin-Resource-Policy | `same-site`/`same-origin`/`cross-origin` | Low risk — restricts who may embed this site's resources, not what this site embeds |
+| Cross-Origin-Opener-Policy | `unsafe-none`/`same-origin`/`same-origin-allow-popups` | See §6, has a report-only learning workflow |
+| Cross-Origin-Embedder-Policy | `unsafe-none`/`require-corp`/`credentialless` | See §6, has a report-only learning workflow; highest breakage risk of the ten pillars — `require-corp` blocks any cross-origin subresource that doesn't opt in via CORP/CORS |
+| X-Permitted-Cross-Domain-Policies | `none`/`master-only`/`by-content-type`/`all` | Legacy Flash/Acrobat-era header; `none` is almost always correct |
+
+**Default state.** Since DB schema v18, a fresh install seeds every surface
+with a vetted, enabled configuration for all nine of these pillars (HSTS
+excluded — it stays a deliberate per-surface opt-in because of its
+stickiness). An upgraded install is never retroactively changed: the v18
+seed only fills a `(pillar, surface)` row that has no existing setting.
+
+**Report-only, discovery, automation.** Seven of the nine (all except
+Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy) have none of
+these: each header is either sent exactly as configured, or not sent at all.
+There is no equivalent of "external sources this page happens to load" for a
+single-value or small-allowlist header, so there is nothing to discover.
+COOP and COEP are the exceptions — see §6.
+
+**Reverse Tabnabbing Protection** is a further, related control that rewrites
+the page body rather than emits a header: it adds `rel="noopener"` to
+`target="_blank"` links missing `noopener`/`noreferrer`, purely additive,
+never blocking or breaking a link.
 
 ---
 
-## 6. Non-Functional Requirements
+## 4. CSP Learning and Governance
 
-- The plugin must be compatible with WordPress 6.4+ and PHP 8.1+.
-- The plugin requires `libsodium` for Ed25519 remote-config signature verification. Absence of `libsodium` degrades to unverified config fetch with an audit log warning; it does not disable the plugin.
-- The plugin must support WordPress multisite. Network-level and site-level policy precedence rules must be defined and documented before multisite is released as supported.
-- All stored data must use custom tables suitable for high-volume violation reports and source inventories.
-- Input must be sanitised and output escaped at all boundary points.
-- Background jobs must be resilient to partial failure and resumable without loss of existing policy state.
-- Performance overhead must be defined as a percentile SLO (target: p95 added latency per request ≤ 5 ms under normal load), not as a per-request absolute value.
-- The `sam_audit_log` table must be append-only at the database level. No migration, admin action, or code path may issue `UPDATE` or `DELETE` against it.
-- Violation report retention must be configurable via `wp_sam_violation_retention_days` (default 90 days, `0` = keep forever).
-- The plugin must not perform remote network calls during normal page rendering. All remote calls (Stripe, remote config) are confined to admin-initiated or cron-scheduled paths.
-- The violation report endpoint must apply per-surface rate limiting (500 reports per hour per surface) and `document-uri` origin validation before any database write, to protect against ingestion abuse.
-- Admin actions that modify policy state must be protected by WordPress capability checks (`manage_options` minimum) and nonce verification.
+CSP is deliberately the most capable pillar: per-surface profiles, nonce
+injection, source discovery, violation reporting, and audit-first
+policy-change review, built on a report-only-first, evidence-gated promotion
+path.
+
+**Supported surfaces.** `frontend`, `admin`, `login`, `api` — each with its
+own profile, directives, sources, and mode.
+
+**Configuration model.** A per-surface profile stores directives, an
+approved-source list, active hashes, a mode (report-only/enforce per
+surface), and per-directive automation posture. `strict-dynamic` support
+includes automatic host-source suppression when active. Trusted Types is a
+per-surface toggle that always stays report-only regardless of surface mode
+(`require-trusted-types-for 'script'`).
+
+**Discovery.** Runtime discovery observes real page loads; a manual or
+scheduled rescan can also run. A freshly discovered source is always
+`unclassified` until an administrator (or, within bounds, the deterministic
+automation engine — see §9) decides.
+
+**Report-only behaviour.** CSP always starts report-only on every surface,
+regardless of automation posture. `report-sample` is supported in fetch
+directives so inline snippets appear in violation reports. Direct
+`report-uri` reporting is the default transport, with optional Reporting API
+headers.
+
+**Enforcement.** Promotion from report-only to enforce is always a
+deliberate, per-surface administrator action through the learning window and
+promotion gate — automation, where enabled, only ever governs *approval* of
+a proposed source, never the report-only-to-enforce transition itself. See
+§9 for the exact automation boundary.
+
+**Approval requirements.** Every proposed source carries a risk ranking.
+Approve/reject/revert/undo decisions require a reason. A reversed source is
+suppressed from future automatic re-proposal (revert-and-suppress).
+
+**Risk of breakage.** A misconfigured CSP can block legitimate first- or
+third-party resources; the report-only-first design exists specifically to
+surface this before enforcement, and per-directive/scheme automation limits
+and hard exclusions bound what the deterministic engine may auto-approve
+even in an automatic posture.
+
+**Data stored.** Policy profiles, source inventory, hash inventory, decision
+records with provenance, policy version snapshots and diffs, and violation
+reports (blocked URI, document URI, violated directive, referrer, user
+agent, line/column, and an optional sample). See `docs/database-schema.md`.
+
+**External services contacted.** None by default — violation reports post
+to this site's own REST endpoint (`/wp-json/sam/v1/report`, with a legacy
+`/wp-json/security-manager/v1/report` alias for browsers holding an
+older-issued header). An administrator may redirect the reporting URL to a
+different host (proxy/CDN scenarios); doing so means local report learning
+only continues to work if that host routes back to this plugin's endpoint.
+
+**Audit events.** Every proposal, decision, promotion, and reset is recorded
+in the append-only audit log (e.g. `auto_approved`, `wp_sam_reset`) — see §8.
+
+**Rollback behaviour.** A decision can be undone without rewriting history.
+The Readiness admin view offers an authenticated reset that clears CSP data
+and disables header emission until rollout is deliberately restarted.
+
+**Known limitations.** Conflict detection covers competing CSP headers from
+`.htaccess`, server config, or other security-header plugins, but cannot see
+CSP emitted by a layer entirely outside WordPress's control (e.g. a CDN edge
+worker not configured to be visible to this check). Violation reports are
+client-submitted and spoofable — treated as advisory signal, not ground
+truth.
 
 ---
 
-## 7. Acceptance Criteria
+## 5. Script and Stylesheet Integrity
 
-- A strict nonce-based policy is emitted in report-only mode for all configured surfaces without errors.
-- Nonces are present on WordPress-generated script and style tags via native WordPress 6.4+ attribute hooks.
-- Enforced policy operates without `'unsafe-inline'` or `'unsafe-eval'` on the frontend surface under validated rollout gates.
-- Report ingestion accepts both `application/csp-report` (legacy) and `application/reports+json` (Reporting API) payloads and stores normalised field data including `sample`.
-- Reports from a `document-uri` not matching the site origin are silently discarded and not stored.
-- Conflicting CSP headers from other sources are detected and surfaced in the dashboard with remediation guidance.
-- Daily and manual rebuild flows produce deterministic policy outputs and auditable diff records in `csp_scan_logs`.
-- The `Reporting-Endpoints` header (RFC 9651 Structured Fields Dictionary) and legacy `Report-To` header are emitted alongside every CSP header containing `report-to`.
-- `upgrade-insecure-requests` can be enabled per surface without enabling `block-all-mixed-content`.
-- The builder never emits `plugin-types`, `block-all-mixed-content`, `navigate-to`, or `prefetch-src`. Any such values in override config are stripped and logged.
-- `'report-sample'` is present in applicable fetch directives, and the `sample` field is populated in stored violation records for inline violations.
-- Trusted Types directives (premium) are only ever emitted in report-only mode regardless of surface enforcement state.
-- When `'strict-dynamic'` is active, host-based allowlist sources are absent from the emitted `script-src`.
-- All significant events are present in `sam_audit_log` with no gaps for activations, deactivations, scan runs, source approvals, mode changes, and override grants.
+Two further protections rewrite the rendered HTML body rather than emit a
+header, sharing a `Content_Rewriter` envelope (request/response eligibility,
+buffering, fail-open on any uncertainty); a third is architecturally
+distinct.
+
+**External Scripts.** Passively inventories third-party `<script>`/`<link
+rel="stylesheet">` origins from real page loads — no dedicated crawl,
+deduplicated at the origin level (most recently observed full URL retained
+separately for the SRI "Suggest" helper). An administrator classifies each
+origin: Unclassified / Approved-immutable with SRI / Approved-mutable
+provider / Exception / Blocked. A freshly discovered origin is always
+`unclassified`, never blocked, matching CSP's report-first philosophy.
+Report mode (default) never removes anything; enforce mode only removes an
+origin explicitly marked Blocked, or an "immutable" origin whose SRI hash no
+longer matches what the page actually served. SRI hashes are never fetched
+from a third party and auto-trusted — only computed from a URL the
+administrator themselves supplies, or typed in directly. A daily check
+re-verifies pinned hashes against this site's own homepage (never
+third-party content) so drift is caught before a real visitor triggers a
+removal.
+
+**Internal Script Integrity.** Per-surface opt-in; when enabled, reads a
+first-party script/stylesheet's local file directly (never a network fetch),
+computes its SHA-384 hash, and adds it as the tag's `integrity` attribute.
+Cached by file size/mtime — an unchanged file is never re-read; a changed
+one (plugin/theme update, manual edit) is picked up on the next request that
+serves it. Nothing to classify or approve: the hash can never legitimately
+drift from what's on disk.
+
+**Data stored.** Dependency inventory (origin, classification, last-seen
+URL), hash inventory, and a separate first-party asset inventory table
+(`sam_internal_asset_inventory`).
+
+**External services contacted.** None automatically. The "Suggest" SRI
+helper fetches only a URL the administrator explicitly supplies and returns
+only the computed hash — the fetched content itself is never stored or sent
+elsewhere.
+
+**Known limitations.** SRI enforcement assumes a third-party origin serves
+byte-stable content at a pinned URL; a provider that legitimately rotates
+content at the same URL (without a content-hashed filename) will need the
+"Approved-mutable provider" classification instead of SRI pinning.
 
 ---
 
-## 8. Known Platform Constraints
+## 6. Cross-Origin Policy Learning
 
-- **wp-admin strict CSP (WordPress Trac #59446 - unresolved):** Some WordPress core admin screens and bundled admin themes emit inline scripts outside the WordPress script API. Strict nonce-based enforcement for the admin surface is best-effort. The plugin must surface a one-per-session admin notice when the admin surface is placed into enforce mode.
-- **Hardcoded inline scripts in themes (WordPress Trac #63806):** Some bundled core themes include `<script>` tags that bypass the WordPress script API and will not receive nonce attributes. These will be blocked under a strict enforce-mode policy.
-- **Scripts must use the WordPress script API:** Scripts emitted via `wp_enqueue_script`, `wp_add_inline_script`, `wp_print_inline_script_tag`, and `wp_enqueue_script_module` are eligible for nonce injection. Scripts added by other means are not.
-- **Safari CSP3 gap:** `script-src-elem`, `script-src-attr`, `style-src-elem`, and `style-src-attr` are not supported in Safari. The plugin must maintain `script-src` and `style-src` as the portable fallbacks alongside the granular CSP3 directives.
-- **Trusted Types browser support:** As of June 2026, Trusted Types enforcement is reliable in Chromium-based browsers only. The plugin must default all Trusted Types directives to report-only and must not promote them to enforce mode automatically.
-- **CSP reports are spoofable:** Violation reports are submitted by browsers and can be forged by any client. Report data should be treated as advisory signal for policy refinement, not as a security event log.
+Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the two
+pillars among the nine "simple" pillars (§3) that have a real report-only
+learning workflow, distinct from — and narrower than — CSP's discovery and
+approval workflow.
+
+**Configuration model.** Each pillar has a per-surface mode: Disabled /
+Report-Only / Enforce, replacing what was previously a plain enabled
+checkbox.
+
+**Discovery / report-only behaviour.** In Report-Only mode, the browser's
+Reporting API delivers violation reports to this plugin's shared reporting
+endpoint, stored in `sam_pillar_violation_reports` (DB schema v13). The
+Cross-Origin Policies admin page renders a Report-Only Evidence table
+showing what's actually been observed for that pillar and surface, with a
+"N violations in the last 7 days" summary.
+
+**Enforcement.** Promoting a surface to Enforce is always a deliberate,
+manual choice — there is no automation for COOP/COEP promotion.
+
+**Browser-support limitation — read this before trusting an empty evidence
+table.** Reporting API delivery for COOP/COEP is Chromium-based-browser-only
+today (Chrome, Edge, Opera, and other Chromium-derived browsers). The
+Report-Only *header* itself is honoured by every modern browser regardless;
+only the *evidence you see back* is Chromium-only. A site with meaningful
+non-Chromium traffic (Safari, Firefox) will under-count violations in the
+evidence table — an empty or sparse table is inconclusive on such a site,
+not proof the policy is safe to enforce.
+
+**Risk of breakage.** `same-origin` COOP severs `window.opener` access from
+any cross-origin popup, including popup-based OAuth/SSO flows —
+`same-origin-allow-popups` is the safer choice for sites that rely on those.
+`require-corp` COEP blocks any cross-origin subresource that doesn't
+explicitly opt in via CORP or CORS; most third-party embeds don't, so
+enabling it carelessly can silently break unrelated page content. Both are
+worth revisiting whenever a new third-party embed, popup-based login, or
+payment flow is added to the site.
+
+**Data stored.** COOP/COEP violation reports in `sam_pillar_violation_reports`.
+
+**External services contacted.** None — reports post to this site's own
+reporting endpoint, the same shared mechanism CSP uses.
 
 ---
 
-## 9. Out of Scope
+## 7. TLS Certificate Lifecycle Management
 
-- Non-CSP hardening controls: WAF rules, authentication hardening, malware cleanup, patch automation.
-- Automatic source code refactoring of third-party plugin or theme inline JavaScript.
-- Management of non-WordPress applications hosted on the same server.
-- Server-side HSTS configuration (HSTS is governed by RFC 6797 and is outside this plugin's remit; `upgrade-insecure-requests` is not a substitute for HSTS at the top-level navigation level).
+A separate, self-contained product domain: an ACME v2 (RFC 8555) client,
+unrelated to the header pillars above beyond sharing the same admin/audit
+plumbing and free/commercial boundary.
+
+**Supported surfaces.** Not per-WordPress-surface — certificates are
+per-domain (with optional wildcard and SAN support), independent of the
+`frontend`/`admin`/`login`/`api` model the header pillars use.
+
+**ACME protocol.** Account registration, order/authorization polling, nonce
+handling with bad-nonce retry (max 3 attempts), CSR construction (with
+optional organisation/department/country/state/city subject fields — note
+that domain-validated CAs like Let's Encrypt issue on domain names only and
+omit these from the final certificate even though they're included in the
+CSR), certificate chain retrieval, and a staging/production environment
+switch. Staging certificates are never auto-renewed.
+
+**Challenge validation.** `dns-01` (41 built-in provider drivers, extensible
+via the `wp_sam_dns_providers` filter — see the DNS-provider list in
+`docs/certificates.md`) and `http-01`. `tls-alpn-01` is not implemented.
+Wildcard certificates require `dns-01` (an ACME protocol constraint, not a
+plugin limitation).
+
+**Key types.** EC-P256 (default) or RSA-2048, generated via
+`openssl_pkey_new`. A "bring your own private key" option is available when
+this server can't reliably generate one — the Configuration tab runs a live
+capability probe (an actual throwaway key generation attempt, not just an
+`extension_loaded('openssl')` check) to decide whether to surface it, since
+the extension can be present and still fail at runtime (a missing
+`openssl.cnf`, `RANDFILE` write restrictions, other host lockdowns).
+
+**Renewal.** WP-Cron based, 30-day-before-expiry threshold, duplicate-event
+guards on both the daily check and a manual "issue now" trigger. Real system
+cron is recommended over WordPress's request-triggered pseudo-cron on
+low-traffic sites — see `docs/certificates.md` for configuration.
+
+**Deployment.** cPanel (`SSL::install_ssl` UAPI, credentialled), filesystem
+export (rejected if the resolved target path is inside the web root — a
+`realpath()` check, not just a string-prefix deny-rule), or manual PEM
+download. Export additionally best-effort `chmod`s the private key file to
+`0600`.
+
+**Failure and recovery behaviour.** Every issuance/renewal/deployment
+attempt — success or failure — writes an audit-log entry
+(`cert_issued`/`cert_deployed`/`cert_exported` on success,
+`cert_issue_failed` on failure, severity `error`). A failed order does not
+retry automatically until the next scheduled cron cycle; there is currently
+no separate email/notification channel beyond the audit log and the
+admin-visible "last run" status.
+
+**Private-key handling.** Generated (or BYOK-supplied) keys and DNS-provider
+/cPanel credentials are encrypted at rest via the credential vault (§10 of
+`docs/consolidation-ledger.md` has the security review of this mechanism)
+before they reach the database. Keys are never logged, never round-tripped
+through the browser, and never included in evidence/export output.
+
+**External services contacted.** The configured ACME endpoint (Let's
+Encrypt production or staging), and — for `dns-01` — the selected DNS
+provider's API, only once an administrator has configured Certificates.
+Nothing is contacted automatically or in the background beyond the WP-Cron
+renewal check for certificates that already exist.
+
+**Known limitations.** DNS-provider driver test coverage is registry-level
+only as of this document (instantiability and schema shape for all 41
+drivers); no driver currently has a test exercising its actual
+`create_txt_record`/`delete_txt_record` request logic against that
+provider's real or mocked API — see `docs/consolidation-ledger.md` §6 for
+the tracked remediation. No provider is described as "live-verified" unless
+separately confirmed; absence of that claim means untested against a live
+account.
 
 ---
 
-## 10. Open Items
+## 8. Audit Evidence
 
-- Default compatibility preset catalog and ongoing maintenance process for common WordPress ecosystem components.
-- REST API contract documentation for report ingestion and dashboard queries.
-- Build and packaging specification for WordPress.org submission.
-- Multisite network-level vs site-level policy precedence rules.
-- Formal p95 performance SLO measurement methodology and baseline.
+A single append-only audit log spans all three product areas — CSP
+decisions, other pillar changes, script/style integrity classifications,
+and certificate lifecycle events all write to the same table and admin view.
+
+**Purpose.** Every significant state change is attributable, timestamped,
+and reversible-in-record even when the underlying state itself isn't (a
+promotion decision can be undone; the fact that it happened and why cannot
+be edited out).
+
+**Structure.** Append-only — no update or delete path exists in the schema
+for audit rows (`sam_audit_log`, DB schema v4; renamed from `csp_audit_log`
+in schema v9 ahead of multi-pillar support). Each entry carries an event
+type, severity, and event-specific detail.
+
+**Coverage.** CSP proposal/decision/promotion/reset events, certificate
+issuance/renewal/deployment success and failure, and (per §5-§6) the same
+plumbing is available to script/style and cross-origin-policy changes.
+Administrator dashboard access includes a Policy Audit tab for inspecting
+why a proposal exists and what policy version resulted from a decision.
+
+**Known limitations.** The audit log is a WordPress-database table, not an
+external, tamper-evident log — a database-level compromise (see the
+certificate threat model work referenced in
+`docs/consolidation-ledger.md` §9) could in principle alter historical
+entries; no cryptographic chaining or external mirroring exists today.
+
+---
+
+## 9. Automation
+
+Automation exists only for CSP source approval. It does not exist for
+COOP/COEP promotion, header-pillar values generally, or certificate
+issuance/renewal (renewal is scheduled, not "automated" in the
+approval-workflow sense this section describes).
+
+**Automation postures (per CSP surface):** `Manual`, `Automatic (medium+high
+approvals)`, `Automatic (high approvals only)`, `Fully Automatic`
+(commercial — see §11).
+
+**Default state.** A fresh install (DB schema v18+) seeds every surface to
+`automatic_high_approval`: every proposed source below the high-risk
+threshold is auto-approved into the report-only policy on its own evidence;
+high-risk sources still require a human decision. An upgraded install is
+never retroactively changed — the seed only fills a surface with no existing
+automation setting.
+
+**What automation governs — and what it never governs.** Automation posture
+governs *approval of a proposed source* only. It never governs
+*enforcement*: CSP always starts report-only on every surface regardless of
+posture, and promotion to enforce always requires a deliberate,
+per-surface administrator action through the learning window and promotion
+gate. This distinction is the single most important fact in this
+specification to get right in any derived documentation — see
+`docs/consolidation-ledger.md` for the drift this correction addresses.
+
+**Bounds on automatic approval.** Deterministic risk rules, hard exclusions,
+configured directive/scheme limits, evidence requirements, and per-run caps.
+Automatic decisions record `automation_engine` provenance and can be undone
+without rewriting history, the same as a human decision.
+
+**Future work constraint.** Any future AI-assisted recommendation work must
+keep these deterministic product rules as the authority; AI output must
+never directly modify an enforced CSP policy.
+
+---
+
+## 10. Distribution and Updates
+
+Two build channels from one codebase, produced only by CI — never by a
+runtime toggle a customer sets.
+
+**WordPress.org channel.** `WP_SAM_DISTRIBUTION_CHANNEL` defaults to
+`'wordpress-org'`. This build never contains the GitHub update checker and
+never carries an `Update URI` header. It is built and deployed straight to
+the WordPress.org SVN repository by the release pipeline; it is never a
+GitHub Release download.
+
+**GitHub channel.** Set only via `includes/build-channel.php`, which CI
+generates and injects only into this build tree.
+`Github_Update_Checker` is only ever instantiated when the channel is
+`'github'`. It validates: package host and path against an allowlist, HTTPS
+scheme, no `..` path-traversal segments, `.zip` suffix, and SHA-256
+checksum via `hash_equals()` — before allowing WordPress to apply an update.
+Exactly one asset is published per GitHub Release:
+`security-automation-manager-vX.Y.Z.zip`, which *is* this build. Define
+`WP_SAM_DISABLE_AUTO_UPDATE` as `true` in `wp-config.php` to prevent
+background auto-updates.
+
+**One updater.** No second or conflicting update mechanism exists in either
+build.
+
+**Release flow.** A `release/*` branch (cut from `main`) is the only branch
+CI allows a pull request directly into `main`, alongside `development`
+itself. Merging bumps the plugin header `Version`, `WP_SAM_VERSION`,
+`readme.txt`'s stable tag, and `CHANGELOG.md` together. Tagging the merged
+commit `vX.Y.Z` triggers the release pipeline, which builds and publishes
+the GitHub Release asset and separately deploys the WordPress.org-safe
+package to SVN, from the same tagged commit in the same run.
+
+**Known limitations.** Release verification (clean install, upgrade,
+rollback, package-content separation, interrupted-update recovery, all
+against a real WordPress instance rather than hand-written stubs) is
+incomplete as of this document — tracked in `docs/consolidation-ledger.md`
+as the highest-priority remaining release blocker after documentation
+correction. Rollback has no automated or even manually-documented-in-detail
+process yet — same tracking document, same priority tier.
+
+---
+
+## 11. Commercial Boundaries
+
+**Free vs. commercial.** Every header pillar, every script/stylesheet
+integrity control, certificate management in full, and three of the four
+CSP automation modes are free in both public builds, with no payment,
+remote entitlement check, or third-party licensing call. The single
+exception is Fully Automatic CSP mode (zero-review auto-apply of
+deterministic policy changes): £1.99/month or £19.99/year, billed via
+Stripe Checkout. A surface selecting Fully Automatic without an active
+entitlement is kept on `Automatic (high approvals only)` instead — silently
+downgraded, never disabled or blocked from working entirely.
+
+**Where commercial code lives.** All Stripe/checkout/webhook/entitlement
+logic lives in `offline/`, a git-ignored directory that ships empty in both
+public builds (WordPress.org and GitHub). `Feature_Gate::FREE_FEATURES`
+enumerates the free capability set explicitly (currently: CSP report-only,
+basic scan, basic dashboard, the violation endpoint, manual policy review,
+policy history, the decision-evidence explorer, `strict-dynamic`, Trusted
+Types, multi-surface scan, and analytics export) — anything not on that list
+falls through to `is_pro()`, which is unconditionally `false` when no
+`Entitlement_Store` is present, i.e. in both public builds.
+
+**Entitlement failure behaviour.** An entitlement-check failure never
+disables already-configured headers, policies, script/style integrity
+classifications, or certificates — it only ever affects whether the single
+Fully Automatic mode is available going forward.
+
+**VCNS-hosted control plane.** Not yet built as of this document. A design
+exists (`docs/checkout-proxy-design.md`) covering Stripe Checkout, webhook
+verification, signed entitlement issuance, site-specific activation,
+revocation, grace periods, and key rotation — explicitly marked
+unimplemented. No customer installation may contain a VCNS-owned Stripe
+secret; this is a release blocker for enabling the commercial service (not
+for a free-channel release, since commercial code is already excluded from
+both public builds).
+
+---
+
+## 12. Privacy and Data Handling
+
+The plugin keeps operational data local to WordPress by default across all
+three product areas.
+
+| Data | Storage | Encrypted | External recipient |
+|---|---|---|---|
+| CSP violation reports | Local DB | No | None by default |
+| COOP/COEP violation reports | Local DB (`sam_pillar_violation_reports`) | No | None |
+| Source/dependency/hash inventory | Local DB | No | None |
+| Policy versions, decisions, audit log | Local DB | No | None |
+| DNS-provider / cPanel credentials | Local DB | Yes (credential vault) | The configured provider's own API, only during issuance/renewal |
+| ACME account keys, certificate private keys | Local DB | Yes (credential vault) | Never transmitted outside this site except signed ACME requests to the configured CA |
+| Issued certificates (public material) | Local DB + deployed to web server/cPanel | N/A (public) | The deployment target only |
+
+No telemetry or background tracking is part of normal plugin runtime in
+either public build. See `docs/data-protection-and-retention.md` for
+retention periods, deletion mechanics, and export/uninstall behaviour in
+full — this section is a summary, that document is authoritative for
+retention specifics.
+
+---
+
+## 13. Operational Resilience
+
+**Fail-open design.** The `Content_Rewriter` envelope shared by script/style
+integrity and Reverse Tabnabbing Protection fails open on any uncertainty —
+a page is served unmodified rather than risk corrupting output.
+
+**Conflict detection.** CSP conflict detection covers competing headers
+from `.htaccess`, server config, or other security-header plugins.
+
+**Certificate failure handling.** See §7 — every failure is audit-logged; a
+failed order/renewal does not retry until the next scheduled cycle; no
+separate notification channel exists yet beyond the audit log and
+admin-visible status.
+
+**Reset and recovery.** The Readiness admin view offers an authenticated
+reset that clears CSP data and disables header emission until rollout is
+deliberately restarted — the only structured recovery mechanism that exists
+today. There is no equivalent structured recovery for the other two product
+areas, and no rollback mechanism for the plugin release itself (see §10).
+
+**Known limitations.** This is the least mature area of the product as of
+this document. `docs/consolidation-ledger.md` tracks the two largest gaps
+as release blockers: no install/upgrade/rollback test suite runs against a
+real WordPress instance, and no rollback process exists in code (only a
+seven-line manual SVN checklist).
+
+---
+
+## 14. Known Limitations
+
+Consolidated from the sections above, plus items that don't belong to one
+specific domain:
+
+- No WordPress Multisite support (network-admin awareness untested and
+  unimplemented).
+- No WP-CLI commands.
+- No configuration-as-code import/export.
+- No generalised security posture score — only a per-source CSP risk badge
+  exists (5 levels), not a whole-site score.
+- No generalised policy/configuration drift detection beyond the two
+  targeted mechanisms that do exist and are considered stable: Subresource
+  Integrity drift detection, and competing-CSP-header detection (§4).
+- No compliance evidence pack export.
+- No time-bound exceptions with expiry/review workflow.
+- No fleet/multi-site management.
+- No SIEM/webhook-out integrations (the existing webhook setting is an
+  *inbound* Stripe receiver for the offline-only commercial build, not
+  outbound SIEM delivery).
+- Certificate DNS-provider drivers are tested at the registry level only,
+  not per-provider request-logic level, as of this document.
+- No rollback mechanism for plugin releases.
+- No release-verification test suite runs against a real WordPress
+  instance.
+
+This list is deliberately conservative — a capability not listed as a
+limitation elsewhere in this document and not listed here should be assumed
+implemented, not assumed absent; open a documentation-drift issue if you
+find a gap in that assumption.
+
+---
+
+## Keeping this document honest
+
+The version/schema numbers in the front matter above are checked by
+`test/unit/VersionConsistencyTest.php`, extended alongside this document to
+assert this file's declared `DB schema alignment` matches the live
+`WP_SAM_DB_VERSION` constant, in addition to the version-string checks it
+already performed. A mismatch fails CI on any PR that bumps the schema
+without updating this document. See `docs/consolidation-ledger.md` for the
+older SPECIFICATION.md-was-5-generations-stale incident this check exists to
+prevent from recurring.

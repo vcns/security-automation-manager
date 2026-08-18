@@ -151,7 +151,7 @@ flowchart LR
         </div>
         <div class='callout'>
           <h3>Why these nine are simpler than CSP</h3>
-          <p>None of them have a report-only mode, a discovery workflow, or automation. Each header is either sent exactly as configured, or not sent at all -- pick a value in the WordPress admin and it takes effect immediately. There's nothing to learn beyond the value itself. Strict-Transport-Security is the one exception worth a second look: browsers cache its Max-Age, so a change doesn't undo itself the moment you revert the setting -- see the user guide for details.</p>
+          <p>Seven of them -- X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies -- have no report-only mode, discovery workflow, or automation: each header is either sent exactly as configured, or not sent at all, and takes effect immediately with nothing to learn beyond the value itself. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have their own narrower report-only mode (still no discovery workflow or automation) -- see the user guide for details. Strict-Transport-Security is the one exception worth a second look: browsers cache its Max-Age, so a change doesn't undo itself the moment you revert the setting.</p>
         </div>
       </section>
 
@@ -205,7 +205,7 @@ flowchart LR
             <p>The promotion gate blocks enforce mode until the surface has approved inventory and no recent violation activity inside the configured window.</p>
           </article>
         </div>
-        <p class='section-note'>Steps 3 to 6 are CSP-specific. The other nine pillars only do step 1 (initialise) and step 2 (emit) -- there's no evidence, approval, or promotion step for them.</p>
+        <p class='section-note'>Steps 3 to 6 are CSP-specific. Seven of the other nine pillars only do step 1 (initialise) and step 2 (emit), with no evidence, approval, or promotion step. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy add a narrower evidence step of their own (their own Report-Only mode), but still skip approval and promotion.</p>
       </section>
 
       <section id='learning-curve' class='section'>
@@ -296,7 +296,7 @@ flowchart LR
           </div>
           <div class='callout'>
             <h3>Automation settings</h3>
-            <p>Use <strong>Security Automation Manager -> CSP -> Settings -> Deterministic Automation</strong> to move a surface out of manual mode and set a per-run automatic-change limit.</p>
+            <p>Use <strong>Security Automation Manager -> CSP -> Settings -> Deterministic Automation</strong> to change a surface's automation mode and set a per-run automatic-change limit.</p>
           </div>
         </div>
         <figure class='screenshot'>
@@ -333,7 +333,7 @@ flowchart LR
         </div>
         <div class='warning-callout'>
           <h3>Administrator control</h3>
-          <p>New CSP sources remain pending until an administrator approves them. Automation is scaffolded in manual mode and is not enabled automatically.</p>
+          <p>New CSP sources remain pending until an administrator approves them, and CSP always starts report-only on every surface. Enforcement is never automatic -- it always requires a deliberate administrator promotion.</p>
         </div>
       </section>
 
