@@ -189,7 +189,19 @@ $wp_sam_action_url  = admin_url( 'admin-post.php' );
 				<th scope="row"><label for="wp_sam_cert_export_path"><?php esc_html_e( 'Export path', 'security-automation-manager' ); ?></label></th>
 				<td>
 					<input type="text" id="wp_sam_cert_export_path" name="wp_sam_cert_export_path" class="regular-text" value="<?php echo esc_attr( (string) $wp_sam_cert_config['export_path'] ); ?>" placeholder="/home/account/ssl-drop" />
-					<p class="description"><?php esc_html_e( 'Must be OUTSIDE the web root; the plugin refuses paths under it. privkey.pem and fullchain.pem are written here on every issue/renewal.', 'security-automation-manager' ); ?></p>
+					<p class="description" style="max-width:640px">
+						<?php
+						printf(
+							/* translators: %s: example web root path. */
+							esc_html__( 'An absolute path that is OUTSIDE the web root (the plugin refuses paths under it, because the private key must never be reachable over HTTP) and writable by the web server\'s PHP user. On most hosts a sibling of the web root works well: if your site lives in %s, use something like /home/youraccount/ssl-drop. privkey.pem and fullchain.pem are written here on every issue and renewal; the plugin creates the directory if it has permission, otherwise create it first via SSH, SFTP, or your control panel\'s file manager one level above the web root.', 'security-automation-manager' ),
+							'<code>' . esc_html( rtrim( str_replace( '\\', '/', ABSPATH ), '/' ) ) . '</code>'
+						);
+						?>
+					</p>
+					<p class="description" style="max-width:640px">
+						<strong><?php esc_html_e( 'Not sure what path to use, or lacking permissions?', 'security-automation-manager' ); ?></strong>
+						<?php esc_html_e( 'Your hosting provider can plug this gap in minutes — ask them for: (1) a directory outside the document root that PHP can write to, for storing TLS certificate files; and (2) whether they can install the certificate from that directory on renewal, or alternatively enable API access (e.g. a cPanel API token) so the plugin can install it automatically instead. Ultimately all this mode needs is a path and write permission to it.', 'security-automation-manager' ); ?>
+					</p>
 				</td>
 			</tr>
 			<tr class="wp-sam-cert-deploy-fields" data-deployment="cpanel" style="display:none">
