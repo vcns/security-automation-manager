@@ -573,7 +573,7 @@ class Admin_UI {
 		$password     = (string) wp_unslash( $_POST['wp_sam_current_password'] ?? '' );
 		$confirmation = sanitize_text_field( wp_unslash( $_POST['wp_sam_reset_confirmation'] ?? '' ) );
 
-		if ( 'RESET ALL PLUGIN DATA' !== $confirmation || ! $this->current_user_password_is_valid( $password ) ) {
+		if ( 'RESET SAM PLUGIN DATA' !== $confirmation || ! $this->current_user_password_is_valid( $password ) ) {
 			$this->redirect_to_recovery( 'failed' );
 		}
 

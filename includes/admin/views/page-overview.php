@@ -512,8 +512,8 @@ $status_badge       = static function ( string $status ): void {
 					<label for="wp_sam_reset_confirmation"><?php esc_html_e( 'Confirmation', 'security-automation-manager' ); ?></label>
 				</th>
 				<td>
-					<input type="text" id="wp_sam_reset_confirmation" name="wp_sam_reset_confirmation" class="regular-text" pattern="RESET ALL PLUGIN DATA" required>
-					<p class="description"><?php esc_html_e( 'Type RESET ALL PLUGIN DATA to wipe the entire plugin -- all pillars, not just CSP -- and start from a blank canvas.', 'security-automation-manager' ); ?></p>
+					<input type="text" id="wp_sam_reset_confirmation" name="wp_sam_reset_confirmation" class="regular-text" pattern="RESET SAM PLUGIN DATA" required>
+					<p class="description"><?php esc_html_e( 'Type RESET SAM PLUGIN DATA to wipe the entire plugin -- all pillars, not just CSP -- and start from a blank canvas.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 		</table>
