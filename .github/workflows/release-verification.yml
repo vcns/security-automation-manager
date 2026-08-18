@@ -67,15 +67,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker network create sam-net
-          docker run -d --name sam-wp --network sam-net \
+          docker run -d --name sam-wp --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
-            --network=host \
             -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
             -v sam-wp-data:/var/www/html \
             wordpress:6.7-php8.1-apache
-          docker run -d --name sam-cli --network sam-net --network=host \
+          docker run -d --name sam-cli --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
@@ -120,7 +118,6 @@ jobs:
         run: |
           docker rm -f sam-wp sam-cli 2>/dev/null || true
           docker volume rm sam-wp-data 2>/dev/null || true
-          docker network rm sam-net 2>/dev/null || true
 
   clean-install-github-channel:
     name: Clean install (GitHub channel)
@@ -170,14 +167,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker network create sam-net
-          docker run -d --name sam-wp --network sam-net --network=host \
+          docker run -d --name sam-wp --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v /tmp/sam-github-channel:/var/www/html/wp-content/plugins/security-automation-manager \
             -v sam-wp-data:/var/www/html \
             wordpress:6.7-php8.1-apache
-          docker run -d --name sam-cli --network sam-net --network=host \
+          docker run -d --name sam-cli --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v /tmp/sam-github-channel:/var/www/html/wp-content/plugins/security-automation-manager \
@@ -226,7 +222,6 @@ jobs:
         run: |
           docker rm -f sam-wp sam-cli 2>/dev/null || true
           docker volume rm sam-wp-data 2>/dev/null || true
-          docker network rm sam-net 2>/dev/null || true
           rm -rf /tmp/sam-github-channel
 
   upgrade-and-preservation:
@@ -251,18 +246,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        # The scenario name selects the tag-resolution branch below in
+        # "Resolve old-version checkout" -- kept as plain data (no shell
+        # code embedded in the matrix itself) so GitHub Actions' expression
+        # interpolation, which happens before bash ever sees the string,
+        # can't collide with quoting inside a shell snippet.
+        scenario:
           # The immediately preceding release. Deliberately dynamic (the
           # newest existing tag) rather than hardcoded, so this doesn't go
           # stale as new versions ship.
-          - scenario: previous-release
-            tag_expr: 'git tag --list "v*" --sort=-v:refname | head -1'
+          - previous-release
           # The last release before certificates existed (schema v21 added
           # sam_certificates in v2.5.0 -- see CHANGELOG.md). Pinned, not
           # dynamic: this scenario is specifically about the pre/post
           # certificate schema boundary, not "whatever is oldest."
-          - scenario: pre-certificate-release
-            tag_expr: 'echo v2.4.33'
+          - pre-certificate-release
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -274,7 +272,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG=$(eval "${{ matrix.tag_expr }}")
+          if [ "${{ matrix.scenario }}" = "pre-certificate-release" ]; then
+            TAG=v2.4.33
+          else
+            TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          fi
+          [ -n "$TAG" ] || { echo "Failed to resolve a tag for scenario ${{ matrix.scenario }}" >&2; exit 1; }
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           git worktree add --detach /tmp/sam-old "${TAG}"
 
@@ -282,14 +285,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker network create sam-net
-          docker run -d --name sam-wp --network sam-net --network=host \
+          docker run -d --name sam-wp --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v /tmp/sam-old:/var/www/html/wp-content/plugins/security-automation-manager \
             -v sam-wp-data:/var/www/html \
             wordpress:6.7-php8.1-apache
-          docker run -d --name sam-cli --network sam-net --network=host \
+          docker run -d --name sam-cli --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v /tmp/sam-old:/var/www/html/wp-content/plugins/security-automation-manager \
@@ -321,13 +323,13 @@ jobs:
         run: |
           set -euo pipefail
           docker rm -f sam-wp sam-cli
-          docker run -d --name sam-wp --network sam-net --network=host \
+          docker run -d --name sam-wp --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
             -v sam-wp-data:/var/www/html \
             wordpress:6.7-php8.1-apache
-          docker run -d --name sam-cli --network sam-net --network=host \
+          docker run -d --name sam-cli --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
@@ -410,7 +412,6 @@ jobs:
         run: |
           docker rm -f sam-wp sam-cli 2>/dev/null || true
           docker volume rm sam-wp-data 2>/dev/null || true
-          docker network rm sam-net 2>/dev/null || true
           git worktree remove /tmp/sam-old --force 2>/dev/null || true
 
   manifest-rejection-end-to-end:
@@ -452,9 +453,8 @@ jobs:
           mkdir -p /tmp/sam-mock-manifest
           HASH=$(printf '%064d' 0)
           echo "{\"slug\":\"security-automation-manager\",\"version\":\"99.0.0\",\"download_url\":\"https://evil.example.com/payload.zip\",\"sha256\":\"${HASH}\"}" > /tmp/sam-mock-manifest/update.json
-          docker network create sam-net
-          docker run -d --name sam-mock --network sam-net -v /tmp/sam-mock-manifest:/docroot \
-            --entrypoint php php:8.1-cli -S 0.0.0.0:8899 -t /docroot
+          docker run -d --name sam-mock --network=host -v /tmp/sam-mock-manifest:/docroot \
+            --entrypoint php php:8.1-cli -S 127.0.0.1:8899 -t /docroot
 
           rm -rf /tmp/sam-bad-manifest
           cp -r "$PWD" /tmp/sam-bad-manifest
@@ -468,7 +468,7 @@ jobs:
             define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'github' );
           }
           if ( ! defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ) {
-            define( 'WP_SAM_UPDATE_MANIFEST_URL', 'http://sam-mock:8899/update.json' );
+            define( 'WP_SAM_UPDATE_MANIFEST_URL', 'http://127.0.0.1:8899/update.json' );
           }
           PHP
 
@@ -476,13 +476,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker run -d --name sam-wp --network sam-net --network=host \
+          docker run -d --name sam-wp --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v /tmp/sam-bad-manifest:/var/www/html/wp-content/plugins/security-automation-manager \
             -v sam-wp-data:/var/www/html \
             wordpress:6.7-php8.1-apache
-          docker run -d --name sam-cli --network sam-net --network=host \
+          docker run -d --name sam-cli --network=host \
             -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
             -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
             -v /tmp/sam-bad-manifest:/var/www/html/wp-content/plugins/security-automation-manager \
@@ -499,7 +499,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker exec sam-cli curl -fsS http://sam-mock:8899/update.json | grep -q security-automation-manager
+          docker exec sam-cli curl -fsS http://127.0.0.1:8899/update.json | grep -q security-automation-manager
 
       - name: Real fetch of a malicious-but-well-formed manifest is rejected
         shell: bash
@@ -532,5 +532,4 @@ jobs:
         run: |
           docker rm -f sam-wp sam-cli sam-mock 2>/dev/null || true
           docker volume rm sam-wp-data 2>/dev/null || true
-          docker network rm sam-net 2>/dev/null || true
           rm -rf /tmp/sam-bad-manifest /tmp/sam-mock-manifest
