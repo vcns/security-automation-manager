@@ -614,67 +614,110 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-certificates.php';
 	}
 
+	/**
+	 * Saves certificate settings a tab at a time: the Configuration and
+	 * Install tabs each post their own form with a wp_sam_cert_section
+	 * marker, and only that section's keys are overridden -- the rest of the
+	 * stored configuration is carried forward untouched (secrets included,
+	 * via Certificate_Store's keep-when-blank sealing semantics).
+	 */
 	public function handle_save_cert_settings(): void {
 		check_admin_referer( 'wp_sam_save_cert_settings' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to change certificate settings.', 'security-automation-manager' ) );
 		}
 
-		$domains_raw   = (string) wp_unslash( $_POST['wp_sam_cert_domains'] ?? '' );
-		$domains_split = preg_split( '/[\s,]+/', $domains_raw );
-		$domains       = array_values(
-			array_filter(
-				array_map(
-					static fn( string $d ): string => strtolower( trim( $d ) ),
-					false === $domains_split ? array() : $domains_split
-				),
-				// Hostnames plus the leading-wildcard form. sanitize_text_field
-				// alone would wave through things a CSR must never contain.
-				static fn( string $d ): bool => (bool) preg_match( '/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $d )
-			)
-		);
+		$store   = new \WP_SAM\Certificates\Certificate_Store();
+		$config  = $store->get_config();
+		$section = sanitize_key( wp_unslash( $_POST['wp_sam_cert_section'] ?? 'configuration' ) );
 
-		$providers = \WP_SAM\Certificates\Dns_Provider::providers();
-		$provider  = sanitize_key( wp_unslash( $_POST['wp_sam_cert_provider'] ?? '' ) );
-		if ( '' !== $provider && ! isset( $providers[ $provider ] ) ) {
-			$provider = '';
-		}
-
-		// Only the selected provider's credential fields are read; an empty
-		// submitted value means "keep the stored secret" (Certificate_Store
-		// merge semantics), so redisplayed forms never round-trip plaintext.
-		$credentials = array();
-		if ( '' !== $provider ) {
-			foreach ( array_keys( $providers[ $provider ]::fields() ) as $field_key ) {
-				$credentials[ $field_key ] = (string) wp_unslash( $_POST[ 'wp_sam_cert_cred_' . $field_key ] ?? '' );
+		if ( 'install' === $section ) {
+			$deployment = sanitize_key( wp_unslash( $_POST['wp_sam_cert_deployment'] ?? 'download' ) );
+			if ( ! in_array( $deployment, array( 'download', 'export', 'cpanel' ), true ) ) {
+				$deployment = 'download';
 			}
+
+			$config['deployment']   = $deployment;
+			$config['export_path']  = sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_export_path'] ?? '' ) );
+			$config['cpanel_host']  = sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_host'] ?? '' ) );
+			$config['cpanel_user']  = sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_user'] ?? '' ) );
+			$config['cpanel_token'] = '' !== (string) wp_unslash( $_POST['wp_sam_cert_cpanel_token'] ?? '' )
+				? (string) wp_unslash( $_POST['wp_sam_cert_cpanel_token'] )
+				: $config['cpanel_token']; // Blank = keep stored token.
+		} else {
+			$section       = 'configuration';
+			$domains_raw   = (string) wp_unslash( $_POST['wp_sam_cert_domains'] ?? '' );
+			$domains_split = preg_split( '/[\s,]+/', $domains_raw );
+			$domains       = array_values(
+				array_filter(
+					array_map(
+						static fn( string $d ): string => strtolower( trim( $d ) ),
+						false === $domains_split ? array() : $domains_split
+					),
+					// Hostnames plus the leading-wildcard form. sanitize_text_field
+					// alone would wave through things a CSR must never contain.
+					static fn( string $d ): bool => (bool) preg_match( '/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $d )
+				)
+			);
+
+			$providers = \WP_SAM\Certificates\Dns_Provider::providers();
+			$provider  = sanitize_key( wp_unslash( $_POST['wp_sam_cert_provider'] ?? '' ) );
+			if ( '' !== $provider && ! isset( $providers[ $provider ] ) ) {
+				$provider = '';
+			}
+
+			// Only the selected provider's credential fields are read; an empty
+			// submitted value keeps the stored secret (a non-empty one replaces
+			// it), so redisplayed forms never round-trip plaintext.
+			$credentials = (array) $config['dns_credentials'];
+			if ( '' !== $provider ) {
+				foreach ( array_keys( $providers[ $provider ]::fields() ) as $field_key ) {
+					$submitted = (string) wp_unslash( $_POST[ 'wp_sam_cert_cred_' . $field_key ] ?? '' );
+					if ( '' !== $submitted ) {
+						$credentials[ $field_key ] = $submitted;
+					}
+				}
+			}
+
+			$country = strtoupper( sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_country'] ?? '' ) ) );
+
+			$challenge = sanitize_key( wp_unslash( $_POST['wp_sam_cert_challenge'] ?? 'dns-01' ) );
+			if ( ! in_array( $challenge, array( 'dns-01', 'http-01' ), true ) ) {
+				$challenge = 'dns-01';
+			}
+
+			$config = array_merge(
+				$config,
+				array(
+					'domains'             => $domains,
+					'contact_email'       => sanitize_email( wp_unslash( $_POST['wp_sam_cert_email'] ?? '' ) ),
+					'provider'            => $provider,
+					'challenge'           => $challenge,
+					'key_type'            => 'rsa-2048' === ( $_POST['wp_sam_cert_key_type'] ?? '' ) ? 'rsa-2048' : 'ec-256',
+					'staging'             => ! empty( $_POST['wp_sam_cert_staging'] ),
+					'dns_credentials'     => $credentials,
+					'organization'        => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_organization'] ?? '' ) ),
+					'organizational_unit' => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_org_unit'] ?? '' ) ),
+					'country'             => (bool) preg_match( '/^[A-Z]{2}$/', $country ) ? $country : '',
+					'state'               => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_state'] ?? '' ) ),
+					'locality'            => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_locality'] ?? '' ) ),
+				)
+			);
 		}
 
-		$deployment = sanitize_key( wp_unslash( $_POST['wp_sam_cert_deployment'] ?? 'download' ) );
-		if ( ! in_array( $deployment, array( 'download', 'export', 'cpanel' ), true ) ) {
-			$deployment = 'download';
-		}
+		$store->save_config( $config );
 
-		( new \WP_SAM\Certificates\Certificate_Store() )->save_config(
-			array(
-				'domains'         => $domains,
-				'contact_email'   => sanitize_email( wp_unslash( $_POST['wp_sam_cert_email'] ?? '' ) ),
-				'provider'        => $provider,
-				'challenge'       => '' !== $provider ? 'dns-01' : 'http-01',
-				'key_type'        => 'rsa-2048' === ( $_POST['wp_sam_cert_key_type'] ?? '' ) ? 'rsa-2048' : 'ec-256',
-				'staging'         => ! empty( $_POST['wp_sam_cert_staging'] ),
-				'deployment'      => $deployment,
-				'export_path'     => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_export_path'] ?? '' ) ),
-				'cpanel_host'     => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_host'] ?? '' ) ),
-				'cpanel_user'     => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_user'] ?? '' ) ),
-				'cpanel_token'    => (string) wp_unslash( $_POST['wp_sam_cert_cpanel_token'] ?? '' ),
-				'dns_credentials' => $credentials,
+		$this->plugin->audit->log( 'certificates', 'cert_settings_saved', "Certificate settings updated ({$section} tab).", 'info' );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'tab'   => 'install' === $section ? 'install' : 'configuration',
+					'saved' => '1',
+				),
+				admin_url( 'admin.php?page=security-automation-manager-certificates' )
 			)
 		);
-
-		$this->plugin->audit->log( 'certificates', 'cert_settings_saved', 'Certificate settings updated.', 'info' );
-
-		wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=security-automation-manager-certificates' ) ) );
 		exit;
 	}
 

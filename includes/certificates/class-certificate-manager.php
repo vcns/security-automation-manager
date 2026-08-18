@@ -135,7 +135,14 @@ class Certificate_Manager {
 
 		$cert_key = Acme_Crypto::generate_key( (string) $config['key_type'] );
 		if ( 'ready' === ( $order_body['status'] ?? '' ) ) {
-			$client->finalize( (string) $order_body['finalize'], Acme_Crypto::csr_der( $domains, $cert_key ) );
+			$subject = array(
+				'organization'        => (string) ( $config['organization'] ?? '' ),
+				'organizational_unit' => (string) ( $config['organizational_unit'] ?? '' ),
+				'country'             => (string) ( $config['country'] ?? '' ),
+				'state'               => (string) ( $config['state'] ?? '' ),
+				'locality'            => (string) ( $config['locality'] ?? '' ),
+			);
+			$client->finalize( (string) $order_body['finalize'], Acme_Crypto::csr_der( $domains, $cert_key, $subject ) );
 		}
 
 		$order_body = $this->poll(
