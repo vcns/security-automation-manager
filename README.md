@@ -1,6 +1,6 @@
 # Security Automation Manager
 
-Security Automation Manager is a WordPress plugin that automates rollout of strict HTTP security headers. Content Security Policy (CSP) is its most capable pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies as simpler per-surface pillars alongside it.
+Security Automation Manager is a WordPress plugin covering three product areas: strict HTTP security header rollout, third-party script/stylesheet integrity governance, and TLS certificate lifecycle management. Content Security Policy (CSP) is the most capable header pillar -- per-surface profiles, nonce injection, source discovery, violation reporting, and audit-first policy-change review -- with X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies as simpler per-surface pillars alongside it. Certificates is a separate, self-contained ACME v2 (Let's Encrypt) certificate manager -- see the Certificates section below.
 
 ## Features
 
@@ -25,7 +25,7 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Policy version snapshots, policy diffs, decision provenance, and deterministic rule findings
 - Policy Audit tab (on the CSP page) and privileged admin REST endpoints for current policy, pending reviews, decisions, history, and manual automation configuration
 - Readiness admin view for plugin-specific schema and runtime checks, with an authenticated reset flow that clears CSP data and disables header emission until rollout is restarted
-- Automation configuration scaffold that defaults every surface to `automatic_high_approval` -- every proposed CSP source below the high-risk threshold is auto-approved into the report-only policy on its own evidence, high-risk sources still require a human decision. This governs approval only, never enforcement: CSP still starts report-only on every surface, and promotion to enforce still requires a deliberate administrator action through the learning window and promotion gate
+- Automation configuration scaffold that defaults a *fresh install's* every surface to `automatic_high_approval` -- every proposed CSP source below the high-risk threshold is auto-approved into the report-only policy on its own evidence, high-risk sources still require a human decision. An *upgraded* install is not retroactively changed: the default only ever fills in a surface that has no automation setting yet, so an administrator's existing choice -- including an explicit Manual selection -- is always left alone. This governs approval only, never enforcement: CSP still starts report-only on every surface, and promotion to enforce still requires a deliberate administrator action through the learning window and promotion gate, regardless of automation posture
 - Multi-surface scan support
 - `strict-dynamic` with automatic host-source suppression
 - Per-surface Trusted Types toggle (Profiles tab): sends `require-trusted-types-for 'script'`, always report-only regardless of surface mode
@@ -44,7 +44,11 @@ Security Automation Manager is a WordPress plugin that automates rollout of stri
 - Cross-Origin-Embedder-Policy: per-surface `unsafe-none` / `require-corp` / `credentialless`, the highest-risk pillar this plugin manages. `require-corp` blocks any cross-origin subresource (fonts, embeds, ad tags) that doesn't explicitly opt in via CORP or CORS -- most third-party embeds don't, so enabling this carelessly can silently break unrelated page content. Only actually needed for sites that require cross-origin isolation (`SharedArrayBuffer`, high-resolution timers); most WordPress sites do not
 - X-Permitted-Cross-Domain-Policies: per-surface `none` / `master-only` / `by-content-type` / `all`, a legacy Flash/Acrobat-era header controlling cross-domain policy file loading. `none` is almost always correct for a modern site
 
-These nine pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all.
+Seven of these nine pillars are simple by design: no report-only mode, discovery workflow, or automation -- each header is either sent exactly as configured, or not sent at all. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the two exceptions: each has its own Disabled / Report-Only / Enforce mode selector and a Report-Only Evidence table showing violations the browser's Reporting API has actually observed over the last 7 days, so a risky isolation policy can be rehearsed before it's enforced -- narrower than CSP's discovery-and-approval workflow, but a real report-only learning step, not a blunt on/off toggle. See "Cross-Origin Policy Learning" below for browser-support caveats.
+
+**Cross-Origin Policy Learning**
+
+The Report-Only Evidence table's data only reflects violations from browsers that actually send Reporting API delivery -- Chromium-based browsers (Chrome, Edge, Opera, Brave, and others built on the same engine) only, as of this writing. Report-Only mode itself is respected by every modern browser regardless -- the *header* is universally honoured -- but a visitor on a non-Chromium browser generates no evidence row even if their session would have tripped the isolation policy. Treat an empty or sparse evidence table as inconclusive on a site with meaningful non-Chromium traffic, not as proof the policy is safe to enforce.
 
 **Content rewrite protections**
 
@@ -55,12 +59,28 @@ Two further protections rewrite the rendered HTML body itself rather than emit a
 
 A third pillar, Internal Script Integrity (`Internal_Script_Integrity_Builder`), is architecturally distinct from the two above: rather than the `Content_Rewriter` body-buffering envelope, it hooks the same `script_loader_tag`/`style_loader_tag` filters `Nonce_Manager` already uses. Per-surface opt-in; when enabled, it reads a first-party script/stylesheet's local file directly (never a network fetch -- this server already has the exact file it's about to serve), computes its SHA-384 hash, and adds it as the tag's `integrity` attribute automatically. Cached by file size/mtime, so an unchanged file is never re-read, and a changed one (a plugin/theme update, a manual edit) is picked up on the next request that serves it -- nothing to remember to update by hand, and nothing to classify or approve, since the hash can never legitimately drift from what's on disk the way an admin-declared third-party hash can. External Scripts and Internal Script Integrity share one admin page (Scripts), each its own tab, alongside a Start Here tab explaining the distinction.
 
-Every pillar, all rewrite protections, and three of the four CSP automation modes are available locally without payment, remote entitlement checks, or third-party licensing calls. The exception is Fully Automatic CSP mode, which requires an active subscription -- see Automation Posture below.
+**Certificates**
+
+A separate, self-contained TLS certificate lifecycle manager, unrelated to the header pillars above beyond sharing the same admin/audit plumbing:
+
+- ACME v2 (RFC 8555) client -- account registration, order/authorization polling, nonce handling with bad-nonce retry, and a Let's Encrypt staging/production environment switch
+- DNS-01 validation with 41 built-in DNS-provider drivers (Cloudflare, Route53, DigitalOcean, Gandi, Hetzner, and more; extensible via the `wp_sam_dns_providers` filter), and HTTP-01 validation
+- Wildcard certificate support (DNS-01 only, as required by the ACME protocol)
+- EC-P256 (default) or RSA-2048 key generation, with a "bring your own private key" option when this server can't reliably generate one itself -- the Configuration tab runs a live capability probe (an actual throwaway key generation, not just an extension check) to decide whether to show it
+- Credentials (DNS-provider API tokens, cPanel tokens) and private keys encrypted at rest before they reach the database
+- Deployment: automatic install via cPanel's `SSL::install_ssl` UAPI where available, export to a configured filesystem path (rejected if it resolves inside the web root), or manual PEM download
+- WP-Cron renewal on a 30-day-before-expiry threshold, with duplicate-schedule guards and an audit-logged failure path that never silently drops a certificate
+- Every certificate issuance, renewal, and deployment attempt -- success or failure -- is recorded in the same append-only audit log CSP uses
+
+See `docs/certificates.md` for the full setup walkthrough, DNS-provider list, and hosting-platform notes.
+
+Every pillar, all rewrite protections, certificate management, and three of the four CSP automation modes are available locally without payment, remote entitlement checks, or third-party licensing calls. The exception is Fully Automatic CSP mode, which requires an active subscription -- see Automation Posture below.
 
 ## Requirements
 
 - WordPress 6.4+
 - PHP 8.1+
+- Certificates additionally require the `openssl` PHP extension (key generation, CSR/JWS signing) and `sodium` (credential/key encryption at rest) -- the Certificates page checks for both up front and explains what to ask your host for if either is missing
 
 ## Installation
 
@@ -77,12 +97,12 @@ Once published to WordPress.org:
 Tagged releases publish ready-to-install ZIPs to the
 [Releases page](https://github.com/vcns/security-automation-manager/releases).
 
-1. Download `security-automation-manager-github-vX.Y.Z.zip` from the release assets when installing from GitHub.
+1. Download `security-automation-manager-vX.Y.Z.zip` from the release assets -- this is the only asset a GitHub Release publishes, and it *is* the GitHub-channel (self-updating) build.
 2. In WordPress go to **Plugins -> Add New Plugin -> Upload Plugin**.
 3. Choose the downloaded ZIP and click **Install Now**.
 4. Activate the plugin.
 
-The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress' native plugin update screen and the `https://vcns.github.io/wp-updates/security-automation-manager/update.json` manifest. The plain `security-automation-manager-vX.Y.Z.zip` artifact is the WordPress.org-safe package and does not contain the GitHub updater.
+The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress' native plugin update screen and the `https://vcns.github.io/wp-updates/security-automation-manager/update.json` manifest. The separate WordPress.org-safe package (without the GitHub updater) is never published as a GitHub Release asset -- it's built and deployed straight to the WordPress.org SVN repository by the same release pipeline, for administrators installing from the WordPress plugin directory instead.
 
 ## Getting Started
 
@@ -99,7 +119,7 @@ The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress'
 
 ## Automation Posture
 
-Automation defaults to `Manual` for every surface. Administrators may explicitly select each surface posture from the Profiles tab or the Settings tab:
+A fresh install defaults every surface to `Automatic (with high approvals only)` -- see the Content Security Policy feature list above for exactly what that does and does not automate. An upgraded install keeps whatever each surface was already set to, including an explicit `Manual` choice; the default only ever fills in a surface with no automation setting yet. Administrators may explicitly select each surface posture from the Profiles tab or the Settings tab:
 
 - `Manual` -- free
 - `Automatic (with medium+high approvals)` -- free
@@ -126,20 +146,27 @@ Administrators may also configure an origin-only policy header name, such as `X-
 
 Browser-submitted CSP violation reports received by this plugin are validated and stored in the local WordPress database. They are not sent to any external provider by default.
 
+The Certificates page, only when an administrator explicitly configures it, contacts the ACME v2 API of the configured certificate authority (Let's Encrypt production or staging) to request certificates, and -- when DNS-01 validation is selected -- the chosen DNS provider's API (for example, Cloudflare's) using credentials the administrator supplies. Nothing under Certificates is contacted until an administrator configures it; there is no background or automatic certificate activity beyond the WP-Cron renewal check for certificates that already exist.
+
 ## Privacy
 
 The plugin keeps operational data local to WordPress.
 
-- Browser CSP violation reports are stored in the local database.
+- Browser CSP violation reports and COOP/COEP Reporting API violation reports are stored in the local database.
 - Source inventory, hashes, scan logs, policy versions, and decision records are stored locally.
+- Certificate DNS-provider and cPanel credentials, ACME account keys, and issued certificates' private keys are stored locally, encrypted at rest -- never transmitted anywhere except the ACME/DNS-provider APIs required to issue or renew a certificate an administrator configured.
 - No telemetry or background tracking is intended as part of the normal plugin runtime.
 
 ## Repository Guides
 
+- Product specification: [SPECIFICATION.md](SPECIFICATION.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
+- Certificates: [docs/certificates.md](docs/certificates.md)
+- Threat model: [docs/threat-model.md](docs/threat-model.md)
 - Testing and quality: [docs/testing-and-quality.md](docs/testing-and-quality.md)
 - Release and publishing: [docs/release-and-publishing.md](docs/release-and-publishing.md)
 - Security policy: [SECURITY.md](SECURITY.md)
+- Repository assessment and roadmap reconciliation: [docs/consolidation-ledger.md](docs/consolidation-ledger.md)
 
 ## GitHub Pages Help Site
 
@@ -149,10 +176,10 @@ The repository also publishes a public help site from the `docs/` directory:
 
 ## Development And Release Flow
 
-- `feature/*` and `fix/*` branches target `development`
-- `release/*` branches are cut from `development`
-- `main` is the release and publishing branch
-- WordPress.org deployment is tag-driven
+- `codex/*`, `feature/*`, `fix/*`, and `hotfix/*` branches target `development`; enforced by CI (`.github/workflows/pr-branch-policy.yml`)
+- `release/*` branches (cut from `main`) are the only branches CI allows to open a pull request directly into `main`, alongside `development` itself
+- `main` is the release and publishing branch; every release is a merged `release/*` PR, tagged `vX.Y.Z`
+- Pushing a `vX.Y.Z` tag on `main` triggers the release pipeline: it builds and publishes the single GitHub Release asset (the GitHub-channel ZIP) and separately deploys the WordPress.org-safe package to the WordPress.org SVN repository -- both from the same tagged commit, in the same run
 
 ## Notes For Maintainers
 

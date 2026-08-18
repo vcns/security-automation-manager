@@ -223,7 +223,7 @@
           </article>
           <article class='faq-item'>
             <h3>Do these nine pillars have a report-only mode like CSP?</h3>
-            <p>No. None of them do. Each header is either sent exactly as configured, or not sent at all -- there's no intermediate learning state to roll through.</p>
+            <p>Seven of them, no -- X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies are each either sent exactly as configured, or not sent at all, with no intermediate learning state to roll through. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the exception: each has its own Mode selector (Disabled, Report-Only, Enforce) and a Report-Only Evidence table showing violations observed via the browser Reporting API over the last 7 days.</p>
           </article>
           <article class='faq-item'>
             <h3>Why don't they have a discovery workflow or automation like CSP does?</h3>
@@ -356,11 +356,11 @@
           </article>
           <article class='faq-item'>
             <h3>Are new CSP sources applied automatically?</h3>
-            <p>Only if you've turned on one of the three free automatic modes, or the paid Fully Automatic mode -- and only within that mode's risk ceiling. On the default Manual mode, no.</p>
+            <p>Only if you've turned on one of the three free automatic modes, or the paid Fully Automatic mode -- and only within that mode's risk ceiling. On Manual mode, no.</p>
           </article>
           <article class='faq-item'>
             <h3>Does manual automation mode change policy on its own?</h3>
-            <p>No. Automation configuration defaults to manual mode on install and upgrade.</p>
+            <p>No. A fresh install now defaults every surface to Automatic (high approvals only) rather than Manual; an upgrade never changes an existing selection, including an explicit Manual choice.</p>
           </article>
         </div>
       </section>

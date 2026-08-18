@@ -28,7 +28,7 @@ These documents are written for maintainers, release managers, security reviewer
 The following files remain authoritative alongside these docs:
 
 - `security-automation-manager.php` for plugin metadata, constants, autoloading, and version values
-- `requirements_spec.md` for the current functional requirements baseline
+- `SPECIFICATION.md` for the current functional requirements baseline
 - `README.md` for repository-level installation and feature summary
 - `CHANGELOG.md` for release history
 - `SECURITY.md` for vulnerability reporting policy

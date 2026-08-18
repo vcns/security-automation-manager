@@ -26,7 +26,7 @@
         <h2>Read this first</h2>
         <ul>
           <li>Use staging where practical.</li>
-          <li>Start CSP in report-only mode; the other nine pillars take effect immediately.</li>
+          <li>Start CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy in report-only mode; the other seven pillars take effect immediately.</li>
           <li>Browse real user journeys before enforcing CSP.</li>
           <li>Approve only sources with a clear purpose.</li>
           <li>Fully Automatic mode is the only paid feature; everything else is free.</li>
@@ -101,7 +101,7 @@
             <li>Review the Violations tab and approve only required sources.</li>
             <li>Wait for the configured violation-free window before enforcing a surface.</li>
           </ol>
-          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other nine pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies) don't have a rollout workflow at all -- see <a href='#other-pillars'>the other nine pillars</a> below.</p>
+          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other seven pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies) don't have a rollout workflow at all; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have a narrower one of their own -- a per-surface Report-Only mode with a violation-evidence table, but no discovery or automation -- see <a href='#other-pillars'>the other nine pillars</a> below.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -122,7 +122,7 @@
       <section id='how-it-works' class='section'>
         <p class='section-label'>How it works</p>
         <h2>Ten pillars, one dashboard.</h2>
-        <p>Security Automation Manager automates rollout of ten HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other nine pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect.</p>
+        <p>Security Automation Manager automates rollout of ten HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other seven pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy sit in between: still no discovery workflow or automation, but each has its own Report-Only mode to observe violations before enforcing.</p>
         <div class='diagram' aria-label='Admin menu structure diagram'>
           <div class='mermaid'>
 flowchart TD
@@ -157,8 +157,8 @@ flowchart TD
             <p>Activation creates the local tables and default per-surface policy profiles for every pillar. New CSP profiles start in report-only mode so the browser can report potential blocks without breaking the site.</p>
           </article>
           <article class='card'>
-            <h3>2. Build evidence (CSP only)</h3>
-            <p>The scanner discovers static sources from rendered pages and linked CSS. Real browser journeys supply runtime evidence through CSP violation reports.</p>
+            <h3>2. Build evidence (mostly CSP)</h3>
+            <p>The scanner discovers static sources from rendered pages and linked CSS. Real browser journeys supply runtime evidence through CSP violation reports. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy build a narrower evidence table of their own, from their own Report-Only mode.</p>
           </article>
           <article class='card'>
             <h3>3. Decide deliberately (CSP only)</h3>
@@ -166,7 +166,7 @@ flowchart TD
           </article>
           <article class='card'>
             <h3>4. Emit each header</h3>
-            <p>The CSP policy builder combines the surface profile, approved sources, active hashes, reporting endpoint, and per-request nonces. The other nine pillars emit their configured value directly, per surface.</p>
+            <p>The CSP policy builder combines the surface profile, approved sources, active hashes, reporting endpoint, and per-request nonces. The other pillars emit their configured value directly, per surface -- Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy also check whether that surface is set to Report-Only or Enforce first.</p>
           </article>
           <article class='card'>
             <h3>5. Promote one surface (CSP only)</h3>
@@ -197,12 +197,12 @@ flowchart TD
       <section id='concepts' class='section'>
         <p class='section-label'>Core concepts</p>
         <h2>The terms you need to understand.</h2>
-        <p class='section-note'>Most of these terms are specific to CSP -- the other nine pillars don't have report-only modes, promotion gates, or suppression, because they don't need them.</p>
+        <p class='section-note'>Most of these terms are specific to CSP -- the other nine pillars don't have promotion gates or suppression, and seven of the nine don't have report-only modes either; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the exception, with their own narrower report-only mode.</p>
         <div class='definition-grid'>
           <div><h3>Surface</h3><p>A part of the site with its own policy. Every pillar uses the same four: frontend, admin, login, and API.</p></div>
           <div><h3>Pillar</h3><p>One of the ten HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies.</p></div>
-          <div><h3>Report-only mode</h3><p>CSP-only. The browser reports what would have been blocked. It does not block the resource.</p></div>
-          <div><h3>Enforce mode</h3><p>CSP-only. The browser blocks resources that are not allowed by the policy.</p></div>
+          <div><h3>Report-only mode</h3><p>The browser reports what would have been blocked without blocking it. CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy all support it; the other seven pillars don't.</p></div>
+          <div><h3>Enforce mode</h3><p>CSP blocks resources that are not allowed by the policy. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have their own Enforce mode too, sending the header to actively isolate or block rather than just report.</p></div>
           <div><h3>Directive</h3><p>A CSP rule area, such as <code>script-src</code>, <code>img-src</code>, <code>connect-src</code>, or <code>form-action</code>.</p></div>
           <div><h3>Source</h3><p>A host, scheme, or keyword that a CSP directive allows.</p></div>
           <div><h3>Nonce</h3><p>A random per-request value used to authorise WordPress-managed inline scripts or styles without using <code>'unsafe-inline'</code>.</p></div>
@@ -402,7 +402,7 @@ flowchart TD
       <section id='other-pillars' class='section'>
         <p class='section-label'>The other nine pillars</p>
         <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and the four cross-origin/legacy headers.</h2>
-        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. The other nine pillars don't work that way. Each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. There's no report-only mode, no discovery workflow, and no automation for any of them.</p>
+        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. Seven of the other nine pillars don't work that way at all -- each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have their own narrower Report-Only mode instead: a per-surface Disabled/Report-Only/Enforce selector plus a table of violations observed over the last 7 days. None of the nine have a discovery workflow or automation.</p>
         <div class='table-wrap'>
           <table>
             <thead>
@@ -424,7 +424,7 @@ flowchart TD
         <div class='callout-stack'>
           <div class='callout'>
             <h3>Nothing to roll out</h3>
-            <p>Because these headers are either sent exactly as configured or not sent at all, there's no equivalent of report-only mode to reason about. If a change causes unexpected behaviour, undo it the same way you made it: change the value back in the admin page.</p>
+            <p>Except for Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy's own Report-Only mode (see above), these headers are either sent exactly as configured or not sent at all, with no equivalent of CSP's report-only mode to reason about. If a change causes unexpected behaviour, undo it the same way you made it: change the value back in the admin page.</p>
           </div>
           <div class='warning-callout'>
             <h3>Test after changing X-Frame-Options or Permissions-Policy</h3>
