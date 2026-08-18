@@ -125,5 +125,5 @@ it should land as a scheduled/nightly job rather than on every PR once added.
    in the consolidation sequence -- see `docs/consolidation-ledger.md`).
 7. Once WP-CLI support (#184), configuration import (#185), and entitlement
    signing (#173/#174) land, add their test categories from the table above
-   at the same time — do not ship the feature and defer its test category to
+   at the same time - do not ship the feature and defer its test category to
    a follow-up.

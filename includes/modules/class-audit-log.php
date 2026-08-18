@@ -3,9 +3,9 @@
  * Write-only structured audit log.
  *
  * Writes lifecycle events to three destinations:
- *   1. sam_audit_log table — append-only, immutable record (R10). Never UPDATEd or DELETEd.
- *   2. wp_options FIFO queue (max 20) — for transient admin notice display only.
- *   3. PHP error_log — for warnings and errors.
+ *   1. sam_audit_log table - append-only, immutable record (R10). Never UPDATEd or DELETEd.
+ *   2. wp_options FIFO queue (max 20) - for transient admin notice display only.
+ *   3. PHP error_log - for warnings and errors.
  *
  * Scan lifecycle records go to sam_scan_logs via start_scan() / finish_scan().
  * Keeps a bounded in-memory buffer for request-scoped debugging / test inspection.
@@ -124,7 +124,7 @@ class Audit_Log {
 
 	/**
 	 * Appends an event to the sam_audit_log table.
-	 * This table is never UPDATE-d or DELETE-d — it is the permanent audit trail (R10).
+	 * This table is never UPDATE-d or DELETE-d - it is the permanent audit trail (R10).
 	 * Failures are silently swallowed so a DB hiccup never kills the request.
 	 */
 	private function write_to_db(

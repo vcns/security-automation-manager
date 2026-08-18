@@ -70,7 +70,7 @@ class ViolationReporterTest extends TestCase {
 
 		$response = $this->reporter->handle( $request );
 
-		// Still returns 204 — must not reveal rejection to the sender.
+		// Still returns 204 - must not reveal rejection to the sender.
 		$this->assertSame( 204, $response->get_status() );
 		// Rate-limit transient must not be set (report was dropped before rate check).
 		$this->assertArrayNotHasKey( 'wp_sam_viol_rate_frontend_script-src', $GLOBALS['_wp_transients'] );

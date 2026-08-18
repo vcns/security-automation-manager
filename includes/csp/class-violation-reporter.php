@@ -81,11 +81,11 @@ class Violation_Reporter {
 	/**
 	 * Handles POST /sam/v1/report (and the legacy /security-manager/v1/report alias)
 	 * Accepts application/csp-report (legacy) and application/reports+json (Reporting API).
-	 * Rejects any other Content-Type — browsers must send one of these two (R10).
+	 * Rejects any other Content-Type - browsers must send one of these two (R10).
 	 */
 	public function handle( WP_REST_Request $request ): WP_REST_Response {
 		// Validate Content-Type to reduce spoofing surface. application/json is accepted
-		// as a legacy fallback — some older Chromium versions used it before the spec settled.
+		// as a legacy fallback - some older Chromium versions used it before the spec settled.
 		$ct      = $request->get_content_type();
 		$ct_val  = is_array( $ct ) ? ( $ct['value'] ?? '' ) : '';
 		$allowed = array( 'application/csp-report', 'application/reports+json', 'application/json' );
