@@ -64,6 +64,40 @@ class AcmeCryptoTest extends TestCase {
 
 		$this->assertTrue( $capability['ok'] );
 		$this->assertNull( $capability['error'] );
+		$this->assertNull( $capability['detail'] );
+	}
+
+	/**
+	 * Regression coverage for the OpenSSL-error-message hardening: the
+	 * administrator-facing 'error' must be the fixed, stable message
+	 * regardless of what the underlying failure actually was, and must
+	 * never contain the raw diagnostic text -- that belongs in 'detail'
+	 * only. A real key-generation failure isn't reliably forceable across
+	 * every CI host, so this exercises the pure formatting function
+	 * directly with a synthetic exception standing in for whatever
+	 * openssl_error_string() might have said.
+	 */
+	public function test_describe_generation_failure_separates_stable_message_from_raw_detail(): void {
+		$raw       = 'openssl_pkey_new failed: error:0308010C:digital envelope routines::unsupported';
+		$exception = new \RuntimeException( $raw );
+
+		$result = Acme_Crypto::describe_generation_failure( $exception );
+
+		$this->assertFalse( $result['ok'] );
+		$this->assertSame( Acme_Crypto::GENERATION_FAILURE_MESSAGE, $result['error'] );
+		$this->assertSame( $raw, $result['detail'] );
+		$this->assertStringNotContainsString( 'error:0308010C', $result['error'] );
+	}
+
+	public function test_describe_generation_failure_is_stable_across_different_underlying_errors(): void {
+		$first  = Acme_Crypto::describe_generation_failure( new \RuntimeException( 'RANDFILE: cannot write' ) );
+		$second = Acme_Crypto::describe_generation_failure( new \RuntimeException( 'openssl.cnf: no such file' ) );
+
+		// Two different hosts hitting two different underlying causes must
+		// still show the administrator the exact same headline -- only
+		// 'detail' should vary.
+		$this->assertSame( $first['error'], $second['error'] );
+		$this->assertNotSame( $first['detail'], $second['detail'] );
 	}
 
 	public function test_rsa_signature_uses_rs256(): void {

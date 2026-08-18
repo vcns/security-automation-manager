@@ -286,14 +286,29 @@ Ordered by what most directly stops a defensible public release:
    builds today.
 3. **SPECIFICATION.md is 18 schema versions stale** while marked "Active"
    (#161).
-4. **README contains two direct self-contradictions and one inverted
-   instruction** (automation default, COOP/COEP capability, GitHub package
-   naming).
+4. ~~**README contains two direct self-contradictions and one inverted
+   instruction**~~ (automation default, COOP/COEP capability, GitHub package
+   naming) — **fixed in PR #236** (Phase 2 of the consolidation sequence),
+   released as v2.9.4. `SPECIFICATION.md` (item 3 above) was replaced in the
+   same PR.
 5. **No install/upgrade/rollback test runs against a real WordPress
    instance** (#159) — every test, including schema migration, runs against
    hand-written stubs.
-6. Certificate capability-probe leaks raw OpenSSL error text to the admin UI
-   — hardening-priority, not release-blocking (admin-only, XSS-safe).
+6. ~~Certificate capability-probe leaks raw OpenSSL error text to the admin
+   UI~~ — **fixed in Phase 3** of the consolidation sequence: the
+   administrator-facing message is now a stable, generic string
+   (`Acme_Crypto::GENERATION_FAILURE_MESSAGE`); the raw diagnostic is still
+   shown, demoted to a collapsed "Technical detail" disclosure rather than
+   presented as the primary explanation. Was already low-severity
+   (admin-only, XSS-safe) — this was hardening, not a release blocker, per
+   the consolidation decision that scoped Phase 3. The credential vault's
+   SHA-256-based key derivation was formally assessed in the same phase
+   (`docs/credential-vault-assessment.md`) and deliberately left unchanged —
+   the assessment found the derivation itself defensible, but documented a
+   real gap (no rotation support; a vault-key change silently blanks
+   already-stored secrets with no recovery path) as follow-up work, not
+   something to fix by changing the format without the migration+recovery
+   design that document specifies.
 7. DNS-01 provider driver test coverage needs a verified provider-by-provider
    accounting before any "tested" claim is made publicly — see Phase 6 of the
    consolidation sequence.
