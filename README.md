@@ -24,7 +24,7 @@ Security Automation Manager is a WordPress plugin covering three product areas: 
 - Revert-and-suppress workflow so a reversed source is not proposed again automatically
 - Policy version snapshots, policy diffs, decision provenance, and deterministic rule findings
 - Policy Audit tab (on the CSP page) and privileged admin REST endpoints for current policy, pending reviews, decisions, history, and manual automation configuration
-- Readiness admin view for plugin-specific schema and runtime checks, with an authenticated reset flow that clears CSP data and disables header emission until rollout is restarted
+- Readiness admin view for plugin-specific schema and runtime checks; a separate Recovery admin view covers schema-downgrade status, pre-migration snapshot restore, configuration export/import, and an authenticated reset flow that clears all plugin data (every pillar, not just CSP) and disables header emission until rollout is restarted
 - Automation configuration scaffold that defaults a *fresh install's* every surface to `automatic_high_approval` -- every proposed CSP source below the high-risk threshold is auto-approved into the report-only policy on its own evidence, high-risk sources still require a human decision. An *upgraded* install is not retroactively changed: the default only ever fills in a surface that has no automation setting yet, so an administrator's existing choice -- including an explicit Manual selection -- is always left alone. This governs approval only, never enforcement: CSP still starts report-only on every surface, and promotion to enforce still requires a deliberate administrator action through the learning window and promotion gate, regardless of automation posture
 - Multi-surface scan support
 - `strict-dynamic` with automatic host-source suppression
@@ -112,7 +112,7 @@ The GitHub-channel ZIP includes a checksum-verified updater that uses WordPress'
 4. Review and approve only the external sources your site actually requires from the For Review tab.
 5. Reject or revert unwanted sources so the same fingerprint is suppressed from future proposals.
 6. Use the Policy Audit tab to inspect why a proposal exists and what policy version resulted from decisions.
-7. Use the Readiness page when validating schema health or deliberately resetting CSP data for a clean rollout attempt.
+7. Use the Readiness page to validate schema health, and the Recovery page when deliberately resetting all plugin data for a clean rollout attempt.
 8. After a reset, re-enable the required surfaces in report-only mode when you are ready to restart rollout.
 9. Stay in report-only mode until violations are understood.
 10. Promote one surface at a time into enforce mode.

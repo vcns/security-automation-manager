@@ -5,8 +5,9 @@
  * Registers a top-level "Security Automation Manager" menu. Submenu items are
  * ordered alphabetically by their left-nav label (not the list order below):
  *   - security-automation-manager                  – Overview: per-pillar status summary, plus
- *      Readiness (plugin-specific schema/runtime checks and reset), Updates (installed version,
- *      active build channel, manifest/checksum/applied-update status), and About tabs
+ *      Readiness (plugin-specific schema/runtime checks), Recovery (schema-downgrade status,
+ *      snapshot restore, configuration export/import, and full data reset), Updates (installed
+ *      version, active build channel, manifest/checksum/applied-update status), and About tabs
  *   - security-automation-manager-dashboard         – CSP: surface profiles, source inventory,
  *      violations, scan history, and settings (promotion gates, learning window, cron schedule,
  *      notify email), all as tabs on one page
@@ -39,6 +40,7 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Admin;
 
+use WP_SAM\Config_Portability;
 use WP_SAM\Plugin;
 use WP_SAM\Rollback_Guard;
 use WP_SAM\CSP\Automation_Config;
@@ -85,6 +87,8 @@ class Admin_UI {
 		// AJAX handlers.
 		add_action( 'admin_post_wp_sam_reset_data', array( $this, 'handle_reset_data' ) );
 		add_action( 'admin_post_wp_sam_restore_snapshot', array( $this, 'handle_restore_snapshot' ) );
+		add_action( 'admin_post_wp_sam_export_config', array( $this, 'handle_export_config' ) );
+		add_action( 'admin_post_wp_sam_import_config', array( $this, 'handle_import_config' ) );
 		add_action( 'admin_post_wp_sam_dismiss_conflicts', array( $this, 'handle_dismiss_conflicts' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
@@ -267,7 +271,7 @@ class Admin_UI {
 
 		$reset_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
-			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=readiness#wp-sam-reset' ) ),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=recovery#wp-sam-reset' ) ),
 			esc_html__( 'Reset', 'security-automation-manager' )
 		);
 
@@ -569,13 +573,13 @@ class Admin_UI {
 		$password     = (string) wp_unslash( $_POST['wp_sam_current_password'] ?? '' );
 		$confirmation = sanitize_text_field( wp_unslash( $_POST['wp_sam_reset_confirmation'] ?? '' ) );
 
-		if ( 'RESET CSP DATA' !== $confirmation || ! $this->current_user_password_is_valid( $password ) ) {
-			$this->redirect_to_readiness( 'failed' );
+		if ( 'RESET ALL PLUGIN DATA' !== $confirmation || ! $this->current_user_password_is_valid( $password ) ) {
+			$this->redirect_to_recovery( 'failed' );
 		}
 
 		$result = ( new Data_Resetter() )->reset();
 
-		$this->redirect_to_readiness(
+		$this->redirect_to_recovery(
 			empty( $result['tables_failed'] ) ? 'success' : 'partial'
 		);
 	}
@@ -601,20 +605,79 @@ class Admin_UI {
 		$confirmed   = ! empty( $_POST['wp_sam_restore_confirmation'] );
 
 		if ( $snapshot_id <= 0 || ! $confirmed ) {
-			$this->redirect_to_readiness_restore( 'failed', __( 'Confirmation checkbox was not checked.', 'security-automation-manager' ) );
+			$this->redirect_to_recovery_restore( 'failed', __( 'Confirmation checkbox was not checked.', 'security-automation-manager' ) );
 		}
 
 		$result = Rollback_Guard::restore_snapshot( $snapshot_id );
 
-		$this->redirect_to_readiness_restore(
+		$this->redirect_to_recovery_restore(
 			$result['ok'] ? 'success' : 'failed',
 			$result['ok'] ? '' : (string) ( $result['reason'] ?? '' )
 		);
 	}
 
-	private function redirect_to_readiness_restore( string $result, string $reason = '' ): void {
+	/**
+	 * Streams a JSON configuration export as a file download. Read-only --
+	 * unlike the other handlers on this page, nothing here is destructive,
+	 * so this only needs capability + nonce, no typed confirmation.
+	 */
+	public function handle_export_config(): void {
+		check_admin_referer( 'wp_sam_export_config' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to export plugin configuration.', 'security-automation-manager' ) );
+		}
+
+		$export   = ( new Config_Portability( $this->plugin->audit ) )->export();
+		$filename = sprintf( 'security-automation-manager-config-%s.json', gmdate( 'Y-m-d' ) );
+
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		echo wp_json_encode( $export, JSON_PRETTY_PRINT );
+		exit;
+	}
+
+	/**
+	 * Imports a previously-exported configuration file. The uploaded file
+	 * is read directly from PHP's temp upload path and decoded in memory --
+	 * never written into the uploads directory, so there's nothing left
+	 * behind to clean up or that a direct URL could later serve.
+	 * Config_Portability::apply() only ever writes option/table names it
+	 * already allowlists by name; nothing here trusts the file's contents
+	 * beyond that.
+	 */
+	public function handle_import_config(): void {
+		check_admin_referer( 'wp_sam_import_config' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to import plugin configuration.', 'security-automation-manager' ) );
+		}
+
+		if ( empty( $_POST['wp_sam_import_confirmation'] ) ) {
+			$this->redirect_to_recovery_import( 'failed', __( 'Confirmation checkbox was not checked.', 'security-automation-manager' ) );
+		}
+
+		if ( empty( $_FILES['wp_sam_import_file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['wp_sam_import_file']['tmp_name'] ) ) {
+			$this->redirect_to_recovery_import( 'failed', __( 'No file was uploaded.', 'security-automation-manager' ) );
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_get_contents -- a temp upload path, not a plugin-tree file; WP_Filesystem is unavailable this early and unnecessary for a one-shot read of PHP's own upload temp file.
+		$contents = file_get_contents( $_FILES['wp_sam_import_file']['tmp_name'] );
+		$decoded  = null !== $contents ? json_decode( $contents, true ) : null;
+
+		$portability = new Config_Portability( $this->plugin->audit );
+		$validation  = $portability->validate( $decoded );
+		if ( ! $validation['ok'] ) {
+			$this->redirect_to_recovery_import( 'failed', (string) ( $validation['reason'] ?? '' ) );
+		}
+
+		$portability->apply( $decoded );
+
+		$this->redirect_to_recovery_import( 'success' );
+	}
+
+	private function redirect_to_recovery_restore( string $result, string $reason = '' ): void {
 		$args = array(
-			'tab'            => 'readiness',
+			'tab'            => 'recovery',
 			'wp_sam_restore' => $result,
 		);
 		if ( '' !== $reason ) {
@@ -843,14 +906,29 @@ class Admin_UI {
 		return wp_check_password( $password, (string) $user->user_pass, (int) $user->ID );
 	}
 
-	private function redirect_to_readiness( string $result ): void {
+	private function redirect_to_recovery( string $result ): void {
 		$url = add_query_arg(
 			array(
-				'tab'          => 'readiness',
+				'tab'          => 'recovery',
 				'wp_sam_reset' => $result,
 			),
 			admin_url( 'admin.php?page=security-automation-manager#wp-sam-reset' )
 		);
+
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	private function redirect_to_recovery_import( string $result, string $reason = '' ): void {
+		$args = array(
+			'tab'           => 'recovery',
+			'wp_sam_import' => $result,
+		);
+		if ( '' !== $reason ) {
+			$args['wp_sam_import_reason'] = rawurlencode( $reason );
+		}
+
+		$url = add_query_arg( $args, admin_url( 'admin.php?page=security-automation-manager#wp-sam-portability' ) );
 
 		wp_safe_redirect( $url );
 		exit;
@@ -913,7 +991,7 @@ class Admin_UI {
 					(int) ( $flag['code'] ?? 0 )
 				)
 			),
-			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=readiness' ) ),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=recovery' ) ),
 			esc_html__( 'View recovery guidance', 'security-automation-manager' )
 		);
 	}

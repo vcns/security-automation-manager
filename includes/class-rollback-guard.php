@@ -114,7 +114,7 @@ class Rollback_Guard {
 			'rollback',
 			'schema_downgrade_detected',
 			sprintf(
-				'Installed database schema (v%1$d) is newer than the running plugin code (v%2$d). Automatic migration was refused. See the Readiness tab and docs/rollback-and-recovery.md.',
+				'Installed database schema (v%1$d) is newer than the running plugin code (v%2$d). Automatic migration was refused. See the Recovery tab and docs/rollback-and-recovery.md.',
 				$installed,
 				$code
 			),
