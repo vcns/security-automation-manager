@@ -353,7 +353,7 @@ $status_badge = static function ( string $status ): void {
 		$is_github_channel = 'github' === WP_SAM_DISTRIBUTION_CHANNEL;
 		?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em; max-width: 760px;">
+	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<tbody>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Installed version', 'security-automation-manager' ); ?></th>
@@ -378,7 +378,7 @@ $status_badge = static function ( string $status ): void {
 
 		<?php if ( ! $is_github_channel ) : ?>
 
-	<p class="description" style="max-width: 760px;">
+	<p class="description">
 			<?php esc_html_e( 'This install updates through the WordPress.org plugin directory, the same mechanism as any other WordPress.org plugin. No custom updater runs in this build, and it never contacts any VCNS-operated update service.', 'security-automation-manager' ); ?>
 	</p>
 
@@ -415,7 +415,7 @@ $status_badge = static function ( string $status ): void {
 		$updates_pending           = '' !== $updates_available_version && version_compare( WP_SAM_VERSION, $updates_available_version, '<' );
 		?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1.5em; max-width: 760px;">
+	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1.5em;">
 		<tbody>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Update manifest URL', 'security-automation-manager' ); ?></th>
@@ -492,7 +492,7 @@ $status_badge = static function ( string $status ): void {
 		</tbody>
 	</table>
 
-	<p class="description" style="max-width: 760px; margin-top: 1em;">
+	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'This updater never transmits or stores any credential or secret -- the manifest above is a public JSON file, and package integrity is verified with a SHA-256 checksum published in that same public manifest.', 'security-automation-manager' ); ?>
 	</p>
 
@@ -500,7 +500,7 @@ $status_badge = static function ( string $status ): void {
 
 	<?php else /* about */ : ?>
 
-	<div class="wp-sam-about" style="max-width: 760px; margin-top: 1em;">
+	<div class="wp-sam-about" style="margin-top: 1em;">
 		<p>
 			<?php esc_html_e( 'Security Automation Manager is built and maintained by VCNS Tech Ltd.', 'security-automation-manager' ); ?>
 		</p>
