@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.6] - 2026-08-18
+
+### Fixed
+
+- The Updates and About tabs (`Security Automation Manager > Overview`) had a leftover inline `max-width: 760px` not present on any other tab on that page (`Overview`, `Readiness` rely on `.widefat`'s natural full width with no such constraint). Removed.
+- `page-scripts.php`'s "Start Here" tab, and the `ajax_suggest_dependency_sri()`/`ajax_classify_dependency()` docblocks in `class-admin-ui.php`, claimed the "Suggest" SRI hash helper computes a hash "for you to review" before it's saved. Reading `assets/js/admin.js`'s handler shows the returned hash is written to the field and immediately posted to save it as the pinned value, with no confirmation step in between. Corrected the comments to describe the actual behaviour. Also corrected the same overstated framing in README.md and readme.txt.
+
+### Changed
+
+- The Cross-Origin-Embedder-Policy and Cross-Origin-Opener-Policy tabs' risk warnings now recommend a concrete minimum Report-Only duration (two weeks, covering a full content/traffic cycle), name the specific testing that can shorten it (manually exercising every embed/font/popup-based flow rather than relying on organic traffic alone), and note that the Report-Only Evidence table only reflects Chromium-based visitors, so manual testing in Safari/Firefox is still required regardless of wait time.
+
+No DB schema change; `WP_SAM_DB_VERSION` stays at 22.
+
 ## [2.9.5] - 2026-08-18
 
 ### Changed
