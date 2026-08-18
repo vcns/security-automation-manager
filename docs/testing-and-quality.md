@@ -90,7 +90,7 @@ Current baseline:
 - verify `child-src 'none'` appears in the emitted policy (Safari worker-src fallback)
 - verify approved sources and active hashes appear in the emitted header
 - insert a forbidden directive (`navigate-to 'self'`) directly into a profile's `overrides` JSON; reload and confirm: (a) `navigate-to` does not appear in the emitted CSP header; (b) a `warning`-severity event with event type `forbidden_directive_stripped` is present in `csp_audit_log`
-- enable `strict_dynamic` on a licensed profile; verify `'strict-dynamic'` is present in `script-src` and that approved host sources are absent from `script-src` (hosts are silently ignored by browsers when `strict-dynamic` is present — CSP3 §8.2)
+- enable `strict_dynamic` on a licensed profile; verify `'strict-dynamic'` is present in `script-src` and that approved host sources are absent from `script-src` (hosts are silently ignored by browsers when `strict-dynamic` is present - CSP3 §8.2)
 
 **Sandbox:**
 
@@ -100,7 +100,7 @@ Current baseline:
 **Trusted Types:**
 
 - with `require-trusted-types-for` set to `[]`, verify both Trusted Types directives are absent from the emitted header
-- enable Trusted Types on a licensed profile in enforce mode; verify the directives are emitted as `Content-Security-Policy-Report-Only` regardless of surface mode (Trusted Types defaults to report-only — Chromium-strong, not yet cross-browser)
+- enable Trusted Types on a licensed profile in enforce mode; verify the directives are emitted as `Content-Security-Policy-Report-Only` regardless of surface mode (Trusted Types defaults to report-only - Chromium-strong, not yet cross-browser)
 
 **wp-admin surface:**
 

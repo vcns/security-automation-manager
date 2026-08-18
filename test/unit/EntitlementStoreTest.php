@@ -51,7 +51,7 @@ class EntitlementStoreTest extends TestCase {
 		$this->assertSame( $expected, $identity );
 	}
 
-	// ── get_for_site() — active local row ────────────────────────────────────
+	// ── get_for_site() - active local row ────────────────────────────────────
 
 	public function test_get_for_site_returns_active_row_from_db(): void {
 		$row = array(
@@ -70,7 +70,7 @@ class EntitlementStoreTest extends TestCase {
 		$this->assertSame( 'pro', $result['tier'] );
 	}
 
-	// ── get_for_site() — no local row ────────────────────────────────────────
+	// ── get_for_site() - no local row ────────────────────────────────────────
 
 	public function test_get_for_site_returns_null_when_no_local_row(): void {
 		$GLOBALS['_wpdb_get_row'] = null;

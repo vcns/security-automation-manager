@@ -56,7 +56,7 @@ No functional or runtime changes in this release.
 ### Added
 
 - Bring-your-own private key on the Certificates Configuration tab: a pasted PEM is validated with `openssl_pkey_get_private()` before it is accepted (rejected keys are never saved), sealed by `Credential_Vault`, reused for every order in place of per-order generation, and removable via an explicit clear checkbox (`Certificate_Store::save_config()` gains a null-means-clear sentinel so "blank keeps stored secret" semantics stay intact). The UI shows the exact `openssl genpkey` command for the selected key type.
-- Requirements preflight on the Certificates page: missing ext/openssl or ext/sodium now yields a plain-language admin error (including what to ask the host for) instead of a mid-order fatal. Deliberately honest boundary: BYO key removes the key-generation dependency only — ACME JWS signing still requires ext/openssl.
+- Requirements preflight on the Certificates page: missing ext/openssl or ext/sodium now yields a plain-language admin error (including what to ask the host for) instead of a mid-order fatal. Deliberately honest boundary: BYO key removes the key-generation dependency only - ACME JWS signing still requires ext/openssl.
 - HSTS/HTTP-01 compatibility documented in the UI and a new docs FAQ: HSTS (and preload) binds browsers, not ACME validators; Let's Encrypt starts at http:// and follows the redirect to HTTPS, so only a closed port 80 breaks HTTP-01.
 
 ### Changed
@@ -72,7 +72,7 @@ No functional or runtime changes in this release.
 
 ### Changed
 
-- The Certificates page is split into three tabs — Configuration, Issue / Renew, Install — using the same nav-tab conventions as the CSP dashboard, and content now uses the full window width (the old single page constrained everything to 640-860px). Settings save per-tab: each tab's form carries a section marker and the handler only overrides that section's keys, so saving Install settings can never clobber Configuration and vice versa.
+- The Certificates page is split into three tabs - Configuration, Issue / Renew, Install - using the same nav-tab conventions as the CSP dashboard, and content now uses the full window width (the old single page constrained everything to 640-860px). Settings save per-tab: each tab's form carries a section marker and the handler only overrides that section's keys, so saving Install settings can never clobber Configuration and vice versa.
 - The Domains box pre-fills from the site's own host (plus `www.` for bare registrable domains) when unconfigured.
 
 ## [2.6.1] - 2026-08-18
@@ -580,7 +580,7 @@ This release includes database migrations through schema version 7. Existing ins
 
 - Plugin version metadata now targets `1.0.1` for the initial GitHub release package.
 - `WP_CSP_DB_VERSION` bumped from `'2'` to `'7'` (v3 = sample column; v4 = audit log table; v5 = policy change decision ledger and proposal metadata; v6 = violation rollups; v7 = provenance and policy history foundation).
-- Policy builder emits `Reporting-Endpoints` and `Report-To` headers immediately before the CSP header — any code that expects the CSP to be the first header will need updating.
+- Policy builder emits `Reporting-Endpoints` and `Report-To` headers immediately before the CSP header - any code that expects the CSP to be the first header will need updating.
 - Product copy no longer describes all premium access as a one-time payment; entitlement-gated capabilities are compatible with future VCNS Portal account management.
 
 ### Fixed

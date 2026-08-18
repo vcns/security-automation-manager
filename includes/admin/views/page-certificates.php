@@ -79,7 +79,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 		<p>
 			<strong><?php esc_html_e( 'Missing PHP requirement.', 'security-automation-manager' ); ?></strong>
 			<?php if ( ! extension_loaded( 'openssl' ) ) : ?>
-				<?php esc_html_e( 'The openssl PHP extension is not available on this server. ACME request signing cannot work without it, so certificate automation is disabled — supplying your own private key does not remove this requirement, because every ACME API call must be cryptographically signed. Ask your host to enable ext/openssl (it ships with PHP and is required by WordPress features such as HTTPS API calls).', 'security-automation-manager' ); ?>
+				<?php esc_html_e( 'The openssl PHP extension is not available on this server. ACME request signing cannot work without it, so certificate automation is disabled - supplying your own private key does not remove this requirement, because every ACME API call must be cryptographically signed. Ask your host to enable ext/openssl (it ships with PHP and is required by WordPress features such as HTTPS API calls).', 'security-automation-manager' ); ?>
 			<?php else : ?>
 				<?php esc_html_e( 'The sodium PHP extension is not available on this server; credentials and private keys cannot be encrypted at rest, so certificate automation is disabled. Ask your host to enable ext/sodium (bundled with PHP since 7.2).', 'security-automation-manager' ); ?>
 			<?php endif; ?>
@@ -134,7 +134,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 					<p><label><?php esc_html_e( 'Country (two-letter code)', 'security-automation-manager' ); ?><br /><input type="text" name="wp_sam_cert_country" class="small-text" maxlength="2" value="<?php echo esc_attr( (string) $wp_sam_cert_config['country'] ); ?>" placeholder="GB" /></label></p>
 					<p><label><?php esc_html_e( 'State / county / region', 'security-automation-manager' ); ?><br /><input type="text" name="wp_sam_cert_state" class="regular-text" value="<?php echo esc_attr( (string) $wp_sam_cert_config['state'] ); ?>" /></label></p>
 					<p><label><?php esc_html_e( 'City / locality', 'security-automation-manager' ); ?><br /><input type="text" name="wp_sam_cert_locality" class="regular-text" value="<?php echo esc_attr( (string) $wp_sam_cert_config['locality'] ); ?>" /></label></p>
-					<p class="description"><?php esc_html_e( 'Optional. These go into the certificate signing request\'s subject alongside the domain. Be aware that domain-validated CAs — Let\'s Encrypt included — validate and issue on the domain names only and omit organisation details from the final certificate; they matter for CAs and internal workflows that consume the CSR itself.', 'security-automation-manager' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Optional. These go into the certificate signing request\'s subject alongside the domain. Be aware that domain-validated CAs - Let\'s Encrypt included - validate and issue on the domain names only and omit organisation details from the final certificate; they matter for CAs and internal workflows that consume the CSR itself.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -142,20 +142,20 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				<td>
 					<label style="margin-right:16px">
 						<input type="radio" name="wp_sam_cert_challenge" value="dns-01" <?php checked( $wp_sam_cert_config['challenge'], 'dns-01' ); ?> />
-						<?php esc_html_e( 'DNS-01 — prove control via a DNS TXT record through your provider\'s API (required for wildcards)', 'security-automation-manager' ); ?>
+						<?php esc_html_e( 'DNS-01 - prove control via a DNS TXT record through your provider\'s API (required for wildcards)', 'security-automation-manager' ); ?>
 					</label><br />
 					<label>
 						<input type="radio" name="wp_sam_cert_challenge" value="http-01" <?php checked( $wp_sam_cert_config['challenge'], 'http-01' ); ?> />
-						<?php esc_html_e( 'HTTP-01 — prove control via a file this site serves itself (no DNS credentials needed; the CA must reach this site on port 80; no wildcards)', 'security-automation-manager' ); ?>
+						<?php esc_html_e( 'HTTP-01 - prove control via a file this site serves itself (no DNS credentials needed; the CA must reach this site on port 80; no wildcards)', 'security-automation-manager' ); ?>
 					</label>
-					<p class="description"><?php esc_html_e( 'HSTS (including hstspreload.org registration) does not conflict with HTTP-01: HSTS is a browser-only policy, and ACME validation servers are not browsers — Let\'s Encrypt starts at http:// and follows your redirect to HTTPS, which is exactly what an HSTS site serves on port 80. Only a firewalled port 80 breaks HTTP-01.', 'security-automation-manager' ); ?></p>
+					<p class="description"><?php esc_html_e( 'HSTS (including hstspreload.org registration) does not conflict with HTTP-01: HSTS is a browser-only policy, and ACME validation servers are not browsers - Let\'s Encrypt starts at http:// and follows your redirect to HTTPS, which is exactly what an HSTS site serves on port 80. Only a firewalled port 80 breaks HTTP-01.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<tr class="wp-sam-cert-dns-only">
 				<th scope="row"><label for="wp_sam_cert_provider"><?php esc_html_e( 'DNS provider (DNS-01)', 'security-automation-manager' ); ?></label></th>
 				<td>
 					<select id="wp_sam_cert_provider" name="wp_sam_cert_provider">
-						<option value=""><?php esc_html_e( '— None (fall back to HTTP-01, no wildcards) —', 'security-automation-manager' ); ?></option>
+						<option value=""><?php esc_html_e( '- None (fall back to HTTP-01, no wildcards) -', 'security-automation-manager' ); ?></option>
 						<?php foreach ( $wp_sam_providers as $wp_sam_slug => $wp_sam_class ) : ?>
 						<option value="<?php echo esc_attr( $wp_sam_slug ); ?>" <?php selected( $wp_sam_cert_config['provider'], $wp_sam_slug ); ?>><?php echo esc_html( $wp_sam_class::label() ); ?></option>
 						<?php endforeach; ?>
@@ -173,7 +173,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 						$wp_sam_is_active   = $wp_sam_slug === $wp_sam_cert_config['provider'];
 						$wp_sam_name_attr   = $wp_sam_is_active ? 'name="wp_sam_cert_cred_' . esc_attr( $wp_sam_field_key ) . '"' : 'data-cred-name="wp_sam_cert_cred_' . esc_attr( $wp_sam_field_key ) . '"';
 						$wp_sam_has_stored  = $wp_sam_is_active && '' !== ( $wp_sam_cert_config['dns_credentials'][ $wp_sam_field_key ] ?? '' );
-						$wp_sam_placeholder = $wp_sam_has_stored ? __( '•••••• (stored — leave blank to keep)', 'security-automation-manager' ) : (string) ( $wp_sam_field['placeholder'] ?? '' );
+						$wp_sam_placeholder = $wp_sam_has_stored ? __( '•••••• (stored - leave blank to keep)', 'security-automation-manager' ) : (string) ( $wp_sam_field['placeholder'] ?? '' );
 						$wp_sam_is_secret   = $wp_sam_field['secret'] ?? true;
 						// Non-secret fields (endpoints, usernames, zone names) show their
 						// stored value for editing; secret fields never round-trip.
@@ -195,7 +195,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 						<?php endif; ?>
 					</p>
 					<?php endforeach; ?>
-					<p class="description"><?php esc_html_e( 'Stored encrypted at rest (sodium secretbox). Use the narrowest token scope your provider offers — a DNS API credential is a domain-takeover-grade secret.', 'security-automation-manager' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Stored encrypted at rest (sodium secretbox). Use the narrowest token scope your provider offers - a DNS API credential is a domain-takeover-grade secret.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<?php endforeach; ?>
@@ -205,7 +205,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 					<label><input type="radio" name="wp_sam_cert_key_type" value="ec-256" <?php checked( $wp_sam_cert_config['key_type'], 'ec-256' ); ?> /> <?php esc_html_e( 'ECDSA P-256 (recommended)', 'security-automation-manager' ); ?></label><br />
 					<label><input type="radio" name="wp_sam_cert_key_type" value="rsa-2048" <?php checked( $wp_sam_cert_config['key_type'], 'rsa-2048' ); ?> /> <?php esc_html_e( 'RSA 2048 (legacy compatibility)', 'security-automation-manager' ); ?></label>
 					<?php if ( $wp_sam_key_capability['ok'] ) : ?>
-					<p class="description">✓ <?php esc_html_e( 'This server can generate certificate keys automatically — nothing further needed here.', 'security-automation-manager' ); ?></p>
+					<p class="description">✓ <?php esc_html_e( 'This server can generate certificate keys automatically - nothing further needed here.', 'security-automation-manager' ); ?></p>
 					<?php endif; ?>
 				</td>
 			</tr>
@@ -224,7 +224,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 						</details>
 						<?php endif; ?>
 					<?php endif; ?>
-					<textarea id="wp_sam_cert_custom_key" name="wp_sam_cert_custom_key" class="large-text code" rows="5" autocomplete="off" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['custom_key_pem'] ? __( '•••••• (a key is stored — leave blank to keep it)', 'security-automation-manager' ) : '-----BEGIN PRIVATE KEY-----' ); ?>"></textarea>
+					<textarea id="wp_sam_cert_custom_key" name="wp_sam_cert_custom_key" class="large-text code" rows="5" autocomplete="off" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['custom_key_pem'] ? __( '•••••• (a key is stored - leave blank to keep it)', 'security-automation-manager' ) : '-----BEGIN PRIVATE KEY-----' ); ?>"></textarea>
 					<?php if ( '' !== $wp_sam_cert_config['custom_key_pem'] && $wp_sam_key_capability['ok'] ) : ?>
 					<p><label><input type="checkbox" name="wp_sam_cert_clear_custom_key" value="1" /> <?php esc_html_e( 'Remove the stored key and go back to generating one automatically per order (this server can do so now)', 'security-automation-manager' ); ?></label></p>
 					<?php endif; ?>
@@ -232,12 +232,12 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 						<?php
 						echo $wp_sam_key_capability['ok']
 							? esc_html__( 'A key is already stored from when this server could not generate one, or was set deliberately to control key material. It overrides the key-type choice above and is reused for every order. Paste a replacement below, or use the checkbox to remove it now that automatic generation works.', 'security-automation-manager' )
-							: esc_html__( 'Generate a private key yourself — on your own computer, using the OpenSSL command line — and paste its contents below. It is validated before saving, stored encrypted at rest, and reused for every order.', 'security-automation-manager' );
+							: esc_html__( 'Generate a private key yourself - on your own computer, using the OpenSSL command line - and paste its contents below. It is validated before saving, stored encrypted at rest, and reused for every order.', 'security-automation-manager' );
 						?>
 					</p>
 					<p class="wp-sam-cert-keygen-cmd" data-keytype="ec-256"><code>openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out privkey.pem</code></p>
 					<p class="wp-sam-cert-keygen-cmd" data-keytype="rsa-2048" style="display:none"><code>openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out privkey.pem</code></p>
-					<p class="description"><?php esc_html_e( 'Then paste the contents of privkey.pem above — and keep the file somewhere safe; whoever holds the key holds the certificate.', 'security-automation-manager' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Then paste the contents of privkey.pem above - and keep the file somewhere safe; whoever holds the key holds the certificate.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<?php endif; ?>
@@ -265,7 +265,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				<td>
 					<?php if ( null !== $wp_sam_cert_latest ) : ?>
 						<code><?php echo esc_html( implode( ', ', (array) $wp_sam_cert_latest['domains'] ) ); ?></code>
-						(<?php echo esc_html( (string) $wp_sam_cert_latest['environment'] ); ?>) —
+						(<?php echo esc_html( (string) $wp_sam_cert_latest['environment'] ); ?>) -
 						<?php
 						printf(
 							/* translators: %s: expiry date/time (UTC). */
@@ -286,13 +286,13 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 						(<?php echo esc_html( $wp_sam_cert_run['at'] ); ?> UTC)
 					<?php endif; ?>
 					<?php if ( '' !== $wp_sam_cert_run['detail'] ) : ?>
-						— <?php echo esc_html( $wp_sam_cert_run['detail'] ); ?>
+						- <?php echo esc_html( $wp_sam_cert_run['detail'] ); ?>
 					<?php endif; ?>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Automatic renewal', 'security-automation-manager' ); ?></th>
-				<td><?php esc_html_e( 'Checked daily via WP-Cron; production certificates re-issue automatically inside the 30-day window before expiry. WP-Cron only fires when the site receives traffic — for an idle or low-traffic site, point a real system cron at wp-cron.php (see the documentation on the Install tab).', 'security-automation-manager' ); ?></td>
+				<td><?php esc_html_e( 'Checked daily via WP-Cron; production certificates re-issue automatically inside the 30-day window before expiry. WP-Cron only fires when the site receives traffic - for an idle or low-traffic site, point a real system cron at wp-cron.php (see the documentation on the Install tab).', 'security-automation-manager' ); ?></td>
 			</tr>
 		</tbody>
 	</table>
@@ -309,7 +309,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 	<!-- ── Install tab ───────────────────────────────────────────────────── -->
 	<p class="description">
 		<strong><?php esc_html_e( 'Important:', 'security-automation-manager' ); ?></strong>
-		<?php esc_html_e( 'Issuing the certificate happens entirely inside WordPress; INSTALLING it into the web server depends on your hosting platform. Automatic installation relies on your control panel exposing an API such as cPanel\'s install_ssl — implementation steps vary by platform. The full platform-by-platform guide ships with the plugin in docs/certificates.md.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'Issuing the certificate happens entirely inside WordPress; INSTALLING it into the web server depends on your hosting platform. Automatic installation relies on your control panel exposing an API such as cPanel\'s install_ssl - implementation steps vary by platform. The full platform-by-platform guide ships with the plugin in docs/certificates.md.', 'security-automation-manager' ); ?>
 	</p>
 
 	<form method="post" action="<?php echo esc_url( $wp_sam_action_url ); ?>">
@@ -343,7 +343,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 					</p>
 					<p class="description">
 						<strong><?php esc_html_e( 'Not sure what path to use, or lacking permissions?', 'security-automation-manager' ); ?></strong>
-						<?php esc_html_e( 'Your hosting provider can plug this gap in minutes — ask them for: (1) a directory outside the document root that PHP can write to, for storing TLS certificate files; and (2) whether they can install the certificate from that directory on renewal, or alternatively enable API access (e.g. a cPanel API token) so the plugin can install it automatically instead. Ultimately all this mode needs is a path and write permission to it.', 'security-automation-manager' ); ?>
+						<?php esc_html_e( 'Your hosting provider can plug this gap in minutes - ask them for: (1) a directory outside the document root that PHP can write to, for storing TLS certificate files; and (2) whether they can install the certificate from that directory on renewal, or alternatively enable API access (e.g. a cPanel API token) so the plugin can install it automatically instead. Ultimately all this mode needs is a path and write permission to it.', 'security-automation-manager' ); ?>
 					</p>
 				</td>
 			</tr>
@@ -352,7 +352,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				<td>
 					<p><label><?php esc_html_e( 'Host (hostname:2083)', 'security-automation-manager' ); ?><br /><input type="text" name="wp_sam_cert_cpanel_host" class="regular-text" value="<?php echo esc_attr( (string) $wp_sam_cert_config['cpanel_host'] ); ?>" placeholder="server.example.net:2083" /></label></p>
 					<p><label><?php esc_html_e( 'cPanel username', 'security-automation-manager' ); ?><br /><input type="text" name="wp_sam_cert_cpanel_user" class="regular-text" value="<?php echo esc_attr( (string) $wp_sam_cert_config['cpanel_user'] ); ?>" /></label></p>
-					<p><label><?php esc_html_e( 'API token', 'security-automation-manager' ); ?><br /><input type="password" autocomplete="off" name="wp_sam_cert_cpanel_token" class="regular-text" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['cpanel_token'] ? __( '•••••• (stored — leave blank to keep)', 'security-automation-manager' ) : 'cPanel > Security > Manage API Tokens' ); ?>" /></label></p>
+					<p><label><?php esc_html_e( 'API token', 'security-automation-manager' ); ?><br /><input type="password" autocomplete="off" name="wp_sam_cert_cpanel_token" class="regular-text" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['cpanel_token'] ? __( '•••••• (stored - leave blank to keep)', 'security-automation-manager' ) : 'cPanel > Security > Manage API Tokens' ); ?>" /></label></p>
 				</td>
 			</tr>
 		</table>

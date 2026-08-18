@@ -4,7 +4,7 @@
  *
  * bootstrap.php requires this file at the end of its setup block, after
  * spl_autoload_register(). The class_exists() guard below (with the second
- * argument false to suppress autoloading) is the actual runtime protection —
+ * argument false to suppress autoloading) is the actual runtime protection -
  * it prevents the stub from being defined if the real class was already loaded
  * by the autoloader. Any code added to bootstrap.php that references
  * Plugin_Nonce_Manager before this require_once will load the real class and

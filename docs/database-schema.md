@@ -6,7 +6,7 @@ The plugin creates custom tables on activation. All table names are prefixed wit
 
 | Version | Change |
 |---------|--------|
-| v1 | Initial schema — seven tables |
+| v1 | Initial schema - seven tables |
 | v2 | `csp_policy_profiles` gains `override_expires_at`, `override_owner` |
 | v3 | `csp_violation_reports` gains `sample` column |
 | v4 | `sam_audit_log` append-only table added (named `csp_audit_log` until v9) |
@@ -30,16 +30,16 @@ Purpose:
 Key columns:
 
 - `id`
-- `surface` — `frontend`, `admin`, `login`, `api`
-- `mode` — `disabled`, `report-only`, `enforce`
-- `directives` — JSON array map of directive name → source list (e.g. `{"script-src":["'self'"],"img-src":["'self'"]}`)
-- `overrides` — JSON map of admin-applied temporary directive overrides merged on top of `directives` at emit time
-- `strict_dynamic` — `0` or `1`; when `1` and the `strict_dynamic` feature is licensed, `'strict-dynamic'` is appended to `script-src` and approved host sources are suppressed from `script-src` (host allowlists are silently ignored by browsers when `strict-dynamic` is present — CSP3 §8.2)
-- `trusted_types` — `0` or `1`; when `1`, emits `require-trusted-types-for 'script'` (always report-only regardless of surface mode)
-- `bypass_img_src_data`, `bypass_font_src_data` — `0` or `1`; per-surface "Bypass Best Practices" toggles that append `data:` to `img-src`/`font-src` respectively (low risk: never extended to a directive where a `data:`/`blob:` source has real execution risk)
-- `bypass_style_attr_unsafe_hashes` — `0` or `1`; per-surface toggle that appends `'unsafe-hashes'` to `style-src-attr` (medium risk: only takes effect together with an approved `style-src-attr` hash; never affects `script-src-attr` or script execution). See `Policy_Builder::BYPASS_CATALOG` and `docs/threat-model.md` "Bypass Best Practices catalog" for the full reasoning behind each entry
-- `override_expires_at` — UTC datetime at which the current override should be considered stale
-- `override_owner` — identifier of the admin user who applied the override
+- `surface` - `frontend`, `admin`, `login`, `api`
+- `mode` - `disabled`, `report-only`, `enforce`
+- `directives` - JSON array map of directive name → source list (e.g. `{"script-src":["'self'"],"img-src":["'self'"]}`)
+- `overrides` - JSON map of admin-applied temporary directive overrides merged on top of `directives` at emit time
+- `strict_dynamic` - `0` or `1`; when `1` and the `strict_dynamic` feature is licensed, `'strict-dynamic'` is appended to `script-src` and approved host sources are suppressed from `script-src` (host allowlists are silently ignored by browsers when `strict-dynamic` is present - CSP3 §8.2)
+- `trusted_types` - `0` or `1`; when `1`, emits `require-trusted-types-for 'script'` (always report-only regardless of surface mode)
+- `bypass_img_src_data`, `bypass_font_src_data` - `0` or `1`; per-surface "Bypass Best Practices" toggles that append `data:` to `img-src`/`font-src` respectively (low risk: never extended to a directive where a `data:`/`blob:` source has real execution risk)
+- `bypass_style_attr_unsafe_hashes` - `0` or `1`; per-surface toggle that appends `'unsafe-hashes'` to `style-src-attr` (medium risk: only takes effect together with an approved `style-src-attr` hash; never affects `script-src-attr` or script execution). See `Policy_Builder::BYPASS_CATALOG` and `docs/threat-model.md` "Bypass Best Practices catalog" for the full reasoning behind each entry
+- `override_expires_at` - UTC datetime at which the current override should be considered stale
+- `override_owner` - identifier of the admin user who applied the override
 - `created_at`, `updated_at`
 
 Operational notes:
@@ -59,22 +59,22 @@ Key columns:
 
 - `id`
 - `surface`
-- `directive` — the CSP directive this source applies to (e.g. `script-src`, `img-src`)
-- `source_uri` — full URL of the discovered source
-- `source_scheme` — scheme component (e.g. `https`)
-- `source_host` — host component as it should appear in the CSP directive value
-- `owner_component` — plugin or theme that introduced this source (if detectable)
-- `owner_type` — `plugin`, `theme`, `core`, or `custom`
-- `approval_state` — `pending`, `approved`, `denied`
+- `directive` - the CSP directive this source applies to (e.g. `script-src`, `img-src`)
+- `source_uri` - full URL of the discovered source
+- `source_scheme` - scheme component (e.g. `https`)
+- `source_host` - host component as it should appear in the CSP directive value
+- `owner_component` - plugin or theme that introduced this source (if detectable)
+- `owner_type` - `plugin`, `theme`, `core`, or `custom`
+- `approval_state` - `pending`, `approved`, `denied`
 - `first_seen_at`, `last_seen_at`
-- `approved_at` — set when an admin approves the row
-- `expires_at` — optional expiry; stale approved sources should be flagged for review
-- `notes` — free-text admin annotation
-- `risk_level` — `high`, `medium`, or `low`; computed from directive/source impact
-- `risk_reason` — human-readable risk rationale
-- `decision_fingerprint` — SHA-256 of `(surface, directive, source_host)` used for suppression
-- `evidence_count` — number of observations of the same candidate
-- `last_decision`, `decision_reason`, `decided_at`, `decided_by` — latest administrator decision metadata
+- `approved_at` - set when an admin approves the row
+- `expires_at` - optional expiry; stale approved sources should be flagged for review
+- `notes` - free-text admin annotation
+- `risk_level` - `high`, `medium`, or `low`; computed from directive/source impact
+- `risk_reason` - human-readable risk rationale
+- `decision_fingerprint` - SHA-256 of `(surface, directive, source_host)` used for suppression
+- `evidence_count` - number of observations of the same candidate
+- `last_decision`, `decision_reason`, `decided_at`, `decided_by` - latest administrator decision metadata
 
 Operational notes:
 
@@ -94,22 +94,22 @@ Key columns:
 
 - `id`
 - `surface`
-- `directive` — `script-src`, `style-src`, or `style-src-attr` (inline `style="..."` attribute values; unlike the element directives, Policy_Builder must also add `'unsafe-hashes'` to `style-src-attr` for a hash there to take effect, per CSP3 §6.1.2)
-- `hash_algo` — `sha256`, `sha384`, or `sha512`
-- `hash_value` — Base64-encoded hash of the raw block content
-- `content_fingerprint` — deterministic fingerprint of the raw content used for deduplication and change detection
-- `source_file` — the template or PHP file that emits this block, if detectable
-- `source_context` — optional surrounding context for operator review
-- `status` — `active`, `retired`
+- `directive` - `script-src`, `style-src`, or `style-src-attr` (inline `style="..."` attribute values; unlike the element directives, Policy_Builder must also add `'unsafe-hashes'` to `style-src-attr` for a hash there to take effect, per CSP3 §6.1.2)
+- `hash_algo` - `sha256`, `sha384`, or `sha512`
+- `hash_value` - Base64-encoded hash of the raw block content
+- `content_fingerprint` - deterministic fingerprint of the raw content used for deduplication and change detection
+- `source_file` - the template or PHP file that emits this block, if detectable
+- `source_context` - optional surrounding context for operator review
+- `status` - `active`, `retired`
 - `first_seen_at`, `last_seen_at`
-- `retired_at` — set when the block is no longer observed during rescans
+- `retired_at` - set when the block is no longer observed during rescans
 
 Operational notes:
 
 - hashes are computed from observed inline content; there is no approval workflow because the hash already binds to exact content
 - stale hashes (blocks no longer emitted) are marked `retired` during scheduled rescans
 - policy construction includes only `active` hashes
-- any whitespace or formatting change in the inline block produces a different hash — canonicalization at capture time is critical for stability
+- any whitespace or formatting change in the inline block produces a different hash - canonicalization at capture time is critical for stability
 
 ### `csp_violation_reports`
 
@@ -120,22 +120,22 @@ Purpose:
 Key columns:
 
 - `id`
-- `profile_surface` — the surface that issued the policy generating this violation
-- `blocked_uri` — the URL or token that was blocked
-- `document_uri` — the page URL where the violation occurred
-- `violated_directive` — the directive as reported in the `violated-directive` field
-- `effective_directive` — the directive actually enforced (may differ from `violated_directive` due to fallback)
-- `original_policy` — the full policy string active when the violation occurred
-- `source_file` — file and URL containing the offending script or style
+- `profile_surface` - the surface that issued the policy generating this violation
+- `blocked_uri` - the URL or token that was blocked
+- `document_uri` - the page URL where the violation occurred
+- `violated_directive` - the directive as reported in the `violated-directive` field
+- `effective_directive` - the directive actually enforced (may differ from `violated_directive` due to fallback)
+- `original_policy` - the full policy string active when the violation occurred
+- `source_file` - file and URL containing the offending script or style
 - `line_number`, `column_number`
-- `status_code` — HTTP status of the document that triggered the violation
-- `disposition` — `enforce` or `report`
+- `status_code` - HTTP status of the document that triggered the violation
+- `disposition` - `enforce` or `report`
 - `referrer`
 - `user_agent`
-- `sample` — first ~40 characters of the offending inline block; populated only when `'report-sample'` is present in the emitting directive (legacy field: `script-sample`; Reporting API field: `sample`)
-- `reported_at` — UTC datetime of first or most recent report
-- `fingerprint` — SHA-256 of `(profile_surface, blocked_uri, violated_directive)` used for deduplication
-- `occurrence_count` — incremented on each duplicate report
+- `sample` - first ~40 characters of the offending inline block; populated only when `'report-sample'` is present in the emitting directive (legacy field: `script-sample`; Reporting API field: `sample`)
+- `reported_at` - UTC datetime of first or most recent report
+- `fingerprint` - SHA-256 of `(profile_surface, blocked_uri, violated_directive)` used for deduplication
+- `occurrence_count` - incremented on each duplicate report
 
 Operational notes:
 
@@ -157,13 +157,13 @@ Purpose:
 Key columns:
 
 - `id`
-- `trigger_type` — `manual`, `cron`
-- `status` — `running`, `completed`, `failed`
-- `sources_added`, `sources_removed` — count of source inventory changes
-- `hashes_added`, `hashes_removed` — count of hash inventory changes
-- `policy_changed` — `0` or `1`; set when the scan altered the effective policy
-- `diff_summary` — JSON summary of specific policy changes for operator review
-- `warnings` — JSON array of non-fatal issues encountered during the scan
+- `trigger_type` - `manual`, `cron`
+- `status` - `running`, `completed`, `failed`
+- `sources_added`, `sources_removed` - count of source inventory changes
+- `hashes_added`, `hashes_removed` - count of hash inventory changes
+- `policy_changed` - `0` or `1`; set when the scan altered the effective policy
+- `diff_summary` - JSON summary of specific policy changes for operator review
+- `warnings` - JSON array of non-fatal issues encountered during the scan
 - `started_at`
 - `completed_at`
 
@@ -182,16 +182,16 @@ Purpose:
 Key columns:
 
 - `id`
-- `site_identity` — truncated SHA-256 hash of the site URL; binds the entitlement to a specific WordPress install
-- `product_key` — identifies the premium product tier (e.g. `security-automation-manager`)
-- `tier` — `free`, `pro`
-- `status` — `active`, `revoked`, `expired`, `grace`
+- `site_identity` - truncated SHA-256 hash of the site URL; binds the entitlement to a specific WordPress install
+- `product_key` - identifies the premium product tier (e.g. `security-automation-manager`)
+- `tier` - `free`, `pro`
+- `status` - `active`, `revoked`, `expired`, `grace`
 - `stripe_customer_id`, `stripe_session_id`, `stripe_payment_intent_id`
-- `config_version` — the remote config version active at grant time
+- `config_version` - the remote config version active at grant time
 - `granted_at`
-- `expires_at` — if populated, entitlement expires at this UTC datetime
+- `expires_at` - if populated, entitlement expires at this UTC datetime
 - `revoked_at`, `revocation_reason`
-- `grace_until` — deadline before `grace` status downgrades to `expired`
+- `grace_until` - deadline before `grace` status downgrades to `expired`
 - `last_validated_at`
 - `created_at`, `updated_at`
 
@@ -210,12 +210,12 @@ Purpose:
 Key columns:
 
 - `id`
-- `stripe_event_id` — Stripe-assigned event identifier; UNIQUE-constrained
-- `stripe_session_id` — Checkout Session ID if applicable
-- `event_type` — the Stripe event type (e.g. `checkout.session.completed`)
+- `stripe_event_id` - Stripe-assigned event identifier; UNIQUE-constrained
+- `stripe_session_id` - Checkout Session ID if applicable
+- `event_type` - the Stripe event type (e.g. `checkout.session.completed`)
 - `processed_at`
-- `outcome` — `granted`, `revoked`, `ignored`, `error`
-- `detail` — short human-readable description for support and debugging
+- `outcome` - `granted`, `revoked`, `ignored`, `error`
+- `detail` - short human-readable description for support and debugging
 
 Operational notes:
 
@@ -231,16 +231,16 @@ Purpose:
 Key columns:
 
 - `id`
-- `component` — originating module (e.g. `policy_builder`, `webhook`, `scheduler`, `config_resolver`)
-- `event` — machine-readable event type (e.g. `forbidden_directive_stripped`, `signature_failed`, `violations_purged`)
-- `detail` — human-readable description
-- `severity` — `info`, `warning`, `error`
-- `user_id` — WordPress user ID of the logged-in admin who triggered the event, if applicable
-- `created_at` — UTC datetime
+- `component` - originating module (e.g. `policy_builder`, `webhook`, `scheduler`, `config_resolver`)
+- `event` - machine-readable event type (e.g. `forbidden_directive_stripped`, `signature_failed`, `violations_purged`)
+- `detail` - human-readable description
+- `severity` - `info`, `warning`, `error`
+- `user_id` - WordPress user ID of the logged-in admin who triggered the event, if applicable
+- `created_at` - UTC datetime
 
 Operational notes:
 
-- **this table is strictly append-only** — no `UPDATE` or `DELETE` is ever issued against it; it is the permanent, immutable audit trail
+- **this table is strictly append-only** - no `UPDATE` or `DELETE` is ever issued against it; it is the permanent, immutable audit trail
 - `warning` and `error` events are additionally written to the PHP `error_log` and pushed to the admin notices FIFO queue (max 20 entries) for transient display
 - events are written before the associated action completes where possible, so that failures are always recorded
 
@@ -253,22 +253,22 @@ Purpose:
 Key columns:
 
 - `id`
-- `change_type` — currently `source`
+- `change_type` - currently `source`
 - `surface`
 - `directive`
 - `source_host`, `source_uri`
-- `decision_fingerprint` — SHA-256 of `(surface, directive, source_host)`
-- `action` — `approved`, `rejected`, `reverted`, or `undone`
+- `decision_fingerprint` - SHA-256 of `(surface, directive, source_host)`
+- `action` - `approved`, `rejected`, `reverted`, or `undone`
 - `risk_level`, `risk_reason`
-- `reason` — required administrator-provided decision note
+- `reason` - required administrator-provided decision note
 - `user_id`
-- `state` — explicit lifecycle state such as `approved`, `rejected`, `reverted`, or `pending` for an undone decision
-- `actor_type`, `actor_id` — final decision actor metadata; AI providers are recommendation sources, not actors
-- `previous_policy_version_id`, `policy_version_id` — policy snapshot references when the decision materially changes policy
-- `decision_engine_version`, `deterministic_result` — versioned deterministic rule output
-- `evidence_snapshot` — compact source inventory evidence present when the decision was made
+- `state` - explicit lifecycle state such as `approved`, `rejected`, `reverted`, or `pending` for an undone decision
+- `actor_type`, `actor_id` - final decision actor metadata; AI providers are recommendation sources, not actors
+- `previous_policy_version_id`, `policy_version_id` - policy snapshot references when the decision materially changes policy
+- `decision_engine_version`, `deterministic_result` - versioned deterministic rule output
+- `evidence_snapshot` - compact source inventory evidence present when the decision was made
 - `software_version`
-- `suppression_active` — `1` when this decision suppresses future proposals for the fingerprint
+- `suppression_active` - `1` when this decision suppresses future proposals for the fingerprint
 - `created_at`
 
 Operational notes:
@@ -291,7 +291,7 @@ Key columns:
 - `version_number`
 - `mode`
 - `effective_header`
-- `policy_snapshot` — JSON snapshot containing directives, approved sources, active hashes, and metadata
+- `policy_snapshot` - JSON snapshot containing directives, approved sources, active hashes, and metadata
 - `previous_version_id`
 - `trigger_type`, `trigger_id`
 - `software_version`
@@ -335,16 +335,16 @@ Purpose:
 Key columns:
 
 - `id`
-- `pillar` — e.g. `x-frame-options`, `x-content-type-options`, `referrer-policy`
-- `surface` — `frontend` | `admin` | `login` | `api`
+- `pillar` - e.g. `x-frame-options`, `x-content-type-options`, `referrer-policy`
+- `surface` - `frontend` | `admin` | `login` | `api`
 - `enabled`
-- `payload` — JSON, shape is pillar-specific (e.g. `{"value": "SAMEORIGIN"}`); the column is `NOT NULL`, so a pillar with no configurable value (e.g. X-Content-Type-Options) must still store valid JSON such as `{}` rather than an empty string
+- `payload` - JSON, shape is pillar-specific (e.g. `{"value": "SAMEORIGIN"}`); the column is `NOT NULL`, so a pillar with no configurable value (e.g. X-Content-Type-Options) must still store valid JSON such as `{}` rather than an empty string
 - `override_expires_at`, `override_owner`
 - `created_at`, `updated_at`
 
 Operational notes:
 
-- unique on `(pillar, surface)` — one row per pillar per surface
+- unique on `(pillar, surface)` - one row per pillar per surface
 - added in v10; empty and unused until X-Frame-Options, X-Content-Type-Options, and Referrer-Policy ship
 
 ## Relationships
@@ -378,11 +378,11 @@ The following fields are indexed or uniquely constrained in the activation SQL:
 
 If performance issues appear under high violation volume, first review:
 
-- `csp_violation_reports(fingerprint)` — fingerprint lookup on every report ingestion
-- `csp_violation_reports(reported_at)` — used by the daily purge query
-- `csp_source_inventory(surface, approval_state)` — scanned on every header build
-- `csp_hash_inventory(surface, directive, status)` — scanned on every header build
-- `sam_entitlements(site_identity, product_key)` — checked on every feature gate call
+- `csp_violation_reports(fingerprint)` - fingerprint lookup on every report ingestion
+- `csp_violation_reports(reported_at)` - used by the daily purge query
+- `csp_source_inventory(surface, approval_state)` - scanned on every header build
+- `csp_hash_inventory(surface, directive, status)` - scanned on every header build
+- `sam_entitlements(site_identity, product_key)` - checked on every feature gate call
 
 ## Migration rules
 

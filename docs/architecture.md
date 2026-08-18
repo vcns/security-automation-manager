@@ -158,15 +158,15 @@ Responsibilities:
 4. The relevant profile is loaded from the database.
 5. Approved sources and active hashes are merged into the directive set. Each approved host source is prefixed with its captured scheme (`source_scheme`, default `https`) rather than emitted bare -- a scheme-less CSP source matches that host on any scheme, including plain HTTP.
 6. Forbidden or deprecated directives (`plugin-types`, `block-all-mixed-content`, `navigate-to`, `prefetch-src`) are stripped from overrides; any stripped directive is logged to `sam_audit_log` at `warning` severity.
-7. If enabled and licensed, `'strict-dynamic'` is appended to `script-src`; approved host sources are suppressed from `script-src` at this point (browsers silently ignore host allowlists when `strict-dynamic` is present — CSP3 §8.2).
-8. `sandbox` is skipped if null or if the profile is in report-only mode (CSP spec — `sandbox` is ignored in `Content-Security-Policy-Report-Only`).
+7. If enabled and licensed, `'strict-dynamic'` is appended to `script-src`; approved host sources are suppressed from `script-src` at this point (browsers silently ignore host allowlists when `strict-dynamic` is present - CSP3 §8.2).
+8. `sandbox` is skipped if null or if the profile is in report-only mode (CSP spec - `sandbox` is ignored in `Content-Security-Policy-Report-Only`).
 9. `upgrade-insecure-requests` is skipped if the profile is in report-only mode -- browsers ignore it there too, same rationale as `sandbox`.
 10. The per-surface Trusted Types toggle (Profiles tab) sets `require-trusted-types-for 'script'` when enabled. Trusted Types directives (`require-trusted-types-for`, `trusted-types`) are each skipped independently when empty; when `require-trusted-types-for` is enabled it is always emitted as report-only regardless of surface mode. `trusted-types` is stripped on its own whenever empty, so enabling the toggle alone never emits a bare, valueless `trusted-types` token.
 11. The reporting endpoint is resolved from `wp_sam_report_endpoint_url` when an administrator has configured an absolute `http` or `https` override; otherwise it falls back to `rest_url( 'sam/v1/report' )`.
 12. The CSP includes `report-uri <report_uri>` by default so browser reports are delivered directly and promptly to the local learning endpoint.
 13. If `wp_sam_reporting_transport` is set to `both` or `report-to`, two additional Reporting API headers are emitted before the CSP header:
-    - `Reporting-Endpoints: csp-endpoint="<report_uri>"` — Structured Fields Dictionary (RFC 9651); required for browsers to honour `report-to csp-endpoint` in the CSP
-    - `Report-To: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"<report_uri>"}]}` — deprecated JSON format retained as a legacy fallback for pre-Reporting-API browsers
+    - `Reporting-Endpoints: csp-endpoint="<report_uri>"` - Structured Fields Dictionary (RFC 9651); required for browsers to honour `report-to csp-endpoint` in the CSP
+    - `Report-To: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"<report_uri>"}]}` - deprecated JSON format retained as a legacy fallback for pre-Reporting-API browsers
 14. The policy header name is resolved from `wp_sam_policy_header_name`. Blank emits the normal mode-aware `Content-Security-Policy-Report-Only` or `Content-Security-Policy` header. A validated custom value emits the exact origin header name for a proxy to copy back into the browser-facing CSP header.
 15. The CSP or CSP-Report-Only policy value is emitted via `send_headers`.
 
@@ -197,9 +197,9 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 1. Browser submits a violation report to the configured reporting endpoint. By default this is `/wp-json/sam/v1/report`; proxy/CDN deployments can advertise an administrator-provided public URL that must route back to this plugin endpoint for local learning. A legacy alias at `/wp-json/security-manager/v1/report` (the immediately-prior REST namespace) remains registered against the same handler, since browsers holding a CSP header issued before the rename keep POSTing to it until they receive a fresh policy; remove the alias a couple of releases after the rename ships. The even older `/wp-json/csp-manager/v1/report` alias, from the original CSP Manager plugin rename, has already been retired.
 2. `Violation_Reporter` validates the `Content-Type` header; requests with a content type other than `application/csp-report`, `application/reports+json`, or `application/json` are rejected with HTTP 400.
 3. The payload is normalised from either the legacy `application/csp-report` format (hyphenated field names: `document-uri`, `blocked-uri`, `script-sample`, etc.) or the Reporting API `application/reports+json` format (camelCase field names: `documentURL`, `blockedURL`, `sample`, etc.).
-4. The `document-uri` hostname is compared against the WordPress site origin (RFC 6454); reports from a different origin are silently discarded — CSP reports are client-generated and spoofable.
+4. The `document-uri` hostname is compared against the WordPress site origin (RFC 6454); reports from a different origin are silently discarded - CSP reports are client-generated and spoofable.
 5. Per-surface transient-based rate limiting is enforced (500 reports/hour).
-6. A fingerprint is computed over `(profile_surface, blocked_host_or_blocked_uri, violated_directive)` to deduplicate repeat reports. Whenever a host can be extracted from `blocked_uri` (`Violation_Reporter::extract_blocked_host()`), the fingerprint groups on that host, not the exact URL — a CDN or font provider serving each request from a distinct, content-hashed filename under the same host collapses to one row instead of a permanent row per file, matching the host-level granularity CSP source-approval already uses. Keyword-like values with no host (`inline`, `eval`, `data:`, `blob:`, `about:`) keep their exact-value fingerprint.
+6. A fingerprint is computed over `(profile_surface, blocked_host_or_blocked_uri, violated_directive)` to deduplicate repeat reports. Whenever a host can be extracted from `blocked_uri` (`Violation_Reporter::extract_blocked_host()`), the fingerprint groups on that host, not the exact URL - a CDN or font provider serving each request from a distinct, content-hashed filename under the same host collapses to one row instead of a permanent row per file, matching the host-level granularity CSP source-approval already uses. Keyword-like values with no host (`inline`, `eval`, `data:`, `blob:`, `about:`) keep their exact-value fingerprint.
 7. The `sample` field (inline script/style snippet, populated only when `'report-sample'` is in the emitting directive) is captured and stored in `csp_violation_reports.sample`.
 8. A new or existing row in the violation table is upserted; duplicate fingerprints increment `occurrence_count`.
 9. While the learning window is open, host-based cross-origin blocked URLs become pending source proposals through `Policy_Change_Manager`; rejected or reverted fingerprints are not proposed again unless a later administrator approval clears suppression.
@@ -254,7 +254,7 @@ The plugin treats each of the following as an independent policy surface:
 
 Each surface has its own policy profile, scan target, approval set, and violation data. This separation is central to avoiding over-broad CSP allowlists.
 
-**wp-admin surface constraint:** WordPress core Trac #59446 is unresolved — some core admin screens and bundled themes emit inline scripts outside the WordPress script API, preventing strict nonce-based enforcement for the admin surface. Strict enforcement on the admin surface is best-effort; the plugin surfaces a one-per-session admin notice when the admin profile mode is set to `enforce`.
+**wp-admin surface constraint:** WordPress core Trac #59446 is unresolved - some core admin screens and bundled themes emit inline scripts outside the WordPress script API, preventing strict nonce-based enforcement for the admin surface. Strict enforcement on the admin surface is best-effort; the plugin surfaces a one-per-session admin notice when the admin profile mode is set to `enforce`.
 
 ## Trust boundaries
 
@@ -295,7 +295,7 @@ These design choices should not be changed casually:
 - `report-to` without a corresponding `Reporting-Endpoints` header is a silent failure, and browsers that use `report-to` may ignore `report-uri`, so Reporting API transport must remain an explicit administrator choice
 - when `strict-dynamic` is active, host-based sources are suppressed from `script-src` at emit time; emitting them is harmless but creates misleading policy noise since browsers ignore them
 - cross-origin violation reports are silently discarded; only reports whose `document-uri` matches the site's own origin are stored
-- `sam_audit_log` is append-only — no `UPDATE` or `DELETE` may ever be issued against it; it is the permanent operational audit trail
+- `sam_audit_log` is append-only - no `UPDATE` or `DELETE` may ever be issued against it; it is the permanent operational audit trail
 - `csp_policy_change_decisions` is append-only; suppression is represented by the latest decision for a fingerprint, not by rewriting old decisions; undo appends a new non-suppressing decision and links to the decision it reverses where available
 - the violation retention purge uses `UTC_TIMESTAMP()` not `NOW()` to avoid timezone-offset errors in environments where MySQL and PHP have different local time configurations
 
@@ -348,5 +348,5 @@ Future work should preserve existing seams:
 - add new remote config values through the existing signed JSON contract
 - add new scan types through `Scheduler` and `Discovery`
 - keep admin actions behind capability checks and nonces
-- all significant plugin events must be logged to `sam_audit_log` via `Audit_Log::log()` — not only the wp_options FIFO queue
+- all significant plugin events must be logged to `sam_audit_log` via `Audit_Log::log()` - not only the wp_options FIFO queue
 - document every new operational dependency before release
