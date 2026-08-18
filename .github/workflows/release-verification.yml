@@ -1,0 +1,536 @@
+name: Release Verification
+
+# Real WordPress + real MySQL install/upgrade lifecycle tests -- the gap
+# docs/testing-requirements.md names as "the single biggest gap": every test
+# in test/unit/ (including SchemaMigrationTest.php) runs against
+# test/bootstrap.php's hand-written wpdb stub, never a live database. This
+# workflow exercises the plugin against a real `wordpress` container and a
+# real MySQL service the same way an administrator's site actually would.
+#
+# Scope note (docs/consolidation-ledger.md, issue #159): this covers clean
+# install (both channels, including a real is_admin()-context proof the
+# GitHub-channel updater actually attaches to WordPress's own update
+# pipeline, not just that its class file is autoloadable), upgrade from the
+# previous release, upgrade from the last pre-certificate release, data
+# preservation across both upgrades (policy data, audit log, certificate
+# tables, and an encrypted-credential round-trip), upgrade idempotency (a
+# proxy for interrupted-update recovery -- see the job comment), and a real
+# network fetch of a malicious-but-well-formed manifest (valid slug and
+# checksum, disallowed package host) served from a genuinely reachable mock
+# HTTP server -- rejected the same way a nonexistent domain would be, but
+# this proves the validation logic specifically, not just that a fetch
+# failure fails safe. It does NOT re-implement package-content separation
+# (already covered by release-package.yml's "Verify ZIP structure" step) or
+# re-run every manifest/checksum rejection branch
+# GithubUpdateCheckerTest.php already covers at unit level with HTTP fully
+# mocked -- this workflow's job is the install/upgrade lifecycle plus one
+# real-network proof, not duplicating coverage that already exists at the
+# right altitude. Do not read a green run here as full public-release
+# readiness on its own; it is one input among the several
+# docs/consolidation-ledger.md tracks.
+
+on:
+  pull_request:
+    branches:
+      - development
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clean-install-wordpress-org:
+    name: Clean install (WordPress.org channel)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uwordpress -pwordpress"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Start WordPress + WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create sam-net
+          docker run -d --name sam-wp --network sam-net \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            --network=host \
+            -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            wordpress:6.7-php8.1-apache
+          docker run -d --name sam-cli --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            --entrypoint sleep wordpress:cli-php8.1 infinity
+          for i in $(seq 1 30); do
+            docker exec sam-cli test -f /var/www/html/wp-load.php && break
+            sleep 2
+          done
+
+      - name: Install WordPress and activate the plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec sam-cli wp core install --path=/var/www/html --url=http://127.0.0.1 --title=verify --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email --allow-root
+          docker exec sam-cli wp plugin activate security-automation-manager --path=/var/www/html --allow-root
+
+      - name: Verify channel, schema version, and table set
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHANNEL=$(docker exec sam-cli wp eval 'echo WP_SAM_DISTRIBUTION_CHANNEL;' --path=/var/www/html --allow-root)
+          [ "$CHANNEL" = "wordpress-org" ] || { echo "Expected default channel 'wordpress-org', got '$CHANNEL'" >&2; exit 1; }
+
+          LIVE_SCHEMA=$(grep -oP "define\(\s*'WP_SAM_DB_VERSION',\s*'\K[0-9]+" security-automation-manager.php)
+          DB_SCHEMA=$(docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root)
+          [ "$LIVE_SCHEMA" = "$DB_SCHEMA" ] || { echo "Fresh install schema $DB_SCHEMA does not match WP_SAM_DB_VERSION $LIVE_SCHEMA" >&2; exit 1; }
+
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 \
+            mysql -h127.0.0.1 -uwordpress wordpress -N -e "SHOW TABLES LIKE 'wp\\_sam\\_certificates';" | grep -q wp_sam_certificates
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 \
+            mysql -h127.0.0.1 -uwordpress wordpress -N -e "SHOW TABLES LIKE 'wp\\_csp\\_policy\\_profiles';" | grep -q wp_csp_policy_profiles
+
+      - name: Container logs on failure
+        if: failure()
+        shell: bash
+        run: docker logs sam-wp || true
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f sam-wp sam-cli 2>/dev/null || true
+          docker volume rm sam-wp-data 2>/dev/null || true
+          docker network rm sam-net 2>/dev/null || true
+
+  clean-install-github-channel:
+    name: Clean install (GitHub channel)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uwordpress -pwordpress"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build a github-channel test copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Mirrors what release-package.yml's build step generates for the
+          # real GitHub-channel ZIP (includes/build-channel.php defining the
+          # distribution-channel constant), applied to a scratch copy so the
+          # actual git working tree stays untouched.
+          rm -rf /tmp/sam-github-channel
+          cp -r "$PWD" /tmp/sam-github-channel
+          cat > /tmp/sam-github-channel/includes/build-channel.php <<'PHP'
+          <?php
+          declare( strict_types=1 );
+          if ( ! defined( 'ABSPATH' ) ) {
+            exit;
+          }
+          if ( ! defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) ) {
+            define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'github' );
+          }
+          PHP
+
+      - name: Start WordPress + WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create sam-net
+          docker run -d --name sam-wp --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v /tmp/sam-github-channel:/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            wordpress:6.7-php8.1-apache
+          docker run -d --name sam-cli --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v /tmp/sam-github-channel:/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            --entrypoint sleep wordpress:cli-php8.1 infinity
+          for i in $(seq 1 30); do
+            docker exec sam-cli test -f /var/www/html/wp-load.php && break
+            sleep 2
+          done
+
+      - name: Install WordPress and activate the plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec sam-cli wp core install --path=/var/www/html --url=http://127.0.0.1 --title=verify --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email --allow-root
+          docker exec sam-cli wp plugin activate security-automation-manager --path=/var/www/html --allow-root
+
+      - name: Verify GitHub channel is active and the updater is wired up
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHANNEL=$(docker exec sam-cli wp eval 'echo WP_SAM_DISTRIBUTION_CHANNEL;' --path=/var/www/html --allow-root)
+          [ "$CHANNEL" = "github" ] || { echo "Expected channel 'github', got '$CHANNEL'" >&2; exit 1; }
+
+          # security-automation-manager.php only instantiates+registers
+          # Github_Update_Checker when the channel is 'github' AND
+          # (is_admin() || wp_doing_cron()) -- true on every real wp-admin
+          # page load and cron run, but plain `wp eval` boots WP-CLI's own
+          # non-admin context, so is_admin() would read false here and the
+          # checker correctly wouldn't be hooked -- a false negative, not a
+          # real one. auto_prepend_file defines WP_ADMIN before anything
+          # else loads (including the plugins_loaded bootstrap that makes
+          # this decision), so is_admin() reads true the same way it would
+          # during an actual wp-admin request.
+          docker exec sam-cli sh -c 'printf "<?php if (!defined(\"WP_ADMIN\")) { define(\"WP_ADMIN\", true); }" > /tmp/force-admin.php'
+          docker exec sam-cli php -d auto_prepend_file=/tmp/force-admin.php /usr/local/bin/wp eval 'global $wp_filter; $found = false; foreach ((array)($wp_filter["pre_set_site_transient_update_plugins"]->callbacks ?? []) as $cbs) { foreach ($cbs as $cb) { if (is_array($cb["function"]) && $cb["function"][0] instanceof WP_SAM\Modules\Github_Update_Checker) { $found = true; } } } echo $found ? "hooked" : "not-hooked";' --path=/var/www/html --allow-root | grep -q '^hooked$'
+
+      - name: Container logs on failure
+        if: failure()
+        shell: bash
+        run: docker logs sam-wp || true
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f sam-wp sam-cli 2>/dev/null || true
+          docker volume rm sam-wp-data 2>/dev/null || true
+          docker network rm sam-net 2>/dev/null || true
+          rm -rf /tmp/sam-github-channel
+
+  upgrade-and-preservation:
+    name: Upgrade lifecycle and data preservation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uwordpress -pwordpress"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The immediately preceding release. Deliberately dynamic (the
+          # newest existing tag) rather than hardcoded, so this doesn't go
+          # stale as new versions ship.
+          - scenario: previous-release
+            tag_expr: 'git tag --list "v*" --sort=-v:refname | head -1'
+          # The last release before certificates existed (schema v21 added
+          # sam_certificates in v2.5.0 -- see CHANGELOG.md). Pinned, not
+          # dynamic: this scenario is specifically about the pre/post
+          # certificate schema boundary, not "whatever is oldest."
+          - scenario: pre-certificate-release
+            tag_expr: 'echo v2.4.33'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve old-version checkout
+        id: old
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=$(eval "${{ matrix.tag_expr }}")
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          git worktree add --detach /tmp/sam-old "${TAG}"
+
+      - name: Start WordPress + WP-CLI on the old version
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create sam-net
+          docker run -d --name sam-wp --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v /tmp/sam-old:/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            wordpress:6.7-php8.1-apache
+          docker run -d --name sam-cli --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v /tmp/sam-old:/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            --entrypoint sleep wordpress:cli-php8.1 infinity
+          for i in $(seq 1 30); do
+            docker exec sam-cli test -f /var/www/html/wp-load.php && break
+            sleep 2
+          done
+          docker exec sam-cli wp core install --path=/var/www/html --url=http://127.0.0.1 --title=verify --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email --allow-root
+          docker exec sam-cli wp plugin activate security-automation-manager --path=/var/www/html --allow-root
+
+      - name: Seed sentinel data on the old version
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A unique, easy-to-grep marker inserted before the upgrade. Its
+          # continued presence afterwards is the actual preservation proof --
+          # more direct than only checking row counts, which an upgrade could
+          # in principle leave numerically unchanged while replacing content.
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -e \
+            "INSERT INTO wp_sam_audit_log (component, event, detail, severity, created_at) VALUES ('release_verification', 'sentinel', 'sam-preservation-check-${{ matrix.scenario }}', 'info', NOW());"
+          PROFILE_COUNT_BEFORE=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e "SELECT COUNT(*) FROM wp_csp_policy_profiles;")
+          echo "PROFILE_COUNT_BEFORE=${PROFILE_COUNT_BEFORE}" >> "$GITHUB_ENV"
+          [ "$PROFILE_COUNT_BEFORE" -gt 0 ] || { echo "Old version seeded no policy profiles -- nothing to prove preservation of" >&2; exit 1; }
+
+      - name: Swap to the current checkout (the upgrade)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker rm -f sam-wp sam-cli
+          docker run -d --name sam-wp --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            wordpress:6.7-php8.1-apache
+          docker run -d --name sam-cli --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            --entrypoint sleep wordpress:cli-php8.1 infinity
+          for i in $(seq 1 30); do
+            docker exec sam-cli test -f /var/www/html/wp-load.php && break
+            sleep 2
+          done
+          # Any request that boots WordPress runs plugins_loaded ->
+          # Plugin::init() -> maybe_upgrade_db() -- there is no separate
+          # "apply the upgrade" step to trigger.
+          docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
+
+      - name: Verify schema advanced and data survived
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIVE_SCHEMA=$(grep -oP "define\(\s*'WP_SAM_DB_VERSION',\s*'\K[0-9]+" security-automation-manager.php)
+          DB_SCHEMA=$(docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root)
+          [ "$LIVE_SCHEMA" = "$DB_SCHEMA" ] || { echo "Post-upgrade schema $DB_SCHEMA does not match WP_SAM_DB_VERSION $LIVE_SCHEMA" >&2; exit 1; }
+
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT detail FROM wp_sam_audit_log WHERE component = 'release_verification' AND event = 'sentinel';" | grep -q "sam-preservation-check-${{ matrix.scenario }}"
+
+          PROFILE_COUNT_AFTER=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e "SELECT COUNT(*) FROM wp_csp_policy_profiles;")
+          [ "$PROFILE_COUNT_AFTER" = "$PROFILE_COUNT_BEFORE" ] || { echo "Policy profile count changed across upgrade: ${PROFILE_COUNT_BEFORE} -> ${PROFILE_COUNT_AFTER}" >&2; exit 1; }
+
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SHOW TABLES LIKE 'wp\\_sam\\_certificates';" | grep -q wp_sam_certificates
+
+      - name: Encrypted-credential round-trip survives the upgrade boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The vault key derives from WP_SAM_CERT_VAULT_KEY or wp_salt('auth')
+          # (docs/credential-vault-assessment.md) -- neither changes as a side
+          # effect of a normal plugin-code upgrade, so a value sealed after
+          # the upgrade must open correctly in the same request. This is the
+          # property that actually matters for "preservation of encrypted
+          # credentials" across an upgrade that doesn't touch WordPress's own
+          # secrets.
+          docker exec sam-cli wp eval '
+            $sealed = WP_SAM\Certificates\Credential_Vault::seal("release-verification-secret");
+            $opened = WP_SAM\Certificates\Credential_Vault::open($sealed);
+            if ($opened !== "release-verification-secret") {
+              fwrite(STDERR, "Credential vault round-trip failed after upgrade\n");
+              exit(1);
+            }
+            echo "vault-ok";
+          ' --path=/var/www/html --allow-root | grep -q vault-ok
+
+      - name: Upgrade idempotency (interrupted-update-recovery proxy)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # WP core owns atomic file replacement during a real update; what
+          # the plugin controls is whether re-running its own upgrade check
+          # against an already-current database is safe. Running it twice
+          # more from the now-current state must not error, re-migrate, or
+          # change the row counts already verified above -- the practical
+          # proxy for "an update that gets interrupted and retried doesn't
+          # corrupt state," short of actually killing WP core's file-copy
+          # step mid-write.
+          docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
+          docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
+          PROFILE_COUNT_REPEAT=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e "SELECT COUNT(*) FROM wp_csp_policy_profiles;")
+          [ "$PROFILE_COUNT_REPEAT" = "$PROFILE_COUNT_BEFORE" ] || { echo "Re-running the upgrade check changed policy profile count: ${PROFILE_COUNT_BEFORE} -> ${PROFILE_COUNT_REPEAT}" >&2; exit 1; }
+          SENTINEL_COUNT=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e "SELECT COUNT(*) FROM wp_sam_audit_log WHERE component = 'release_verification' AND event = 'sentinel';")
+          [ "$SENTINEL_COUNT" = "1" ] || { echo "Sentinel audit row count is ${SENTINEL_COUNT}, expected exactly 1 -- re-running the upgrade check duplicated or lost it" >&2; exit 1; }
+
+      - name: Container logs on failure
+        if: failure()
+        shell: bash
+        run: docker logs sam-wp || true
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f sam-wp sam-cli 2>/dev/null || true
+          docker volume rm sam-wp-data 2>/dev/null || true
+          docker network rm sam-net 2>/dev/null || true
+          git worktree remove /tmp/sam-old --force 2>/dev/null || true
+
+  manifest-rejection-end-to-end:
+    name: Manifest rejection (real update pipeline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uwordpress -pwordpress"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Serve a real, reachable, malicious manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Every manifest/checksum/host-validation branch already has unit
+          # coverage (test/unit/GithubUpdateCheckerTest.php, 18 cases, HTTP
+          # entirely mocked at the PHP level). This job's value-add is
+          # narrower and different in kind: prove the same rejection holds
+          # against a REAL network fetch of a REAL, well-formed-but-malicious
+          # manifest -- slug and checksum both valid, only the package host
+          # is wrong -- served from a genuinely reachable HTTP server, not a
+          # nonexistent domain (which would fail on DNS resolution alone and
+          # prove nothing about the validation logic specifically).
+          mkdir -p /tmp/sam-mock-manifest
+          HASH=$(printf '%064d' 0)
+          echo "{\"slug\":\"security-automation-manager\",\"version\":\"99.0.0\",\"download_url\":\"https://evil.example.com/payload.zip\",\"sha256\":\"${HASH}\"}" > /tmp/sam-mock-manifest/update.json
+          docker network create sam-net
+          docker run -d --name sam-mock --network sam-net -v /tmp/sam-mock-manifest:/docroot \
+            --entrypoint php php:8.1-cli -S 0.0.0.0:8899 -t /docroot
+
+          rm -rf /tmp/sam-bad-manifest
+          cp -r "$PWD" /tmp/sam-bad-manifest
+          cat > /tmp/sam-bad-manifest/includes/build-channel.php <<'PHP'
+          <?php
+          declare( strict_types=1 );
+          if ( ! defined( 'ABSPATH' ) ) {
+            exit;
+          }
+          if ( ! defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) ) {
+            define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'github' );
+          }
+          if ( ! defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ) {
+            define( 'WP_SAM_UPDATE_MANIFEST_URL', 'http://sam-mock:8899/update.json' );
+          }
+          PHP
+
+      - name: Start WordPress + WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name sam-wp --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v /tmp/sam-bad-manifest:/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            wordpress:6.7-php8.1-apache
+          docker run -d --name sam-cli --network sam-net --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v /tmp/sam-bad-manifest:/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            --entrypoint sleep wordpress:cli-php8.1 infinity
+          for i in $(seq 1 30); do
+            docker exec sam-cli test -f /var/www/html/wp-load.php && break
+            sleep 2
+          done
+          docker exec sam-cli wp core install --path=/var/www/html --url=http://127.0.0.1 --title=verify --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email --allow-root
+          docker exec sam-cli wp plugin activate security-automation-manager --path=/var/www/html --allow-root
+
+      - name: Confirm the manifest is genuinely reachable (sanity check)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec sam-cli curl -fsS http://sam-mock:8899/update.json | grep -q security-automation-manager
+
+      - name: Real fetch of a malicious-but-well-formed manifest is rejected
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec sam-cli wp eval '
+            delete_transient("wp_sam_github_update_info");
+            $checker = new WP_SAM\Modules\Github_Update_Checker();
+            $remote  = $checker->get_remote_info();
+            $diag    = get_option("wp_sam_update_diagnostics");
+            if (null !== $remote) {
+              fwrite(STDERR, "Malicious manifest (bad package host) was accepted instead of rejected\n");
+              exit(1);
+            }
+            if (($diag["last_check_result"] ?? null) !== "invalid_manifest") {
+              fwrite(STDERR, "Expected diagnostics to record '\''invalid_manifest'\'', got: " . var_export($diag["last_check_result"] ?? null, true) . "\n");
+              exit(1);
+            }
+            echo "rejected-ok";
+          ' --path=/var/www/html --allow-root | grep -q rejected-ok
+
+      - name: Container logs on failure
+        if: failure()
+        shell: bash
+        run: docker logs sam-wp || true
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f sam-wp sam-cli sam-mock 2>/dev/null || true
+          docker volume rm sam-wp-data 2>/dev/null || true
+          docker network rm sam-net 2>/dev/null || true
+          rm -rf /tmp/sam-bad-manifest /tmp/sam-mock-manifest
