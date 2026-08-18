@@ -160,6 +160,42 @@ Point a real cron at WP-Cron and the problem disappears:
 (and optionally `define( 'DISABLE_WP_CRON', true );` in `wp-config.php` so
 page loads stop double-firing it).
 
+## FAQ
+
+### Does HTTP-01 work with HSTS / hstspreload.org?
+
+Yes — this looks contradictory but isn't. HSTS (and browser preload lists)
+is a **browser** policy: it makes *browsers* refuse plain-HTTP connections.
+ACME validation servers are not browsers and do not honour HSTS. Let's
+Encrypt's HTTP-01 validator deliberately makes its first request over
+`http://` on port 80 and **follows redirects, including to HTTPS** — which
+is exactly what an HSTS-enabled site serves on port 80 (the 301 to HTTPS is
+how browsers get the HSTS header in the first place). This plugin's token
+responder answers on either scheme, so the redirect chain resolves cleanly.
+
+The only configuration that genuinely breaks HTTP-01 is a **firewalled or
+closed port 80**. If you cannot keep port 80 open (even just to redirect),
+use DNS-01.
+
+### Can I supply my own private key?
+
+Yes — Configuration → "Bring your own private key". Paste an unencrypted
+PEM key; it is validated before saving, stored encrypted at rest, and
+reused for every order (overriding the key-type choice). Generate one with:
+
+```bash
+# ECDSA P-256 (recommended)
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out privkey.pem
+# or RSA 2048
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out privkey.pem
+```
+
+Note the boundary: supplying a key removes the *key generation* dependency,
+but the **openssl PHP extension is still required** — every ACME API call
+must be cryptographically signed, and that signing happens in PHP. If
+ext/openssl is missing entirely (the Certificates page will tell you),
+certificate automation cannot run; ask your host to enable it.
+
 ## Testing safely
 
 Keep the **staging** toggle on until an order succeeds end-to-end. Let's

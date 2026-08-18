@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.8.0] - 2026-08-18
+
+### Added
+
+- Bring-your-own private key on the Certificates Configuration tab: a pasted PEM is validated with `openssl_pkey_get_private()` before it is accepted (rejected keys are never saved), sealed by `Credential_Vault`, reused for every order in place of per-order generation, and removable via an explicit clear checkbox (`Certificate_Store::save_config()` gains a null-means-clear sentinel so "blank keeps stored secret" semantics stay intact). The UI shows the exact `openssl genpkey` command for the selected key type.
+- Requirements preflight on the Certificates page: missing ext/openssl or ext/sodium now yields a plain-language admin error (including what to ask the host for) instead of a mid-order fatal. Deliberately honest boundary: BYO key removes the key-generation dependency only — ACME JWS signing still requires ext/openssl.
+- HSTS/HTTP-01 compatibility documented in the UI and a new docs FAQ: HSTS (and preload) binds browsers, not ACME validators; Let's Encrypt starts at http:// and follows the redirect to HTTPS, so only a closed port 80 breaks HTTP-01.
+
+### Changed
+
+- GitHub releases publish exactly one asset: `security-automation-manager-vX.Y.Z.zip`, now the GITHUB-channel (self-updating) build. The WordPress.org-channel package remains a CI artifact for the SVN pipeline but is no longer a release download (attaching it is how a site silently loses its updater). Naming-semantics flip documented in docs/release-and-publishing.md; v2.7.0's assets were retro-normalised to match.
+
 ## [2.7.0] - 2026-08-18
 
 ### Added

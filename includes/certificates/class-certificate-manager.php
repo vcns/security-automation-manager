@@ -133,7 +133,15 @@ class Certificate_Manager {
 			'order did not become ready'
 		);
 
-		$cert_key = Acme_Crypto::generate_key( (string) $config['key_type'] );
+		$custom_key = trim( (string) ( $config['custom_key_pem'] ?? '' ) );
+		if ( '' !== $custom_key ) {
+			if ( false === openssl_pkey_get_private( $custom_key ) ) {
+				throw new \RuntimeException( 'The supplied private key could not be loaded. Paste a valid, unencrypted PEM private key (BEGIN PRIVATE KEY / BEGIN EC PRIVATE KEY / BEGIN RSA PRIVATE KEY), or clear it to let the plugin generate one.' );
+			}
+			$cert_key = $custom_key;
+		} else {
+			$cert_key = Acme_Crypto::generate_key( (string) $config['key_type'] );
+		}
 		if ( 'ready' === ( $order_body['status'] ?? '' ) ) {
 			$subject = array(
 				'organization'        => (string) ( $config['organization'] ?? '' ),

@@ -23,7 +23,7 @@ class Certificate_Store {
 	public const ACCOUNT_KEY_OPTION = 'wp_sam_acme_account_keys';
 
 	/** Config fields that must always be stored sealed. */
-	private const SECRET_FIELDS = array( 'dns_credentials', 'cpanel_token' );
+	private const SECRET_FIELDS = array( 'dns_credentials', 'cpanel_token', 'custom_key_pem' );
 
 	// ── Configuration ─────────────────────────────────────────────────────────
 
@@ -58,6 +58,11 @@ class Certificate_Store {
 			'country'             => '',
 			'state'               => '',
 			'locality'            => '',
+			// Optional bring-your-own certificate private key (PEM). When set,
+			// orders use it instead of generating a key -- for hosts where
+			// ext/openssl key generation misbehaves, or organisations that
+			// must control key material.
+			'custom_key_pem'      => '',
 		);
 
 		$stored = get_option( self::CONFIG_OPTION, array() );
@@ -65,7 +70,8 @@ class Certificate_Store {
 
 		// Unseal secrets for use. Values that fail authentication (vault key
 		// rotated, tampered row) come back empty rather than as ciphertext.
-		$config['cpanel_token'] = (string) ( Credential_Vault::open( (string) $config['cpanel_token'] ) ?? '' );
+		$config['cpanel_token']   = (string) ( Credential_Vault::open( (string) $config['cpanel_token'] ) ?? '' );
+		$config['custom_key_pem'] = (string) ( Credential_Vault::open( (string) $config['custom_key_pem'] ) ?? '' );
 
 		$credentials = array();
 		foreach ( (array) $config['dns_credentials'] as $key => $sealed ) {
@@ -97,6 +103,12 @@ class Certificate_Store {
 					}
 				}
 				$config['dns_credentials'] = $sealed;
+				continue;
+			}
+
+			// null is an explicit "clear this secret"; '' means "keep stored".
+			if ( array_key_exists( $field, $config ) && null === $config[ $field ] ) {
+				$config[ $field ] = '';
 				continue;
 			}
 

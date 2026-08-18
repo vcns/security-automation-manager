@@ -686,6 +686,30 @@ class Admin_UI {
 				$challenge = 'dns-01';
 			}
 
+			// Bring-your-own private key: blank keeps the stored key, the clear
+			// checkbox removes it, and a pasted PEM must load before we accept
+			// it (a broken key would otherwise only surface mid-order).
+			$custom_key = trim( (string) wp_unslash( $_POST['wp_sam_cert_custom_key'] ?? '' ) );
+			if ( ! empty( $_POST['wp_sam_cert_clear_custom_key'] ) ) {
+				$custom_key_value = null; // Explicit clear (Certificate_Store sentinel).
+			} elseif ( '' !== $custom_key ) {
+				if ( function_exists( 'openssl_pkey_get_private' ) && false === openssl_pkey_get_private( $custom_key ) ) {
+					wp_safe_redirect(
+						add_query_arg(
+							array(
+								'tab'       => 'configuration',
+								'key_error' => '1',
+							),
+							admin_url( 'admin.php?page=security-automation-manager-certificates' )
+						)
+					);
+					exit;
+				}
+				$custom_key_value = $custom_key;
+			} else {
+				$custom_key_value = '';
+			}
+
 			$config = array_merge(
 				$config,
 				array(
@@ -693,6 +717,7 @@ class Admin_UI {
 					'contact_email'       => sanitize_email( wp_unslash( $_POST['wp_sam_cert_email'] ?? '' ) ),
 					'provider'            => $provider,
 					'challenge'           => $challenge,
+					'custom_key_pem'      => $custom_key_value,
 					'key_type'            => 'rsa-2048' === ( $_POST['wp_sam_cert_key_type'] ?? '' ) ? 'rsa-2048' : 'ec-256',
 					'staging'             => ! empty( $_POST['wp_sam_cert_staging'] ),
 					'dns_credentials'     => $credentials,
