@@ -25,7 +25,12 @@ name: Release Verification
 # GithubUpdateCheckerTest.php already covers at unit level with HTTP fully
 # mocked -- this workflow's job is the install/upgrade lifecycle plus one
 # real-network proof, not duplicating coverage that already exists at the
-# right altitude. Do not read a green run here as full public-release
+# right altitude. Also covers Rollback_Guard's schema-downgrade detection,
+# refusal, and configuration snapshot/restore round trip against real data
+# (issue #160) -- every command below was hand-validated against a
+# throwaway local Docker stack before being written here, the same
+# discipline that caught two real bugs during the original install/upgrade
+# jobs' development. Do not read a green run here as full public-release
 # readiness on its own; it is one input among the several
 # docs/consolidation-ledger.md tracks.
 
@@ -533,3 +538,167 @@ jobs:
           docker rm -f sam-wp sam-cli sam-mock 2>/dev/null || true
           docker volume rm sam-wp-data 2>/dev/null || true
           rm -rf /tmp/sam-bad-manifest /tmp/sam-mock-manifest
+
+  rollback-and-recovery:
+    name: Rollback and recovery (Rollback_Guard)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uwordpress -pwordpress"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Start WordPress + WP-CLI, install, activate
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name sam-wp --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            wordpress:6.7-php8.1-apache
+          docker run -d --name sam-cli --network=host \
+            -e WORDPRESS_DB_HOST=127.0.0.1:3306 -e WORDPRESS_DB_USER=wordpress \
+            -e WORDPRESS_DB_PASSWORD=wordpress -e WORDPRESS_DB_NAME=wordpress \
+            -v "$PWD":/var/www/html/wp-content/plugins/security-automation-manager \
+            -v sam-wp-data:/var/www/html \
+            --entrypoint sleep wordpress:cli-php8.1 infinity
+          for i in $(seq 1 30); do
+            docker exec sam-cli test -f /var/www/html/wp-load.php && break
+            sleep 2
+          done
+          docker exec sam-cli wp core install --path=/var/www/html --url=http://127.0.0.1 --title=verify --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email --allow-root
+          docker exec sam-cli wp plugin activate security-automation-manager --path=/var/www/html --allow-root
+
+      - name: Simulate a downgrade and assert it is refused, not silently applied
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIVE_SCHEMA=$(grep -oP "define\(\s*'WP_SAM_DB_VERSION',\s*'\K[0-9]+" security-automation-manager.php)
+          VERIFIED_BEFORE=$(docker exec sam-cli wp option get wp_sam_schema_verified_version --path=/var/www/html --allow-root)
+
+          # A database schema "from the future" relative to the running code --
+          # the state produced when older plugin code is installed over a site
+          # a newer version already migrated.
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -e \
+            "UPDATE wp_options SET option_value='99' WHERE option_name='wp_sam_db_version';"
+
+          # Any request that boots WordPress re-evaluates maybe_upgrade_db().
+          docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
+
+          FLAG=$(docker exec sam-cli wp option get wp_sam_schema_downgrade_detected --path=/var/www/html --allow-root --format=json)
+          echo "$FLAG" | grep -q '"installed":99' || { echo "Downgrade flag was not set: $FLAG" >&2; exit 1; }
+          echo "$FLAG" | grep -q "\"code\":${LIVE_SCHEMA}" || { echo "Downgrade flag has wrong code version: $FLAG" >&2; exit 1; }
+
+          VERIFIED_AFTER=$(docker exec sam-cli wp option get wp_sam_schema_verified_version --path=/var/www/html --allow-root)
+          [ "$VERIFIED_BEFORE" = "$VERIFIED_AFTER" ] || { echo "wp_sam_schema_verified_version changed -- Activator::activate() ran during a detected downgrade, which must never happen" >&2; exit 1; }
+
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT event FROM wp_sam_audit_log WHERE event='schema_downgrade_detected';" | grep -q schema_downgrade_detected
+
+      - name: Downgrade notice actually renders on a real admin page
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec sam-cli sh -c '
+            COOKIE_JAR=/tmp/cookies.txt
+            curl -s -c $COOKIE_JAR -b $COOKIE_JAR -X POST "http://127.0.0.1/wp-login.php" \
+              --data-urlencode "log=admin" --data-urlencode "pwd=admin" --data-urlencode "wp-submit=Log In" \
+              --data-urlencode "redirect_to=http://127.0.0.1/wp-admin/" -o /dev/null
+            curl -s -c $COOKIE_JAR -b $COOKIE_JAR "http://127.0.0.1/wp-admin/admin.php?page=security-automation-manager" -o /tmp/dashboard.html
+            grep -qi "database schema is newer than the running plugin code" /tmp/dashboard.html
+          '
+
+      - name: Resolving the downgrade clears the flag and logs the recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIVE_SCHEMA=$(grep -oP "define\(\s*'WP_SAM_DB_VERSION',\s*'\K[0-9]+" security-automation-manager.php)
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -e \
+            "UPDATE wp_options SET option_value='${LIVE_SCHEMA}' WHERE option_name='wp_sam_db_version';"
+          docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
+
+          docker exec sam-cli wp option get wp_sam_schema_downgrade_detected --path=/var/www/html --allow-root 2>&1 | grep -q "Could not get" \
+            || { echo "Downgrade flag was not cleared after the schema mismatch resolved" >&2; exit 1; }
+
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT event FROM wp_sam_audit_log WHERE event='schema_downgrade_resolved';" | grep -q schema_downgrade_resolved
+
+      - name: Snapshot-then-restore round trip against real data
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Seed a distinctive, easy-to-assert-on value, then simulate a
+          # subsequent migration (the snapshot table already exists at this
+          # point, unlike the one-time v22->v23 transition that creates it --
+          # see Rollback_Guard::snapshot_before_migration()'s own comment on
+          # why that specific boundary can't be snapshotted).
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -e \
+            "UPDATE wp_csp_policy_profiles SET mode='enforce' WHERE surface='frontend';"
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -e \
+            "UPDATE wp_options SET option_value='22' WHERE option_name='wp_sam_db_version';"
+          docker exec sam-cli wp option get wp_sam_db_version --path=/var/www/html --allow-root >/dev/null
+
+          SNAPSHOT_COUNT=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT COUNT(*) FROM wp_sam_migration_snapshots;")
+          [ "$SNAPSHOT_COUNT" -ge 1 ] || { echo "No snapshot was taken for the simulated 22 -> current migration" >&2; exit 1; }
+          SNAPSHOT_ID=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT id FROM wp_sam_migration_snapshots ORDER BY id DESC LIMIT 1;")
+
+          # Mutate again -- simulating an unwanted data effect -- then restore.
+          docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -e \
+            "UPDATE wp_csp_policy_profiles SET mode='disabled' WHERE surface='frontend';"
+
+          docker exec sam-cli wp eval "
+            \$result = WP_SAM\Rollback_Guard::restore_snapshot(${SNAPSHOT_ID});
+            if (!\$result['ok']) { fwrite(STDERR, 'Restore failed: ' . (\$result['reason'] ?? 'unknown') . PHP_EOL); exit(1); }
+            if (!in_array('csp_policy_profiles', \$result['tables_restored'], true)) { fwrite(STDERR, 'csp_policy_profiles was not restored' . PHP_EOL); exit(1); }
+            echo 'restore-ok';
+          " --path=/var/www/html --allow-root | grep -q restore-ok
+
+          RESTORED_MODE=$(docker run --rm --network host -e MYSQL_PWD=wordpress mysql:8.0 mysql -h127.0.0.1 -uwordpress wordpress -N -e \
+            "SELECT mode FROM wp_csp_policy_profiles WHERE surface='frontend';")
+          [ "$RESTORED_MODE" = "enforce" ] || { echo "Expected mode 'enforce' after restore, got '$RESTORED_MODE'" >&2; exit 1; }
+
+      - name: Restore is refused across a schema-version mismatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec sam-cli wp eval '
+            global $wpdb;
+            $wpdb->insert($wpdb->prefix . "sam_migration_snapshots", array(
+              "from_version" => 21, "to_version" => 22, "snapshot_data" => "{}", "created_at" => current_time("mysql", true)
+            ));
+            $id = $wpdb->insert_id;
+            $result = WP_SAM\Rollback_Guard::restore_snapshot($id);
+            if ($result["ok"]) { fwrite(STDERR, "Restore across a schema-version mismatch should have been refused\n"); exit(1); }
+            if (!str_contains($result["reason"], "not supported automatically")) { fwrite(STDERR, "Unexpected refusal reason: " . $result["reason"] . "\n"); exit(1); }
+            echo "refused-ok";
+          ' --path=/var/www/html --allow-root | grep -q refused-ok
+
+      - name: Container logs on failure
+        if: failure()
+        shell: bash
+        run: docker logs sam-wp || true
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f sam-wp sam-cli 2>/dev/null || true
+          docker volume rm sam-wp-data 2>/dev/null || true

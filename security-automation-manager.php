@@ -117,8 +117,13 @@ define( 'WP_SAM_VERSION', '2.9.6' );
  *        BYPASS_CATALOG as its own explicit, labelled opt-in -- a scanner
  *        will flag this keyword, so enabling it must be a conscious admin
  *        decision, not something the plugin decided on its own.
+ * v23 -- adds sam_migration_snapshots: a bounded (last 5) history of
+ *        configuration-state table contents captured immediately before
+ *        each forward schema migration, so a migration whose data effects
+ *        turn out to be unwanted can be undone without reinstalling old
+ *        plugin code. See Rollback_Guard.
  */
-define( 'WP_SAM_DB_VERSION', '22' );
+define( 'WP_SAM_DB_VERSION', '23' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

@@ -174,6 +174,7 @@ class Activator {
 			'sam_pillar_violation_reports',
 			'sam_internal_asset_inventory',
 			'sam_certificates',
+			'sam_migration_snapshots',
 		);
 	}
 
@@ -671,6 +672,24 @@ class Activator {
   PRIMARY KEY  (id),
   KEY environment_status (environment, status),
   KEY not_after (not_after)
+) {$cc};"
+		);
+
+		// Schema v23: bounded pre-migration snapshot history (Rollback_Guard).
+		// snapshot_data holds a JSON dump of every row in the config-state
+		// tables Rollback_Guard::SNAPSHOT_TABLE_SUFFIXES lists, keyed by table
+		// suffix -- deliberately excludes log/ledger-shaped tables (violation
+		// reports, scan logs, the audit log itself, decision history), which
+		// are never overwritten by a restore and so never need snapshotting.
+		dbDelta(
+			"CREATE TABLE {$p}sam_migration_snapshots (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  from_version smallint(5) UNSIGNED NOT NULL,
+  to_version smallint(5) UNSIGNED NOT NULL,
+  snapshot_data longtext NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY to_version (to_version)
 ) {$cc};"
 		);
 

@@ -163,12 +163,12 @@ these differ from the first pass of this assessment):
 | Status | Count | Issues |
 |---|---:|---|
 | Implemented | 5 | #152, #153, #154, #155, #158 |
-| Partially implemented | 11 | #151, #159, #163, #164, #165, #166, #167, #171, #173, #179, #180 |
+| Partially implemented | 12 | #151, #159, #160, #163, #164, #165, #166, #167, #171, #173, #179, #180 |
 | Tracking gate (open by design) | 1 | #156 |
 | Not applicable (governance, no code deliverable) | 1 | #189 |
-| Not started | 25 | all remaining |
+| Not started | 24 | all remaining |
 
-5 + 11 + 1 + 1 + 25 = 43.
+5 + 12 + 1 + 1 + 24 = 43.
 
 ### Phase 0 - foundational documentation
 
@@ -187,7 +187,7 @@ these differ from the first pass of this assessment):
 |---|---|---|---|---|---|
 | #158 | Update Channel status section in admin UI | Implemented | `page-overview.php`:360-497 - every field in the issue body verified line-by-line: version, channel, manifest URL, last success/fail check, available version, background-update permission, `WP_SAM_DISABLE_AUTO_UPDATE` state, manifest/checksum status, last result, no-secrets note | None found | Close |
 | #159 | Release verification test suite (18 scenarios) | Partial | 18 unit tests cover manifest-host rejection, checksum mismatch, slug/version validation. `release-verification.yml` (Phase 4) additionally covers clean install (both channels) and upgrade (from previous release and from the last pre-certificate release, v2.4.33) against a real WordPress + MySQL instance, with data-preservation and upgrade-idempotency assertions, and a real-network manifest-rejection proof against a mock server | Rollback (#160, separate issue), WP-UI-triggered upgrade, background-update-off, interrupted-update recovery beyond the idempotency proxy, expired transient, and cached manifest still have no coverage | Update - rollback tracked separately as #160; remaining scenarios are follow-up, not this phase's scope |
-| #160 | Supported rollback process | Not started | Only artifact is a 7-line manual SVN checklist in `docs/release-and-publishing.md`; zero code contains "rollback" in any form | Full design and implementation | Remain open - prioritised as Phase 5 |
+| #160 | Supported rollback process | Partial | `Rollback_Guard` (schema v23) now provides schema-downgrade detection and refusal, a persistent admin warning, pre-migration configuration snapshots, and same-schema-version restore -- validated against real WordPress + MySQL (`.github/workflows/release-verification.yml`'s `rollback-and-recovery` job) and unit-tested for the pure decision logic (`RollbackGuardTest.php`). `docs/rollback-and-recovery.md` covers the manual code-rollback process this can't automate | Cannot and will not swap the plugin's own PHP code back to an older release (a WordPress/hosting-level action, documented as manual); snapshot/restore covers configuration-state tables only, not a full-site backup | Update - core automatable scope delivered; remaining gap is inherent to what a running plugin can do to itself, not missing work |
 
 ### Phase 2 - spec, docs consistency, technical debt
 
@@ -279,7 +279,15 @@ started).
 
 Ordered by what most directly stops a defensible public release:
 
-1. **No rollback mechanism** (#160) - zero code, a 7-line manual checklist.
+1. ~~**No rollback mechanism**~~ (#160) - **the automatable scope delivered
+   in Phase 5**: `Rollback_Guard` detects and refuses an unsafe automatic
+   downgrade, snapshots configuration state before every forward migration,
+   and restores a snapshot when the running code's schema still matches.
+   What remains is inherent to what a running plugin can do to itself, not
+   missing work -- swapping the plugin's own PHP code back to an older
+   release is a manual, documented process
+   (`docs/rollback-and-recovery.md`), the same as it is for every WordPress
+   plugin.
 2. **No VCNS control plane** (#172) - blocks the *commercial* Fully Automatic
    service specifically; does not block a free GitHub-channel or
    WordPress.org release, since commercial code is already excluded from both

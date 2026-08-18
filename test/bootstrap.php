@@ -96,6 +96,18 @@ if ( ! function_exists( 'delete_option' ) ) {
 	}
 }
 
+if ( ! function_exists( 'is_user_logged_in' ) ) {
+	function is_user_logged_in(): bool {
+		return $GLOBALS['_wp_is_user_logged_in'] ?? false;
+	}
+}
+
+if ( ! function_exists( 'get_current_user_id' ) ) {
+	function get_current_user_id(): int {
+		return $GLOBALS['_wp_current_user_id'] ?? 0;
+	}
+}
+
 if ( ! function_exists( 'get_transient' ) ) {
 	function get_transient( string $transient ): mixed {
 		return $GLOBALS['_wp_transients'][ $transient ] ?? false;

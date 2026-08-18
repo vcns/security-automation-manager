@@ -22,6 +22,7 @@ These documents are written for maintainers, release managers, security reviewer
 - `database-schema.md` - custom table definitions, relationships, policy decision ledger, and operational notes
 - `testing-and-quality.md` - expected validation workflow, CI scope, and manual verification checklist
 - `release-and-publishing.md` - versioning, branching, packaging, and WordPress.org publishing flow
+- `rollback-and-recovery.md` - schema-downgrade detection, configuration snapshot/restore, and manual database-backup recovery for a bad release
 - `wordpress-org-assets.md` - listing artwork, screenshot requirements, and WordPress.org asset handling
 
 ## Source Of Truth
