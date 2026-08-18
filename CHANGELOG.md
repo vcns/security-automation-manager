@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.4] - 2026-08-18
+
+### Fixed
+
+- Corrected documentation drift catalogued in `docs/consolidation-ledger.md`: the GitHub release package name/install instructions (README.md described the retired pre-2.8.0 two-asset scheme), a self-contradiction on the CSP automation default (README.md line 28 vs 102), and a stale claim across README.md, readme.txt, and the public help site (`docs/faq.html`, `docs/user-guide.html`, `docs/index.html`) that none of the nine non-CSP header pillars have a report-only mode -- Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have had one since the Stage 3 report-only learning workflow shipped.
+- Added Certificates as a documented first-class product domain in README.md and readme.txt (previously mentioned only in readme.txt's external-services disclosure).
+
+### Changed
+
+- Replaced `SPECIFICATION.md` (v0.3, CSP-only, declared alignment to DB schema v4 against a live v22) with an authoritative v1.0 covering all product domains: security headers, CSP governance, script/stylesheet integrity, cross-origin policy learning, certificate lifecycle management, audit evidence, automation, distribution, commercial boundaries, privacy, operational resilience, and known limitations.
+- Extended `test/unit/VersionConsistencyTest.php` to assert SPECIFICATION.md's declared DB schema alignment matches `WP_SAM_DB_VERSION`, and to regression-check that the corrected false claims don't reappear.
+
+No functional or runtime behaviour changed in this release.
+
 ## [2.9.3] - 2026-08-18
 
 ### Added
