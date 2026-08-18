@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.2] - 2026-08-18
+
+### Added
+
+- `WP_SAM\Admin\Risk_Badge`: a shared helper for rendering the small coloured risk badge used across the CSP dashboard, consolidating three independent hand-rolled implementations (Profiles tab's Bypass Best Practices toggles, the Sources table, and the Policy Changes table) that had drifted into two different, inconsistent ways of showing the explanation -- a permanently-visible paragraph on the Profiles tab, versus a bare HTML `title=""` attribute (unstyled, not keyboard-reachable) on the other two. All three now render identically: the badge itself is the trigger for a hover/focus tooltip, reusing the existing `.wp-sam-meta-popover` accessible-popover mechanism (already used elsewhere in the admin UI) rather than introducing a new one.
+- `risk-critical` and `risk-unknown` badge colours in `assets/css/admin.css` -- both are real values `Decision_Engine` assigns (`CSP-SRC-004` unsafe keywords, `CSP-SRC-002`/`CSP-EVID-001` missing-directive-or-evidence cases) that previously rendered as an unstyled badge wherever they reached the Policy Changes table.
+
 ## [2.9.1] - 2026-08-18
 
 ### Changed
