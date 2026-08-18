@@ -145,7 +145,7 @@ class Policy_Builder extends Header_Builder {
 			'token'                 => "'unsafe-hashes'",
 			'label'                 => "Allow inline style attributes via hash approval (adds 'unsafe-hashes')",
 			'risk_level'            => 'medium',
-			'risk_note'             => 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2); does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.',
+			'risk_note'             => 'Medium risk: only takes effect together with an approved content hash; does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.',
 			'violation_blocked_uri' => 'inline',
 		),
 	);
