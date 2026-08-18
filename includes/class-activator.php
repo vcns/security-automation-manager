@@ -312,7 +312,7 @@ class Activator {
 		);
 
 		// 4. Ingested CSP violation reports
-		// v3: adds sample column — populated only when 'report-sample' is in the policy.
+		// v3: adds sample column - populated only when 'report-sample' is in the policy.
 		// v6: adds first/last roll-up timestamps and unique fingerprint support.
 		// v8: adds occurrence_count index for the sortable Violations dashboard tab.
 		dbDelta(
@@ -419,7 +419,7 @@ class Activator {
 		);
 
 		// 8. Append-only structured audit log (R10).
-		// No UPDATE or DELETE is ever issued against this table — it is an immutable record.
+		// No UPDATE or DELETE is ever issued against this table - it is an immutable record.
 		dbDelta(
 			"CREATE TABLE {$p}sam_audit_log (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1150,7 +1150,7 @@ class Activator {
 			// upgrade-insecure-requests: auto-upgrades http→https for sub-resource requests.
 			// Boolean directive (empty array = valueless). Does NOT replace HSTS (RFC 6797).
 			// Skipped on the api surface (REST responses have no navigable resources).
-			// Not emitted on api surface — handled below.
+			// Not emitted on api surface - handled below.
 			// fenced-frame-src is deliberately NOT a default: it's an experimental
 			// Privacy Sandbox directive, not part of the CSP living standard, and
 			// third-party CSP linters commonly flag it as "should not be used" --

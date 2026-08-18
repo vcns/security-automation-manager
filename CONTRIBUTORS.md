@@ -4,7 +4,7 @@ Security Automation Manager is created and maintained by [VCNS Tech Ltd](https:/
 
 ## Maintainer
 
-- Simon Jackson ([@sjackson0109](https://github.com/sjackson0109)) — VCNS Tech Ltd
+- Simon Jackson ([@sjackson0109](https://github.com/sjackson0109)) - VCNS Tech Ltd
 
 ## Contributing
 

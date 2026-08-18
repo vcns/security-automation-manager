@@ -18,10 +18,10 @@
 .private_key/
 .public_key/
 
-# Cloudflare Worker source — not part of the WordPress plugin
+# Cloudflare Worker source - not part of the WordPress plugin
 cloudflare/
 
-# Offline/proprietary modules — gitignored and never distributed
+# Offline/proprietary modules - gitignored and never distributed
 offline/
 
 # Build artefacts and local tooling

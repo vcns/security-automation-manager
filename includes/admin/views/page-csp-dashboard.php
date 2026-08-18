@@ -149,7 +149,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</p>
 		<ul>
 			<?php foreach ( $conflict_notices as $conflict_notice ) : ?>
-			<li><code><?php echo esc_html( $conflict_notice['created_at'] ); ?></code> — <?php echo esc_html( $conflict_notice['detail'] ); ?></li>
+			<li><code><?php echo esc_html( $conflict_notice['created_at'] ); ?></code> - <?php echo esc_html( $conflict_notice['detail'] ); ?></li>
 			<?php endforeach; ?>
 		</ul>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -170,7 +170,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 	<!-- ── Start Here tab ─────────────────────────────────────────────────── -->
 	<h2 class="title"><?php esc_html_e( 'What this plugin does', 'security-automation-manager' ); ?></h2>
 	<p class="description">
-		<?php esc_html_e( 'This plugin builds a Content-Security-Policy (CSP) for your site by watching what your site actually loads — scripts, styles, images, fonts, connections, and frames — and letting you decide which of those sources belong in the policy. It manages this separately for four surfaces: the public frontend, wp-admin, the login screen, and the REST API.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'This plugin builds a Content-Security-Policy (CSP) for your site by watching what your site actually loads - scripts, styles, images, fonts, connections, and frames - and letting you decide which of those sources belong in the policy. It manages this separately for four surfaces: the public frontend, wp-admin, the login screen, and the REST API.', 'security-automation-manager' ); ?>
 	</p>
 	<p class="description">
 		<?php esc_html_e( 'Nothing is blocked or enforced until you deliberately turn it on. The whole workflow below is designed so you can see exactly what a policy would do before it does it.', 'security-automation-manager' ); ?>
@@ -184,33 +184,33 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'The learning window.', 'security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'While the learning window is open (48 hours after the last material change to the site by default — a page, post, plugin, or theme edit — adjustable on the Settings tab), validated violation reports and scan discoveries add candidate sources to the For Review queue instead of just being logged. Once the window locks, new discoveries stop being added automatically until another material change reopens it.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'While the learning window is open (48 hours after the last material change to the site by default - a page, post, plugin, or theme edit - adjustable on the Settings tab), validated violation reports and scan discoveries add candidate sources to the For Review queue instead of just being logged. Once the window locks, new discoveries stop being added automatically until another material change reopens it.', 'security-automation-manager' ); ?>
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Review.', 'security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'Every discovered source lands in For Review with a risk rating and a reason. Approve the ones that belong, reject the ones that don\'t — every decision needs a short reason and is written to a permanent decision ledger (visible on the Policy Changes tab). Depending on the Automation Level you\'ve set for a surface, low-risk sources can be approved automatically instead of waiting on you; see Configuration below.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Every discovered source lands in For Review with a risk rating and a reason. Approve the ones that belong, reject the ones that don\'t - every decision needs a short reason and is written to a permanent decision ledger (visible on the Policy Changes tab). Depending on the Automation Level you\'ve set for a surface, low-risk sources can be approved automatically instead of waiting on you; see Configuration below.', 'security-automation-manager' ); ?>
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Manual promotion to enforce mode.', 'security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'When you\'re confident the policy is complete, promote a surface to enforce mode yourself from the Profiles tab — this is never done automatically. Promotion is gated: it requires at least one approved source or hash, no violations within a configurable window (24 hours by default, set on the Settings tab), and no active temporary override.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'When you\'re confident the policy is complete, promote a surface to enforce mode yourself from the Profiles tab - this is never done automatically. Promotion is gated: it requires at least one approved source or hash, no violations within a configurable window (24 hours by default, set on the Settings tab), and no active temporary override.', 'security-automation-manager' ); ?>
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Policy revision.', 'security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'Enforce mode isn\'t a finish line. A new plugin, a theme change, or a new page can introduce sources the policy doesn\'t cover yet. Treat each material change as a prompt to reopen the learning window, review what\'s new in For Review, and revise the policy — the same report-only-then-promote cycle applies to every revision.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Enforce mode isn\'t a finish line. A new plugin, a theme change, or a new page can introduce sources the policy doesn\'t cover yet. Treat each material change as a prompt to reopen the learning window, review what\'s new in For Review, and revise the policy - the same report-only-then-promote cycle applies to every revision.', 'security-automation-manager' ); ?>
 		</li>
 	</ol>
 
 	<h2 class="title"><?php esc_html_e( 'Configuration', 'security-automation-manager' ); ?></h2>
 	<p class="description">
-		<?php esc_html_e( 'The most important setting is Automation Level, set per surface from the Profiles tab dropdown or the Settings tab: Manual, Automatic (medium+high approvals), Automatic (high approvals only), or Fully automatic. This controls which risk tiers of discovered sources, if any, can be approved without you. Manual is always the safe starting point — nothing is auto-approved until you deliberately raise a surface\'s level. The rest of the Settings tab covers promotion gates, proxy header emission, report endpoint learning, and the scan schedule.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'The most important setting is Automation Level, set per surface from the Profiles tab dropdown or the Settings tab: Manual, Automatic (medium+high approvals), Automatic (high approvals only), or Fully automatic. This controls which risk tiers of discovered sources, if any, can be approved without you. Manual is always the safe starting point - nothing is auto-approved until you deliberately raise a surface\'s level. The rest of the Settings tab covers promotion gates, proxy header emission, report endpoint learning, and the scan schedule.', 'security-automation-manager' ); ?>
 	</p>
 
 	<h2 class="title"><?php esc_html_e( 'Readiness and Policy Audit', 'security-automation-manager' ); ?></h2>
 	<p class="description">
-		<?php esc_html_e( 'The Readiness page (in the sidebar) runs plugin and database health checks — schema integrity, table health, and operational checks — and, separately, offers a destructive full data reset if you need to start over.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'The Readiness page (in the sidebar) runs plugin and database health checks - schema integrity, table health, and operational checks - and, separately, offers a destructive full data reset if you need to start over.', 'security-automation-manager' ); ?>
 	</p>
 	<p class="description">
-		<?php esc_html_e( 'The Policy Audit tab above shows the current effective policy for every surface at a glance — mode, automation level, policy version, and pending/high-risk counts. For the pending review queue see For Review, and for the full, immutable decision ledger — who approved, rejected, or reverted each source, and why — see Policy Changes.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'The Policy Audit tab above shows the current effective policy for every surface at a glance - mode, automation level, policy version, and pending/high-risk counts. For the pending review queue see For Review, and for the full, immutable decision ledger - who approved, rejected, or reverted each source, and why - see Policy Changes.', 'security-automation-manager' ); ?>
 	</p>
 
 	<?php elseif ( 'profiles' === $tab ) : ?>

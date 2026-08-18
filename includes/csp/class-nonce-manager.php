@@ -38,7 +38,7 @@ class Nonce_Manager {
 		// Generate nonce once, very early, before any output.
 		add_action( 'init', array( $this, 'generate' ), 1 );
 
-		// WP 6.4+ native hooks (preferred — no regex on tag strings).
+		// WP 6.4+ native hooks (preferred - no regex on tag strings).
 		add_filter( 'wp_script_attributes', array( $this, 'add_script_nonce_attr' ), 10, 1 );
 		add_filter( 'wp_inline_script_attributes', array( $this, 'add_script_nonce_attr' ), 10, 1 );
 

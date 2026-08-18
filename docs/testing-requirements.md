@@ -47,7 +47,7 @@ material gaps remain. "Missing" means no automated coverage exists.
 
 **Net:** of 23 categories, 4 are fully covered, 6 are partial, 13 are missing.
 The single biggest structural gap is that nothing in CI currently runs against
-a real WordPress instance — every "integration" test today runs against
+a real WordPress instance - every "integration" test today runs against
 hand-written stubs, which cannot catch a real WordPress core API change,
 a real database migration failure, or a real activation-time fatal error.
 
@@ -66,12 +66,12 @@ stubs, not a WordPress core checkout). There is no matrix; no other PHP
 version and no WordPress version is exercised anywhere in CI.
 
 **This means "Tested up to: 7.0" in `readme.txt` is currently an unverified
-claim** — nothing in the pipeline installs WordPress 7.0 (or any WordPress
+claim** - nothing in the pipeline installs WordPress 7.0 (or any WordPress
 version) and runs the plugin against it.
 
 ### Target matrix
 
-Once WordPress integration tests exist (this issue's primary blocker — see
+Once WordPress integration tests exist (this issue's primary blocker - see
 "Next steps"), CI should run the full cross-product below on every PR to
 `main`:
 
@@ -90,7 +90,7 @@ plugin's own code are confirmed compatible (not yet verified either way).
    `wp-cli scaffold plugin-tests` + `svn co` of the WordPress test library)
    so `WP_UnitTestCase`-based tests can run against actual WordPress core,
    not hand-written stubs. This unblocks clean-install, upgrade, multisite,
-   and uninstall testing simultaneously — it's the one change that closes
+   and uninstall testing simultaneously - it's the one change that closes
    the largest number of "Missing" rows above.
 2. Extend `ci.yml`'s job (or add a matrix job) across the PHP/WordPress grid
    in "Target matrix" above, using `actions/matrix` with
@@ -103,5 +103,5 @@ plugin's own code are confirmed compatible (not yet verified either way).
    and asserts the upgrade path produces the expected current schema.
 5. Once WP-CLI support (#184), configuration import (#185), and entitlement
    signing (#173/#174) land, add their test categories from the table above
-   at the same time — do not ship the feature and defer its test category to
+   at the same time - do not ship the feature and defer its test category to
    a follow-up.
