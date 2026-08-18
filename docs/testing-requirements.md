@@ -21,12 +21,12 @@ material gaps remain. "Missing" means no automated coverage exists.
 
 | Category | Status | Notes |
 |---|---|---|
-| Unit tests | Covered | 38 test classes under `test/unit/`, run via `composer run test:no-coverage` in CI |
-| WordPress integration tests | Missing | `test/bootstrap.php` loads hand-written stubs (`test/wp-admin/includes/upgrade.php`, etc.), not a real WordPress core checkout (no `WP_UnitTestCase`, no `wp-env`/`wp-cli scaffold` test suite). Everything currently called a "test" runs against stubs, not WordPress itself |
-| Database migration tests | Partial | `SchemaMigrationTest.php` exists but runs against the stub environment, not a real WordPress DB with a prior-version schema loaded |
-| Clean installation tests | Missing | No test installs the plugin into a real WordPress instance and asserts on activation-time state |
-| Upgrade tests | Missing | No test exercises `2.4.x → 2.4.y` (or major version) upgrade against a real prior install |
-| Rollback tests | Missing | Rollback is a manual SVN checklist in `docs/release-and-publishing.md`; no automated test exists (see #160) |
+| Unit tests | Covered | 38+ test classes under `test/unit/`, run via `composer run test:no-coverage` in CI |
+| WordPress integration tests | Partial | `test/bootstrap.php` still loads hand-written stubs for the `test/unit/` PHPUnit suite (no `WP_UnitTestCase`, no `wp-env`/`wp-cli scaffold` test suite -- that specific gap remains, see "Next steps"). `.github/workflows/release-verification.yml` closes the practical gap a different way: real `wordpress` + real MySQL containers, driven by WP-CLI, covering clean install, upgrade, and data preservation (see rows below) |
+| Database migration tests | Partial | `SchemaMigrationTest.php` still runs against the stub environment. `release-verification.yml`'s upgrade jobs now additionally run the real migration path (schema v20 → current, and the immediately-previous release → current) against a real WordPress database, asserting the post-migration schema version and table set directly |
+| Clean installation tests | Covered | `release-verification.yml` installs and activates the plugin in a real WordPress + MySQL instance for both distribution channels, asserting schema version, table set, and (GitHub channel only) that the update checker actually attaches to WordPress's own `pre_set_site_transient_update_plugins` filter, not just that its class file is autoloadable |
+| Upgrade tests | Covered | `release-verification.yml`'s `upgrade-and-preservation` job upgrades a real install from the immediately-previous release and from the last pre-certificate release (v2.4.33, schema v20) to the current checkout, asserting the schema version advances and re-running the upgrade check twice more to prove it's idempotent (a proxy for interrupted-update recovery -- a real mid-copy interruption is WP core's own file-replacement mechanism, outside this plugin's control) |
+| Rollback tests | Missing | Rollback is a manual SVN checklist in `docs/release-and-publishing.md`; no automated test exists (see #160, prioritised next after this) |
 | Multisite tests | Missing | `SPECIFICATION.md` explicitly documents multisite as unsupported; no test coverage expected until #186 |
 | REST API tests | Partial | `WebhookControllerTest.php`, `ReportingEndpointTest.php`, `AdminUITest.php` cover specific routes against stubs; no test asserts on the full registered REST route table or permission callbacks as a set |
 | WP-CLI tests | Missing | No WP-CLI commands exist yet (#184); nothing to test |
@@ -45,11 +45,15 @@ material gaps remain. "Missing" means no automated coverage exists.
 | Permission boundaries | Partial | Individual REST tests assert on their own `permission_callback`; no single test enumerates every registered route and asserts none is missing a capability check |
 | Uninstall and data-retention behaviour | Missing | `uninstall.php` exists and lists options/tables to remove, but no automated test runs uninstall and asserts the database is clean afterward |
 
-**Net:** of 23 categories, 4 are fully covered, 6 are partial, 13 are missing.
-The single biggest structural gap is that nothing in CI currently runs against
-a real WordPress instance - every "integration" test today runs against
-hand-written stubs, which cannot catch a real WordPress core API change,
-a real database migration failure, or a real activation-time fatal error.
+**Net:** of 23 categories, 6 are fully covered, 6 are partial, 11 are missing.
+The single biggest structural gap -- nothing in CI ran against a real
+WordPress instance -- is now partially closed: `release-verification.yml`
+covers clean install, upgrade, and data-preservation scenarios against a real
+`wordpress` + MySQL instance via WP-CLI. What remains open is a
+`WP_UnitTestCase`-based PHPUnit integration suite for the existing
+`test/unit/` tests themselves (still stub-based) -- a different mechanism
+covering more granular, per-class assertions than a shell-driven workflow
+can reasonably express. See "Next steps" below.
 
 ## PHP / WordPress version matrix
 
@@ -60,48 +64,66 @@ a real database migration failure, or a real activation-time fatal error.
 
 ### Actually tested in CI
 
-`.github/workflows/ci.yml`'s `php-lint-and-standards` job runs a single
-configuration: **PHP 8.1, no WordPress version at all** (tests run against
-stubs, not a WordPress core checkout). There is no matrix; no other PHP
-version and no WordPress version is exercised anywhere in CI.
+`.github/workflows/ci.yml`'s `php-lint-and-standards` job now runs the
+`test/unit/` PHPUnit suite (still stub-based, not a WordPress core checkout)
+across a real PHP version matrix: **PHP 8.1, 8.2, 8.3, and 8.4** (PHPCS runs
+once, on 8.1, since a style violation is a property of the code, not the PHP
+version). `release-verification.yml` separately runs against real WordPress
+core (`wordpress:6.7-php8.1-apache`) via Docker, currently pinned to a single
+WordPress version rather than the WordPress axis below -- WordPress
+version-matrix coverage for that workflow remains open, see "Next steps".
 
-**This means "Tested up to: 7.0" in `readme.txt` is currently an unverified
-claim** - nothing in the pipeline installs WordPress 7.0 (or any WordPress
-version) and runs the plugin against it.
+**"Tested up to: 7.0" in `readme.txt` is still not directly verified** --
+`release-verification.yml` currently runs against WordPress 6.7 (matching
+`dast.yml`'s existing container), not 7.0. Confirming 7.0 compatibility
+remains open work.
 
 ### Target matrix
 
-Once WordPress integration tests exist (this issue's primary blocker - see
-"Next steps"), CI should run the full cross-product below on every PR to
-`main`:
+CI should run the full cross-product below on every PR to `main`. PHP is now
+covered for the stub-based unit suite; the WordPress axis for
+`release-verification.yml` is the remaining gap:
 
-| | PHP 8.1 | PHP 8.2 | PHP 8.3 |
-|---|---|---|---|
-| WordPress 6.4 (`Requires at least`) | Required | Required | Required |
-| WordPress latest stable | Required | Required | Required |
-| WordPress trunk/nightly | Optional (advisory, non-blocking) | Optional (advisory, non-blocking) | Optional (advisory, non-blocking) |
+| | PHP 8.1 | PHP 8.2 | PHP 8.3 | PHP 8.4 |
+|---|---|---|---|---|
+| WordPress 6.4 (`Requires at least`) | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no |
+| WordPress latest stable (7.0) | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no |
+| WordPress trunk/nightly | Not run | Not run | Not run | Not run |
 
-PHP 8.4 should be added to the matrix once `wp-coding-standards/wpcs` and the
-plugin's own code are confirmed compatible (not yet verified either way).
+"Unit" = the stub-based `test/unit/` suite (PHP-version-sensitive, WordPress-
+version-insensitive since it never loads WordPress core). "WP" =
+`release-verification.yml`'s real-WordPress jobs (currently pinned to 6.7 on
+PHP 8.1 only). Extending "WP" across this matrix is future work; each
+combination roughly triples that workflow's already-substantial runtime, so
+it should land as a scheduled/nightly job rather than on every PR once added.
 
 ## Next steps
 
-1. Introduce a real WordPress test environment (`@wordpress/env` or
+1. ~~Introduce a real WordPress environment for clean-install and upgrade
+   testing~~ -- done via `release-verification.yml` (Docker + WP-CLI, not
+   `@wordpress/env`/`WP_UnitTestCase` -- see the note below on why both still
+   have a place).
+2. ~~Extend `ci.yml`'s job across a PHP matrix~~ -- done: PHP 8.1-8.4 for the
+   `test/unit/` suite.
+3. A `WP_UnitTestCase`-based integration harness (`@wordpress/env` or
    `wp-cli scaffold plugin-tests` + `svn co` of the WordPress test library)
-   so `WP_UnitTestCase`-based tests can run against actual WordPress core,
-   not hand-written stubs. This unblocks clean-install, upgrade, multisite,
-   and uninstall testing simultaneously - it's the one change that closes
-   the largest number of "Missing" rows above.
-2. Extend `ci.yml`'s job (or add a matrix job) across the PHP/WordPress grid
-   in "Target matrix" above, using `actions/matrix` with
-   `shivammathur/setup-php` for the PHP axis and the new integration harness
-   for the WordPress axis.
-3. Add an uninstall test: activate, seed representative data in every table
+   is still open work, and is a different thing from
+   `release-verification.yml`: it would let the *existing* `test/unit/`
+   classes assert against real WordPress core objects/hooks instead of
+   `test/bootstrap.php`'s stubs, catching a real WordPress core API change at
+   the unit-test level rather than only at the full-lifecycle level
+   `release-verification.yml` operates at. Multisite and uninstall testing
+   (below) are natural fits for this harness once it exists.
+4. Add an uninstall test: activate, seed representative data in every table
    and option this plugin creates, run `uninstall.php`, assert the database
    and options table are clean.
-4. Add a schema-migration test that loads a prior-version database snapshot
-   and asserts the upgrade path produces the expected current schema.
-5. Once WP-CLI support (#184), configuration import (#185), and entitlement
+5. Extend `release-verification.yml`'s WordPress axis to cover more than one
+   WordPress version (currently pinned to 6.7) -- see the "Target matrix"
+   note on running this as scheduled/nightly rather than per-PR once it
+   covers more than one WordPress version, given the runtime cost.
+6. Add rollback testing once #160 lands (prioritised immediately after this
+   in the consolidation sequence -- see `docs/consolidation-ledger.md`).
+7. Once WP-CLI support (#184), configuration import (#185), and entitlement
    signing (#173/#174) land, add their test categories from the table above
    at the same time - do not ship the feature and defer its test category to
    a follow-up.

@@ -186,7 +186,7 @@ these differ from the first pass of this assessment):
 | Issue | Requirement | Status | Evidence | Remaining work | Recommendation |
 |---|---|---|---|---|---|
 | #158 | Update Channel status section in admin UI | Implemented | `page-overview.php`:360-497 - every field in the issue body verified line-by-line: version, channel, manifest URL, last success/fail check, available version, background-update permission, `WP_SAM_DISABLE_AUTO_UPDATE` state, manifest/checksum status, last result, no-secrets note | None found | Close |
-| #159 | Release verification test suite (18 scenarios) | Partial | 18 unit tests solidly cover manifest-host rejection, checksum mismatch, slug/version validation | 9 of 18 named scenarios (clean install, upgrade-from-previous, WP-UI upgrade, background-update-off, rollback, interrupted-update recovery, expired transient, cached manifest, and others) have zero coverage; nothing runs against a live WordPress instance | Update - prioritised as Phase 4 of the consolidation sequence |
+| #159 | Release verification test suite (18 scenarios) | Partial | 18 unit tests cover manifest-host rejection, checksum mismatch, slug/version validation. `release-verification.yml` (Phase 4) additionally covers clean install (both channels) and upgrade (from previous release and from the last pre-certificate release, v2.4.33) against a real WordPress + MySQL instance, with data-preservation and upgrade-idempotency assertions, and a real-network manifest-rejection proof against a mock server | Rollback (#160, separate issue), WP-UI-triggered upgrade, background-update-off, interrupted-update recovery beyond the idempotency proxy, expired transient, and cached manifest still have no coverage | Update - rollback tracked separately as #160; remaining scenarios are follow-up, not this phase's scope |
 | #160 | Supported rollback process | Not started | Only artifact is a 7-line manual SVN checklist in `docs/release-and-publishing.md`; zero code contains "rollback" in any form | Full design and implementation | Remain open - prioritised as Phase 5 |
 
 ### Phase 2 - spec, docs consistency, technical debt
@@ -284,16 +284,27 @@ Ordered by what most directly stops a defensible public release:
    service specifically; does not block a free GitHub-channel or
    WordPress.org release, since commercial code is already excluded from both
    builds today.
-3. **SPECIFICATION.md is 18 schema versions stale** while marked "Active"
-   (#161).
+3. ~~**SPECIFICATION.md is 18 schema versions stale** while marked "Active"
+   (#161)~~ — **fixed in PR #236** (Phase 2), replaced with an authoritative
+   v1.0 covering all product domains, released as v2.9.4. #161 itself should
+   still be formally closed with a reference to this document; not done
+   automatically per the standing "don't close issues without authorisation"
+   rule.
 4. ~~**README contains two direct self-contradictions and one inverted
-   instruction**~~ (automation default, COOP/COEP capability, GitHub package
    naming) - **fixed in PR #236** (Phase 2 of the consolidation sequence),
-   released as v2.9.4. `SPECIFICATION.md` (item 3 above) was replaced in the
-   same PR.
-5. **No install/upgrade/rollback test runs against a real WordPress
-   instance** (#159) - every test, including schema migration, runs against
-   hand-written stubs.
+   released as v2.9.4.
+5. ~~**No install/upgrade/rollback test runs against a real WordPress
+   instance**~~ (#159) - **the install/upgrade half fixed in Phase 4**:
+   `.github/workflows/release-verification.yml` now runs clean install (both
+   channels), upgrade from the previous release, upgrade from the last
+   pre-certificate release, and data-preservation assertions against a real
+   `wordpress` + MySQL instance via WP-CLI, plus a real-network manifest-
+   rejection proof. The *rollback* half remains genuinely open - see item 1
+   above (#160) - and #159 itself still has real gaps against its original
+   18-scenario list (WP-UI-triggered upgrade, background-update-off, expired
+   transient, cached manifest, and a few others have no coverage in any
+   form); see `docs/testing-requirements.md` for the current, honest
+   accounting.
 6. ~~Certificate capability-probe leaks raw OpenSSL error text to the admin
    UI~~ - **fixed in Phase 3** of the consolidation sequence: the
    administrator-facing message is now a stable, generic string
