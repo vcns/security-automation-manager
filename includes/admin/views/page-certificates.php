@@ -57,6 +57,22 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 	<?php if ( isset( $_GET['queued'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 	<div class="notice notice-info"><p><?php esc_html_e( 'Certificate order queued. It runs in the background via WP-Cron; refresh this page to follow the status.', 'security-automation-manager' ); ?></p></div>
 	<?php endif; ?>
+	<?php if ( isset( $_GET['key_error'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+	<div class="notice notice-error"><p><?php esc_html_e( 'The pasted private key could not be loaded and was NOT saved. Paste a complete, unencrypted PEM key (BEGIN PRIVATE KEY / BEGIN EC PRIVATE KEY / BEGIN RSA PRIVATE KEY). Passphrase-protected keys are not supported.', 'security-automation-manager' ); ?></p></div>
+	<?php endif; ?>
+
+	<?php if ( ! extension_loaded( 'openssl' ) || ! function_exists( 'sodium_crypto_secretbox' ) ) : ?>
+	<div class="notice notice-error">
+		<p>
+			<strong><?php esc_html_e( 'Missing PHP requirement.', 'security-automation-manager' ); ?></strong>
+			<?php if ( ! extension_loaded( 'openssl' ) ) : ?>
+				<?php esc_html_e( 'The openssl PHP extension is not available on this server. ACME request signing cannot work without it, so certificate automation is disabled — supplying your own private key does not remove this requirement, because every ACME API call must be cryptographically signed. Ask your host to enable ext/openssl (it ships with PHP and is required by WordPress features such as HTTPS API calls).', 'security-automation-manager' ); ?>
+			<?php else : ?>
+				<?php esc_html_e( 'The sodium PHP extension is not available on this server; credentials and private keys cannot be encrypted at rest, so certificate automation is disabled. Ask your host to enable ext/sodium (bundled with PHP since 7.2).', 'security-automation-manager' ); ?>
+			<?php endif; ?>
+		</p>
+	</div>
+	<?php endif; ?>
 
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Certificate sections', 'security-automation-manager' ); ?>">
 		<?php foreach ( $wp_sam_cert_tabs as $wp_sam_tab_key => $wp_sam_tab_label ) : ?>
@@ -119,6 +135,7 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 						<input type="radio" name="wp_sam_cert_challenge" value="http-01" <?php checked( $wp_sam_cert_config['challenge'], 'http-01' ); ?> />
 						<?php esc_html_e( 'HTTP-01 — prove control via a file this site serves itself (no DNS credentials needed; the CA must reach this site on port 80; no wildcards)', 'security-automation-manager' ); ?>
 					</label>
+					<p class="description"><?php esc_html_e( 'HSTS (including hstspreload.org registration) does not conflict with HTTP-01: HSTS is a browser-only policy, and ACME validation servers are not browsers — Let\'s Encrypt starts at http:// and follows your redirect to HTTPS, which is exactly what an HSTS site serves on port 80. Only a firewalled port 80 breaks HTTP-01.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<tr class="wp-sam-cert-dns-only">
@@ -174,6 +191,21 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				<td>
 					<label><input type="radio" name="wp_sam_cert_key_type" value="ec-256" <?php checked( $wp_sam_cert_config['key_type'], 'ec-256' ); ?> /> <?php esc_html_e( 'ECDSA P-256 (recommended)', 'security-automation-manager' ); ?></label><br />
 					<label><input type="radio" name="wp_sam_cert_key_type" value="rsa-2048" <?php checked( $wp_sam_cert_config['key_type'], 'rsa-2048' ); ?> /> <?php esc_html_e( 'RSA 2048 (legacy compatibility)', 'security-automation-manager' ); ?></label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="wp_sam_cert_custom_key"><?php esc_html_e( 'Bring your own private key (optional)', 'security-automation-manager' ); ?></label></th>
+				<td>
+					<textarea id="wp_sam_cert_custom_key" name="wp_sam_cert_custom_key" class="large-text code" rows="5" autocomplete="off" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['custom_key_pem'] ? __( '•••••• (a key is stored — leave blank to keep it)', 'security-automation-manager' ) : '-----BEGIN PRIVATE KEY-----' ); ?>"></textarea>
+					<?php if ( '' !== $wp_sam_cert_config['custom_key_pem'] ) : ?>
+					<p><label><input type="checkbox" name="wp_sam_cert_clear_custom_key" value="1" /> <?php esc_html_e( 'Remove the stored key and go back to generating one per order', 'security-automation-manager' ); ?></label></p>
+					<?php endif; ?>
+					<p class="description">
+						<?php esc_html_e( 'Normally the plugin generates a fresh key for every order — leave this empty unless your organisation must control key material, or key generation fails on this host. A pasted key is validated before saving, stored encrypted at rest, reused for every subsequent order, and overrides the key-type choice above. Generate one yourself with the OpenSSL command line:', 'security-automation-manager' ); ?>
+					</p>
+					<p class="wp-sam-cert-keygen-cmd" data-keytype="ec-256"><code>openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out privkey.pem</code></p>
+					<p class="wp-sam-cert-keygen-cmd" data-keytype="rsa-2048" style="display:none"><code>openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out privkey.pem</code></p>
+					<p class="description"><?php esc_html_e( 'Then paste the contents of privkey.pem above — and keep the file somewhere safe; whoever holds the key holds the certificate.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -369,5 +401,18 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 		radio.addEventListener( 'change', syncChallenge );
 	} );
 	syncChallenge();
+
+	// Show the openssl key-generation command matching the selected key type.
+	function syncKeygenCmd() {
+		var picked = document.querySelector( 'input[name="wp_sam_cert_key_type"]:checked' );
+		var type   = picked ? picked.value : 'ec-256';
+		document.querySelectorAll( '.wp-sam-cert-keygen-cmd' ).forEach( function ( p ) {
+			p.style.display = p.dataset.keytype === type ? '' : 'none';
+		} );
+	}
+	document.querySelectorAll( 'input[name="wp_sam_cert_key_type"]' ).forEach( function ( radio ) {
+		radio.addEventListener( 'change', syncKeygenCmd );
+	} );
+	syncKeygenCmd();
 } )();
 </script>

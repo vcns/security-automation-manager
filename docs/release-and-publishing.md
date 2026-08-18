@@ -88,10 +88,13 @@ Typical mapping:
 
 ## GitHub Release Artifacts
 
-Tagged releases generate two ready-to-install ZIP assets:
+Tagged releases publish exactly ONE release asset:
 
-- `security-automation-manager-vX.Y.Z.zip` - WordPress.org-safe package; no GitHub updater files and no `Update URI` header
-- `security-automation-manager-github-vX.Y.Z.zip` - GitHub-channel package; includes the GitHub release updater, a generated `includes/build-channel.php`, and an `Update URI` header
+- `security-automation-manager-vX.Y.Z.zip` - the GITHUB-channel build: includes the GitHub release updater, a generated `includes/build-channel.php`, and an `Update URI` header. This is the file humans download and upload through wp-admin.
+
+The CI run still builds the WordPress.org-safe package (no updater files, no `Update URI` header) as a workflow ARTIFACT for the SVN deployment pipeline, but it is deliberately never attached to the GitHub Release: installing it over a GitHub-channel site silently removes the self-updater.
+
+> Naming-semantics note: up to and including v2.6.x, `security-automation-manager-vX.Y.Z.zip` on the release page was the WordPress.org-channel package. From v2.8.0 the single versioned asset is the GitHub-channel build (v2.7.0's assets were retro-normalised the same way).
 
 The GitHub-channel package publishes update metadata to:
 

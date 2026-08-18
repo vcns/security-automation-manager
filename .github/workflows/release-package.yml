@@ -275,31 +275,27 @@ jobs:
           # outage burned two release attempts for v2.6.0) that a publish
           # step without retries is a reliability bug. Exponential-ish
           # backoff, ~6 minutes worst case, before declaring a real failure.
-          # A third, stable-named asset that is a copy of the GITHUB-channel
-          # ZIP. This is the one humans should download and upload through
-          # wp-admin: the plain name means WordPress extracts it to the
-          # canonical plugin folder (no security-automation-manager-github-vX
-          # duplicate slugs), and being the GitHub-channel build it keeps the
-          # self-updater. The versioned wporg-channel ZIP exists for the
-          # WordPress.org SVN pipeline, not for manual installs -- a plainly
-          # named copy of the WRONG channel is exactly how a site silently
-          # loses its update mechanism.
-          STABLE_ZIP_FILENAME="security-automation-manager.zip"
-          cp "dist/${GITHUB_ZIP_FILENAME}" "dist/${STABLE_ZIP_FILENAME}"
+          # Exactly ONE release asset: security-automation-manager-vX.Y.Z.zip,
+          # containing the GITHUB-channel build (self-updater included) --
+          # GitHub Releases ARE the GitHub distribution channel. The
+          # wporg-channel package (updater stripped for directory-guideline
+          # compliance) stays a CI artifact for the WordPress.org SVN
+          # pipeline and is never a release download: publishing it here is
+          # exactly how a site silently loses its update mechanism.
+          rm -f "dist/${ZIP_FILENAME}"
+          cp "dist/${GITHUB_ZIP_FILENAME}" "dist/${ZIP_FILENAME}"
 
           publish() {
             if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-              gh release upload "${TAG}" "dist/${STABLE_ZIP_FILENAME}" "dist/${ZIP_FILENAME}" "dist/${GITHUB_ZIP_FILENAME}" --repo "${GITHUB_REPOSITORY}" --clobber
+              gh release upload "${TAG}" "dist/${ZIP_FILENAME}" --repo "${GITHUB_REPOSITORY}" --clobber
             else
               gh release create "${TAG}" \
                 --repo "${GITHUB_REPOSITORY}" \
                 --title "Security Automation Manager ${TAG}" \
                 --generate-notes \
-                --notes "**Which file do I download?** Use \`security-automation-manager.zip\` — it installs to the correct folder and keeps automatic updates. The \`-github-\` file is the identical build under a versioned name; the plain \`-v*.zip\` is the WordPress.org-channel package (no self-updater) used by the SVN deploy pipeline." \
+                --notes "Install or update with \`security-automation-manager-${TAG}.zip\` (the self-updating GitHub-channel build). Tip: when installing via wp-cli from a URL, rename the extracted folder to \`security-automation-manager\` if it comes out versioned; wp-admin uploads extract to the correct folder automatically." \
                 ${PRERELEASE_FLAG} \
-                "dist/${STABLE_ZIP_FILENAME}" \
-                "dist/${ZIP_FILENAME}" \
-                "dist/${GITHUB_ZIP_FILENAME}"
+                "dist/${ZIP_FILENAME}"
             fi
           }
 

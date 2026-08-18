@@ -76,6 +76,24 @@ class CertificateStoreTest extends TestCase {
 		$this->assertSame( 'https://acme/acct/123', $this->store->get_account( 'staging' )['kid'] );
 	}
 
+	public function test_custom_key_is_sealed_kept_on_blank_and_cleared_on_null(): void {
+		$pem = "-----BEGIN PRIVATE KEY-----\nfakekeymaterial\n-----END PRIVATE KEY-----";
+
+		$this->store->save_config( array( 'custom_key_pem' => $pem ) );
+
+		$raw = $GLOBALS['_wp_options'][ Certificate_Store::CONFIG_OPTION ];
+		$this->assertStringNotContainsString( 'fakekeymaterial', (string) wp_json_encode( $raw ) );
+		$this->assertSame( $pem, $this->store->get_config()['custom_key_pem'] );
+
+		// Blank submission keeps the stored key.
+		$this->store->save_config( array( 'custom_key_pem' => '' ) );
+		$this->assertSame( $pem, $this->store->get_config()['custom_key_pem'] );
+
+		// null is the explicit clear sentinel.
+		$this->store->save_config( array( 'custom_key_pem' => null ) );
+		$this->assertSame( '', $this->store->get_config()['custom_key_pem'] );
+	}
+
 	public function test_environments_get_distinct_account_keys(): void {
 		$this->assertNotSame(
 			$this->store->get_account( 'staging' )['key_pem'],
