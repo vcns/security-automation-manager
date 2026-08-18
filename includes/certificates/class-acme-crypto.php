@@ -71,6 +71,40 @@ class Acme_Crypto {
 	}
 
 	/**
+	 * Live capability probe: can this server actually generate a key right
+	 * now? extension_loaded('openssl') alone is not a reliable signal --
+	 * the extension can be compiled in and still fail at runtime (a missing
+	 * openssl.cnf on Windows/minimal-container hosts is exactly the failure
+	 * generate_key() already works around; other hosts lock down RANDFILE
+	 * writes, or lack ext/openssl entirely). Actually attempting a
+	 * throwaway generation is the only test that answers the real
+	 * question, and it is cheap (a few milliseconds for EC-256).
+	 *
+	 * @return array{ok:bool, error:?string}
+	 */
+	public static function generation_capability(): array {
+		if ( ! extension_loaded( 'openssl' ) ) {
+			return array(
+				'ok'    => false,
+				'error' => 'The openssl PHP extension is not available on this server.',
+			);
+		}
+
+		try {
+			self::generate_key( 'ec-256' );
+			return array(
+				'ok'    => true,
+				'error' => null,
+			);
+		} catch ( \Throwable $e ) {
+			return array(
+				'ok'    => false,
+				'error' => $e->getMessage(),
+			);
+		}
+	}
+
+	/**
 	 * Path to a minimal openssl.cnf, generated on first use. ext/openssl
 	 * insists on loading a config file for key/CSR operations, and its
 	 * compiled-in default path frequently does not exist (Windows always;

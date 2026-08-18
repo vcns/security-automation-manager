@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Certificates\Acme_Crypto;
 use WP_SAM\Certificates\Certificate_Store;
 use WP_SAM\Certificates\Dns_Provider;
 
@@ -27,6 +28,21 @@ $wp_sam_base_url    = admin_url( 'admin.php?page=security-automation-manager-cer
 $wp_sam_cert_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'configuration'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only routing.
 if ( ! in_array( $wp_sam_cert_tab, array( 'configuration', 'renew', 'install' ), true ) ) {
 	$wp_sam_cert_tab = 'configuration';
+}
+
+// Live probe: can THIS server actually generate a certificate key right now?
+// extension_loaded('openssl') alone is not reliable -- see
+// Acme_Crypto::generation_capability()'s docblock. Only run on the tab that
+// needs it; a real key-generation attempt is cheap but not free, and the
+// other two tabs never render this section. The "bring your own key" block
+// only appears when generation genuinely fails, or a key is already stored
+// (so a site that starts working again still has a way to remove it).
+if ( 'configuration' === $wp_sam_cert_tab ) {
+	$wp_sam_key_capability = extension_loaded( 'openssl' ) ? Acme_Crypto::generation_capability() : array(
+		'ok'    => false,
+		'error' => 'The openssl PHP extension is not available.',
+	);
+	$wp_sam_show_byo_key   = ! $wp_sam_key_capability['ok'] || '' !== $wp_sam_cert_config['custom_key_pem'];
 }
 
 $wp_sam_cert_tabs = array(
@@ -191,23 +207,38 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				<td>
 					<label><input type="radio" name="wp_sam_cert_key_type" value="ec-256" <?php checked( $wp_sam_cert_config['key_type'], 'ec-256' ); ?> /> <?php esc_html_e( 'ECDSA P-256 (recommended)', 'security-automation-manager' ); ?></label><br />
 					<label><input type="radio" name="wp_sam_cert_key_type" value="rsa-2048" <?php checked( $wp_sam_cert_config['key_type'], 'rsa-2048' ); ?> /> <?php esc_html_e( 'RSA 2048 (legacy compatibility)', 'security-automation-manager' ); ?></label>
+					<?php if ( $wp_sam_key_capability['ok'] ) : ?>
+					<p class="description">✓ <?php esc_html_e( 'This server can generate certificate keys automatically — nothing further needed here.', 'security-automation-manager' ); ?></p>
+					<?php endif; ?>
 				</td>
 			</tr>
+			<?php if ( $wp_sam_show_byo_key ) : ?>
 			<tr>
-				<th scope="row"><label for="wp_sam_cert_custom_key"><?php esc_html_e( 'Bring your own private key (optional)', 'security-automation-manager' ); ?></label></th>
+				<th scope="row"><label for="wp_sam_cert_custom_key"><?php esc_html_e( 'Private key', 'security-automation-manager' ); ?></label></th>
 				<td>
+					<?php if ( ! $wp_sam_key_capability['ok'] ) : ?>
+					<p class="description" style="color:#a00;margin-top:0">
+						<strong><?php esc_html_e( 'This server could not generate a certificate key automatically:', 'security-automation-manager' ); ?></strong>
+						<?php echo esc_html( (string) $wp_sam_key_capability['error'] ); ?>
+					</p>
+					<?php endif; ?>
 					<textarea id="wp_sam_cert_custom_key" name="wp_sam_cert_custom_key" class="large-text code" rows="5" autocomplete="off" placeholder="<?php echo esc_attr( '' !== $wp_sam_cert_config['custom_key_pem'] ? __( '•••••• (a key is stored — leave blank to keep it)', 'security-automation-manager' ) : '-----BEGIN PRIVATE KEY-----' ); ?>"></textarea>
-					<?php if ( '' !== $wp_sam_cert_config['custom_key_pem'] ) : ?>
-					<p><label><input type="checkbox" name="wp_sam_cert_clear_custom_key" value="1" /> <?php esc_html_e( 'Remove the stored key and go back to generating one per order', 'security-automation-manager' ); ?></label></p>
+					<?php if ( '' !== $wp_sam_cert_config['custom_key_pem'] && $wp_sam_key_capability['ok'] ) : ?>
+					<p><label><input type="checkbox" name="wp_sam_cert_clear_custom_key" value="1" /> <?php esc_html_e( 'Remove the stored key and go back to generating one automatically per order (this server can do so now)', 'security-automation-manager' ); ?></label></p>
 					<?php endif; ?>
 					<p class="description">
-						<?php esc_html_e( 'Normally the plugin generates a fresh key for every order — leave this empty unless your organisation must control key material, or key generation fails on this host. A pasted key is validated before saving, stored encrypted at rest, reused for every subsequent order, and overrides the key-type choice above. Generate one yourself with the OpenSSL command line:', 'security-automation-manager' ); ?>
+						<?php
+						echo $wp_sam_key_capability['ok']
+							? esc_html__( 'A key is already stored from when this server could not generate one, or was set deliberately to control key material. It overrides the key-type choice above and is reused for every order. Paste a replacement below, or use the checkbox to remove it now that automatic generation works.', 'security-automation-manager' )
+							: esc_html__( 'Generate a private key yourself — on your own computer, using the OpenSSL command line — and paste its contents below. It is validated before saving, stored encrypted at rest, and reused for every order.', 'security-automation-manager' );
+						?>
 					</p>
 					<p class="wp-sam-cert-keygen-cmd" data-keytype="ec-256"><code>openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out privkey.pem</code></p>
 					<p class="wp-sam-cert-keygen-cmd" data-keytype="rsa-2048" style="display:none"><code>openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out privkey.pem</code></p>
 					<p class="description"><?php esc_html_e( 'Then paste the contents of privkey.pem above — and keep the file somewhere safe; whoever holds the key holds the certificate.', 'security-automation-manager' ); ?></p>
 				</td>
 			</tr>
+			<?php endif; ?>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Environment', 'security-automation-manager' ); ?></th>
 				<td>

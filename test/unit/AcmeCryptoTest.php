@@ -55,6 +55,17 @@ class AcmeCryptoTest extends TestCase {
 		$this->assertSame( 'ES256', Acme_Crypto::alg( $pem ) );
 	}
 
+	public function test_generation_capability_reports_ok_on_a_working_host(): void {
+		// This test environment has a functioning openssl (every other test in
+		// this file depends on it), so the live probe must report ok=true with
+		// no error -- the real signal this method exists to provide, verified
+		// against a real generation attempt rather than mocked.
+		$capability = Acme_Crypto::generation_capability();
+
+		$this->assertTrue( $capability['ok'] );
+		$this->assertNull( $capability['error'] );
+	}
+
 	public function test_rsa_signature_uses_rs256(): void {
 		$pem = Acme_Crypto::generate_key( 'rsa-2048' );
 
