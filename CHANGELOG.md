@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.1] - 2026-08-18
+
+### Changed
+
+- `Acme_Crypto::generation_capability()`: a live probe (an actual throwaway key generation, not just `extension_loaded('openssl')`) for whether this server can generate certificate keys right now -- the extension can be compiled in and still fail at runtime (the missing-openssl.cnf case `generate_key()` already works around; RANDFILE write restrictions; other host lockdowns). The Certificates Configuration tab now uses this to decide the "bring your own private key" section's visibility: hidden entirely on a working server, shown with the specific failure reason and the matching `openssl genpkey` command when generation fails, and still shown (without the error framing) when a key is already stored so a server that starts working again still has a way to remove it. Corrects 2.8.0's implementation, which rendered the upload box unconditionally as an "optional" field regardless of server capability.
+
 ## [2.9.0] - 2026-08-18
 
 ### Changed

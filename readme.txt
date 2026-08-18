@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, wordpress security
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.9.0
+Stable tag: 2.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,10 @@ The Scripts page's Internal tab, when enabled for a surface, reads this site's o
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
 
 == Changelog ==
+
+= 2.9.1 =
+
+* Certificates > Configuration now checks whether this server can actually generate a certificate key -- by attempting one, not just checking that the openssl extension is present, since the extension can be loaded and still fail (a missing openssl.cnf, for example). The "bring your own private key" upload box is only shown when generation genuinely fails, with the specific reason and the OpenSSL command to make one yourself, or when a key is already stored. Servers that work correctly no longer see the upload box at all.
 
 = 2.9.0 =
 
