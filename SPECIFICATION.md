@@ -4,7 +4,7 @@
 
 **Version:** 1.0
 **Date:** 2026-08-18
-**DB schema alignment:** v22
+**DB schema alignment:** v23
 **Status:** Active
 
 **Supersedes:** v0.3 (2026-06-07), which described a CSP-only product aligned to
@@ -566,15 +566,41 @@ admin-visible status.
 
 **Reset and recovery.** The Readiness admin view offers an authenticated
 reset that clears CSP data and disables header emission until rollout is
-deliberately restarted - the only structured recovery mechanism that exists
-today. There is no equivalent structured recovery for the other two product
-areas, and no rollback mechanism for the plugin release itself (see §10).
+deliberately restarted.
 
-**Known limitations.** This is the least mature area of the product as of
-this document. `docs/consolidation-ledger.md` tracks the two largest gaps
-as release blockers: no install/upgrade/rollback test suite runs against a
-real WordPress instance, and no rollback process exists in code (only a
-seven-line manual SVN checklist).
+**Schema-downgrade protection and configuration rollback (`Rollback_Guard`,
+schema v23).** A plugin cannot swap its own PHP files back to an older
+release from inside a running request -- that happens at the
+WordPress/hosting level, outside any plugin's control. What this class
+provides instead: (1) on every boot, `Plugin::maybe_upgrade_db()` checks
+whether the installed database schema is *ahead* of the running code's
+`WP_SAM_DB_VERSION` -- the state produced when older plugin code is
+installed over a site a newer version already migrated -- and if so,
+refuses to run `Activator::activate()` at all (its `dbDelta()` calls only
+know how to add columns/tables, never remove ones a newer schema added,
+and several of its migration functions assume they're moving a site
+forward), instead recording a persistent admin notice and an audit-log
+entry; (2) immediately before every forward migration, it snapshots every
+row of the config-state tables (policy profiles, source/hash approvals,
+other pillar profiles, dependency classifications, certificate records --
+explicitly never the audit log or other append-only/log-shaped tables,
+which need no snapshot because nothing ever overwrites them) into a
+bounded (last 5) history; (3) an administrator can restore a snapshot from
+the Readiness tab, but only when the running code's schema still matches
+exactly what the snapshot was taken for -- restoring across a schema
+change is refused with a clear reason rather than attempted partially.
+This covers a migration whose *data* effects turn out to be unwanted while
+staying on current code; it does not cover restoring older plugin code
+itself, which remains a manual process (`docs/rollback-and-recovery.md`).
+
+**Known limitations.** No release-verification test suite covering every
+named scenario runs against a real WordPress instance yet (partial
+coverage exists -- see `docs/testing-requirements.md`). Rollback support
+covers configuration-state data only, not certificate private keys' or
+credentials' *decryptability* across a vault-key change (see
+`docs/credential-vault-assessment.md` for that specific, separate risk) or
+the plugin's own code version. `docs/consolidation-ledger.md` tracks
+remaining gaps.
 
 ---
 

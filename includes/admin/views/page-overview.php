@@ -16,6 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Rollback_Guard;
+
 global $wpdb;
 
 // Current tab.
@@ -127,8 +129,12 @@ uasort(
 );
 
 // ── Readiness tab data ──────────────────────────────────────────────────────
-$reset_result = sanitize_text_field( wp_unslash( $_GET['wp_sam_reset'] ?? '' ) );
-$status_badge = static function ( string $status ): void {
+$reset_result       = sanitize_text_field( wp_unslash( $_GET['wp_sam_reset'] ?? '' ) );
+$restore_result     = sanitize_text_field( wp_unslash( $_GET['wp_sam_restore'] ?? '' ) );
+$restore_reason     = rawurldecode( sanitize_text_field( wp_unslash( $_GET['wp_sam_restore_reason'] ?? '' ) ) );
+$downgrade_flag     = get_option( Rollback_Guard::DOWNGRADE_OPTION, array() );
+$rollback_snapshots = Rollback_Guard::list_snapshots();
+$status_badge       = static function ( string $status ): void {
 	$labels = array(
 		'pass'    => __( 'Pass', 'security-automation-manager' ),
 		'warning' => __( 'Warning', 'security-automation-manager' ),
@@ -314,6 +320,107 @@ $status_badge = static function ( string $status ): void {
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+
+	<hr>
+
+	<h2 id="wp-sam-rollback"><?php esc_html_e( 'Rollback and Recovery', 'security-automation-manager' ); ?></h2>
+
+		<?php if ( ! empty( $downgrade_flag ) && is_array( $downgrade_flag ) ) : ?>
+	<div class="notice notice-error inline">
+		<p>
+			<strong><?php esc_html_e( 'Database schema is newer than the running plugin code.', 'security-automation-manager' ); ?></strong>
+			<?php
+			printf(
+				/* translators: 1: installed database schema version, 2: currently running plugin code's schema version */
+				esc_html__( 'Installed schema: v%1$d. Running code: v%2$d. No automatic migration has been attempted -- see "Manual recovery" below.', 'security-automation-manager' ),
+				(int) ( $downgrade_flag['installed'] ?? 0 ),
+				(int) ( $downgrade_flag['code'] ?? 0 )
+			);
+			?>
+		</p>
+	</div>
+	<?php endif; ?>
+
+		<?php if ( 'success' === $restore_result ) : ?>
+	<div class="notice notice-success is-dismissible">
+		<p><?php esc_html_e( 'Configuration snapshot restored.', 'security-automation-manager' ); ?></p>
+	</div>
+	<?php elseif ( 'failed' === $restore_result ) : ?>
+	<div class="notice notice-error is-dismissible">
+		<p>
+			<?php esc_html_e( 'Snapshot was not restored.', 'security-automation-manager' ); ?>
+			<?php echo '' !== $restore_reason ? esc_html( $restore_reason ) : ''; ?>
+		</p>
+	</div>
+	<?php endif; ?>
+
+	<p>
+		<?php esc_html_e( 'This plugin cannot swap its own code back to an older release -- that happens at the WordPress/hosting level. What it can do: refuse to run a migration when the database is already ahead of the running code (see the warning above if that applies here), and let you undo a migration\'s data effects while staying on the current code, using an automatic snapshot taken immediately before every schema upgrade.', 'security-automation-manager' ); ?>
+	</p>
+	<p class="description">
+		<?php
+		printf(
+			wp_kses(
+				/* translators: %s: link to the rollback and recovery documentation */
+				__( 'Snapshots cover policy profiles, source/hash approvals, other pillar profiles, dependency classifications, and certificate records -- never the audit log or violation history, which are append-only and never overwritten. For anything beyond what\'s here, including swapping plugin code itself, see %s.', 'security-automation-manager' ),
+				array(
+					'a' => array(
+						'href'   => array(),
+						'target' => array(),
+						'rel'    => array(),
+					),
+				)
+			),
+			'<a href="https://github.com/vcns/security-automation-manager/blob/main/docs/rollback-and-recovery.md" target="_blank" rel="noopener noreferrer">' . esc_html__( 'the manual recovery guide', 'security-automation-manager' ) . '</a>'
+		);
+		?>
+	</p>
+
+		<?php if ( empty( $rollback_snapshots ) ) : ?>
+	<p class="description"><?php esc_html_e( 'No snapshots yet -- one is taken automatically the next time a schema migration runs.', 'security-automation-manager' ); ?></p>
+	<?php else : ?>
+	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+		<thead>
+			<tr>
+				<th scope="col"><?php esc_html_e( 'Taken', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Migration', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Restorable now', 'security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Action', 'security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( $rollback_snapshots as $snapshot ) : ?>
+			<tr>
+				<td><?php echo esc_html( $snapshot['created_at'] ); ?></td>
+				<td><?php echo esc_html( sprintf( 'v%1$d -> v%2$d', $snapshot['from_version'], $snapshot['to_version'] ) ); ?></td>
+				<td>
+					<?php if ( $snapshot['restorable'] ) : ?>
+						<?php esc_html_e( 'Yes', 'security-automation-manager' ); ?>
+					<?php else : ?>
+						<?php esc_html_e( 'No -- schema has moved on since', 'security-automation-manager' ); ?>
+					<?php endif; ?>
+				</td>
+				<td>
+					<?php if ( $snapshot['restorable'] ) : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;align-items:center;gap:.5em;">
+						<?php wp_nonce_field( 'wp_sam_restore_snapshot' ); ?>
+						<input type="hidden" name="action" value="wp_sam_restore_snapshot">
+						<input type="hidden" name="wp_sam_snapshot_id" value="<?php echo esc_attr( (string) $snapshot['id'] ); ?>">
+						<label>
+							<input type="checkbox" name="wp_sam_restore_confirmation" value="1" required>
+							<?php esc_html_e( 'Confirm', 'security-automation-manager' ); ?>
+						</label>
+						<?php submit_button( __( 'Restore this snapshot', 'security-automation-manager' ), 'secondary small', '', false ); ?>
+					</form>
+					<?php else : ?>
+						&mdash;
+					<?php endif; ?>
+				</td>
+			</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+	<?php endif; ?>
 
 	<hr>
 

@@ -40,6 +40,7 @@ declare( strict_types=1 );
 namespace WP_SAM\Admin;
 
 use WP_SAM\Plugin;
+use WP_SAM\Rollback_Guard;
 use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
@@ -83,6 +84,7 @@ class Admin_UI {
 
 		// AJAX handlers.
 		add_action( 'admin_post_wp_sam_reset_data', array( $this, 'handle_reset_data' ) );
+		add_action( 'admin_post_wp_sam_restore_snapshot', array( $this, 'handle_restore_snapshot' ) );
 		add_action( 'admin_post_wp_sam_dismiss_conflicts', array( $this, 'handle_dismiss_conflicts' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
@@ -579,6 +581,53 @@ class Admin_UI {
 	}
 
 	/**
+	 * Restores a pre-migration configuration snapshot. Overwrites current
+	 * CSP policy profiles, source/hash approvals, pillar profiles,
+	 * dependency classifications, and certificate records with the
+	 * snapshotted values -- a meaningfully destructive action (a previously
+	 * blocked source could become approved again, for example), so it
+	 * requires the same explicit confirmation checkbox pattern as other
+	 * state-changing actions on this page, short of the full reset flow's
+	 * heavier password+typed-phrase requirement since this only replaces
+	 * plugin configuration, not all plugin data.
+	 */
+	public function handle_restore_snapshot(): void {
+		check_admin_referer( 'wp_sam_restore_snapshot' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to restore plugin configuration.', 'security-automation-manager' ) );
+		}
+
+		$snapshot_id = (int) ( $_POST['wp_sam_snapshot_id'] ?? 0 );
+		$confirmed   = ! empty( $_POST['wp_sam_restore_confirmation'] );
+
+		if ( $snapshot_id <= 0 || ! $confirmed ) {
+			$this->redirect_to_readiness_restore( 'failed', __( 'Confirmation checkbox was not checked.', 'security-automation-manager' ) );
+		}
+
+		$result = Rollback_Guard::restore_snapshot( $snapshot_id );
+
+		$this->redirect_to_readiness_restore(
+			$result['ok'] ? 'success' : 'failed',
+			$result['ok'] ? '' : (string) ( $result['reason'] ?? '' )
+		);
+	}
+
+	private function redirect_to_readiness_restore( string $result, string $reason = '' ): void {
+		$args = array(
+			'tab'            => 'readiness',
+			'wp_sam_restore' => $result,
+		);
+		if ( '' !== $reason ) {
+			$args['wp_sam_restore_reason'] = rawurlencode( $reason );
+		}
+
+		$url = add_query_arg( $args, admin_url( 'admin.php?page=security-automation-manager#wp-sam-rollback' ) );
+
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	/**
 	 * Dismisses the competing-CSP-header banner on the CSP dashboard by
 	 * recording the dismissal moment. The banner query only shows audit
 	 * findings newer than this timestamp, so everything logged so far is
@@ -815,6 +864,14 @@ class Admin_UI {
 		// profile is in enforce mode, and only once per session per user.
 		$this->maybe_show_admin_csp_warning();
 
+		// Schema-downgrade warning: deliberately NOT routed through the FIFO
+		// wp_sam_admin_notices queue below, which shows an entry once and
+		// discards it. This condition persists until the site is either
+		// reinstalled on newer code or a database backup is restored, so the
+		// notice needs to keep reappearing on every admin page load for as
+		// long as Rollback_Guard::DOWNGRADE_OPTION stays set, not just once.
+		$this->maybe_show_schema_downgrade_warning();
+
 		$notices = get_option( 'wp_sam_admin_notices', array() );
 		if ( ! is_array( $notices ) || empty( $notices ) ) {
 			return;
@@ -830,6 +887,35 @@ class Admin_UI {
 			);
 		}
 		delete_option( 'wp_sam_admin_notices' );
+	}
+
+	/**
+	 * Shows a persistent (not one-shot) notice for as long as
+	 * Rollback_Guard::DOWNGRADE_OPTION is set -- the underlying condition
+	 * (older plugin code running against a newer database schema) doesn't
+	 * resolve itself, so unlike the FIFO wp_sam_admin_notices queue this
+	 * has to keep reappearing on every admin page load until it's fixed.
+	 */
+	private function maybe_show_schema_downgrade_warning(): void {
+		$flag = get_option( Rollback_Guard::DOWNGRADE_OPTION, array() );
+		if ( ! is_array( $flag ) || empty( $flag ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-error"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a></p></div>',
+			esc_html__( 'Security Automation Manager: database schema is newer than the running plugin code.', 'security-automation-manager' ),
+			esc_html(
+				sprintf(
+					/* translators: 1: installed database schema version, 2: currently running plugin code's schema version */
+					__( 'The installed database is at schema v%1$d, but this plugin version only knows schema v%2$d. No automatic migration has been attempted. This usually means an older plugin version was installed over a site a newer version already upgraded.', 'security-automation-manager' ),
+					(int) ( $flag['installed'] ?? 0 ),
+					(int) ( $flag['code'] ?? 0 )
+				)
+			),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=readiness' ) ),
+			esc_html__( 'View recovery guidance', 'security-automation-manager' )
+		);
 	}
 
 	/**

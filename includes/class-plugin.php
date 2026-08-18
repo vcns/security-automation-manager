@@ -104,12 +104,27 @@ final class Plugin {
 
 	private function maybe_upgrade_db(): void {
 		$installed = (int) get_option( 'wp_sam_db_version', 0 );
-		$verified  = (string) get_option( 'wp_sam_schema_verified_version', '' );
+
+		// Older plugin code running against a database a newer version
+		// already migrated -- Activator::activate() must never run here
+		// (see Rollback_Guard's docblock for why). Every other branch below
+		// assumes $installed <= WP_SAM_DB_VERSION, so this check comes first
+		// and returns before any of them can run.
+		if ( 'downgrade_detected' === Rollback_Guard::schema_state() ) {
+			Rollback_Guard::record_downgrade_detected( $installed, (int) WP_SAM_DB_VERSION );
+			return;
+		}
+		Rollback_Guard::clear_downgrade_flag_if_resolved();
+
+		$verified = (string) get_option( 'wp_sam_schema_verified_version', '' );
 		if (
 			$installed < (int) WP_SAM_DB_VERSION
 			|| (string) WP_SAM_DB_VERSION !== $verified
 			|| ( is_admin() && ! empty( Activator::get_missing_table_names() ) )
 		) {
+			if ( $installed < (int) WP_SAM_DB_VERSION ) {
+				Rollback_Guard::snapshot_before_migration( $installed, (int) WP_SAM_DB_VERSION );
+			}
 			Activator::activate();
 			Activator::mark_schema_verified();
 		}
