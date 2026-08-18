@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.8] - 2026-08-18
+
+### Added
+
+- `Config_Portability` (`includes/class-config-portability.php`): exports/imports administrator-authored configuration (policy profiles, source/hash approvals, other pillar profiles, dependency classifications, non-secret certificate settings, automation/reporting options) as a downloadable/uploadable JSON file, from the new Recovery tab. Both export and import are allowlist-based on table and option names -- an uploaded file can never write a table or option outside the declared list. Certificate secrets (`dns_credentials`, `cpanel_token`, `custom_key_pem`) are never exported and never written by import. Resolves roadmap issue #185.
+- A new Recovery tab (Security Automation Manager -> Overview -> Recovery), holding schema-downgrade status and snapshot restore (moved from Readiness), Reset Plugin Data (moved from Readiness), and the new configuration export/import above.
+
+### Changed
+
+- The Readiness tab now covers plugin/schema/operational health checks only; schema-downgrade status, snapshot restore, and Reset Plugin Data moved to the new Recovery tab.
+- Reset Plugin Data's confirmation phrase and description corrected from "RESET CSP DATA" / "start from a blank CSP canvas" to "RESET SAM PLUGIN DATA", accurately describing that reset clears every plugin table and option across all pillars, not just CSP.
+
 ## [2.9.7] - 2026-08-18
 
 ### Added
