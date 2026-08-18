@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.7] - 2026-08-18
+
+### Added
+
+- `Rollback_Guard` (`includes/class-rollback-guard.php`): schema-downgrade detection and refusal (an older plugin version installed over a database a newer version already migrated no longer runs `Activator::activate()` against it -- a persistent admin notice and audit-log entry are recorded instead), pre-migration configuration snapshots (`sam_migration_snapshots`, schema v23), and same-schema-version snapshot restore from a new "Rollback and Recovery" section on the Readiness tab. Resolves roadmap issue #160.
+- `docs/rollback-and-recovery.md`: the manual code-rollback process the plugin cannot automate, what to back up first, recovering from an unintended downgrade, and the vault-key interaction that can affect certificate/credential decryptability across a rollback.
+- `.github/workflows/release-verification.yml`: a `rollback-and-recovery` job validating the full downgrade-detection and snapshot/restore cycle against a real WordPress + MySQL instance.
+
+### Changed
+
+- `WP_SAM_DB_VERSION` bumped to 23 (adds `sam_migration_snapshots`; no changes to any existing table).
+
 ## [2.9.6] - 2026-08-18
 
 ### Fixed
