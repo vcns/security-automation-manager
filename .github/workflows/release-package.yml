@@ -52,15 +52,24 @@ jobs:
         # Short per-request timeouts and a retry count so a single flaky
         # mirror (observed repeatedly: azure.archive.ubuntu.com returning
         # no response and apt silently retrying it forever) fails fast and
-        # falls back to a working mirror, instead of hanging. The
-        # step-level timeout-minutes is a hard ceiling on top of that --
-        # confirmed necessary in production: this exact step sat stuck for
-        # over 4 hours on one release (v2.9.8) before being manually
-        # cancelled, with no useful signal in between.
-        timeout-minutes: 3
+        # falls back to a working mirror, instead of hanging. Applied to
+        # BOTH update and install -- a first attempt at this fix only
+        # applied it to `update`, and confirmed in production that update
+        # then succeeded (fell back to archive.ubuntu.com in ~8 seconds)
+        # while the unguarded `install` hung silently downloading package
+        # files with no per-request timeout at all. The step-level
+        # timeout-minutes is a hard ceiling on top of that regardless of
+        # cause -- confirmed necessary in production: this step sat stuck
+        # for over 4 hours on one release (v2.9.8) before being manually
+        # cancelled, with no useful signal in between. 8 minutes is
+        # generous headroom even for a full mirror-fallback path (normal
+        # case is well under 30 seconds) without reintroducing an
+        # effectively-unbounded hang.
+        timeout-minutes: 8
         run: |
-          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10
-          sudo apt-get install -y rsync unzip zip
+          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15"
+          sudo apt-get update $APT_OPTS
+          sudo apt-get install -y $APT_OPTS rsync unzip zip
 
       - name: Validate composer.json
         run: composer validate --strict
