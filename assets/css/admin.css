@@ -166,6 +166,15 @@
 	word-break: break-all;
 }
 
+/* CSP directive names in the Policy Audit tab's Effective Header column.
+   font-weight alone isn't enough contrast in a monospace <code> block on a
+   standard monitor -- confirmed directly against a live install -- so this
+   adds colour on top of the <strong> weight the markup already carries. */
+.wp-sam-wrap .widefat code .wp-sam-csp-directive {
+	color: #2271b1;
+	font-weight: 700;
+}
+
 .wp-sam-audit-table th {
 	vertical-align: top;
 }
