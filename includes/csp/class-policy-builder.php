@@ -363,9 +363,10 @@ class Policy_Builder extends Header_Builder {
 		}
 
 		if ( $hashes_dropped > 0 ) {
-			$this->audit?->log(
-				'policy_builder',
+			$this->log_once_per_hour(
+				$surface,
 				'hash_budget_exceeded',
+				'policy_builder',
 				sprintf(
 					'Dropped %1$d least-recently-seen approved hash(es) for surface "%2$s" to keep the emitted header under the safety byte budget. This usually means csp_hash_inventory is growing unbounded for this surface -- check for an inline script/style whose content varies every request and never matches Hash_Manager\'s exact-content dedup.',
 					$hashes_dropped,
@@ -505,9 +506,10 @@ class Policy_Builder extends Header_Builder {
 		// by the web server.
 		$max_policy_bytes = (int) apply_filters( 'wp_sam_max_policy_string_bytes', self::MAX_POLICY_STRING_BYTES, $surface );
 		if ( strlen( $policy ) > $max_policy_bytes ) {
-			$this->audit?->log(
-				'policy_builder',
+			$this->log_once_per_hour(
+				$surface,
 				'policy_too_large',
+				'policy_builder',
 				sprintf(
 					'Refused to emit a %1$d-byte Content-Security-Policy header for surface "%2$s" -- exceeds the %3$d-byte safety ceiling even after hash pruning. No CSP header was sent for this request rather than risk the web server rejecting the entire response.',
 					strlen( $policy ),
@@ -520,6 +522,32 @@ class Policy_Builder extends Header_Builder {
 		}
 
 		return $policy;
+	}
+
+	/**
+	 * Logs an audit event at most once per rolling hour, per surface+event
+	 * combination. build_policy_string() runs on every request, so without
+	 * this a surface stuck over budget (e.g. while csp_hash_inventory works
+	 * through Hash_Manager::prune_stale_by_age()'s age-based cleanup) would
+	 * write one audit_log row and one error_log line per pageview --
+	 * confirmed in production, 2026-08-19: two near-identical
+	 * hash_budget_exceeded rows five minutes apart from two ordinary page
+	 * loads. Uses a transient counter rather than a DB query so the check
+	 * stays cheap on every request while a surface is over budget --
+	 * exactly the situation already generating the most load.
+	 */
+	private function log_once_per_hour( string $surface, string $event, string $component, string $detail, string $severity ): void {
+		if ( null === $this->audit ) {
+			return;
+		}
+
+		$key = 'wp_sam_policy_log_' . $event . '_' . $surface . '_' . gmdate( 'YmdH' );
+		if ( get_transient( $key ) ) {
+			return;
+		}
+
+		set_transient( $key, 1, HOUR_IN_SECONDS );
+		$this->audit->log( $component, $event, $detail, $severity );
 	}
 
 	private function normalize_none_sources( array $directives ): array {
