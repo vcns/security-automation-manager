@@ -10,6 +10,7 @@ declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\CSP\Policy_Builder;
+use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
 class PolicyBuilderTest extends TestCase {
@@ -607,6 +608,97 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'unsafe-hashes', $script_src );
 	}
 
+	// ── hash byte-budget safety cap (2026-08-19 incident) ──────────────────────
+
+	public function test_build_drops_oldest_hashes_once_the_byte_budget_is_exhausted(): void {
+		// Real sha256 hash tokens are a fixed ~53 bytes each; script-src
+		// hashes are doubled into script-src-elem, so ~40 of them
+		// comfortably exceeds MAX_HASH_TOKEN_BUDGET_BYTES (4096 bytes) and
+		// reproduces the unbounded-header-growth incident at a much
+		// smaller, deterministic scale.
+		$approved_hashes = $this->make_fake_hash_rows( 80, 'script-src' );
+
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ] );
+		$builder = $this->make_db_stub_builder( approved_hashes: $approved_hashes );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		// The most-recently-seen hash (index 0, first in the array -- see
+		// load_approved_hashes()'s ORDER BY last_seen_at DESC contract)
+		// must survive; the least-recently-seen one must not.
+		$this->assertStringContainsString( $approved_hashes[0]['hash_value'], $policy );
+		$this->assertStringNotContainsString( $approved_hashes[79]['hash_value'], $policy );
+
+		// The policy must stay well under the raw (undropped) size 80 hashes
+		// would have produced, confirming something was actually dropped.
+		$this->assertLessThan( 80 * 2 * 60, strlen( $policy ) );
+	}
+
+	public function test_build_logs_a_warning_when_hashes_are_dropped_for_budget(): void {
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->once() )
+			->method( 'log' )
+			->with( 'policy_builder', 'hash_budget_exceeded', $this->anything(), 'warning' );
+
+		$approved_hashes = $this->make_fake_hash_rows( 80, 'script-src' );
+		$profile         = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ] );
+		$builder         = $this->make_db_stub_builder( approved_hashes: $approved_hashes, audit: $audit );
+
+		$builder->build_policy_string( $profile, 'frontend' );
+	}
+
+	public function test_build_does_not_log_when_all_hashes_fit_the_budget(): void {
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->never() )->method( 'log' );
+
+		$approved_hashes = $this->make_fake_hash_rows( 2, 'script-src' );
+		$profile         = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ] );
+		$builder         = $this->make_db_stub_builder( approved_hashes: $approved_hashes, audit: $audit );
+
+		$builder->build_policy_string( $profile, 'frontend' );
+	}
+
+	public function test_build_refuses_to_emit_a_policy_over_the_absolute_byte_ceiling(): void {
+		// A pathologically large approved-source list (not the hash-growth
+		// scenario the budget above guards against) must still trip the
+		// final safety net and produce no header at all rather than an
+		// oversized one.
+		$approved_sources = [];
+		for ( $i = 0; $i < 600; $i++ ) {
+			$approved_sources[] = [ 'directive' => 'script-src', 'source_host' => "host{$i}.example.com" ];
+		}
+
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->once() )
+			->method( 'log' )
+			->with( 'policy_builder', 'policy_too_large', $this->anything(), 'error' );
+
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [] ] );
+		$builder = $this->make_db_stub_builder( approved_sources: $approved_sources, audit: $audit );
+
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertSame( '', $policy );
+	}
+
+	/**
+	 * @return array<int,array<string,string>>
+	 */
+	private function make_fake_hash_rows( int $count, string $directive ): array {
+		$rows = [];
+		for ( $i = 0; $i < $count; $i++ ) {
+			$rows[] = [
+				'directive'  => $directive,
+				'hash_algo'  => 'sha256',
+				// Same length as a real base64-encoded sha256 digest (44
+				// chars) so the byte-budget math in this test matches what
+				// production hash tokens actually cost.
+				'hash_value' => sprintf( '%044d', $i ),
+			];
+		}
+		return $rows;
+	}
+
 	// ── object-src and base-uri hardening ────────────────────────────────────
 
 	public function test_build_includes_object_src_none(): void {
@@ -829,22 +921,25 @@ class PolicyBuilderTest extends TestCase {
 	private function make_db_stub_builder(
 		string $nonce = '',
 		array $approved_hashes = [],
-		array $approved_sources = []
+		array $approved_sources = [],
+		?Audit_Log $audit = null
 	): Policy_Builder {
 		return new class(
 			$this->gate,
 			$nonce,
 			$approved_hashes,
-			$approved_sources
+			$approved_sources,
+			$audit
 		) extends Policy_Builder {
 
 			public function __construct(
 				Feature_Gate $gate,
 				private string $stub_nonce,
 				private array  $stub_hashes,
-				private array  $stub_sources
+				private array  $stub_sources,
+				?Audit_Log $audit
 			) {
-				parent::__construct( $gate );
+				parent::__construct( $gate, null, null, $audit );
 			}
 
 			protected function load_approved_hashes( string $surface ): array {

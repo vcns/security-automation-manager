@@ -50,6 +50,7 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Security\Header_Builder;
 use WP_SAM\Security\Reporting_Endpoint;
@@ -150,7 +151,45 @@ class Policy_Builder extends Header_Builder {
 		),
 	);
 
+	/**
+	 * Hard byte budget for the cumulative worst-case cost of approved
+	 * hashes appended to the header. script-src/style-src hashes count
+	 * twice (once for the base directive, once for its -elem counterpart
+	 * -- see the hash-append loop in build_policy_string()); style-src-attr
+	 * hashes count once. Exists purely as a safety net against unbounded
+	 * csp_hash_inventory growth: a runaway hash-learning bug (an inline
+	 * script whose content varies every request, never matching
+	 * Hash_Manager's exact-content dedup) can otherwise grow the emitted
+	 * header past common web-server response-header field limits
+	 * (Apache's LimitRequestFieldSize default is 8190 bytes) and take the
+	 * entire surface down with a silent 500 -- confirmed in production,
+	 * 2026-08-19 (a 93,580-byte header, ~1,700 hashes, one surface).
+	 * load_approved_hashes() returns hashes most-recently-seen first, so
+	 * once this budget is exhausted every remaining hash is dropped
+	 * oldest-first -- the ones least likely to still be needed. Filterable
+	 * (`wp_sam_max_hash_token_budget_bytes`) so an admin who has confirmed
+	 * their server/proxy chain tolerates a larger header can raise it; the
+	 * default stays conservative. See also
+	 * Hash_Manager::MAX_NEW_HASHES_PER_HOUR, a second, independent safety
+	 * net on the hash-capture side.
+	 */
+	private const MAX_HASH_TOKEN_BUDGET_BYTES = 4096;
+
+	/**
+	 * Absolute ceiling on the fully serialised policy string, in bytes.
+	 * Checked after the hash budget above has already been applied -- if
+	 * the policy is still over this size (e.g. an unusually large admin
+	 * override or approved-source list, not the hash-growth scenario the
+	 * budget above guards against), fail safe by emitting no header at
+	 * all for this surface/request rather than risk the web server
+	 * rejecting the entire response. No CSP for one request is strictly
+	 * safer than a 500 for every request. Filterable
+	 * (`wp_sam_max_policy_string_bytes`).
+	 */
+	private const MAX_POLICY_STRING_BYTES = 7500;
+
 	private Feature_Gate $gate;
+	private ?Audit_Log $audit;
 
 	/** @var callable|null */
 	private $hash_loader;
@@ -161,11 +200,13 @@ class Policy_Builder extends Header_Builder {
 	public function __construct(
 		Feature_Gate $gate,
 		?callable $hash_loader = null,
-		?callable $source_loader = null
+		?callable $source_loader = null,
+		?Audit_Log $audit = null
 	) {
 		$this->gate          = $gate;
 		$this->hash_loader   = $hash_loader;
 		$this->source_loader = $source_loader;
+		$this->audit         = $audit;
 	}
 
 	// ── Header emission ───────────────────────────────────────────────────────
@@ -287,7 +328,11 @@ class Policy_Builder extends Header_Builder {
 		// admin has also enabled the style_src_attr_unsafe_hashes bypass entry
 		// below (CSP3 §6.1.2) -- captured hashes sit inert until then, same as
 		// they did before any hash-capture support existed.
-		$hashes = $this->load_approved_hashes( $surface );
+		$hashes            = $this->load_approved_hashes( $surface );
+		$hash_budget_bytes = (int) apply_filters( 'wp_sam_max_hash_token_budget_bytes', self::MAX_HASH_TOKEN_BUDGET_BYTES, $surface );
+		$hash_bytes_used   = 0;
+		$hashes_dropped    = 0;
+
 		foreach ( $hashes as $hash ) {
 			$hash_token = "'{$hash['hash_algo']}-{$hash['hash_value']}'";
 			$base_dir   = $hash['directive'];
@@ -295,11 +340,39 @@ class Policy_Builder extends Header_Builder {
 				? array( $base_dir )
 				: array( $base_dir, $base_dir . '-elem' );
 
+			// Worst-case byte cost of admitting this hash: the token is
+			// appended once per target directive (twice for script-src/
+			// style-src, once for the -attr directives), plus one joining
+			// space each.
+			$token_cost = ( strlen( $hash_token ) + 1 ) * count( $targets );
+
+			if ( $hash_bytes_used + $token_cost > $hash_budget_bytes ) {
+				// load_approved_hashes() returns most-recently-seen first,
+				// so everything reached here is older -- drop oldest first
+				// under budget pressure rather than truncate arbitrarily.
+				++$hashes_dropped;
+				continue;
+			}
+			$hash_bytes_used += $token_cost;
+
 			foreach ( $targets as $dir ) {
 				if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
 					$directives[ $dir ][] = $hash_token;
 				}
 			}
+		}
+
+		if ( $hashes_dropped > 0 ) {
+			$this->audit?->log(
+				'policy_builder',
+				'hash_budget_exceeded',
+				sprintf(
+					'Dropped %1$d least-recently-seen approved hash(es) for surface "%2$s" to keep the emitted header under the safety byte budget. This usually means csp_hash_inventory is growing unbounded for this surface -- check for an inline script/style whose content varies every request and never matches Hash_Manager\'s exact-content dedup.',
+					$hashes_dropped,
+					$surface
+				),
+				'warning'
+			);
 		}
 
 		// When strict-dynamic is active, host-based allowlists in script-src(-elem) are
@@ -422,7 +495,31 @@ class Policy_Builder extends Header_Builder {
 			$parts[]      = trim( $directive . ' ' . implode( ' ', $sources_list ) );
 		}
 
-		return implode( '; ', $parts );
+		$policy = implode( '; ', $parts );
+
+		// Last-resort safety net: even after the hash budget above, an
+		// unusually large admin override or approved-source list could
+		// still push the policy past common web-server response-header
+		// field limits. Emitting no header for this surface/request is
+		// strictly safer than risking the entire response being rejected
+		// by the web server.
+		$max_policy_bytes = (int) apply_filters( 'wp_sam_max_policy_string_bytes', self::MAX_POLICY_STRING_BYTES, $surface );
+		if ( strlen( $policy ) > $max_policy_bytes ) {
+			$this->audit?->log(
+				'policy_builder',
+				'policy_too_large',
+				sprintf(
+					'Refused to emit a %1$d-byte Content-Security-Policy header for surface "%2$s" -- exceeds the %3$d-byte safety ceiling even after hash pruning. No CSP header was sent for this request rather than risk the web server rejecting the entire response.',
+					strlen( $policy ),
+					$surface,
+					$max_policy_bytes
+				),
+				'error'
+			);
+			return '';
+		}
+
+		return $policy;
 	}
 
 	private function normalize_none_sources( array $directives ): array {
@@ -462,10 +559,18 @@ class Policy_Builder extends Header_Builder {
 		}
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_hash_inventory';
-		$rows  = $wpdb->get_results(
+		// ORDER BY last_seen_at DESC: the hash-append loop in
+		// build_policy_string() relies on most-recently-seen rows coming
+		// first, so its byte-budget cutoff drops the oldest hashes rather
+		// than an arbitrary subset. The LIMIT is a generous, defense-in-
+		// depth ceiling on rows loaded into PHP memory in the first place
+		// -- not the primary safety mechanism (that's the byte budget) --
+		// so it's set well above MAX_HASH_TOKEN_BUDGET_BYTES could ever
+		// actually use.
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT directive, hash_algo, hash_value FROM {$table} WHERE surface = %s AND status = 'active'",
+				"SELECT directive, hash_algo, hash_value FROM {$table} WHERE surface = %s AND status = 'active' ORDER BY last_seen_at DESC LIMIT 2000",
 				$surface
 			),
 			ARRAY_A
