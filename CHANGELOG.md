@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.9] - 2026-08-19
+
+### Fixed
+
+- Unbounded growth of `csp_hash_inventory`, which could grow the emitted Content-Security-Policy header past common web-server response-header size limits and cause every request on an affected surface to fail with a silent 500 (confirmed in production: a 93,580-byte header from ~1,700 hashes on one surface). Root cause: `Hash_Manager::upsert()`'s dedup is exact-content-match only, so an inline script/style block whose content varies on every render (a value not routed through the plugin's nonce path) is learned as a brand-new row forever, never retired in practice because the existing `retire_stale()` needs in-request capture data that's essentially always empty for a WP-Cron-dispatched scan.
+
+### Added
+
+- `Hash_Manager`: a per-surface, per-hour cap (30, filterable via `wp_sam_max_new_hashes_per_hour`) on brand-new hash rows; reactivating an already-known hash is exempt.
+- `Hash_Manager::prune_stale_by_age()`: real, time-based retirement across every surface (30 days by default), run from the daily cron scan, independent of any in-request capture data.
+- `Policy_Builder`: a hard byte budget on hashes appended to the header (`wp_sam_max_hash_token_budget_bytes`, drops least-recently-seen hashes first once exhausted) and an absolute ceiling on the fully serialised policy string (`wp_sam_max_policy_string_bytes`) as a last-resort failsafe -- no header for that surface/request rather than one the web server might reject. Both log a warning/error to the audit log when triggered.
+- `Hash_Manager` now populates `source_file` (request path) and `source_context` (a content excerpt) on insert -- both columns existed in schema already but had no writer before this.
+
 ## [2.9.8] - 2026-08-18
 
 ### Added
