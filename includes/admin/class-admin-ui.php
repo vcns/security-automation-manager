@@ -1225,9 +1225,10 @@ class Admin_UI {
 	 * Toggles one "Bypass Best Practices" flag (Profiles tab) for a surface.
 	 *
 	 * $_POST['flag'] is validated against Policy_Builder::BYPASS_CATALOG's
-	 * keys and resolved through it to a literal, hardcoded column name --
-	 * never taken from request input directly -- so this can never be used
-	 * to toggle an arbitrary column via a crafted request.
+	 * keys -- never taken from request input directly -- before being
+	 * added to or removed from the surface's bypass_flags JSON array, so
+	 * this can never be used to write an arbitrary value via a crafted
+	 * request.
 	 */
 	public function ajax_set_bypass_flag(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
@@ -1247,17 +1248,30 @@ class Admin_UI {
 			wp_send_json_error( array( 'message' => __( 'Invalid bypass flag.', 'security-automation-manager' ) ) );
 		}
 
-		$column = Policy_Builder::BYPASS_CATALOG[ $flag ]['column'];
-
 		global $wpdb;
+		$table = $wpdb->prefix . 'csp_policy_profiles';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$current_flags_json = $wpdb->get_var( $wpdb->prepare( "SELECT bypass_flags FROM {$table} WHERE surface = %s LIMIT 1", $surface ) );
+		$flags              = json_decode( (string) $current_flags_json, true );
+		$flags              = is_array( $flags ) ? $flags : array();
+
+		if ( $enabled ) {
+			if ( ! in_array( $flag, $flags, true ) ) {
+				$flags[] = $flag;
+			}
+		} else {
+			$flags = array_values( array_diff( $flags, array( $flag ) ) );
+		}
+
 		$wpdb->update(
-			$wpdb->prefix . 'csp_policy_profiles',
+			$table,
 			array(
-				$column      => $enabled ? 1 : 0,
-				'updated_at' => current_time( 'mysql', true ),
+				'bypass_flags' => wp_json_encode( $flags ),
+				'updated_at'   => current_time( 'mysql', true ),
 			),
 			array( 'surface' => $surface ),
-			array( '%d', '%s' ),
+			array( '%s', '%s' ),
 			array( '%s' )
 		);
 		wp_send_json_success();

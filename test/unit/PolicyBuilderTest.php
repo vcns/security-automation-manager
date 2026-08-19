@@ -511,7 +511,7 @@ class PolicyBuilderTest extends TestCase {
 
 	public function test_build_omits_unsafe_hashes_when_hash_present_but_bypass_flag_disabled(): void {
 		// 'unsafe-hashes' is no longer added just because a style-src-attr hash
-		// exists -- it's its own BYPASS_CATALOG entry (bypass_style_attr_unsafe_hashes)
+		// exists -- it's its own BYPASS_CATALOG entry (style_src_attr_unsafe_hashes)
 		// requiring an explicit per-surface opt-in, since it's a keyword security
 		// scanners flag. A captured hash sits inert until the admin also enables
 		// the toggle.
@@ -538,7 +538,7 @@ class PolicyBuilderTest extends TestCase {
 			'default-src'    => [ "'none'" ],
 			'style-src-attr' => [ "'none'" ],
 		] );
-		$profile['bypass_style_attr_unsafe_hashes']  = 1;
+		$profile['bypass_flags']  = wp_json_encode( array( 'style_src_attr_unsafe_hashes' ) );
 
 		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
 
@@ -556,7 +556,7 @@ class PolicyBuilderTest extends TestCase {
 			'default-src'    => [ "'none'" ],
 			'style-src-attr' => [ "'none'" ],
 		] );
-		$profile['bypass_style_attr_unsafe_hashes']  = 1;
+		$profile['bypass_flags']  = wp_json_encode( array( 'style_src_attr_unsafe_hashes' ) );
 
 		$builder = $this->make_db_stub_builder( approved_hashes: [
 			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
@@ -593,7 +593,7 @@ class PolicyBuilderTest extends TestCase {
 			'script-src'      => [],
 			'script-src-elem' => [],
 		] );
-		$profile['bypass_style_attr_unsafe_hashes']  = 1;
+		$profile['bypass_flags']  = wp_json_encode( array( 'style_src_attr_unsafe_hashes' ) );
 
 		$builder = $this->make_db_stub_builder( approved_hashes: [
 			[ 'directive' => 'style-src-attr', 'hash_algo' => 'sha256', 'hash_value' => 'ghi789==' ],
@@ -866,7 +866,7 @@ class PolicyBuilderTest extends TestCase {
 
 	public function test_build_appends_data_scheme_to_img_src_when_bypass_flag_enabled(): void {
 		$profile                         = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'" ] ] );
-		$profile['bypass_img_src_data']  = 1;
+		$profile['bypass_flags']  = wp_json_encode( array( 'img_src_data' ) );
 
 		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
 
@@ -885,7 +885,7 @@ class PolicyBuilderTest extends TestCase {
 
 	public function test_build_appends_data_scheme_to_font_src_when_bypass_flag_enabled(): void {
 		$profile                          = $this->make_profile( [ 'default-src' => [ "'none'" ], 'font-src' => [ "'self'" ] ] );
-		$profile['bypass_font_src_data']  = 1;
+		$profile['bypass_flags']  = wp_json_encode( array( 'font_src_data' ) );
 
 		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
 
@@ -895,7 +895,7 @@ class PolicyBuilderTest extends TestCase {
 
 	public function test_build_does_not_duplicate_data_scheme_already_present(): void {
 		$profile                        = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'", 'data:' ] ] );
-		$profile['bypass_img_src_data'] = 1;
+		$profile['bypass_flags'] = wp_json_encode( array( 'img_src_data' ) );
 
 		$policy  = $this->builder->build_policy_string( $profile, 'frontend' );
 		$img_src = $this->extract_directive( $policy, 'img-src' );
@@ -912,7 +912,7 @@ class PolicyBuilderTest extends TestCase {
 			'img-src'     => [ "'self'" ],
 			'font-src'    => [ "'self'" ],
 		] );
-		$profile['bypass_img_src_data'] = 1;
+		$profile['bypass_flags'] = wp_json_encode( array( 'img_src_data' ) );
 
 		$policy   = $this->builder->build_policy_string( $profile, 'frontend' );
 		$font_src = $this->extract_directive( $policy, 'font-src' );
@@ -926,11 +926,119 @@ class PolicyBuilderTest extends TestCase {
 		// -- the token append is simply skipped, same as the hash-propagation
 		// "elem directive absent" case above.
 		$profile                        = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
-		$profile['bypass_img_src_data'] = 1;
+		$profile['bypass_flags'] = wp_json_encode( array( 'img_src_data' ) );
 
 		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
 
 		$this->assertStringContainsString( "default-src 'none'", $policy );
+	}
+
+	// ── Bypass Best Practices catalog: 2026-08-19 expansion ────────────────────
+
+	public function test_build_appends_blob_scheme_to_img_src_when_bypass_flag_enabled(): void {
+		$profile                 = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'" ] ] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'img_src_blob' ) );
+
+		$policy  = $this->builder->build_policy_string( $profile, 'frontend' );
+		$img_src = $this->extract_directive( $policy, 'img-src' );
+
+		$this->assertStringContainsString( 'blob:', $img_src );
+	}
+
+	public function test_build_appends_data_and_blob_scheme_to_media_src_when_bypass_flags_enabled(): void {
+		$profile                 = $this->make_profile( [ 'default-src' => [ "'none'" ], 'media-src' => [ "'self'" ] ] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'media_src_data', 'media_src_blob' ) );
+
+		$policy    = $this->builder->build_policy_string( $profile, 'frontend' );
+		$media_src = $this->extract_directive( $policy, 'media-src' );
+
+		$this->assertStringContainsString( 'data:', $media_src );
+		$this->assertStringContainsString( 'blob:', $media_src );
+	}
+
+	public function test_build_adds_unsafe_hashes_to_script_src_attr_when_bypass_flag_enabled(): void {
+		$profile                 = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src-attr' => [ "'none'" ] ] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'script_src_attr_unsafe_hashes' ) );
+
+		$policy           = $this->builder->build_policy_string( $profile, 'frontend' );
+		$script_src_attr  = $this->extract_directive( $policy, 'script-src-attr' );
+
+		$this->assertStringContainsString( "'unsafe-hashes'", $script_src_attr );
+	}
+
+	public function test_build_script_src_attr_bypass_does_not_leak_into_style_src_attr(): void {
+		$profile                 = $this->make_profile( [
+			'default-src'     => [ "'none'" ],
+			'script-src-attr' => [ "'none'" ],
+			'style-src-attr'  => [ "'none'" ],
+		] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'script_src_attr_unsafe_hashes' ) );
+
+		$policy         = $this->builder->build_policy_string( $profile, 'frontend' );
+		$style_src_attr = $this->extract_directive( $policy, 'style-src-attr' );
+
+		$this->assertStringNotContainsString( 'unsafe-hashes', $style_src_attr );
+	}
+
+	public function test_build_adds_wasm_unsafe_eval_to_script_src_when_bypass_flag_enabled(): void {
+		$profile                 = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [ "'self'" ] ] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'script_src_wasm_unsafe_eval' ) );
+
+		$policy     = $this->builder->build_policy_string( $profile, 'frontend' );
+		$script_src = $this->extract_directive( $policy, 'script-src' );
+
+		$this->assertStringContainsString( "'wasm-unsafe-eval'", $script_src );
+	}
+
+	public function test_build_appends_blob_scheme_to_worker_src_when_bypass_flag_enabled(): void {
+		$profile                 = $this->make_profile( [ 'default-src' => [ "'none'" ], 'worker-src' => [ "'none'" ] ] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'worker_src_blob' ) );
+
+		$policy      = $this->builder->build_policy_string( $profile, 'frontend' );
+		$worker_src  = $this->extract_directive( $policy, 'worker-src' );
+
+		$this->assertStringContainsString( 'blob:', $worker_src );
+	}
+
+	public function test_build_multiple_bypass_flags_together_do_not_interfere(): void {
+		$profile                 = $this->make_profile( [
+			'default-src' => [ "'none'" ],
+			'img-src'     => [ "'self'" ],
+			'font-src'    => [ "'self'" ],
+			'media-src'   => [ "'self'" ],
+			'worker-src'  => [ "'none'" ],
+		] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'img_src_data', 'font_src_data', 'media_src_blob', 'worker_src_blob' ) );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( 'data:', $this->extract_directive( $policy, 'img-src' ) );
+		$this->assertStringContainsString( 'data:', $this->extract_directive( $policy, 'font-src' ) );
+		$this->assertStringContainsString( 'blob:', $this->extract_directive( $policy, 'media-src' ) );
+		$this->assertStringNotContainsString( 'blob:', $this->extract_directive( $policy, 'img-src' ) );
+		$this->assertStringContainsString( 'blob:', $this->extract_directive( $policy, 'worker-src' ) );
+	}
+
+	public function test_build_ignores_unknown_bypass_flags_in_stored_json(): void {
+		// Defensive: a bypass_flags value referencing a key that no longer
+		// exists in BYPASS_CATALOG (e.g. after a future catalog rename) must
+		// not error -- it's simply not found in the foreach and skipped.
+		$profile                 = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'" ] ] );
+		$profile['bypass_flags'] = wp_json_encode( array( 'some_removed_or_renamed_flag' ) );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "img-src 'self'", $policy );
+	}
+
+	public function test_build_handles_missing_bypass_flags_key_gracefully(): void {
+		// make_profile() doesn't set bypass_flags at all by default -- most
+		// tests in this file rely on that not erroring.
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'img-src' => [ "'self'" ] ] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringNotContainsString( 'data:', $this->extract_directive( $policy, 'img-src' ) );
 	}
 
 	/**
