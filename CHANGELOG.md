@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.15] - 2026-08-19
+
+### Fixed
+
+- Root cause of the unbounded `csp_hash_inventory` growth behind the 2026-08-19 incident (contained since 2.9.9, never previously identified): WordPress core's own Global Styles inline stylesheet -- and any theme/plugin inline `<style>` block added via `wp_add_inline_style()` -- can genuinely differ in content between renders of the exact same page, which no exact-content hash allowlist can ever usefully cover. `Nonce_Manager` had no way to nonce this specific shape of inline style block (its existing `style_loader_tag` hook only covers `<link>` elements); `Hash_Manager::inject_nonce_into_wp_inline_style_blocks()` now nonces any `<style id="{handle}-inline-css">` block (WordPress's stable naming convention) before hash extraction runs, so it's covered by the per-request nonce instead and never reaches `csp_hash_inventory` at all. The safety caps added in 2.9.9-2.9.11 remain as a backstop for anything else that behaves the same way.
+- Corrected a stale docblock in `Hash_Manager::extract_and_record_style_attributes()` claiming `Policy_Builder` adds `'unsafe-hashes'` to `style-src-attr` automatically -- that stopped being true at schema v22.
+
 ## [2.9.14] - 2026-08-19
 
 ### Changed
