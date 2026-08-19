@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.16] - 2026-08-19
+
+### Fixed
+
+- `Csp_Header_Formatter` (2.9.13) correctly wrapped each CSP directive name in `<strong>`, but a monospace `<code>` block's default browser bold weight alone wasn't visually distinct enough to read as emphasis at a glance on a standard monitor -- confirmed directly against a live install. Directive names now also carry a `wp-sam-csp-directive` class styled with colour on top of an explicit heavier weight.
+
 ## [2.9.15] - 2026-08-19
 
 ### Fixed
