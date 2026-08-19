@@ -182,6 +182,19 @@ class HashManagerTest extends TestCase {
 		$this->assertEmpty( $manager->get_captured_hashes() );
 	}
 
+	public function test_extract_and_record_skips_nonce_tagged_style_blocks(): void {
+		// Regression: extract_and_record()'s nonce-skip check used to be
+		// script-only, so a nonce'd <style> block (see
+		// inject_nonce_into_wp_inline_style_blocks()) would still be hashed
+		// unnecessarily -- wasteful, and defeats the point of nonce'ing it.
+		$manager = $this->make_db_stub_manager();
+		$html    = '<style nonce="abc123">body { color: red; }</style>';
+
+		$this->invoke_extract( $manager, $html, 'style', 'style-src', 'frontend' );
+
+		$this->assertEmpty( $manager->get_captured_hashes() );
+	}
+
 	public function test_extract_and_record_skips_empty_blocks(): void {
 		$manager = $this->make_db_stub_manager();
 		$html    = '<script>   </script>';
@@ -391,6 +404,65 @@ class HashManagerTest extends TestCase {
 		$manager->prune_stale_by_age( 30 );
 	}
 
+	// ── inject_nonce_into_wp_inline_style_blocks() ────────────────────────────
+
+	public function test_injects_nonce_into_a_wp_add_inline_style_block(): void {
+		$GLOBALS['_wp_sam_test_nonce'] = 'abc123';
+		$html                          = "<style id='global-styles-inline-css'>:root{--x:1}</style>";
+
+		$result = $this->invoke_inject_nonce( $html );
+
+		$this->assertStringContainsString( 'nonce="abc123"', $result );
+		$this->assertStringContainsString( ':root{--x:1}', $result );
+
+		unset( $GLOBALS['_wp_sam_test_nonce'] );
+	}
+
+	public function test_matches_any_handle_using_the_inline_css_id_convention(): void {
+		// Not just WordPress core's own "global-styles" handle -- any theme
+		// or plugin calling wp_add_inline_style( $handle, $css ) produces
+		// the same id="{$handle}-inline-css" convention.
+		$GLOBALS['_wp_sam_test_nonce'] = 'abc123';
+		$html                          = "<style id='my-theme-styles-inline-css'>.a{color:red}</style>";
+
+		$result = $this->invoke_inject_nonce( $html );
+
+		$this->assertStringContainsString( 'nonce="abc123"', $result );
+
+		unset( $GLOBALS['_wp_sam_test_nonce'] );
+	}
+
+	public function test_does_not_inject_into_an_unrelated_style_block(): void {
+		$GLOBALS['_wp_sam_test_nonce'] = 'abc123';
+		$html                          = '<style id="some-other-block">.a{color:red}</style>';
+
+		$result = $this->invoke_inject_nonce( $html );
+
+		$this->assertStringNotContainsString( 'nonce=', $result );
+
+		unset( $GLOBALS['_wp_sam_test_nonce'] );
+	}
+
+	public function test_does_not_double_inject_when_a_nonce_is_already_present(): void {
+		$GLOBALS['_wp_sam_test_nonce'] = 'abc123';
+		$html                          = '<style id="global-styles-inline-css" nonce="existing">:root{--x:1}</style>';
+
+		$result = $this->invoke_inject_nonce( $html );
+
+		$this->assertSame( 1, substr_count( $result, 'nonce=' ) );
+		$this->assertStringContainsString( 'nonce="existing"', $result );
+
+		unset( $GLOBALS['_wp_sam_test_nonce'] );
+	}
+
+	public function test_returns_html_unchanged_when_no_nonce_is_available(): void {
+		$html = "<style id='global-styles-inline-css'>:root{--x:1}</style>";
+
+		$result = $this->invoke_inject_nonce( $html );
+
+		$this->assertSame( $html, $result );
+	}
+
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	/**
@@ -461,5 +533,16 @@ class HashManagerTest extends TestCase {
 		$ref = new ReflectionMethod( $manager, 'extract_and_record_style_attributes' );
 		$ref->setAccessible( true );
 		$ref->invoke( $manager, $html, $surface );
+	}
+
+	/**
+	 * Calls the private inject_nonce_into_wp_inline_style_blocks() method
+	 * via reflection, on the real (non-stubbed) manager -- the method has
+	 * no DB dependency, so the real class is fine to exercise directly.
+	 */
+	private function invoke_inject_nonce( string $html ): string {
+		$ref = new ReflectionMethod( $this->manager, 'inject_nonce_into_wp_inline_style_blocks' );
+		$ref->setAccessible( true );
+		return (string) $ref->invoke( $this->manager, $html );
 	}
 }
