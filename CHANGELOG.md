@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.18] - 2026-08-20
+
+### Added
+
+- CSP > Profiles tab's "Bypass Best Practices" catalog grows from 3 to 9 entries: `img_src_blob`, `media_src_data`, `media_src_blob` (low risk, same reasoning as the existing data:/blob: entries -- these directives can only ever render non-executable content), `script_src_attr_unsafe_hashes` (medium risk, mirrors the existing `style-src-attr` entry for inline event handler attributes), `script_src_wasm_unsafe_eval` (medium risk, CSP3's `'wasm-unsafe-eval'` permits only WebAssembly instantiation, not `eval()`/`new Function()`), and `worker_src_blob` (the catalog's first **high**-risk entry -- unlike the others, a blob-constructed `Worker` genuinely executes as JavaScript). Full reasoning for each in `docs/threat-model.md`.
+- Profiles tab relevance filtering: a Bypass Best Practices entry is now only shown for a surface once that surface has actually triggered it at least once (per `csp_violation_reports`), or the entry is already enabled. Previously every entry in the catalog was shown for every surface regardless of relevance.
+- Each Bypass Best Practices checkbox label now shows the literal `<directive>: <expression>` it adds (e.g. `img-src: data:`, `worker-src: blob:`) instead of a paraphrased description; the previous description is preserved as the lead sentence of the risk badge's hover tooltip.
+
+### Changed
+
+- `csp_policy_profiles.bypass_flags` (schema v25) replaces the three legacy per-entry tinyint columns (`bypass_img_src_data`, `bypass_font_src_data`, `bypass_style_attr_unsafe_hashes`) with a single JSON array of enabled `Policy_Builder::BYPASS_CATALOG` keys, so the catalog can keep growing without a schema migration for every addition. `Activator::migrate_consolidate_bypass_flags_into_json()` converts existing profiles once on upgrade; legacy columns are left in place (`dbDelta()` cannot drop columns) but nothing reads them again.
+
 ## [2.9.17] - 2026-08-19
 
 ### Added

@@ -349,9 +349,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 						data-flag="<?php echo esc_attr( $bypass_flag ); ?>"
 						<?php checked( $bypass_is_enabled ); ?>
 					/>
-					<?php echo esc_html( $bypass_entry['label'] ); ?>
+					<code><?php echo esc_html( $bypass_entry['directive'] . ': ' . $bypass_entry['token'] ); ?></code>
 					<?php
-					$bypass_note = $bypass_entry['risk_note'];
+					$bypass_note = $bypass_entry['label'] . ' ' . $bypass_entry['risk_note'];
 					if ( $bypass_count > 0 ) {
 						$bypass_note .= ' ' . sprintf(
 							/* translators: %s: formatted violation occurrence count */
