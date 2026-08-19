@@ -49,7 +49,18 @@ jobs:
           tools: composer:v2
 
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y rsync unzip zip
+        # Short per-request timeouts and a retry count so a single flaky
+        # mirror (observed repeatedly: azure.archive.ubuntu.com returning
+        # no response and apt silently retrying it forever) fails fast and
+        # falls back to a working mirror, instead of hanging. The
+        # step-level timeout-minutes is a hard ceiling on top of that --
+        # confirmed necessary in production: this exact step sat stuck for
+        # over 4 hours on one release (v2.9.8) before being manually
+        # cancelled, with no useful signal in between.
+        timeout-minutes: 3
+        run: |
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10
+          sudo apt-get install -y rsync unzip zip
 
       - name: Validate composer.json
         run: composer validate --strict
