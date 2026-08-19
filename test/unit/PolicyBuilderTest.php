@@ -608,6 +608,52 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'unsafe-hashes', $script_src );
 	}
 
+	// ── always-allowed empty inline attribute value (2026-08-19 incident) ─────
+
+	public function test_build_always_includes_the_empty_content_hash_in_style_src_attr(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'style-src-attr' => [ "'none'" ] ] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$this->assertStringContainsString( "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", $policy );
+	}
+
+	public function test_build_always_includes_the_empty_content_hash_in_script_src_attr(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src-attr' => [ "'none'" ] ] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$parts            = explode( ';', $policy );
+		$script_src_attr  = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'script-src-attr ' ) ) ) );
+
+		$this->assertStringContainsString( "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", $script_src_attr );
+	}
+
+	public function test_build_does_not_leave_none_alongside_the_empty_content_hash(): void {
+		// normalize_none_sources() should still strip the contradictory
+		// 'none' now that a real token is present, exactly as it already
+		// does for any other addition to a directive seeded as ['none'].
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'style-src-attr' => [ "'none'" ] ] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$parts           = explode( ';', $policy );
+		$style_src_attr  = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'style-src-attr ' ) ) ) );
+
+		$this->assertStringNotContainsString( "'none'", $style_src_attr );
+	}
+
+	public function test_build_does_not_add_the_empty_content_hash_to_unrelated_directives(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [ "'self'" ] ] );
+
+		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
+
+		$parts      = explode( ';', $policy );
+		$script_src = trim( current( array_filter( $parts, static fn( $p ) => str_starts_with( trim( $p ), 'script-src ' ) ) ) );
+
+		$this->assertStringNotContainsString( "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", $script_src );
+	}
+
 	// ── hash byte-budget safety cap (2026-08-19 incident) ──────────────────────
 
 	public function test_build_drops_oldest_hashes_once_the_byte_budget_is_exhausted(): void {

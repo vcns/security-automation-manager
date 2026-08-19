@@ -68,6 +68,27 @@ class Policy_Builder extends Header_Builder {
 	public const REPORTING_TRANSPORT_BOTH   = 'both';
 
 	/**
+	 * sha256 hash of the empty string, base64-encoded -- always allowed in
+	 * script-src-attr/style-src-attr regardless of any admin approval, hash
+	 * inventory, or the unsafe-hashes bypass toggle's own hashes. An empty
+	 * attribute value can never execute or style anything: there is no
+	 * content for it to be an attack vector for. Confirmed in production,
+	 * 2026-08-19: a vendored carousel library's own destroy/refresh cycle
+	 * (jQuery .attr('style', '') to clear inline styles, a common,
+	 * unremarkable DOM-manipulation pattern in third-party JS) was reported
+	 * as a CSP violation because that exact empty value had never happened
+	 * to go through the hash-learning/approval workflow yet -- noise with
+	 * no security value on either side: blocking it protects nothing, and
+	 * it would never have been worth an admin's attention to review.
+	 * Still only takes effect together with 'unsafe-hashes' (CSP3 §6.1.2,
+	 * BYPASS_CATALOG's own per-surface opt-in below) same as every other
+	 * attribute-context hash -- this doesn't bypass that gate, it just
+	 * means this one specific, provably harmless value never needs to
+	 * wait for one to be individually captured and approved.
+	 */
+	private const EMPTY_CONTENT_HASH_TOKEN = "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='";
+
+	/**
 	 * Directives removed or deprecated by W3C that must never be emitted.
 	 * References: CSP3 WD-20260505; MDN; research.md R4.
 	 */
@@ -446,6 +467,20 @@ class Policy_Builder extends Header_Builder {
 			$dir = $entry['directive'];
 			if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) && ! in_array( $entry['token'], $directives[ $dir ], true ) ) {
 				$directives[ $dir ][] = $entry['token'];
+			}
+		}
+
+		// Always allow an empty inline attribute value -- see
+		// EMPTY_CONTENT_HASH_TOKEN's docblock. Unconditional (not gated by
+		// the BYPASS_CATALOG loop above): this doesn't turn on
+		// 'unsafe-hashes' by itself, it only ever takes effect once a
+		// surface's own opt-in for that has, same as any other captured
+		// attribute hash.
+		foreach ( array( 'script-src-attr', 'style-src-attr' ) as $attr_dir ) {
+			if ( isset( $directives[ $attr_dir ] ) && is_array( $directives[ $attr_dir ] )
+				&& ! in_array( self::EMPTY_CONTENT_HASH_TOKEN, $directives[ $attr_dir ], true )
+			) {
+				$directives[ $attr_dir ][] = self::EMPTY_CONTENT_HASH_TOKEN;
 			}
 		}
 
