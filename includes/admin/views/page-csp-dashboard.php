@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Admin\Csp_Header_Formatter;
 use WP_SAM\Admin\Table_Query;
 use WP_SAM\Admin\Policy_Events_Builder;
 use WP_SAM\Admin\Risk_Badge;
@@ -964,7 +965,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					<td><?php echo isset( $audit_latest['version_number'] ) ? esc_html( (string) $audit_latest['version_number'] ) : esc_html__( 'Not captured yet', 'security-automation-manager' ); ?></td>
 					<td><?php echo esc_html( (string) $audit_pending_count ); ?></td>
 					<td><?php echo esc_html( (string) $audit_high_count ); ?></td>
-					<td><code><?php echo esc_html( $audit_latest['effective_header'] ?? '' ); ?></code></td>
+					<td><code><?php echo Csp_Header_Formatter::render( (string) ( $audit_latest['effective_header'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-escaped HTML, see Csp_Header_Formatter::render() ?></code></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
