@@ -3,8 +3,8 @@
 ## Plugin: Security Automation Manager
 
 **Version:** 1.0
-**Date:** 2026-08-18
-**DB schema alignment:** v23
+**Date:** 2026-08-19
+**DB schema alignment:** v24
 **Status:** Active
 
 **Supersedes:** v0.3 (2026-06-07), which described a CSP-only product aligned to

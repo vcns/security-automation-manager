@@ -122,8 +122,18 @@ define( 'WP_SAM_VERSION', '2.9.13' );
  *        each forward schema migration, so a migration whose data effects
  *        turn out to be unwanted can be undone without reinstalling old
  *        plugin code. See Rollback_Guard.
+ * v24 -- default_directives() now seeds media-src as ['self'] instead of
+ *        ['none'] -- same-origin video/audio can't execute script, and
+ *        blocking it by default broke WordPress core's own native
+ *        Video/Audio blocks (self-hosted media) out of the box for no
+ *        corresponding security benefit; every other same-origin-safe
+ *        directive (img-src, font-src, connect-src, form-action) already
+ *        defaulted to 'self'. Migrates any existing profile whose
+ *        media-src still exactly matches the old ['none'] default; a
+ *        profile an administrator has already customised is left
+ *        untouched. See migrate_loosen_media_src_default().
  */
-define( 'WP_SAM_DB_VERSION', '23' );
+define( 'WP_SAM_DB_VERSION', '24' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

@@ -35,6 +35,7 @@ class Activator {
 		self::migrate_v9_option_renames();
 		self::migrate_remove_fenced_frame_src_directive();
 		self::migrate_tighten_img_src_default();
+		self::migrate_loosen_media_src_default();
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();
@@ -132,6 +133,48 @@ class Activator {
 			}
 
 			$directives['img-src'] = array( "'self'" );
+			$wpdb->update(
+				$table,
+				array( 'directives' => wp_json_encode( $directives ) ),
+				array( 'id' => (int) $row['id'] ),
+				array( '%s' ),
+				array( '%d' )
+			);
+		}
+	}
+
+	/**
+	 * Schema v24: default_directives() now seeds media-src as ['self'] instead
+	 * of ['none'] -- same-origin video/audio can't execute script, and blocking
+	 * it by default broke WordPress core's own native Video/Audio blocks
+	 * (self-hosted media) on every fresh install for no corresponding security
+	 * benefit. default_directives() only affects newly-seeded profiles, so
+	 * this loosens any existing profile's stored media-src, but ONLY when it
+	 * still exactly matches the old default (['none']) -- a profile an
+	 * administrator has already customised (added a CDN, deliberately left it
+	 * at 'none', whatever) is left untouched, since there's no way to tell
+	 * their customisation apart from the old default by value alone once it
+	 * diverges. Runs after create_tables() in activate(), so the table is
+	 * always present by the time this executes -- no existence guard needed.
+	 */
+	private static function migrate_loosen_media_src_default(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_policy_profiles';
+
+		$old_default = array( "'none'" );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( "SELECT id, directives FROM {$table}", ARRAY_A );
+		foreach ( ! empty( $rows ) ? $rows : array() as $row ) {
+			$directives = json_decode( (string) $row['directives'], true );
+			if ( ! is_array( $directives ) || ! array_key_exists( 'media-src', $directives ) ) {
+				continue;
+			}
+			if ( $directives['media-src'] !== $old_default ) {
+				continue;
+			}
+
+			$directives['media-src'] = array( "'self'" );
 			$wpdb->update(
 				$table,
 				array( 'directives' => wp_json_encode( $directives ) ),
@@ -1159,7 +1202,18 @@ class Activator {
 			'base-uri'                  => array( "'none'" ),
 			'form-action'               => array( "'self'" ),
 			'object-src'                => array( "'none'" ),
-			'media-src'                 => array( "'none'" ),
+			// media-src: 'self' only. Unlike object-src/frame-src/base-uri/
+			// worker-src/child-src (all correctly 'none' by default -- see
+			// migrate_loosen_media_src_default() below, which loosens
+			// profiles seeded before this change), same-origin video/audio
+			// can't execute script or otherwise act as an attack vector the
+			// way those other directives' contents can. Defaulting media-src
+			// to 'none' blocked WordPress core's own native Video/Audio
+			// blocks (self-hosted media) out of the box on every fresh
+			// install, for no corresponding security benefit -- every other
+			// same-origin-safe directive (img-src, font-src, connect-src,
+			// form-action) already defaults to 'self', not 'none'.
+			'media-src'                 => array( "'self'" ),
 			// worker-src: explicitly set on all surfaces. child-src is also set as a
 			// legacy fallback: Safari falls back worker-src → child-src → script-src,
 			// so without child-src the nonce would bleed through to workers in Safari.
