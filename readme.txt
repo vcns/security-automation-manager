@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.9.10
+Stable tag: 2.9.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,10 @@ The Scripts page's Internal tab, when enabled for a surface, reads this site's o
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
 
 == Changelog ==
+
+= 2.9.11 =
+
+* Fixes an inconsistency in the 2.9.9 CSP hash safety cap: on a surface with more approved hashes than fit the safety byte budget, which specific hashes got dropped could vary unpredictably between requests instead of consistently favouring the most recently seen ones. The emitted policy is now deterministic for the same underlying data.
 
 = 2.9.10 =
 
