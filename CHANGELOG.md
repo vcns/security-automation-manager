@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.13] - 2026-08-19
+
+### Changed
+
+- CSP > Policy Audit tab: `Csp_Header_Formatter` bolds each directive name in the Effective Header column, leaving its source list in normal weight, so a long header (often a dozen-plus directives on one line) reads as scannable segments instead of one dense run of text.
+
 ## [2.9.12] - 2026-08-19
 
 ### Changed
