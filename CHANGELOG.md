@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.17] - 2026-08-19
+
+### Added
+
+- `Policy_Builder::EMPTY_CONTENT_HASH_TOKEN`: the sha256 hash of the empty string is now always present in `script-src-attr`/`style-src-attr`, regardless of hash inventory or admin approval (still gated by the surface's own `'unsafe-hashes'` opt-in, per CSP3 §6.1.2, same as any other attribute-context hash). An empty attribute value can never execute or style anything. Reported from live enforce-mode testing: a vendored carousel library's routine `jQuery.attr('style', '')` was blocked and reported as a violation purely because that exact empty value had never been individually captured and approved yet.
+
+### Fixed
+
+- Corrected two claims in `docs/threat-model.md`'s "Inline style attributes" section that the above change made inaccurate as written.
+
 ## [2.9.16] - 2026-08-19
 
 ### Fixed
