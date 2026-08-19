@@ -399,6 +399,96 @@ class SchemaMigrationTest extends TestCase {
 		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
 	}
 
+	// ── migrate_consolidate_bypass_flags_into_json() (schema v25) ─────────────────
+
+	public function test_migrate_consolidate_bypass_flags_converts_all_three_legacy_columns(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                              => 5,
+				'bypass_img_src_data'             => '1',
+				'bypass_font_src_data'            => '1',
+				'bypass_style_attr_unsafe_hashes' => '1',
+				'bypass_flags'                    => null,
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_consolidate_bypass_flags_into_json' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
+		$flags = json_decode( (string) $GLOBALS['_wpdb_updated_rows'][0]['data']['bypass_flags'], true );
+		sort( $flags );
+		$this->assertSame( array( 'font_src_data', 'img_src_data', 'style_src_attr_unsafe_hashes' ), $flags );
+		$this->assertSame( array( 'id' => 5 ), $GLOBALS['_wpdb_updated_rows'][0]['where'] );
+	}
+
+	public function test_migrate_consolidate_bypass_flags_converts_only_the_enabled_columns(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                              => 5,
+				'bypass_img_src_data'             => '1',
+				'bypass_font_src_data'            => '0',
+				'bypass_style_attr_unsafe_hashes' => '0',
+				'bypass_flags'                    => null,
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_consolidate_bypass_flags_into_json' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$flags = json_decode( (string) $GLOBALS['_wpdb_updated_rows'][0]['data']['bypass_flags'], true );
+		$this->assertSame( array( 'img_src_data' ), $flags );
+	}
+
+	public function test_migrate_consolidate_bypass_flags_writes_an_empty_array_when_nothing_was_enabled(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                              => 5,
+				'bypass_img_src_data'             => '0',
+				'bypass_font_src_data'            => '0',
+				'bypass_style_attr_unsafe_hashes' => '0',
+				'bypass_flags'                    => null,
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_consolidate_bypass_flags_into_json' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
+		$this->assertSame( array(), json_decode( (string) $GLOBALS['_wpdb_updated_rows'][0]['data']['bypass_flags'], true ) );
+	}
+
+	public function test_migrate_consolidate_bypass_flags_skips_an_already_migrated_row(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'                              => 5,
+				'bypass_img_src_data'             => '1',
+				'bypass_font_src_data'            => '0',
+				'bypass_style_attr_unsafe_hashes' => '0',
+				'bypass_flags'                    => wp_json_encode( array( 'img_src_blob' ) ),
+			),
+		);
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_consolidate_bypass_flags_into_json' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'], 'a row that already has a bypass_flags value must be left untouched, even if it differs from what the legacy columns would produce' );
+	}
+
+	public function test_migrate_consolidate_bypass_flags_handles_no_profiles_gracefully(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$method = new ReflectionMethod( Activator::class, 'migrate_consolidate_bypass_flags_into_json' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
 	// ── migrate_dedupe_violation_reports_by_host() (schema v14) ──────────────────
 
 	public function test_migrate_dedupe_violation_reports_by_host_skips_when_table_missing(): void {

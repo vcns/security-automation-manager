@@ -134,17 +134,25 @@ class Policy_Builder extends Header_Builder {
 	 *   decided unilaterally (see PR #213's history for why it originally
 	 *   wasn't).
 	 *
-	 * Each entry's 'column' is a literal, hardcoded csp_policy_profiles
-	 * column name -- never derived from request input -- read directly via
-	 * $profile[$entry['column']] below and validated against this same
-	 * catalog before being written to in Admin_UI::ajax_set_bypass_flag().
+	 * Storage: a single bypass_flags JSON array on csp_policy_profiles
+	 * (schema v25), holding whichever of this catalog's own keys are
+	 * enabled for that surface -- not one tinyint column per entry, which
+	 * doesn't scale to a catalog meant to keep growing (every addition
+	 * would otherwise need its own schema migration). See
+	 * migrate_consolidate_bypass_flags_into_json() for the one-time
+	 * conversion from the three legacy per-entry columns this replaced.
+	 * A catalog key is validated against array_key_exists( $flag, self::BYPASS_CATALOG )
+	 * -- never derived from request input -- in Admin_UI::ajax_set_bypass_flag()
+	 * before being written.
+	 *
 	 * 'violation_blocked_uri' is the csp_violation_reports.blocked_uri value
-	 * used to show the surface's real observed count for this entry on the
-	 * Profiles tab -- not consumed by build_policy_string() itself.
+	 * used to show the surface's real observed count for this entry, and to
+	 * hide an entry from the Profiles tab entirely when a surface has never
+	 * once triggered it and it isn't already enabled -- not consumed by
+	 * build_policy_string() itself.
 	 */
 	public const BYPASS_CATALOG = array(
-		'img_src_data'                 => array(
-			'column'                => 'bypass_img_src_data',
+		'img_src_data'                  => array(
 			'directive'             => 'img-src',
 			'token'                 => 'data:',
 			'label'                 => 'Allow data: URIs for images',
@@ -152,8 +160,15 @@ class Policy_Builder extends Header_Builder {
 			'risk_note'             => 'Low risk: inline image data cannot execute as script.',
 			'violation_blocked_uri' => 'data',
 		),
-		'font_src_data'                => array(
-			'column'                => 'bypass_font_src_data',
+		'img_src_blob'                  => array(
+			'directive'             => 'img-src',
+			'token'                 => 'blob:',
+			'label'                 => 'Allow blob: URIs for images',
+			'risk_level'            => 'low',
+			'risk_note'             => 'Low risk: like data:, a blob: image source cannot execute as script -- common with canvas exports and client-side file/image previews.',
+			'violation_blocked_uri' => 'blob',
+		),
+		'font_src_data'                 => array(
 			'directive'             => 'font-src',
 			'token'                 => 'data:',
 			'label'                 => 'Allow data: URIs for fonts',
@@ -161,14 +176,53 @@ class Policy_Builder extends Header_Builder {
 			'risk_note'             => 'Low risk: inline font data cannot execute as script.',
 			'violation_blocked_uri' => 'data',
 		),
-		'style_src_attr_unsafe_hashes' => array(
-			'column'                => 'bypass_style_attr_unsafe_hashes',
+		'media_src_data'                => array(
+			'directive'             => 'media-src',
+			'token'                 => 'data:',
+			'label'                 => 'Allow data: URIs for audio/video',
+			'risk_level'            => 'low',
+			'risk_note'             => 'Low risk: inline audio/video data cannot execute as script.',
+			'violation_blocked_uri' => 'data',
+		),
+		'media_src_blob'                => array(
+			'directive'             => 'media-src',
+			'token'                 => 'blob:',
+			'label'                 => 'Allow blob: URIs for audio/video',
+			'risk_level'            => 'low',
+			'risk_note'             => 'Low risk: a blob: media source cannot execute as script -- common with streaming/adaptive-bitrate players built on the Media Source Extensions API.',
+			'violation_blocked_uri' => 'blob',
+		),
+		'style_src_attr_unsafe_hashes'  => array(
 			'directive'             => 'style-src-attr',
 			'token'                 => "'unsafe-hashes'",
 			'label'                 => "Allow inline style attributes via hash approval (adds 'unsafe-hashes')",
 			'risk_level'            => 'medium',
 			'risk_note'             => 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2); does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.',
 			'violation_blocked_uri' => 'inline',
+		),
+		'script_src_attr_unsafe_hashes' => array(
+			'directive'             => 'script-src-attr',
+			'token'                 => "'unsafe-hashes'",
+			'label'                 => "Allow inline event handler attributes via hash approval (adds 'unsafe-hashes')",
+			'risk_level'            => 'medium',
+			'risk_note'             => "Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2), and only for that exact hashed value -- does not enable 'unsafe-inline' or affect script-src/script-src-elem. Covers inline event handler attributes such as onclick=\"\"; script-src-attr is otherwise 'none' everywhere in this codebase.",
+			'violation_blocked_uri' => 'inline',
+		),
+		'script_src_wasm_unsafe_eval'   => array(
+			'directive'             => 'script-src',
+			'token'                 => "'wasm-unsafe-eval'",
+			'label'                 => "Allow WebAssembly compilation (adds 'wasm-unsafe-eval')",
+			'risk_level'            => 'medium',
+			'risk_note'             => "Medium risk: CSP3's 'wasm-unsafe-eval' keyword permits only WebAssembly instantiation/compilation -- unlike 'unsafe-eval', it does not permit eval(), new Function(), or any other string-to-JS execution path. Needed by some image/video-processing, PDF-rendering, or cryptography libraries compiled to WebAssembly.",
+			'violation_blocked_uri' => 'wasm-eval',
+		),
+		'worker_src_blob'               => array(
+			'directive'             => 'worker-src',
+			'token'                 => 'blob:',
+			'label'                 => 'Allow blob: URIs for workers',
+			'risk_level'            => 'high',
+			'risk_note'             => 'Higher risk than the other entries here: unlike an image, font, or media source, a Worker constructed from a blob: URL does execute as JavaScript. Only enable this if a specific, identified library on this site genuinely constructs its worker from a blob (common with PDF.js and some video encoders, or bundler-generated workers) -- if nothing on the site does this, leave it off.',
+			'violation_blocked_uri' => 'blob',
 		),
 	);
 
@@ -457,11 +511,13 @@ class Policy_Builder extends Header_Builder {
 		}
 
 		// Per-surface "Bypass Best Practices" toggles (Profiles tab). See
-		// BYPASS_CATALOG's docblock: entries span low through medium risk,
+		// BYPASS_CATALOG's docblock: entries span low through high risk,
 		// but every one is individually reasoned about and requires this
 		// explicit per-surface opt-in -- nothing here is ever automatic.
-		foreach ( self::BYPASS_CATALOG as $entry ) {
-			if ( empty( $profile[ $entry['column'] ] ) ) {
+		$enabled_bypass_flags = json_decode( (string) ( $profile['bypass_flags'] ?? '' ), true );
+		$enabled_bypass_flags = is_array( $enabled_bypass_flags ) ? $enabled_bypass_flags : array();
+		foreach ( self::BYPASS_CATALOG as $flag => $entry ) {
+			if ( ! in_array( $flag, $enabled_bypass_flags, true ) ) {
 				continue;
 			}
 			$dir = $entry['directive'];

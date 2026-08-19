@@ -3,7 +3,7 @@
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Automates strict HTTP security header rollout (Content Security Policy and related headers), enforcement, and violation analysis for WordPress.
- * Version:           2.9.17
+ * Version:           2.9.18
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.17' );
+define( 'WP_SAM_VERSION', '2.9.18' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -132,8 +132,19 @@ define( 'WP_SAM_VERSION', '2.9.17' );
  *        media-src still exactly matches the old ['none'] default; a
  *        profile an administrator has already customised is left
  *        untouched. See migrate_loosen_media_src_default().
+ * v25 -- adds bypass_flags (JSON array of enabled Policy_Builder::
+ *        BYPASS_CATALOG keys) to csp_policy_profiles, replacing the three
+ *        legacy per-entry tinyint columns (bypass_img_src_data,
+ *        bypass_font_src_data, bypass_style_attr_unsafe_hashes) -- a
+ *        single column rather than one per catalog entry, so the "Bypass
+ *        Best Practices" catalog can keep growing without a schema
+ *        migration for every addition. The catalog itself grows from 3 to
+ *        9 entries in this same release. Legacy columns are converted once
+ *        via migrate_consolidate_bypass_flags_into_json() and left in
+ *        place afterwards (dbDelta() cannot drop columns) but are no
+ *        longer read by anything.
  */
-define( 'WP_SAM_DB_VERSION', '24' );
+define( 'WP_SAM_DB_VERSION', '25' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

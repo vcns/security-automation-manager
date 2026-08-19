@@ -319,20 +319,39 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 				</p>
 			</td>
 			<td>
+				<?php
+				$bypass_enabled_flags = json_decode( (string) ( $profile['bypass_flags'] ?? '' ), true );
+				$bypass_enabled_flags = is_array( $bypass_enabled_flags ) ? $bypass_enabled_flags : array();
+				$bypass_shown_any     = false;
+				?>
 				<?php foreach ( \WP_SAM\CSP\Policy_Builder::BYPASS_CATALOG as $bypass_flag => $bypass_entry ) : ?>
+					<?php
+					$bypass_is_enabled = in_array( $bypass_flag, $bypass_enabled_flags, true );
+					$bypass_key        = $profile['surface'] . '|' . $bypass_entry['directive'] . '|' . $bypass_entry['violation_blocked_uri'];
+					$bypass_count      = $bypass_violation_counts[ $bypass_key ] ?? 0;
+
+					// Only show an entry this surface has actually hit at least
+					// once, or one already enabled (so an admin can still find
+					// and turn off a toggle whose triggering content is gone) --
+					// a full, uncustomised catalog is dozens of entries, and
+					// showing every one regardless of relevance to this specific
+					// surface is noise, not a menu.
+					if ( 0 === $bypass_count && ! $bypass_is_enabled ) {
+						continue;
+					}
+					$bypass_shown_any = true;
+					?>
 				<label style="display:block;margin-bottom:6px;">
 					<input
 						type="checkbox"
 						class="wp-sam-bypass-flag-toggle"
 						data-surface="<?php echo esc_attr( $profile['surface'] ); ?>"
 						data-flag="<?php echo esc_attr( $bypass_flag ); ?>"
-						<?php checked( ! empty( $profile[ $bypass_entry['column'] ] ) ); ?>
+						<?php checked( $bypass_is_enabled ); ?>
 					/>
-					<?php echo esc_html( $bypass_entry['label'] ); ?>
+					<code><?php echo esc_html( $bypass_entry['directive'] . ': ' . $bypass_entry['token'] ); ?></code>
 					<?php
-					$bypass_key   = $profile['surface'] . '|' . $bypass_entry['directive'] . '|' . $bypass_entry['violation_blocked_uri'];
-					$bypass_count = $bypass_violation_counts[ $bypass_key ] ?? 0;
-					$bypass_note  = $bypass_entry['risk_note'];
+					$bypass_note = $bypass_entry['label'] . ' ' . $bypass_entry['risk_note'];
 					if ( $bypass_count > 0 ) {
 						$bypass_note .= ' ' . sprintf(
 							/* translators: %s: formatted violation occurrence count */
@@ -344,6 +363,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					?>
 				</label>
 				<?php endforeach; ?>
+				<?php if ( ! $bypass_shown_any ) : ?>
+				<p class="description" style="margin:0;"><?php esc_html_e( 'No relevant options for this surface yet -- entries appear here once this surface has actually triggered them.', 'security-automation-manager' ); ?></p>
+				<?php endif; ?>
 			</td>
 			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>
 			<td>

@@ -36,6 +36,7 @@ class Activator {
 		self::migrate_remove_fenced_frame_src_directive();
 		self::migrate_tighten_img_src_default();
 		self::migrate_loosen_media_src_default();
+		self::migrate_consolidate_bypass_flags_into_json();
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();
@@ -185,6 +186,59 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Schema v25: bypass_img_src_data / bypass_font_src_data /
+	 * bypass_style_attr_unsafe_hashes (one tinyint column per
+	 * Policy_Builder::BYPASS_CATALOG entry) are replaced by a single
+	 * bypass_flags JSON array of enabled catalog keys, so the catalog can
+	 * grow indefinitely without a schema migration for every new entry.
+	 *
+	 * Converts each existing profile's three legacy columns into the
+	 * equivalent bypass_flags array, once, and only for a row that doesn't
+	 * already have a bypass_flags value -- safe to run on every activation
+	 * without re-processing an already-migrated (or newly-seeded, which
+	 * writes bypass_flags directly) row. The three legacy columns are left
+	 * in place afterwards (dbDelta() cannot drop columns) but nothing reads
+	 * them again after this runs.
+	 */
+	private static function migrate_consolidate_bypass_flags_into_json(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_policy_profiles';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results(
+			"SELECT id, bypass_img_src_data, bypass_font_src_data, bypass_style_attr_unsafe_hashes, bypass_flags FROM {$table}",
+			ARRAY_A
+		);
+
+		$legacy_column_to_key = array(
+			'bypass_img_src_data'             => 'img_src_data',
+			'bypass_font_src_data'            => 'font_src_data',
+			'bypass_style_attr_unsafe_hashes' => 'style_src_attr_unsafe_hashes',
+		);
+
+		foreach ( ! empty( $rows ) ? $rows : array() as $row ) {
+			if ( null !== $row['bypass_flags'] && '' !== $row['bypass_flags'] ) {
+				continue; // Already migrated, or a newly-seeded row.
+			}
+
+			$flags = array();
+			foreach ( $legacy_column_to_key as $column => $key ) {
+				if ( ! empty( $row[ $column ] ) ) {
+					$flags[] = $key;
+				}
+			}
+
+			$wpdb->update(
+				$table,
+				array( 'bypass_flags' => wp_json_encode( $flags ) ),
+				array( 'id' => (int) $row['id'] ),
+				array( '%s' ),
+				array( '%d' )
+			);
+		}
+	}
+
 	public static function get_missing_table_names(): array {
 		global $wpdb;
 
@@ -274,6 +328,11 @@ class Activator {
 
 		// 1. Per-surface CSP policy profiles
 		// v2: adds override_expires_at and override_owner for promotion gate §4.12.
+		// v25: bypass_img_src_data / bypass_font_src_data /
+		// bypass_style_attr_unsafe_hashes are superseded by bypass_flags (a
+		// JSON array of enabled Policy_Builder::BYPASS_CATALOG keys) -- kept
+		// here, unread by any code after migrate_consolidate_bypass_flags_into_json(),
+		// because dbDelta() cannot drop columns.
 		dbDelta(
 			"CREATE TABLE {$p}csp_policy_profiles (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -286,6 +345,7 @@ class Activator {
   bypass_img_src_data tinyint(1) NOT NULL DEFAULT 0,
   bypass_font_src_data tinyint(1) NOT NULL DEFAULT 0,
   bypass_style_attr_unsafe_hashes tinyint(1) NOT NULL DEFAULT 0,
+  bypass_flags longtext DEFAULT NULL,
   override_expires_at datetime DEFAULT NULL,
   override_owner varchar(255) DEFAULT NULL,
   created_at datetime NOT NULL,
@@ -1035,21 +1095,19 @@ class Activator {
 				$wpdb->insert(
 					$table,
 					array(
-						'surface'                         => $surface,
-						'mode'                            => 'report-only',
-						'directives'                      => wp_json_encode( self::default_directives( $surface ) ),
-						'overrides'                       => wp_json_encode( array() ),
-						'strict_dynamic'                  => 0,
-						'trusted_types'                   => 0,
-						'bypass_img_src_data'             => 0,
-						'bypass_font_src_data'            => 0,
-						'bypass_style_attr_unsafe_hashes' => 0,
-						'override_expires_at'             => null,
-						'override_owner'                  => null,
-						'created_at'                      => $now,
-						'updated_at'                      => $now,
+						'surface'             => $surface,
+						'mode'                => 'report-only',
+						'directives'          => wp_json_encode( self::default_directives( $surface ) ),
+						'overrides'           => wp_json_encode( array() ),
+						'strict_dynamic'      => 0,
+						'trusted_types'       => 0,
+						'bypass_flags'        => wp_json_encode( array() ),
+						'override_expires_at' => null,
+						'override_owner'      => null,
+						'created_at'          => $now,
+						'updated_at'          => $now,
 					),
-					array( '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s' )
+					array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s' )
 				);
 			}
 		}
