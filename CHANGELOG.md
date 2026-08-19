@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.10] - 2026-08-19
+
+### Fixed
+
+- `Policy_Builder`'s `hash_budget_exceeded`/`policy_too_large` audit log entries (added in 2.9.9) now write at most once per rolling hour per surface, instead of once per request. Confirmed in production on staging: a surface still over its hash safety budget was logging a warning on every single pageview. The protective behaviour (dropping hashes / refusing an oversized header) is unaffected -- only the logging was throttled.
+
 ## [2.9.9] - 2026-08-19
 
 ### Fixed
