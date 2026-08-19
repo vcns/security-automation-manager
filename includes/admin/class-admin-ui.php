@@ -67,6 +67,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Admin_UI {
 
+	/**
+	 * Plain-English summaries for admin-notice-facing events whose full
+	 * audit-log detail is written for a developer digging into the
+	 * database or error_log (SQL table/column names, class names,
+	 * internal terminology) -- not appropriate to show verbatim in a
+	 * wp-admin banner every site owner sees. Keyed by "component/event"
+	 * (matches Audit_Log::log()'s arguments); falls back to today's raw
+	 * detail string for anything not listed here, so this only needs
+	 * entries for events found to actually need it, not every one.
+	 *
+	 * The full technical detail is never lost -- it's still written to
+	 * sam_audit_log and error_log exactly as before, and stays available
+	 * in the notice itself behind a collapsed disclosure (same pattern
+	 * already used for certificate key-generation failures -- see
+	 * includes/admin/views/page-certificates.php).
+	 */
+	private const ADMIN_NOTICE_SUMMARIES = array(
+		'hash_manager/hash_learning_rate_limited' => 'Content Security Policy setup paused itself for part of your site for the rest of this hour, as a safety measure against a technical issue. This does not affect how your site works for visitors. If you keep seeing this message, ask a developer to look into it.',
+		'policy_builder/hash_budget_exceeded'     => 'Content Security Policy automatically trimmed some older, unused approvals to keep your site running safely. No action is needed unless this keeps happening.',
+		'policy_builder/policy_too_large'         => 'Content Security Policy protection was skipped for one page load, as a safety measure to stop the page failing to load. This does not affect how your site works for visitors. If you keep seeing this message, ask a developer to look into it.',
+	);
+
 	private Plugin $plugin;
 
 	public function __construct( Plugin $plugin ) {
@@ -955,13 +977,28 @@ class Admin_UI {
 			return;
 		}
 		foreach ( $notices as $notice ) {
-			$type = 'error' === $notice['severity'] ? 'error' : 'warning';
+			$type    = 'error' === $notice['severity'] ? 'error' : 'warning';
+			$key     = $notice['component'] . '/' . $notice['event'];
+			$summary = self::ADMIN_NOTICE_SUMMARIES[ $key ] ?? null;
+
+			if ( null === $summary ) {
+				printf(
+					'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> [%3$s] %4$s</p></div>',
+					esc_attr( $type ),
+					esc_html__( 'Security Automation Manager:', 'security-automation-manager' ),
+					esc_html( $key ),
+					esc_html( $notice['detail'] )
+				);
+				continue;
+			}
+
 			printf(
-				'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> [%3$s] %4$s</p></div>',
+				'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> %3$s</p><details><summary>%4$s</summary><p class="description"><code>%5$s</code></p></details></div>',
 				esc_attr( $type ),
 				esc_html__( 'Security Automation Manager:', 'security-automation-manager' ),
-				esc_html( $notice['component'] . '/' . $notice['event'] ),
-				esc_html( $notice['detail'] )
+				esc_html( $summary ),
+				esc_html__( 'Technical detail (for a developer)', 'security-automation-manager' ),
+				esc_html( $key . ': ' . $notice['detail'] )
 			);
 		}
 		delete_option( 'wp_sam_admin_notices' );

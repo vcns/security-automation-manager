@@ -321,6 +321,87 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'wp-sam-pillar-enabled', $output );
 	}
 
+	// ── display_admin_notices() ────────────────────────────────────────────────
+
+	public function test_display_admin_notices_shows_a_plain_english_summary_for_known_events(): void {
+		// Confirmed in production, 2026-08-19: this exact event's raw detail
+		// ("Hash_Manager", "exact-content dedup", "csp_hash_inventory",
+		// "source_file/source_context") reached ordinary site owners
+		// verbatim in a wp-admin banner. A known event must show a plain-
+		// English summary as the primary text instead.
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => 'hash_manager',
+					'event'     => 'hash_learning_rate_limited',
+					'detail'    => 'More than 30 new inline-script/style hashes were captured for surface "admin" within one hour.',
+					'severity'  => 'error',
+				),
+			)
+		);
+
+		$ui = $this->make_admin_ui();
+
+		ob_start();
+		$ui->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'paused itself', $output );
+		$this->assertStringNotContainsString( 'Hash_Manager', $output );
+		$this->assertStringNotContainsString( 'csp_hash_inventory', $output );
+	}
+
+	public function test_display_admin_notices_keeps_the_technical_detail_available_but_collapsed(): void {
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => 'hash_manager',
+					'event'     => 'hash_learning_rate_limited',
+					'detail'    => 'More than 30 new inline-script/style hashes were captured for surface "admin" within one hour.',
+					'severity'  => 'error',
+				),
+			)
+		);
+
+		$ui = $this->make_admin_ui();
+
+		ob_start();
+		$ui->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '<details>', $output );
+		$this->assertStringContainsString( 'captured for surface', $output );
+	}
+
+	public function test_display_admin_notices_falls_back_to_raw_detail_for_unlisted_events(): void {
+		// Only events actually found to need simplification are listed in
+		// ADMIN_NOTICE_SUMMARIES -- anything else keeps today's behaviour
+		// rather than silently losing detail because it wasn't added yet.
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => 'discovery',
+					'event'     => 'crawl_failed',
+					'detail'    => 'Failed to fetch https://example.com/: some error',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		$ui = $this->make_admin_ui();
+
+		ob_start();
+		$ui->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'discovery/crawl_failed', $output );
+		$this->assertStringContainsString( 'Failed to fetch', $output );
+		$this->assertStringNotContainsString( '<details>', $output );
+	}
+
 	private function make_admin_ui(): Admin_UI {
 		$reflection = new ReflectionClass( Plugin::class );
 
