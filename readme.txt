@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.9.8
+Stable tag: 2.9.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,11 @@ The Scripts page's Internal tab, when enabled for a surface, reads this site's o
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
 
 == Changelog ==
+
+= 2.9.9 =
+
+* Fixes unbounded growth of the inline-script/style hash inventory that could grow the emitted Content-Security-Policy header past common web-server response-header size limits, causing every page on an affected surface to fail with a silent 500. Adds a per-surface hourly cap on newly-learned hashes, real time-based retirement of stale hashes (previously only worked in narrow conditions), and a hard byte-budget safety cap when building the header, so this can no longer take a site down even if the same root cause recurs.
+* Inline-script/style hash records now capture the request path and a content excerpt when first seen, so a future occurrence is traceable from the database instead of requiring a manual investigation.
 
 = 2.9.8 =
 
