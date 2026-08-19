@@ -680,15 +680,42 @@ $status_badge       = static function ( string $status ): void {
 
 		<h2><?php esc_html_e( 'Why we built this', 'security-automation-manager' ); ?></h2>
 		<p>
-			<?php esc_html_e( 'Most WordPress security plugins bundle a firewall, malware scanner, and login hardening -- and treat modern browser security headers like Content Security Policy as an afterthought, if they touch CSP at all. Everywhere else on the web, CSP rollout is standard practice; on WordPress, it usually means hand-editing .htaccess or a theme functions file, with no visibility into what actually breaks, no safe way to test before enforcing, and no audit trail of who approved what.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Most WordPress security plugins bundle a firewall, malware scanner, and login hardening -- and treat everything else a browser-facing site needs to lock down as an afterthought, if they touch it at all: Content Security Policy and the other browser security headers, which third-party scripts a site actually trusts, and whether its TLS certificate is even being watched for expiry. Everywhere else on the web these are standard practice; on WordPress they usually mean hand-editing .htaccess or a theme functions file, a manual cPanel certificate renewal reminder, or simply not being done, with no visibility into what actually breaks, no safe way to test before enforcing, and no audit trail of who approved what.', 'security-automation-manager' ); ?>
 		</p>
 		<p>
-			<?php esc_html_e( 'We built this plugin to close that gap: report-only rollout by default, browser-submitted violation reports turned into reviewable proposals, a reason-required decision ledger for every change, and the same report-first discipline applied to nine other header pillars alongside CSP -- all native to WordPress, with no external dashboard or proprietary scanning service required to use the free tier.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'We built this plugin to close that gap across every layer it covers: report-only rollout by default wherever a report-only mode is possible, browser-submitted violation reports turned into reviewable proposals, a reason-required decision ledger for every change, and automated ACME certificate issuance and renewal alongside it -- all native to WordPress, with no external dashboard or proprietary scanning service required to use the free tier.', 'security-automation-manager' ); ?>
 		</p>
+
+		<h2><?php esc_html_e( 'What this plugin covers', 'security-automation-manager' ); ?></h2>
+		<p>
+			<?php esc_html_e( 'This is not a single-purpose plugin -- it manages several largely independent layers under one roof, sharing the same admin, audit log, and reason-required decision workflow:', 'security-automation-manager' ); ?>
+		</p>
+		<ul style="list-style: disc; padding-left: 1.5em;">
+			<li>
+				<strong><?php esc_html_e( 'Content Security Policy', 'security-automation-manager' ); ?></strong>
+				&nbsp;&mdash;
+				<?php esc_html_e( 'the most capable pillar: per-surface profiles, nonce injection, automatic source discovery, violation reporting, and a full report-only-to-enforce review workflow.', 'security-automation-manager' ); ?>
+			</li>
+			<li>
+				<strong><?php esc_html_e( 'Nine further HTTP security headers', 'security-automation-manager' ); ?></strong>
+				&nbsp;&mdash;
+				<?php esc_html_e( 'X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies -- simpler per-surface pillars, two of which (Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy) carry their own report-only learning workflow.', 'security-automation-manager' ); ?>
+			</li>
+			<li>
+				<strong><?php esc_html_e( 'Page-rewrite protections', 'security-automation-manager' ); ?></strong>
+				&nbsp;&mdash;
+				<?php esc_html_e( 'Reverse Tabnabbing Protection, External Scripts (third-party script/stylesheet governance with Subresource Integrity), and Internal Script Integrity, which modify the rendered page itself rather than emit a header.', 'security-automation-manager' ); ?>
+			</li>
+			<li>
+				<strong><?php esc_html_e( 'Certificates', 'security-automation-manager' ); ?></strong>
+				&nbsp;&mdash;
+				<?php esc_html_e( 'a free-standing ACME v2 (Let\'s Encrypt) TLS certificate manager: DNS-01 or HTTP-01 issuance, encrypted-at-rest credentials and private keys, and automatic renewal. Unrelated to the header pillars above beyond sharing the same admin and audit plumbing.', 'security-automation-manager' ); ?>
+			</li>
+		</ul>
 
 		<h2><?php esc_html_e( 'The gap this fills', 'security-automation-manager' ); ?></h2>
 		<p>
-			<?php esc_html_e( 'CSP is widely regarded as one of the most effective defenses against cross-site scripting, but it is also one of the easiest security controls to deploy badly -- an overly strict policy silently breaks a theme or plugin, and an overly loose one defends nothing. This plugin exists to make the safe middle path the easy path: learn what a site actually needs before enforcing anything, and keep every decision reviewable.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'CSP is widely regarded as one of the most effective defenses against cross-site scripting, but it is also one of the easiest security controls to deploy badly -- an overly strict policy silently breaks a theme or plugin, and an overly loose one defends nothing. The same trade-off shows up in miniature across every layer above: an unreviewed third-party script is a supply-chain risk, a lapsed certificate is a silent outage, and a header enabled without understanding what depends on the behaviour it changes can break a site as easily as it protects one. This plugin exists to make the safe middle path the easy path everywhere it applies: learn what a site actually needs before enforcing anything, automate what is safe to automate outright, and keep every decision reviewable.', 'security-automation-manager' ); ?>
 		</p>
 
 		<h2><?php esc_html_e( 'Learn more', 'security-automation-manager' ); ?></h2>
