@@ -71,6 +71,7 @@ class Scheduler {
 			$this->maybe_notify( $results );
 			$this->purge_old_violations();
 			$this->purge_old_pillar_violations();
+			$hash_mgr->prune_stale_by_age();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );

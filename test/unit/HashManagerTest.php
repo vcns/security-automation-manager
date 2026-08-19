@@ -281,6 +281,116 @@ class HashManagerTest extends TestCase {
 		$this->assertArrayHasKey( $expected_b64, $captured );
 	}
 
+	// ── upsert(): source_file / source_context on insert ─────────────────────
+
+	public function test_upsert_populates_source_file_from_request_uri_when_not_given(): void {
+		$_SERVER['REQUEST_URI'] = '/some/page/?utm_source=x';
+
+		$this->manager->record_hash( 'console.log(1);', 'script-src', 'frontend' );
+
+		$this->assertNotEmpty( $GLOBALS['_wpdb_inserted_rows'] );
+		$row = $GLOBALS['_wpdb_inserted_rows'][0];
+		$this->assertSame( '/some/page/?utm_source=x', $row['data']['source_file'] );
+
+		unset( $_SERVER['REQUEST_URI'] );
+	}
+
+	public function test_upsert_populates_source_context_with_a_content_excerpt(): void {
+		$this->manager->record_hash( 'var x = 1; var y = 2;', 'script-src', 'frontend' );
+
+		$row = $GLOBALS['_wpdb_inserted_rows'][0];
+		$this->assertSame( 'var x = 1; var y = 2;', $row['data']['source_context'] );
+	}
+
+	public function test_upsert_does_not_reinsert_source_columns_when_reactivating_an_existing_hash(): void {
+		// An existing row (get_var returns a truthy id) takes the update
+		// branch, which must never insert -- reactivation only bumps
+		// last_seen_at/status, it doesn't need fresh provenance since the
+		// content, by definition of matching hash_uniq, hasn't changed.
+		$GLOBALS['_wpdb_get_var'] = '42';
+
+		$this->manager->record_hash( 'var x = 1;', 'script-src', 'frontend' );
+
+		$this->assertEmpty( $GLOBALS['_wpdb_inserted_rows'] );
+		$this->assertNotEmpty( $GLOBALS['_wpdb_updated_rows'] );
+	}
+
+	// ── upsert(): new-hash rate limiter (circuit breaker) ─────────────────────
+
+	public function test_upsert_rate_limits_new_inserts_past_the_hourly_cap(): void {
+		// Each record_hash() call uses distinct content, so every one would
+		// otherwise be a brand-new row -- exactly the runaway-growth
+		// scenario the circuit breaker exists to stop.
+		for ( $i = 0; $i < 40; $i++ ) {
+			$this->manager->record_hash( "var uniqueToken{$i} = {$i};", 'script-src', 'frontend' );
+		}
+
+		// MAX_NEW_HASHES_PER_HOUR is 30 -- everything after that is refused.
+		$this->assertCount( 30, $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
+	public function test_upsert_rate_limiter_logs_exactly_once_when_it_trips(): void {
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->once() )
+			->method( 'log' )
+			->with( 'hash_manager', 'hash_learning_rate_limited', $this->anything(), 'error' );
+
+		$manager = new Hash_Manager( $audit, $this->createMock( Feature_Gate::class ) );
+
+		for ( $i = 0; $i < 40; $i++ ) {
+			$manager->record_hash( "var uniqueToken{$i} = {$i};", 'script-src', 'frontend' );
+		}
+	}
+
+	public function test_upsert_rate_limiter_never_blocks_reactivation_of_an_existing_hash(): void {
+		// The update branch (existing row found) must be exempt from the
+		// insert rate limit -- reactivating a known hash never grows the
+		// table, so there's nothing for the circuit breaker to protect
+		// against here, and blocking it would incorrectly stop a
+		// legitimately static, frequently-rendered script from being
+		// recognised as still active.
+		$GLOBALS['_wpdb_get_var'] = '1';
+
+		for ( $i = 0; $i < 40; $i++ ) {
+			$this->manager->record_hash( 'var x = 1;', 'script-src', 'frontend' );
+		}
+
+		$this->assertCount( 40, $GLOBALS['_wpdb_updated_rows'] );
+		$this->assertEmpty( $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
+	// ── prune_stale_by_age() ───────────────────────────────────────────────────
+
+	public function test_prune_stale_by_age_returns_the_retired_row_count(): void {
+		$GLOBALS['_wpdb_query_result'] = 7;
+
+		$retired = $this->manager->prune_stale_by_age( 30 );
+
+		$this->assertSame( 7, $retired );
+	}
+
+	public function test_prune_stale_by_age_logs_when_rows_are_retired(): void {
+		$GLOBALS['_wpdb_query_result'] = 3;
+
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->once() )
+			->method( 'log' )
+			->with( 'hash_manager', 'hashes_pruned_by_age', $this->anything(), 'info' );
+
+		$manager = new Hash_Manager( $audit, $this->createMock( Feature_Gate::class ) );
+		$manager->prune_stale_by_age( 30 );
+	}
+
+	public function test_prune_stale_by_age_does_not_log_when_nothing_is_retired(): void {
+		$GLOBALS['_wpdb_query_result'] = 0;
+
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->never() )->method( 'log' );
+
+		$manager = new Hash_Manager( $audit, $this->createMock( Feature_Gate::class ) );
+		$manager->prune_stale_by_age( 30 );
+	}
+
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	/**

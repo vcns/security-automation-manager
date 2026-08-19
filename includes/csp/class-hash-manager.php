@@ -9,6 +9,15 @@
  *   - Retires hashes whose content has changed (fingerprint mismatch).
  *   - Passes the current-request hash map back to Scheduler so retire_stale()
  *     receives real data rather than an empty array.
+ *   - prune_stale_by_age() retires any active hash not seen again within a
+ *     configurable window, independent of any in-request capture data --
+ *     unlike retire_stale() above, which in practice rarely has anything
+ *     useful to work with for a WP-Cron-dispatched scan.
+ *   - A per-surface, per-hour cap on brand-new rows (MAX_NEW_HASHES_PER_HOUR)
+ *     protects against unbounded table growth when an inline block's content
+ *     varies on every request and can never match the exact-content dedup
+ *     above -- see the constant's docblock for the 2026-08-19 incident this
+ *     was added for.
  *
  * Note: hash-based inline approval is an alternative to nonces when
  * the inline content is truly static. For dynamic inline blocks, nonces remain
@@ -27,6 +36,36 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Hash_Manager {
+
+	/**
+	 * Circuit breaker: maximum number of brand-new (never-seen-before)
+	 * hash rows a single surface may accumulate per rolling hour before
+	 * insertion is paused for the rest of that hour. Exists because
+	 * upsert()'s dedup is exact-content-match only -- an inline
+	 * script/style block whose content bakes in a per-request-varying
+	 * value (a nonce, timestamp, or similar not routed through
+	 * Nonce_Manager) never matches a prior hash, so every render "learns"
+	 * a brand-new row forever, without this. Confirmed in production,
+	 * 2026-08-19: one surface reached 1,022 never-retired active rows at
+	 * roughly one new row every 1.2 minutes, which grew the emitted CSP
+	 * header past the web server's response-header size limit and took
+	 * the whole surface down with a silent 500. This does not fix the
+	 * underlying dynamic-content script -- that still needs routing
+	 * through the nonce path -- it only stops the table (and the header
+	 * built from it) from growing without bound while that's tracked
+	 * down. See also Policy_Builder::MAX_HASH_TOKEN_BUDGET_BYTES, a
+	 * second, independent safety net on the header-building side.
+	 */
+	private const MAX_NEW_HASHES_PER_HOUR = 30;
+
+	/**
+	 * Default age, in days, after which an active hash that hasn't been
+	 * seen again gets retired by prune_stale_by_age(). A genuinely
+	 * static, still-in-use script gets its last_seen_at bumped on every
+	 * render (see upsert()'s update branch), so this only ever retires
+	 * hashes that have actually stopped recurring.
+	 */
+	private const DEFAULT_MAX_AGE_DAYS = 30;
 
 	private Audit_Log $audit;
 	private Feature_Gate $gate;
@@ -248,9 +287,40 @@ class Hash_Manager {
 		// Track in the per-request map so retire_stale() receives real data.
 		$this->captured_hashes[ $hash_b64 ] = $fingerprint;
 
-		$this->upsert( $hash_b64, $fingerprint, $directive, $surface, $source_file );
+		if ( '' === $source_file ) {
+			$source_file = $this->current_request_path();
+		}
+
+		$this->upsert( $hash_b64, $fingerprint, $directive, $surface, $source_file, $this->summarize_context( $content ) );
 
 		return "sha256-{$hash_b64}";
+	}
+
+	/**
+	 * Best-effort provenance for source_file when no explicit value was
+	 * given. The exact PHP file/template that echoed an inline block is
+	 * not recoverable from output-buffer-based extraction, but the
+	 * request path it appeared on is, and is the practical starting
+	 * point for triage -- previously this column was always written as
+	 * an empty string, which is why the 2026-08-19 incident needed a
+	 * manual byte-count investigation to even locate the right surface.
+	 */
+	private function current_request_path(): string {
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		return '' !== $uri ? substr( $uri, 0, 512 ) : '(unknown request)';
+	}
+
+	/**
+	 * A short, safe excerpt of the hashed content for source_context --
+	 * enough for an admin to recognise which script/style block a row
+	 * corresponds to without storing the full (potentially large)
+	 * content. Previously this column had no writer at all and was
+	 * always NULL.
+	 */
+	private function summarize_context( string $content ): string {
+		$normalized = preg_replace( '/\s+/', ' ', trim( $content ) );
+		$normalized = is_string( $normalized ) ? $normalized : '';
+		return mb_substr( $normalized, 0, 300 );
 	}
 
 	/**
@@ -316,6 +386,58 @@ class Hash_Manager {
 	}
 
 	/**
+	 * Retires any active hash row not seen again within $max_age_days.
+	 *
+	 * Unlike retire_stale() above -- which needs a real in-request capture
+	 * map, and in practice is almost never usefully populated for a
+	 * WP-Cron-dispatched scan, since the hashing happens (if at all) in
+	 * a separate PHP process handling a separately-fetched page -- this
+	 * is a pure time-based query against last_seen_at. It needs no
+	 * capture data, behaves identically whether triggered by cron or run
+	 * manually, and is what actually bounds long-term growth of
+	 * csp_hash_inventory in production. Confirmed in the 2026-08-19
+	 * incident: 1,022 active, never-retired rows on the frontend surface,
+	 * because retire_stale()'s capture map was essentially always empty
+	 * for that surface's scheduled scans. Covers every surface in one
+	 * query, unlike retire_stale()'s callers, which only ever pass
+	 * 'frontend' -- admin/login hashes had no working retirement path at
+	 * all before this.
+	 *
+	 * @return int Number of rows retired.
+	 */
+	public function prune_stale_by_age( int $max_age_days = self::DEFAULT_MAX_AGE_DAYS ): int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_hash_inventory';
+		$now   = current_time( 'mysql', true );
+
+		$retired = $wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"UPDATE {$table} SET status = 'retired', retired_at = %s WHERE status = 'active' AND last_seen_at < DATE_SUB( %s, INTERVAL %d DAY )",
+				$now,
+				$now,
+				$max_age_days
+			)
+		);
+		$retired = false === $retired ? 0 : (int) $retired;
+
+		if ( $retired > 0 ) {
+			$this->audit->log(
+				'hash_manager',
+				'hashes_pruned_by_age',
+				sprintf(
+					'Retired %1$d inline-script/style hash(es) not seen again within %2$d day(s).',
+					$retired,
+					$max_age_days
+				),
+				'info'
+			);
+		}
+
+		return $retired;
+	}
+
+	/**
 	 * Returns all active hashes for a surface as 'sha256-{b64}' strings.
 	 */
 	public function get_active_hashes( string $surface, string $directive ): array {
@@ -347,7 +469,8 @@ class Hash_Manager {
 		string $fingerprint,
 		string $directive,
 		string $surface,
-		string $source_file
+		string $source_file,
+		string $source_context = ''
 	): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_hash_inventory';
@@ -373,22 +496,66 @@ class Hash_Manager {
 				array( '%s', '%s' ),
 				array( '%d' )
 			);
-		} else {
-			$wpdb->insert(
-				$table,
-				array(
-					'surface'             => $surface,
-					'directive'           => $directive,
-					'hash_algo'           => 'sha256',
-					'hash_value'          => $hash_b64,
-					'content_fingerprint' => $fingerprint,
-					'source_file'         => sanitize_text_field( $source_file ),
-					'status'              => 'active',
-					'first_seen_at'       => $now,
-					'last_seen_at'        => $now,
-				),
-				array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
-			);
+			return;
 		}
+
+		// Circuit breaker: only guards new rows -- reactivating a
+		// previously-seen hash (the branch above) never grows the table,
+		// so it's never rate-limited.
+		if ( ! $this->allow_new_hash_insert( $surface ) ) {
+			return;
+		}
+
+		$wpdb->insert(
+			$table,
+			array(
+				'surface'             => $surface,
+				'directive'           => $directive,
+				'hash_algo'           => 'sha256',
+				'hash_value'          => $hash_b64,
+				'content_fingerprint' => $fingerprint,
+				'source_file'         => sanitize_text_field( $source_file ),
+				'source_context'      => sanitize_text_field( $source_context ),
+				'status'              => 'active',
+				'first_seen_at'       => $now,
+				'last_seen_at'        => $now,
+			),
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+		);
+	}
+
+	/**
+	 * Rate limiter for brand-new hash rows, per surface, per rolling
+	 * hour. See MAX_NEW_HASHES_PER_HOUR's docblock for why this exists.
+	 * Uses a transient counter rather than a COUNT(*) query so the check
+	 * stays cheap on every request that hashes new content -- exactly
+	 * the situation where the table is already under the most pressure.
+	 */
+	private function allow_new_hash_insert( string $surface ): bool {
+		$limit = (int) apply_filters( 'wp_sam_max_new_hashes_per_hour', self::MAX_NEW_HASHES_PER_HOUR, $surface );
+		$key   = 'wp_sam_hash_rate_' . $surface . '_' . gmdate( 'YmdH' );
+		$count = (int) get_transient( $key );
+
+		if ( $count >= $limit ) {
+			if ( $limit === $count ) {
+				// Log exactly once per hour, the moment the breaker trips,
+				// not once per blocked insert for the rest of the window.
+				$this->audit->log(
+					'hash_manager',
+					'hash_learning_rate_limited',
+					sprintf(
+						'More than %1$d new inline-script/style hashes were captured for surface "%2$s" within one hour. This usually means an inline block\'s content varies on every request (a baked-in nonce, timestamp, or similar value not routed through the plugin\'s nonce path) and can never match Hash_Manager\'s exact-content dedup. Hash learning is paused for this surface for the rest of the hour to prevent unbounded growth of the emitted CSP header. Check csp_hash_inventory rows recorded for this surface in the last hour (source_file/source_context) to find the page and script responsible.',
+						$limit,
+						$surface
+					),
+					'error'
+				);
+			}
+			set_transient( $key, $count + 1, HOUR_IN_SECONDS );
+			return false;
+		}
+
+		set_transient( $key, $count + 1, HOUR_IN_SECONDS );
+		return true;
 	}
 }

@@ -97,12 +97,14 @@ Key columns:
 - `directive` - `script-src`, `style-src`, or `style-src-attr` (inline `style="..."` attribute values; unlike the element directives, Policy_Builder must also add `'unsafe-hashes'` to `style-src-attr` for a hash there to take effect, per CSP3 §6.1.2)
 - `hash_algo` - `sha256`, `sha384`, or `sha512`
 - `hash_value` - Base64-encoded hash of the raw block content
-- `content_fingerprint` - deterministic fingerprint of the raw content used for deduplication and change detection
-- `source_file` - the template or PHP file that emits this block, if detectable
-- `source_context` - optional surrounding context for operator review
+- `content_fingerprint` - `sha256(content)` hex digest; currently derived from the exact same content as `hash_value` (a different encoding of the same exact-match comparison), not a separate near-duplicate/similarity signal
+- `source_file` - the request path (`REQUEST_URI`) the block was captured on, populated on insert. Output-buffer-based capture cannot recover the actual PHP template/file that echoed the block, only the page it appeared on; that's the practical starting point for triage
+- `source_context` - a normalised, ~300-character excerpt of the hashed content, populated on insert, so an admin can recognise which script/style block a row corresponds to without reconstructing it from the hash alone
 - `status` - `active`, `retired`
-- `first_seen_at`, `last_seen_at`
-- `retired_at` - set when the block is no longer observed during rescans
+- `first_seen_at`, `last_seen_at` - `last_seen_at` is bumped (without a new row) every time identical content is seen again; a row whose `last_seen_at` stops advancing is a candidate for `Hash_Manager::prune_stale_by_age()`
+- `retired_at` - set when the block is no longer observed during rescans, or pruned by age
+
+Growth safety (added after the 2026-08-19 incident -- see `Hash_Manager::MAX_NEW_HASHES_PER_HOUR` and `Policy_Builder::MAX_HASH_TOKEN_BUDGET_BYTES`): a single surface is capped at 30 brand-new rows per rolling hour, and the header built from this table can never emit more than a fixed byte budget of hash tokens regardless of how many active rows exist, dropping the least-recently-seen ones first. `Hash_Manager::prune_stale_by_age()` (run from the daily cron scan) retires any active row not seen again within 30 days, independent of any in-request capture data.
 
 Operational notes:
 

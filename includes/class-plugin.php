@@ -149,7 +149,7 @@ final class Plugin {
 		}
 		$this->gate                                      = new Feature_Gate( $this->entitlements );
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
-		$this->policy_builder                            = new Policy_Builder( $this->gate );
+		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
 		$this->x_content_type_options_builder            = new X_Content_Type_Options_Builder();
 		$this->referrer_policy_builder                   = new Referrer_Policy_Builder();
