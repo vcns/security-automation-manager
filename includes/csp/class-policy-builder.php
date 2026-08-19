@@ -587,18 +587,30 @@ class Policy_Builder extends Header_Builder {
 		}
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_hash_inventory';
-		// ORDER BY last_seen_at DESC: the hash-append loop in
+		// ORDER BY last_seen_at DESC, id DESC: the hash-append loop in
 		// build_policy_string() relies on most-recently-seen rows coming
 		// first, so its byte-budget cutoff drops the oldest hashes rather
-		// than an arbitrary subset. The LIMIT is a generous, defense-in-
-		// depth ceiling on rows loaded into PHP memory in the first place
-		// -- not the primary safety mechanism (that's the byte budget) --
-		// so it's set well above MAX_HASH_TOKEN_BUDGET_BYTES could ever
-		// actually use.
+		// than an arbitrary subset. `last_seen_at` is a datetime column
+		// (one-second resolution) and many rows commonly get bumped to the
+		// exact same second by the same page render, so ORDER BY on that
+		// column alone leaves the relative order of everything tied on a
+		// timestamp unspecified by SQL -- confirmed in production,
+		// 2026-08-19: the same ~1,027-row backlog produced a
+		// "Dropped 34" cutoff on one request and "Dropped 985" on another
+		// moments later, because the arbitrary tie order happened to place
+		// a different mix of cheap (style-src-attr, single-directive) vs
+		// expensive (script-src/style-src, doubled) hashes before the
+		// cutoff each time. `id DESC` breaks ties deterministically (a
+		// row's id never changes on reactivation), so the same DB state
+		// now always produces the same cutoff, not just "some" cutoff.
+		// The LIMIT is a generous, defense-in-depth ceiling on rows loaded
+		// into PHP memory in the first place -- not the primary safety
+		// mechanism (that's the byte budget) -- so it's set well above
+		// MAX_HASH_TOKEN_BUDGET_BYTES could ever actually use.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT directive, hash_algo, hash_value FROM {$table} WHERE surface = %s AND status = 'active' ORDER BY last_seen_at DESC LIMIT 2000",
+				"SELECT directive, hash_algo, hash_value FROM {$table} WHERE surface = %s AND status = 'active' ORDER BY last_seen_at DESC, id DESC LIMIT 2000",
 				$surface
 			),
 			ARRAY_A

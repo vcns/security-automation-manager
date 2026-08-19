@@ -634,6 +634,24 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertLessThan( 80 * 2 * 60, strlen( $policy ) );
 	}
 
+	public function test_load_approved_hashes_orders_deterministically_on_tied_timestamps(): void {
+		// Regression test for a production bug (2026-08-19): ORDER BY
+		// last_seen_at DESC alone leaves ties (very common -- last_seen_at
+		// is a datetime column, one-second resolution, and many hashes get
+		// bumped by the same page render) in SQL-unspecified order, so the
+		// same ~1,027-row backlog produced a "Dropped 34" cutoff on one
+		// request and "Dropped 985" moments later on another. The query
+		// must always include a deterministic tiebreaker.
+		$builder = new Policy_Builder( $this->gate );
+
+		$ref = new ReflectionMethod( $builder, 'load_approved_hashes' );
+		$ref->setAccessible( true );
+		$ref->invoke( $builder, 'frontend' );
+
+		$query = $GLOBALS['_wpdb_last_get_results_query'] ?? '';
+		$this->assertStringContainsString( 'ORDER BY last_seen_at DESC, id DESC', $query );
+	}
+
 	public function test_build_logs_a_warning_when_hashes_are_dropped_for_budget(): void {
 		$audit = $this->createMock( Audit_Log::class );
 		$audit->expects( $this->once() )
