@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.11] - 2026-08-19
+
+### Fixed
+
+- `Policy_Builder::load_approved_hashes()`'s `ORDER BY last_seen_at DESC` had no tiebreaker. `last_seen_at` is a `datetime` column (one-second resolution) and many hashes commonly get bumped to the same second by the same page render, so ties were left in SQL-unspecified order. Confirmed in production: the same ~1,027-row backlog produced a "Dropped 34" hash-budget cutoff on one request and "Dropped 985" moments later on another, because the arbitrary tie order placed a different mix of cheap vs expensive hash tokens before the byte-budget cutoff each time. Added `id DESC` as a deterministic secondary sort key -- the same underlying data now always produces the same cutoff.
+
 ## [2.9.10] - 2026-08-19
 
 ### Fixed
