@@ -5,6 +5,13 @@
  * header (often a dozen-plus directives on one line, as shown on the CSP
  * dashboard's Policy Audit tab) reads as scannable segments instead of one
  * dense run of text.
+ *
+ * Directive names carry the wp-sam-csp-directive class in addition to
+ * <strong> -- confirmed in production that a monospace <code> block's
+ * default browser bold weight alone isn't visually distinct enough on a
+ * standard monitor to actually read as emphasis at a glance. The CSS rule
+ * for that class (assets/css/admin.css) adds colour on top of weight for
+ * real contrast; <strong> stays for semantics/screen readers regardless.
  */
 
 declare( strict_types=1 );
@@ -32,12 +39,12 @@ final class Csp_Header_Formatter {
 			$space_pos = strpos( $clause, ' ' );
 			if ( false === $space_pos ) {
 				// Boolean directive with no source list (e.g. upgrade-insecure-requests).
-				$parts[] = '<strong>' . esc_html( $clause ) . '</strong>';
+				$parts[] = '<strong class="wp-sam-csp-directive">' . esc_html( $clause ) . '</strong>';
 				continue;
 			}
 			$directive = substr( $clause, 0, $space_pos );
 			$sources   = substr( $clause, $space_pos + 1 );
-			$parts[]   = '<strong>' . esc_html( $directive ) . '</strong> ' . esc_html( $sources );
+			$parts[]   = '<strong class="wp-sam-csp-directive">' . esc_html( $directive ) . '</strong> ' . esc_html( $sources );
 		}
 
 		return implode( '; ', $parts );
