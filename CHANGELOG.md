@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.14] - 2026-08-19
+
+### Changed
+
+- `media-src` now defaults to `'self'` instead of `'none'` for newly-seeded profiles (schema v24). `media-src 'none'` blocked WordPress core's own native Video/Audio blocks (self-hosted media) on every fresh install, with no corresponding security benefit -- unlike `object-src`/`frame-src`/`base-uri`/`worker-src`/`child-src` (correctly `'none'`), same-origin video/audio can't execute script. Every other same-origin-safe directive (`img-src`, `font-src`, `connect-src`, `form-action`) already defaulted to `'self'`.
+- `Activator::migrate_loosen_media_src_default()`: loosens any existing profile's stored `media-src`, but only when it still exactly matches the old `['none']` default -- an administrator's deliberate customisation is left untouched.
+
 ## [2.9.13] - 2026-08-19
 
 ### Changed
