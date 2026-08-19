@@ -658,6 +658,27 @@ class PolicyBuilderTest extends TestCase {
 		$builder->build_policy_string( $profile, 'frontend' );
 	}
 
+	public function test_build_logs_hash_budget_exceeded_at_most_once_per_hour(): void {
+		// build_policy_string() runs on every request -- a surface stuck
+		// over budget must not write a fresh audit_log row and error_log
+		// line on every single pageview. Confirmed in production,
+		// 2026-08-19: two near-identical rows five minutes apart.
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->once() )
+			->method( 'log' )
+			->with( 'policy_builder', 'hash_budget_exceeded', $this->anything(), 'warning' );
+
+		$approved_hashes = $this->make_fake_hash_rows( 80, 'script-src' );
+		$profile         = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ] );
+		$builder         = $this->make_db_stub_builder( approved_hashes: $approved_hashes, audit: $audit );
+
+		// Three separate "requests" against the same builder instance --
+		// only the first should actually call Audit_Log::log().
+		$builder->build_policy_string( $profile, 'frontend' );
+		$builder->build_policy_string( $profile, 'frontend' );
+		$builder->build_policy_string( $profile, 'frontend' );
+	}
+
 	public function test_build_refuses_to_emit_a_policy_over_the_absolute_byte_ceiling(): void {
 		// A pathologically large approved-source list (not the hash-growth
 		// scenario the budget above guards against) must still trip the
