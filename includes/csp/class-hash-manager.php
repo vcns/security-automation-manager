@@ -18,6 +18,17 @@
  *     varies on every request and can never match the exact-content dedup
  *     above -- see the constant's docblock for the 2026-08-19 incident this
  *     was added for.
+ *   - inject_nonce_into_wp_inline_style_blocks() nonces any <style
+ *     id="{handle}-inline-css"> block wp_add_inline_style() rendered
+ *     (WordPress core's own convention -- includes its Global Styles
+ *     stylesheet, but matches any theme/plugin using the same standard
+ *     API), before the hash-extraction pass below runs, so it's skipped
+ *     from hashing entirely. Root-caused during the same incident: this
+ *     content can genuinely differ between renders of the exact same page,
+ *     which no amount of hash-based allowlisting can ever usefully cover --
+ *     WordPress has no equivalent of style_loader_tag/wp_inline_script_attributes
+ *     for this specific inline-style shape, so it always fell through to
+ *     hashing before this existed.
  *
  * Note: hash-based inline approval is an alternative to nonces when
  * the inline content is truly static. For dynamic inline blocks, nonces remain
@@ -135,8 +146,10 @@ class Hash_Manager {
 	}
 
 	/**
-	 * Flushes the current output buffer, parses it for inline blocks,
-	 * records hashes, then re-emits the content unchanged.
+	 * Flushes the current output buffer, injects a nonce into any
+	 * wp_add_inline_style()-originated <style> block, parses the result for
+	 * remaining inline blocks, records hashes, then re-emits the (possibly
+	 * nonce-injected) content.
 	 *
 	 * @param string $surface  'frontend' | 'admin' | 'login'
 	 */
@@ -151,10 +164,55 @@ class Hash_Manager {
 			return;
 		}
 
+		$html = $this->inject_nonce_into_wp_inline_style_blocks( $html );
+
 		$this->process_inline_blocks( $html, $surface );
 
 		// Re-emit content so the page renders normally.
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	/**
+	 * Injects the current request's CSP nonce into any inline <style id="…">
+	 * block WordPress's own wp_add_inline_style() API rendered -- core names
+	 * these consistently as id="{$handle}-inline-css" (e.g.
+	 * "global-styles-inline-css" for WordPress's own Global Styles/block-
+	 * supports output), a stable, generic convention that also matches any
+	 * theme or plugin using the same standard API, not just WordPress core.
+	 *
+	 * Exists because Nonce_Manager's existing style_loader_tag hook only
+	 * ever fires for the <link> element of an enqueued stylesheet --
+	 * WordPress has no equivalent hook for the separate inline <style> block
+	 * a handle's wp_add_inline_style() call produces, so that content always
+	 * fell through to hash-based approval instead, with no way to ever
+	 * nonce it. Confirmed in production, 2026-08-19: WordPress core's own
+	 * Global Styles inline stylesheet was the dominant source of the
+	 * runaway csp_hash_inventory growth behind this whole incident -- its
+	 * content differs between renders (even for repeat visits to the exact
+	 * same page, per the site's own captured source_context samples), which
+	 * an exact-content hash allowlist can never usefully cover regardless of
+	 * how the safety caps elsewhere in this class are tuned. A nonce,
+	 * unlike a hash, doesn't care that the content differs.
+	 */
+	private function inject_nonce_into_wp_inline_style_blocks( string $html ): string {
+		$nonce = Plugin_Nonce_Manager::get_instance_nonce();
+		if ( '' === $nonce ) {
+			return $html;
+		}
+
+		$pattern = '/<style\b([^>]*\bid=([\'"])[a-zA-Z0-9_-]+-inline-css\2[^>]*)>/i';
+		$result  = preg_replace_callback(
+			$pattern,
+			static function ( array $m ) use ( $nonce ): string {
+				if ( str_contains( $m[0], 'nonce=' ) ) {
+					return $m[0]; // Already carries one -- don't double-inject.
+				}
+				return '<style' . $m[1] . ' nonce="' . esc_attr( $nonce ) . '">';
+			},
+			$html
+		);
+
+		return is_string( $result ) ? $result : $html;
 	}
 
 	// ── Inline block processing ───────────────────────────────────────────────
@@ -179,8 +237,12 @@ class Hash_Manager {
 	 * Unlike <style> element blocks, a hash source only takes effect in an
 	 * attribute context (style attributes, event handlers, javascript: URLs)
 	 * when the 'unsafe-hashes' keyword is also present in the directive --
-	 * CSP3 §6.1.2. Policy_Builder adds 'unsafe-hashes' to style-src-attr
-	 * automatically whenever at least one hash is present for it.
+	 * CSP3 §6.1.2. Since schema v22, Policy_Builder never adds 'unsafe-hashes'
+	 * automatically -- it's an explicit, labelled, per-surface opt-in
+	 * (BYPASS_CATALOG's style_src_attr_unsafe_hashes entry, Profiles tab), a
+	 * scanner-flaggable keyword that must be a conscious admin decision.
+	 * Hashes captured here sit inert in the header until an admin enables
+	 * that toggle for the surface.
 	 *
 	 * Regex-based extraction over raw HTML (matching this class's existing
 	 * approach for <script>/<style> elements), not a real DOM parse -- a
@@ -247,9 +309,13 @@ class Hash_Manager {
 				continue;
 			}
 
-			// Skip nonce-carrying script tags -- these are already covered by the
-			// nonce manager and do not need a hash entry.
-			if ( 'script' === $tag && str_contains( $match[0], 'nonce=' ) ) {
+			// Skip nonce-carrying script/style tags -- these are already covered
+			// by the nonce manager and do not need a hash entry. Style tags only
+			// ever carry a nonce here via inject_nonce_into_wp_inline_style_blocks()
+			// above (WordPress's own script_loader_tag-equivalent hook for
+			// inline <style> blocks doesn't exist), so this is what actually
+			// stops those blocks from being hashed once nonce'd.
+			if ( in_array( $tag, array( 'script', 'style' ), true ) && str_contains( $match[0], 'nonce=' ) ) {
 				continue;
 			}
 

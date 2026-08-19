@@ -106,6 +106,8 @@ Key columns:
 
 Growth safety (added after the 2026-08-19 incident -- see `Hash_Manager::MAX_NEW_HASHES_PER_HOUR` and `Policy_Builder::MAX_HASH_TOKEN_BUDGET_BYTES`): a single surface is capped at 30 brand-new rows per rolling hour, and the header built from this table can never emit more than a fixed byte budget of hash tokens regardless of how many active rows exist, dropping the least-recently-seen ones first. `Hash_Manager::prune_stale_by_age()` (run from the daily cron scan) retires any active row not seen again within 30 days, independent of any in-request capture data.
 
+Root cause, and the actual fix (also added after the same incident): WordPress core's own Global Styles inline stylesheet (and any theme/plugin inline `<style>` block added via `wp_add_inline_style()`) can genuinely differ in content between renders of the exact same page -- an exact-content hash allowlist can never usefully cover that, no matter how the growth-safety caps above are tuned. `Hash_Manager::inject_nonce_into_wp_inline_style_blocks()` nonces any `<style id="{handle}-inline-css">` block (WordPress's stable naming convention for `wp_add_inline_style()` output) before hash extraction runs, so that whole category of content is covered by the per-request nonce instead and never reaches `csp_hash_inventory` at all.
+
 Operational notes:
 
 - hashes are computed from observed inline content; there is no approval workflow because the hash already binds to exact content
