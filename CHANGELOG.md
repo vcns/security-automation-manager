@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.12] - 2026-08-19
+
+### Changed
+
+- About tab rewritten to describe every pillar this plugin manages -- CSP, the nine other header pillars, the page-rewrite protections (Reverse Tabnabbing, External Scripts/SRI, Internal Script Integrity), and the free-standing Certificates (ACME TLS) manager -- instead of being framed almost entirely around CSP.
+
+### Fixed
+
+- `Admin_UI::display_admin_notices()` showed a CSP hash-safety notice's raw technical detail (`Hash_Manager`, `csp_hash_inventory`, `source_file`/`source_context`, exact-content dedup) verbatim in the wp-admin dashboard -- language written for a developer investigating via the database, reported directly by a site owner who saw it. Adds `Admin_UI::ADMIN_NOTICE_SUMMARIES`, a plain-English summary shown as primary text for the three hash-safety events added in 2.9.9/2.9.10, with the full technical detail preserved behind a collapsed "Technical detail" disclosure (the same pattern already used for certificate key-generation failures). Unlisted events are unaffected.
+
 ## [2.9.11] - 2026-08-19
 
 ### Fixed
