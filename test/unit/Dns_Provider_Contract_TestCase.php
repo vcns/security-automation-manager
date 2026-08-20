@@ -215,7 +215,7 @@ abstract class Dns_Provider_Contract_TestCase extends TestCase {
 		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
 	}
 
-	public function test_malformed_response_does_not_silently_succeed(): void {
+	public function test_malformed_response_is_handled_according_to_provider_contract(): void {
 		$provider = $this->make_provider();
 		$this->queue_malformed_response();
 

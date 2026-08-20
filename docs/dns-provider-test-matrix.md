@@ -85,7 +85,7 @@ stubs; not yet verified against the live API" — never as "verified" or
   from a genuine 404 and, once every candidate is exhausted, surfaces as
   the same generic "no domain/zone found for {fqdn}" diagnostic a real
   zone-not-found would produce — discarding the actual cause. An operator
-  with a revoked or misscoped token sees a message suggesting a DNS/zone
+  with a revoked or mis-scoped token sees a message suggesting a DNS/zone
   configuration problem, not an authentication problem. Proven precisely
   by `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
   in each of the four fixtures (asserts both the misleading message text
