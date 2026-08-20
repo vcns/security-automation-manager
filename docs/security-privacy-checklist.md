@@ -54,18 +54,48 @@ updated in the same PR that introduces or changes a key.
 | Future: configuration-as-code export/import signing key (#185) | Not yet designed | - | - | - | - | - | Must be documented here before #185 implementation lands |
 | Future: fleet-management remote-change signing key (#188) | Not yet designed | - | - | - | - | - | Must be documented here before #188 implementation lands |
 
-**Immediate gap:** two of the three keys currently in production use (the Stripe
-API secret key and, functionally, the webhook secret) have no rotation,
-revocation, incident-response, or recovery procedure written down anywhere. This
-should be treated as part of closing #152, not deferred - see the "Follow-up"
-section below.
+**Resolved gap:** two of the three keys currently in production use (the Stripe
+API secret key and, functionally, the webhook secret) previously had no
+rotation, revocation, incident-response, or recovery procedure written down.
+The incident-response runbook below closes that gap for #152; the remaining
+two follow-up items are legitimately deferred to their own tracked work
+(#172, #163).
+
+## Incident response: Stripe webhook secret or API secret key suspected compromised
+
+Applies to `wp_sam_webhook_secret` and `wp_sam_stripe_secret_key_test`/`_live`
+(see the signing key inventory above for what each key protects).
+
+1. **Revoke immediately.** In the Stripe dashboard, roll the API secret key
+   (Developers -> API keys -> roll key) and/or regenerate the webhook
+   endpoint's signing secret (Developers -> Webhooks -> select endpoint ->
+   roll secret). The old value stops working the moment it's rolled - Stripe
+   will no longer accept API calls signed with it or sign webhook payloads
+   with it.
+2. **Rotate on the site.** Paste the new value into the plugin's Certificates
+   / commercial settings option (`wp_sam_stripe_secret_key_test`/`_live`,
+   `wp_sam_webhook_secret`) on every install that used the compromised value.
+   There is no plugin-side rotation tooling today (see the inventory row
+   above) - this is a manual per-site update.
+3. **Confirm no unauthorised activity.** Check the Stripe dashboard's
+   payments, refunds, and Events log for the affected account, covering the
+   period the key may have been exposed. Cross-reference against
+   `sam_processed_events` (this plugin's local webhook idempotency ledger) for
+   any event this install didn't expect to process.
+4. **Notify affected sites, if the key was shared across installs.** The
+   webhook secret and API secret key are VCNS-account-wide, not per-customer
+   (see the inventory row above) - if the same value was ever deployed to more
+   than one install, every one of them needs step 2. Track which installs
+   received which key version until the checkout-proxy design (#172) removes
+   this key from customer installs entirely.
+5. **Record the incident.** Note the suspected compromise, the rotation
+   timestamp, and the outcome of step 3 somewhere durable outside the
+   affected site itself (this plugin's own audit log is not a safe place to
+   record a secret-compromise incident, since the log's purpose is
+   operational history, not incident tracking).
 
 ## Follow-up
 
-- [ ] Write a short incident-response runbook for "Stripe webhook secret or API
-      secret key suspected compromised" (revoke in Stripe dashboard, rotate,
-      confirm no unauthorised charges/refunds, notify affected sites if the key
-      is shared across installs).
 - [ ] Once the checkout-proxy design (`docs/checkout-proxy-design.md`) is
       implemented, remove the Stripe API secret key row's "known gap" status -
       the key will no longer be present on any customer install.
