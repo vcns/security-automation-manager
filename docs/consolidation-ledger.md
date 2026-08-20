@@ -337,3 +337,127 @@ Ordered by what most directly stops a defensible public release:
 Built from direct inspection of the working tree, git history, CI workflow
 files, and `gh issue view` against all 43 open issues - no claim above is
 sourced from an issue title or changelog line alone.
+
+## Refresh - 2026-08-20
+
+Everything above is left unedited as the historical record from 2026-08-18.
+This section supersedes only the facts that have since changed, verified
+directly against the current checkout and `gh issue`/`gh pr` output. The
+43-issue reconciliation table above is **not** repeated - live evidence
+confirms its per-issue findings still hold (see "Issue closures" below for
+the five that were re-checked in full); only the aggregate counts have moved.
+
+### Repository identity - re-verified, unchanged
+
+`origin` is still `https://github.com/vcns/security-automation-manager.git`
+(fetch and push). Local `HEAD` was byte-identical to `origin/main` before
+this refresh's own commits, 0 ahead / 0 behind, no divergent or unpushed
+commits. No `csp-automation-manager` remote exists in this checkout. The
+2026-08-18 correction held; nothing needed re-fixing.
+
+### Repository assessment - updated facts
+
+| Fact | 2026-08-18 value | Current value | Evidence |
+|---|---|---|---|
+| Plugin version | 2.9.2 | 2.9.19 | `security-automation-manager.php:24` |
+| DB schema version | 22 | 25 | `security-automation-manager.php:147` |
+| Latest release tag | v2.9.2 | v2.9.19 | `git tag --sort=-creatordate` |
+| Open issues | 43 | 42 before this refresh's closures; **37 after** (see "Issue closures" below) | `gh issue list --state open --limit 200` |
+
+All other facts in the original "Repository assessment" table (build
+channels, update mechanism, commercial functionality, certificate
+functionality's component list, CI workflow names) were spot-checked and
+still hold structurally; the certificate-functionality and testing rows are
+superseded in full by the Phase 6 assessment below rather than patched here.
+
+### Merged PRs since Phase 5 (#244)
+
+28 PRs merged 2026-08-18T14:28 through 2026-08-20T08:09 (#245-272). None
+delivers Phase 6, 7, or 8 as scoped in this consolidation plan. Grouped:
+
+- **#245, #247** - release-version bumps for the Phase 5 rollback work and
+  the Recovery-tab work below (no additional scope of their own).
+- **#246** - Recovery tab: splits Reset Plugin Data out of Readiness, adds
+  configuration export/import. Product feature work, tracked under #180's
+  narrower existing scope (see the original table above), not part of this
+  consolidation sequence.
+- **#248-267** - the CSP hash-inventory production-incident response: ten
+  releases fixing unbounded `csp_hash_inventory` growth (silent 500s),
+  rate-limiting the resulting audit notices, a non-deterministic cutoff bug,
+  the root cause itself (nonce-covering `wp_add_inline_style()` blocks), a
+  visual-contrast fix, and an empty-inline-attribute-hash allowlist fix.
+  None touches Certificates, the update pipeline, or entitlements - no
+  overlap with Phase 6.
+- **#268-269** - Bypass Best Practices catalog expansion (3 to 9 entries,
+  schema v25) and a labelling follow-up. Also updates
+  `docs/threat-model.md`'s Bypass Best Practices section (already covered by
+  this refresh's #154 evidence - see "Issue closures" below).
+- **#270** - help-site diagram; docs-only, no code.
+- **#271-272** - WordPress.org submission remediation (`.distignore` fix,
+  then a full Plugin Check findings pass - see "Release and WordPress.org
+  submission position" below).
+
+No PR was found that explicitly delivers Phase 6, 7, or 8. Per the standing
+instruction not to treat that as proof the phases are wholly outstanding
+without checking: the Phase 6 code assessment below does exactly that check
+for Phase 6 specifically, against the certificate subsystem directly rather
+than PR titles. It found no later PR delivers any part of Phase 6's scope -
+see that section for the evidence. Phases 7 and 8 were not separately
+re-investigated in this refresh; nothing in the 28 PRs above touches release-
+candidate hosting-environment validation (Phase 7) or a VCNS-hosted control
+plane (Phase 8) by title or diff content reviewed here.
+
+### Release and WordPress.org submission position
+
+- GitHub-channel release process unchanged and healthy: v2.9.19 is tagged,
+  released, and its update feed published. `wporg-deploy.yml` still skips
+  gracefully - the WordPress.org SVN repository does not exist yet (initial
+  plugin review pending).
+- A manual WordPress.org "Add your plugin" submission attempt failed
+  automated scanning on two ERRORs (self-updater / `Update URI` header
+  detected). Root cause: the GitHub-channel release asset was uploaded
+  instead of the WordPress.org-channel build, which only ever existed as a
+  CI artifact, never a downloadable Release asset. Fixed by building and
+  independently verifying a correct WordPress.org-channel zip; PR #271 also
+  closed a real, unrelated gap it surfaced (`CONTRIBUTORS.md`, and, for the
+  future SVN auto-deploy path specifically, the self-updater file, were both
+  missing from `.distignore`).
+- A follow-up scan of the corrected zip via WordPress Playground's Plugin
+  Check tool returned roughly 600 findings. PR #272 fixed the seven that
+  were real (two `ABSPATH` guards placed past the scanner's apparent line
+  window, `readme.txt`'s `Tested up to`/short-description/changelog limits,
+  two broken `phpcs:ignore` placements on multi-line statements, two missing
+  `fread()` suppression comments matching an already-established pattern on
+  the same socket, one discouraged-function call now scoped to the channel
+  that actually needs it) and left the remainder as individually-verified
+  false positives, documented in that PR's description, per the scan's own
+  instruction not to work around unconfirmed findings without reviewer
+  input.
+- **Net position:** not yet resubmitted. No blocking ERROR is currently
+  known to remain in the WordPress.org-channel build, but this has not been
+  re-verified against a fresh Plugin Check run since PR #272 merged - that
+  re-run, not further code changes, is the next step before resubmission.
+
+### Issue closures
+
+Five issues re-checked against current code and documentation, not just the
+2026-08-18 evidence citations, before closing:
+
+- **#152, #153, #154, #155, #158** - all confirmed still satisfied. One real
+  gap found during re-verification: `docs/security-privacy-checklist.md`
+  itself stated its Stripe-key incident-response runbook "should be treated
+  as part of closing #152, not deferred" - an unchecked follow-up item, not
+  a closed one. That runbook is now written (same section of the same
+  file), closing the gap on its own terms rather than closing over it.
+  `docs/threat-model.md` was also missing the "Resolves roadmap issue #154"
+  citation line every sibling document has; added for consistency (the
+  document's content already fully satisfied #154's acceptance criterion).
+  See each issue's closing comment for the specific evidence.
+- **#159, #160** - left open, per instruction. Descriptions updated to
+  state only the scenarios genuinely still uncovered, since the two-days-old
+  evidence in the original table above (Rollback_Guard, schema v23,
+  `release-verification.yml`) has not changed - it was re-confirmed as still
+  present and unmodified since Phase 4/5, not re-derived.
+- **#156** - left open, as the public-hosting readiness gate. Unchanged.
+
+Resulting open-issue count: **37** (42 minus the five closures above).

@@ -4,6 +4,8 @@
 
 This document captures the trust boundaries, threat actors, and security-critical invariants for Security Automation Manager. The runtime flow is described in `docs/architecture.md`; this document focuses on adversarial framing.
 
+Resolves roadmap issue #154 ("Threat model for updates, entitlements, and remote management") -- see "Update pipeline", "Entitlements and commercial control plane", and "Remote fleet management" below for the three areas that issue's single acceptance criterion asks for.
+
 ## Trust boundaries
 
 ### Fully trusted
