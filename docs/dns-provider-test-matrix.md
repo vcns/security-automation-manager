@@ -206,6 +206,42 @@ stubs; not yet verified against the live API" — never as "verified" or
   auth-misdiagnosis defect (hetzner, bunny, domeneshop + these five), and
   **9 of 21** share the defect (desec, gandi, godaddy, ns1, digitalocean,
   vultr, namecom, easydns, vercel).
+- **Confirmed production defect — powerdns, destructive, not merely an
+  architectural consequence** (not fixed here; unrelated to, and must not
+  be conflated with, powerdns's separate "no applicable mechanism" finding
+  below): verified directly against
+  [doc.powerdns.com's Zone API reference](https://doc.powerdns.com/authoritative/http-api/zone.html).
+  Quoting the documentation precisely: "With DELETE, all existing RRs
+  matching name and type will be deleted... With REPLACE, when records is
+  present, all existing RRs matching name and type will be deleted, and
+  then new records given in records will be created." `create_txt_record()`
+  always sends `changetype=REPLACE` and `delete_txt_record()` always sends
+  `changetype=DELETE`, with no read-before-write step — both
+  unconditionally act on the *entire* RRSet at that name and type, not on
+  a specific value.
+  - **Affected behaviour, precisely**: `create_txt_record()` can silently
+    overwrite an unrelated TXT value another concurrent operation placed
+    at the same `_acme-challenge` name; `delete_txt_record()` can silently
+    delete an unrelated TXT value regardless of the `$value` passed in
+    (it never inspects the RRSet's contents before removing it). This is
+    unsafe wherever multiple TXT values can legitimately coexist in one
+    `_acme-challenge` RRSet — e.g. concurrent challenge validations, or
+    RFC 8555's own allowance for multiple TXT values at one challenge
+    name.
+  - **PowerDNS version boundary**: the documented narrower alternative —
+    changetype `EXTEND` (adds one record without replacing the RRSet) and
+    `PRUNE` (removes one specific record) — is only available **from
+    PowerDNS 4.9.12 and 5.0.2 onward**. Self-hosted servers on older
+    versions do not have `EXTEND`/`PRUNE` at all, so any fix must decide
+    how to behave against those versions (e.g. version detection with a
+    REPLACE/DELETE fallback, or a documented minimum-version requirement)
+    — a genuine compatibility design decision that belongs in its own
+    regression-tested production PR, not this test-only one.
+  - Proven precisely by `test_delete_uses_changetype_delete_and_ignores_the_provided_value()`
+    (confirms DELETE removes the whole RRSet regardless of `$value`) and
+    `test_create_uses_replace_without_reading_the_existing_rrset_first()`
+    (confirms REPLACE sends only the new record, with no prior read of
+    the RRSet to preserve anything already present).
 - **Batch 3 pagination/record-listing findings, verified per provider
   against each API's current authoritative documentation** (2026-08-20):
 
@@ -239,10 +275,10 @@ stubs; not yet verified against the live API" — never as "verified" or
     extract an identifier from at all. Confirmed directly: `GET /zones`
     documents no pagination parameters, and `GET /zones/{id}` returns
     complete RRsets in one response with no separate records endpoint.
-    delete_txt_record() also ignores the `$value` parameter entirely
-    (removes the whole RRset regardless of content) — disclosed as a
-    consequence of REPLACE's overwrite semantics guaranteeing the RRset
-    can only ever hold this plugin's own last-written value, not a defect.
+    This finding is unrelated to, and must not be conflated with, the
+    separate confirmed destructive defect below — the absence of a
+    pagination/record-ID mechanism is not itself a problem; how the driver
+    writes to the RRSet without one is.
   - **[Unverified] — netlify**: the operation-specific OpenAPI spec for
     `GET /dns_zones/{zone_id}/dns_records`
     ([open-api.netlify.com, getGetDnsRecords](https://open-api.netlify.com/#tag/dnsZone/operation/getDnsRecords))

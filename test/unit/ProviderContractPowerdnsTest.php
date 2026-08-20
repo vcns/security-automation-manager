@@ -24,12 +24,37 @@
  * endpoint exists; "a Resource Record Set ... are all records for a
  * given name and type"). "No applicable mechanism" for both record
  * identifiers and pagination: there is no list-of-records response to
- * paginate or extract an ID from at all. delete_txt_record() therefore
- * also ignores the $value parameter entirely -- REPLACE's overwrite
- * semantics mean the RRset can only ever hold the one value this plugin
- * itself last wrote, so removing the whole set is equivalent to removing
- * that value; tested explicitly below as a disclosed architectural
- * characteristic, not a defect.
+ * paginate or extract an ID from at all. This finding is unrelated to,
+ * and must not be conflated with, the confirmed destructive defect below.
+ *
+ * Confirmed production defect (destructive, not merely an architectural
+ * consequence), not fixed here -- verified directly against
+ * doc.powerdns.com's Zone API reference: "With DELETE, all existing RRs
+ * matching name and type will be deleted... With REPLACE, when records is
+ * present, all existing RRs matching name and type will be deleted, and
+ * then new records given in records will be created." create_txt_record()
+ * always sends changetype=REPLACE, and delete_txt_record() always sends
+ * changetype=DELETE -- both operate on the *entire* RRSet at that name and
+ * type, unconditionally, with no read-before-write step to preserve
+ * anything already present. Concretely: create_txt_record() can silently
+ * overwrite an unrelated TXT value another concurrent operation placed at
+ * the same _acme-challenge name; delete_txt_record() can silently delete
+ * an unrelated TXT value regardless of the $value passed in, since it
+ * never inspects the RRSet's contents at all before removing it. This is
+ * unsafe wherever multiple TXT values can legitimately share one
+ * _acme-challenge RRSet (e.g. concurrent challenge validations, or
+ * RFC 8555's own allowance for multiple TXT values at one challenge
+ * name). PowerDNS's own API documents a narrower alternative --
+ * changetype EXTEND (adds one record without replacing the RRSet) and
+ * PRUNE (removes one specific record) -- but these are only available
+ * from PowerDNS 4.9.12 and 5.0.2 onward; any fix must account for
+ * self-hosted servers running older versions that lack EXTEND/PRUNE
+ * entirely, which is exactly the kind of version-compatibility decision
+ * that belongs in its own regression-tested production PR, not this
+ * test-only one.
+ * test_delete_uses_changetype_delete_and_ignores_the_provided_value() and
+ * test_create_uses_replace_without_reading_the_existing_rrset_first()
+ * below prove both halves of this precisely.
  */
 
 declare( strict_types=1 );
@@ -160,14 +185,17 @@ class ProviderContractPowerdnsTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringNotContainsString( 'records/', $last['url'], 'no server-assigned record ID is ever addressed in the URL' );
 	}
 
-	// ── Provider-specific: delete ignores $value, removes the whole RRset ────
+	// ── Provider-specific: confirmed destructive RRSet defect (see docblock) ─
 
 	public function test_delete_uses_changetype_delete_and_ignores_the_provided_value(): void {
 		$provider = $this->make_provider();
 		$this->queue_successful_delete();
 
 		// A value that was never created for this fqdn -- if $value were
-		// used to target a specific record, this would find nothing.
+		// used to target a specific record, this would find nothing. It
+		// isn't: per doc.powerdns.com, DELETE removes every RR matching
+		// name and type, so this call removes the whole RRSet regardless
+		// of what $value is, including any other TXT value present there.
 		$provider->delete_txt_record( $this->fqdn(), 'a-value-that-was-never-created' );
 
 		$requests = $this->captured_requests();
@@ -178,6 +206,27 @@ class ProviderContractPowerdnsTest extends Dns_Provider_Contract_TestCase {
 		$this->assertSame( 'DELETE', $rrset['changetype'] ?? null );
 		$this->assertArrayNotHasKey( 'records', $rrset, 'a DELETE changetype carries no records array' );
 		$this->assertArrayNotHasKey( 'ttl', $rrset, 'a DELETE changetype carries no ttl' );
+	}
+
+	public function test_create_uses_replace_without_reading_the_existing_rrset_first(): void {
+		$provider = $this->make_provider();
+		$this->queue_successful_create();
+
+		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+
+		$requests = $this->captured_requests();
+		// Exactly the zone list + one PATCH -- no GET of the current RRSet
+		// contents precedes it. Per doc.powerdns.com, REPLACE "will be
+		// deleted, and then new records given in records will be created":
+		// there is no read-merge-write step here that could preserve an
+		// unrelated TXT value already present at this name and type: this
+		// PATCH unconditionally overwrites the entire RRSet.
+		$this->assertCount( 2, $requests );
+		$last  = end( $requests );
+		$body  = $this->decoded_body( $last );
+		$rrset = $body['rrsets'][0] ?? null;
+		$this->assertSame( 'REPLACE', $rrset['changetype'] ?? null );
+		$this->assertCount( 1, $rrset['records'] ?? array(), 'REPLACE carries only the new record -- nothing carried over from any prior RRSet content' );
 	}
 
 	// ── Provider-specific: discovery-stage auth failure is NOT misreported ───
