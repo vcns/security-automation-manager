@@ -311,6 +311,11 @@ if ( ! function_exists( 'wp_remote_get' ) ) {
 			'url'  => $url,
 			'args' => $args,
 		);
+		$GLOBALS['_wp_remote_all_requests'][] = array(
+			'transport' => 'get',
+			'url'       => $url,
+			'args'      => $args,
+		);
 		if ( ! empty( $GLOBALS['_wp_remote_get_response_queue'] ) && is_array( $GLOBALS['_wp_remote_get_response_queue'] ) ) {
 			return array_shift( $GLOBALS['_wp_remote_get_response_queue'] );
 		}
@@ -323,6 +328,11 @@ if ( ! function_exists( 'wp_remote_post' ) ) {
 		$GLOBALS['_wp_remote_post_requests'][] = array(
 			'url'  => $url,
 			'args' => $args,
+		);
+		$GLOBALS['_wp_remote_all_requests'][] = array(
+			'transport' => 'post',
+			'url'       => $url,
+			'args'      => $args,
 		);
 		if ( ! empty( $GLOBALS['_wp_remote_post_response_queue'] ) && is_array( $GLOBALS['_wp_remote_post_response_queue'] ) ) {
 			return array_shift( $GLOBALS['_wp_remote_post_response_queue'] );
@@ -394,10 +404,38 @@ if ( ! function_exists( 'wp_remote_head' ) ) {
 			'url'  => $url,
 			'args' => $args,
 		);
+		$GLOBALS['_wp_remote_all_requests'][] = array(
+			'transport' => 'head',
+			'url'       => $url,
+			'args'      => $args,
+		);
 		if ( ! empty( $GLOBALS['_wp_remote_head_response_queue'] ) && is_array( $GLOBALS['_wp_remote_head_response_queue'] ) ) {
 			return array_shift( $GLOBALS['_wp_remote_head_response_queue'] );
 		}
 		return $GLOBALS['_wp_remote_head_response'] ?? [ 'response' => [ 'code' => 200 ], 'headers' => [] ];
+	}
+}
+
+if ( ! function_exists( 'wp_remote_request' ) ) {
+	// The general-purpose HTTP entry point: $args['method'] carries the verb
+	// (GET/POST/PUT/DELETE/...). This is what Dns_Provider::request()/
+	// request_raw() call for every JSON- and raw-bodied provider driver (37
+	// of 41) -- previously entirely unstubbed, so no provider using the
+	// shared base-class helper could be unit-tested at all before Phase 6B.
+	function wp_remote_request( string $url, array $args = [] ): array|WP_Error {
+		$GLOBALS['_wp_remote_request_requests'][] = array(
+			'url'  => $url,
+			'args' => $args,
+		);
+		$GLOBALS['_wp_remote_all_requests'][] = array(
+			'transport' => 'request',
+			'url'       => $url,
+			'args'      => $args,
+		);
+		if ( ! empty( $GLOBALS['_wp_remote_request_response_queue'] ) && is_array( $GLOBALS['_wp_remote_request_response_queue'] ) ) {
+			return array_shift( $GLOBALS['_wp_remote_request_response_queue'] );
+		}
+		return $GLOBALS['_wp_remote_request_response'] ?? [ 'response' => [ 'code' => 200 ], 'body' => '' ];
 	}
 }
 
@@ -839,6 +877,10 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_remote_head_response'] = null;
 	$GLOBALS['_wp_remote_head_response_queue'] = [];
 	$GLOBALS['_wp_remote_head_requests'] = [];
+	$GLOBALS['_wp_remote_request_response'] = null;
+	$GLOBALS['_wp_remote_request_response_queue'] = [];
+	$GLOBALS['_wp_remote_request_requests'] = [];
+	$GLOBALS['_wp_remote_all_requests']  = [];
 	$GLOBALS['_wp_spawn_cron_calls']     = 0;
 	$GLOBALS['_wp_status_header_calls']  = [];
 	$GLOBALS['_wp_is_admin']             = false;
@@ -880,3 +922,11 @@ wp_test_reset_globals();
 // Load namespace-scoped stubs before any plugin class that might define the
 // real counterpart. Order matters: stubs must come first.
 require_once __DIR__ . '/unit/NonceBridge.php';
+
+// Shared abstract test-case base classes must be loaded before any concrete
+// test file that extends them -- PHPUnit's directory-based discovery does
+// not guarantee one test file is required before another, so a concrete
+// subclass sitting alphabetically before its abstract parent (e.g.
+// ProviderContractCloudflareTest.php before Dns_Provider_Contract_TestCase.php)
+// fails with "class not found" unless the parent is required explicitly here.
+require_once __DIR__ . '/unit/Dns_Provider_Contract_TestCase.php';
