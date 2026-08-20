@@ -53,8 +53,56 @@ class Challenge_Http {
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
 
-		if ( ! str_starts_with( $path, self::PREFIX ) ) {
+		$result = $this->resolve( $path );
+		if ( null === $result ) {
 			return;
+		}
+
+		$this->emit_status( $result['status'] );
+		if ( 200 === $result['status'] ) {
+			$this->emit_content_type( 'text/plain' );
+			$this->emit_body( (string) $result['body'] );
+		}
+		$this->terminate();
+	}
+
+	// ── Response emission ─────────────────────────────────────────────────────
+	//
+	// Each side effect below is its own small protected method purely so a
+	// test can override them to capture what maybe_serve_token() decided to
+	// do without actually sending headers or terminating the PHP process --
+	// production always calls status_header()/header()/echo/exit() exactly
+	// as before. See test/unit/ChallengeHttpTest.php.
+
+	protected function emit_status( int $status ): void {
+		status_header( $status );
+	}
+
+	protected function emit_content_type( string $content_type ): void {
+		header( 'Content-Type: ' . $content_type );
+	}
+
+	protected function emit_body( string $body ): void {
+		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- RFC 8555 key authorization string (base64url token . thumbprint), no markup context.
+	}
+
+	protected function terminate(): void {
+		exit;
+	}
+
+	/**
+	 * Pure decision logic for a given request path: what status/body (if any)
+	 * this request should get. Never touches headers, output, or exit() --
+	 * split out from maybe_serve_token() specifically so it's unit-testable
+	 * (that method's status_header()/exit() calls can't be observed from a
+	 * PHPUnit process without terminating it).
+	 *
+	 * @return array{status:int, body:?string}|null null = not a challenge
+	 *         request at all; the caller should let normal routing continue.
+	 */
+	public function resolve( string $path ): ?array {
+		if ( ! str_starts_with( $path, self::PREFIX ) ) {
+			return null;
 		}
 
 		$token  = substr( $path, strlen( self::PREFIX ) );
@@ -67,14 +115,16 @@ class Challenge_Http {
 			|| ! isset( $tokens[ $token ] )
 			|| ( time() - (int) $tokens[ $token ]['created_at'] ) > DAY_IN_SECONDS
 		) {
-			status_header( 404 );
-			exit;
+			return array(
+				'status' => 404,
+				'body'   => null,
+			);
 		}
 
-		status_header( 200 );
-		header( 'Content-Type: text/plain' );
-		echo $tokens[ $token ]['key_authorization']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- RFC 8555 key authorization string (base64url token . thumbprint), no markup context.
-		exit;
+		return array(
+			'status' => 200,
+			'body'   => $tokens[ $token ]['key_authorization'],
+		);
 	}
 
 	private function tokens(): array {

@@ -47,4 +47,43 @@ class CredentialVaultTest extends TestCase {
 		// ciphertexts (no equality oracle in the database).
 		$this->assertNotSame( Credential_Vault::seal( 'same' ), Credential_Vault::seal( 'same' ) );
 	}
+
+	// ── is_sealed_but_undecryptable(): vault failure visibility ──────────────
+
+	public function test_never_configured_is_not_flagged_as_undecryptable(): void {
+		$this->assertFalse( Credential_Vault::is_sealed_but_undecryptable( '' ) );
+	}
+
+	public function test_plaintext_is_not_flagged_as_undecryptable(): void {
+		// Not sealed at all -- a different condition (not-yet-migrated data, or
+		// a settings-form bug), out of scope for "the vault key changed".
+		$this->assertFalse( Credential_Vault::is_sealed_but_undecryptable( 'raw-plaintext-value' ) );
+	}
+
+	public function test_a_healthy_sealed_value_is_not_flagged(): void {
+		$this->assertFalse( Credential_Vault::is_sealed_but_undecryptable( Credential_Vault::seal( 'secret' ) ) );
+	}
+
+	public function test_tampered_ciphertext_is_flagged_as_undecryptable(): void {
+		$sealed   = Credential_Vault::seal( 'secret-value' );
+		$position = strlen( $sealed ) - 2;
+		$tampered = $sealed;
+		$tampered[ $position ] = 'A' === $tampered[ $position ] ? 'B' : 'A';
+
+		$this->assertTrue( Credential_Vault::is_sealed_but_undecryptable( $tampered ) );
+	}
+
+	public function test_wrong_key_is_flagged_as_undecryptable(): void {
+		// A "wrong key" and "tampered ciphertext" fail authentication through
+		// the exact same sodium_crypto_secretbox_open() code path -- see
+		// docs/credential-vault-assessment.md, "Existing ciphertext
+		// compatibility": there is no way to distinguish them from open()'s
+		// perspective, so a value sealed under a key that's no longer
+		// reproducible is faithfully simulated by tampering the ciphertext
+		// sealed under the *current* key, without needing to actually rotate
+		// WP_SAM_CERT_VAULT_KEY or wp_salt('auth') mid-test.
+		$sealed_under_a_key_that_no_longer_exists = Credential_Vault::seal( 'secret' ) . 'x';
+
+		$this->assertTrue( Credential_Vault::is_sealed_but_undecryptable( $sealed_under_a_key_that_no_longer_exists ) );
+	}
 }

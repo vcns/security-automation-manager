@@ -44,6 +44,36 @@ class Certificate_Manager {
 		$this->audit          = $audit;
 	}
 
+	// ── Testability seams ────────────────────────────────────────────────────
+	//
+	// poll()'s loop bound/interval, the DNS-settle wait, and DNS-provider
+	// resolution are the only places this class's own real-time waiting and
+	// static-registry lookup live. Each is behind a small protected method a
+	// test subclass can override, purely so a test can make the real timeout
+	// and cleanup-on-failure paths fast and provider-controllable -- none of
+	// these change what production does; the constants below are still what
+	// every call site uses by default. See test/unit/CertificateManagerTest.php.
+
+	/** @return int Maximum poll attempts before giving up. Production: 18. */
+	protected function poll_max_attempts(): int {
+		return self::MAX_POLLS;
+	}
+
+	/** Waits between two poll attempts. Production: sleep( 10 ) seconds. */
+	protected function wait_between_polls(): void {
+		sleep( 10 );
+	}
+
+	/** Waits for DNS propagation after creating a challenge TXT record. Production: sleep( 30 ) seconds. */
+	protected function wait_for_dns_settle(): void {
+		sleep( self::DNS_SETTLE_SECONDS );
+	}
+
+	/** Resolves the configured DNS provider. Production: the real Dns_Provider registry. */
+	protected function resolve_dns_provider( string $slug, array $credentials ): ?Dns_Provider {
+		return Dns_Provider::make( $slug, $credentials );
+	}
+
 	// ── Public API ────────────────────────────────────────────────────────────
 
 	/**
@@ -195,7 +225,7 @@ class Certificate_Manager {
 		$key_auth = $token . '.' . $client->thumbprint();
 
 		if ( 'dns-01' === $challenge['type'] ) {
-			$provider = Dns_Provider::make( (string) $config['provider'], (array) $config['dns_credentials'] );
+			$provider = $this->resolve_dns_provider( (string) $config['provider'], (array) $config['dns_credentials'] );
 			if ( null === $provider ) {
 				throw new \RuntimeException( 'Configured DNS provider is not available: ' . (string) $config['provider'] );
 			}
@@ -205,7 +235,7 @@ class Certificate_Manager {
 
 			$provider->create_txt_record( $record_fqdn, $record_value );
 			try {
-				sleep( self::DNS_SETTLE_SECONDS ); // Propagation head start before the CA queries.
+				$this->wait_for_dns_settle(); // Propagation head start before the CA queries.
 				$this->validate_challenge( $client, (string) $challenge['url'], $authz_url, $domain );
 			} finally {
 				try {
@@ -247,12 +277,13 @@ class Certificate_Manager {
 	 * Polls $fetch until $done returns true. $done may throw to abort early.
 	 */
 	private function poll( callable $fetch, callable $done, string $timeout_message ): array {
-		for ( $i = 0; $i < self::MAX_POLLS; $i++ ) {
+		$max_attempts = $this->poll_max_attempts();
+		for ( $i = 0; $i < $max_attempts; $i++ ) {
 			$body = $fetch();
 			if ( $done( $body ) ) {
 				return $body;
 			}
-			sleep( 10 );
+			$this->wait_between_polls();
 		}
 
 		throw new \RuntimeException( 'ACME polling timed out: ' . $timeout_message );

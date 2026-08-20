@@ -245,4 +245,66 @@ class Certificate_Store {
 
 		return strtotime( (string) $latest['not_after'] . ' UTC' ) - time() < $window_days * DAY_IN_SECONDS;
 	}
+
+	// ── Vault failure visibility ────────────────────────────────────────────
+
+	/**
+	 * Named, human-readable labels for every stored secret that is sealed
+	 * ciphertext but currently fails to decrypt (vault key rotated, row
+	 * tampered) -- distinct from a field that was simply never configured.
+	 * Read-only: never modifies, re-seals, or clears anything it finds.
+	 * Never returns ciphertext, key material, or a raw crypto error -- only
+	 * which named field is affected, for an admin-facing warning.
+	 *
+	 * @return array<int,string>
+	 */
+	public function vault_health_warnings(): array {
+		$warnings = array();
+
+		$stored = get_option( self::CONFIG_OPTION, array() );
+		$stored = is_array( $stored ) ? $stored : array();
+
+		if ( Credential_Vault::is_sealed_but_undecryptable( (string) ( $stored['cpanel_token'] ?? '' ) ) ) {
+			$warnings[] = __( 'cPanel API token', 'security-automation-manager' );
+		}
+		if ( Credential_Vault::is_sealed_but_undecryptable( (string) ( $stored['custom_key_pem'] ?? '' ) ) ) {
+			$warnings[] = __( 'Custom certificate private key', 'security-automation-manager' );
+		}
+		foreach ( (array) ( $stored['dns_credentials'] ?? array() ) as $field => $sealed ) {
+			if ( Credential_Vault::is_sealed_but_undecryptable( (string) $sealed ) ) {
+				$warnings[] = sprintf(
+					/* translators: %s: DNS provider credential field name */
+					__( 'DNS provider credential: %s', 'security-automation-manager' ),
+					(string) $field
+				);
+			}
+		}
+
+		$accounts = get_option( self::ACCOUNT_KEY_OPTION, array() );
+		$accounts = is_array( $accounts ) ? $accounts : array();
+		foreach ( $accounts as $environment => $account ) {
+			if ( Credential_Vault::is_sealed_but_undecryptable( (string) ( $account['key_pem'] ?? '' ) ) ) {
+				$warnings[] = sprintf(
+					/* translators: %s: ACME environment (staging or production) */
+					__( 'ACME account key (%s)', 'security-automation-manager' ),
+					(string) $environment
+				);
+			}
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- key material must never enter the object cache.
+		$cert_keys = $wpdb->get_results( "SELECT environment, key_pem FROM {$wpdb->prefix}sam_certificates WHERE status = 'issued'", ARRAY_A );
+		foreach ( ! empty( $cert_keys ) ? $cert_keys : array() as $row ) {
+			if ( Credential_Vault::is_sealed_but_undecryptable( (string) $row['key_pem'] ) ) {
+				$warnings[] = sprintf(
+					/* translators: %s: ACME environment (staging or production) */
+					__( 'Issued certificate private key (%s)', 'security-automation-manager' ),
+					(string) $row['environment']
+				);
+			}
+		}
+
+		return array_values( array_unique( $warnings ) );
+	}
 }
