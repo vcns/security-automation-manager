@@ -124,6 +124,11 @@
 	color: #50575e;
 	border: 1px solid #dcdcde;
 }
+.risk-report-only {
+	background: #f0f0f1;
+	color: #50575e;
+	border: 1px solid #dcdcde;
+}
 
 /* ── Product cards ───────────────────────────────────────────────────────── */
 .wp-sam-product-cards {
