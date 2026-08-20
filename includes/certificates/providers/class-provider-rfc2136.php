@@ -187,14 +187,14 @@ class Provider_Rfc2136 extends Dns_Provider {
 			stream_set_timeout( $socket, 15 );
 			fwrite( $socket, pack( 'n', strlen( $message ) ) . $message ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- raw TCP socket, not a file.
 
-			$length_raw = (string) fread( $socket, 2 );
+			$length_raw = (string) fread( $socket, 2 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- raw TCP socket, not a file.
 			if ( 2 !== strlen( $length_raw ) ) {
 				throw new \RuntimeException( 'RFC 2136: the DNS server closed the connection without responding.' );
 			}
 			$length   = unpack( 'n', $length_raw )[1];
 			$response = '';
 			while ( strlen( $response ) < $length && ! feof( $socket ) ) {
-				$chunk = (string) fread( $socket, $length - strlen( $response ) );
+				$chunk = (string) fread( $socket, $length - strlen( $response ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- raw TCP socket, not a file.
 				if ( '' === $chunk ) {
 					break;
 				}

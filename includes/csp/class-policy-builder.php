@@ -50,14 +50,14 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Security\Header_Builder;
 use WP_SAM\Security\Reporting_Endpoint;
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 class Policy_Builder extends Header_Builder {
 

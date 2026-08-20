@@ -40,6 +40,10 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WP_SAM\Config_Portability;
 use WP_SAM\Plugin;
 use WP_SAM\Rollback_Guard;
@@ -60,10 +64,6 @@ use WP_SAM\Security\Strict_Transport_Security_Builder;
 use WP_SAM\Security\X_Content_Type_Options_Builder;
 use WP_SAM\Security\X_Frame_Options_Builder;
 use WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder;
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 class Admin_UI {
 
