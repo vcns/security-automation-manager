@@ -38,14 +38,14 @@ stubs; not yet verified against the live API" — never as "verified" or
 | godaddy | ✅ | ✅ (Phase 6C Batch 1, `ProviderContractGodaddyTest`) | ❌ | 1 |
 | ns1 | ✅ | ✅ (Phase 6C Batch 1, `ProviderContractNs1Test`) | ❌ | 1 |
 | scaleway | ✅ | ✅ (Phase 6C Batch 1, `ProviderContractScalewayTest`) | ❌ | 1 |
-| digitalocean | ✅ | ⏳ not yet | ❌ | 2 |
-| vultr | ✅ | ⏳ not yet | ❌ | 2 |
-| namecom | ✅ | ⏳ not yet | ❌ | 2 |
-| easydns | ✅ | ⏳ not yet | ❌ | 2 |
-| hetzner | ✅ | ⏳ not yet | ❌ | 2 |
-| bunny | ✅ | ⏳ not yet | ❌ | 2 |
-| domeneshop | ✅ | ⏳ not yet | ❌ | 2 |
-| vercel | ✅ | ⏳ not yet | ❌ | 2 |
+| digitalocean | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractDigitaloceanTest`) | ❌ | 2 |
+| vultr | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractVultrTest`) | ❌ | 2 |
+| namecom | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractNamecomTest`) | ❌ | 2 |
+| easydns | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractEasydnsTest`) | ❌ | 2 |
+| hetzner | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractHetznerTest`) | ❌ | 2 |
+| bunny | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractBunnyTest`) | ❌ | 2 |
+| domeneshop | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractDomeneshopTest`) | ❌ | 2 |
+| vercel | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractVercelTest`) | ❌ | 2 |
 | ionos | ✅ | ⏳ not yet | ❌ | 3 |
 | linode | ✅ | ⏳ not yet | ❌ | 3 |
 | netlify | ✅ | ⏳ not yet | ❌ | 3 |
@@ -72,27 +72,123 @@ stubs; not yet verified against the live API" — never as "verified" or
 | inwx | ✅ | ⏳ not yet | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **8/41** have mocked-contract
+**41/41** have registry/metadata coverage. **16/41** have mocked-contract
 (request-level) coverage. **0/41** have live verification.
 
 ### Notes
 
-- **desec, gandi, godaddy, ns1** (confirmed production defect, not fixed
-  in the test-only Batch 1 PR): each driver's `zone()` wraps every
-  per-candidate lookup in a try/catch that treats *any* response status
-  >= 400 as "not this candidate, try the next one." An authentication
-  failure (401/403) during zone discovery is therefore indistinguishable
-  from a genuine 404 and, once every candidate is exhausted, surfaces as
-  the same generic "no domain/zone found for {fqdn}" diagnostic a real
-  zone-not-found would produce — discarding the actual cause. An operator
-  with a revoked or mis-scoped token sees a message suggesting a DNS/zone
-  configuration problem, not an authentication problem. Proven precisely
-  by `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
-  in each of the four fixtures (asserts both the misleading message text
-  and that no write request is attempted). Per the standing rule,
-  production defects are corrected only through an explicit regression
-  test plus a clearly disclosed, separate change — not silently, and not
-  in this test-only PR.
+- **desec, gandi, godaddy, ns1, digitalocean, vultr, namecom, easydns,
+  vercel** (confirmed production defect, not fixed in the test-only Batch
+  1/Batch 2 PRs): each driver's `zone()` wraps every per-candidate lookup
+  in a try/catch that treats *any* response status >= 400 as "not this
+  candidate, try the next one." An authentication failure (401/403) during
+  zone discovery is therefore indistinguishable from a genuine 404 and,
+  once every candidate is exhausted, surfaces as the same generic
+  "no domain/zone found for {fqdn}" diagnostic a real zone-not-found would
+  produce — discarding the actual cause. An operator with a revoked or
+  mis-scoped token sees a message suggesting a DNS/zone configuration
+  problem, not an authentication problem. Proven precisely by
+  `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
+  in each of the nine fixtures (asserts both the misleading message text
+  and that no write request is attempted). Batch 2 confirms this is a
+  recurring pattern across the try/catch-shaped zone-discovery family, not
+  an isolated Batch 1 issue — the same fix, if authorised, would need to
+  land across all nine drivers together. Per the standing rule, production
+  defects are corrected only through an explicit regression test plus a
+  clearly disclosed, separate change — not silently, and not mixed into
+  batch coverage work.
+- **hetzner, bunny, domeneshop** (contrast finding, not a defect): these
+  three drivers discover their zone via a client-side filter over a 200
+  response's body (matching Cloudflare's/Scaleway's shape) with *no*
+  try/catch around the lookup at all. A 401/403 on the very first
+  zone-discovery candidate therefore propagates immediately and directly
+  as the shared `request()` helper's own distinct "API error (HTTP 401)"
+  message — it is never retried against further candidates, and never
+  collapsed into a "zone not found" diagnostic. Proven by
+  `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
+  in each of the three fixtures, deliberately included to confirm the test
+  framework distinguishes real defects from correct behaviour rather than
+  flagging every provider uniformly.
+- **Batch 2 pagination findings, verified per provider against each
+  API's current authoritative documentation** (2026-08-20) rather than
+  treated as one uniform limitation. `delete_txt_record()`'s record-listing
+  call was checked against each provider's own docs for a real,
+  documented pagination mechanism (page/cursor/limit parameters and a
+  way to fetch subsequent pages); a record absent from whatever this
+  driver actually fetches is, in every case, silently left undeleted with
+  no error surfaced. Whether that is an actionable defect depends
+  entirely on whether the endpoint truly paginates:
+
+  - **Confirmed pagination defect — digitalocean**: the List All Domain
+    Records endpoint documents `per_page` (1–200, default 20), `page`,
+    and a `name` filter for narrowing results to a single record name
+    ([DigitalOcean API documentation](https://docs.digitalocean.com/products/networking/dns/reference/api/domain-records/)).
+    The driver sends `per_page=200` (the documented maximum) but never
+    follows a further page, and never uses the documented `name` filter
+    that would make the whole risk moot. A matching record beyond the
+    first 200 remains undeleted.
+  - **Confirmed pagination defect — vultr**: Vultr's v2 API documents
+    cursor-based pagination (`per_page` plus a `meta.links.next`/`prev`
+    cursor) as a platform-wide convention for all v2 list endpoints,
+    including the domain-records list; the driver sends `per_page=500`
+    but never follows `meta.links.next`. Verified via Vultr's own
+    published API documentation (`vultr.com/api`, `docs.vultr.com`);
+    direct automated retrieval of the specific endpoint page was blocked
+    (403/404), so this rests on the platform-wide pagination convention
+    Vultr documents for this endpoint's own API family rather than a
+    single directly-quoted endpoint page.
+  - **Confirmed pagination defect — vercel**: the List existing DNS
+    records endpoint documents `limit` (default 20), and `since`/`until`
+    timestamp cursors, returning a `pagination.next`/`prev` object when
+    more records exist than fit in one page
+    ([Vercel API documentation](https://vercel.com/docs/rest-api/reference/endpoints/dns/list-existing-dns-records)).
+    The driver sends `?limit=100` but never uses `since`/`until` to fetch
+    a further page.
+  - **No pagination mechanism applicable — domeneshop**: the official API
+    docs ([api.domeneshop.no/docs](https://api.domeneshop.no/docs/))
+    document only `host` and `type` filter parameters for the DNS records
+    list endpoint — no page, cursor, or limit parameter exists at all.
+    The fixture's test proves absent-record handling for a
+    server-filtered query, not an ignored pagination cursor, and is named
+    accordingly.
+  - **No pagination mechanism applicable — bunny**: confirmed directly
+    against Bunny's published OpenAPI reference — `GET /dnszone/{id}` is a
+    single-resource fetch (a zone detail object) whose embedded `Records`
+    array carries no pagination parameters, and no separate paginated
+    records-listing endpoint exists. The fixture's test proves
+    absent-record handling within that one response, not an ignored
+    pagination cursor, and is named accordingly.
+  - **[Unverified] — namecom**: name.com's docs confirm `perPage`/`page`
+    pagination as a general convention for "List functions" platform-wide,
+    but no source located (including two direct fetches of name.com's own
+    primary documentation) explicitly confirms whether the
+    `/v4/domains/{domainName}/records` endpoint specifically is paginated
+    or returns every record in one response.
+  - **[Unverified] — easydns**: easyDNS's REST API documentation is not
+    publicly accessible (`docs.rest.easydns.net` did not resolve; search
+    results indicate API documentation access requires a request/account),
+    so no authoritative statement about pagination on
+    `/zones/records/all/{domain}` could be established.
+  - **[Unverified] — hetzner**: Hetzner's public API documentation URL
+    (`dns.hetzner.com/api-docs`) now redirects to a login-required
+    console page rather than a publicly accessible reference. Third-party,
+    non-authoritative sources (community client libraries, a generated
+    doc derived from an older copy of the OpenAPI spec) describe a
+    `page`/`per_page`/`next_page` pagination structure with a default
+    `per_page` of 25 for Hetzner's list endpoints generally, which would
+    make this a real risk for the `/records` list endpoint if accurate —
+    but this could not be confirmed against Hetzner's current, official
+    documentation.
+
+  Test method names reflect this: `test_pagination_only_fetches_a_single_page_of_records()`
+  is used only for digitalocean/vultr/vercel, where a real, documented
+  pagination mechanism is confirmed ignored. The namecom/easydns/hetzner
+  fixtures use the same assertion but under a neutral name (renamed away
+  from "pagination" pending the [Unverified] classification above), and
+  bunny/domeneshop's tests were already named around absent-record
+  handling rather than pagination. None of this is fixed here — per the
+  standing rule, production defects are corrected only through an
+  explicit regression test plus a clearly disclosed, separate change.
 - **namesilo**: the Phase 6C classification pass flagged a possible
   create/delete asymmetry at `includes/certificates/providers/class-provider-namesilo.php:56`
   (`delete_txt_record()` appears to match `<host>` against the full FQDN
