@@ -47,6 +47,19 @@ jobs:
             echo "::warning::WordPress.org SVN repository for 'security-automation-manager' does not exist yet (plugin review pending?). Skipping SVN deploy; GitHub Release and update feed are unaffected."
           fi
 
+      # release-package.yml's rsync-based build strips this file from its
+      # WordPress.org-channel ZIP via an explicit rm (it can't just add it to
+      # .distignore -- that file is shared with the GitHub-channel build,
+      # which needs to keep it). This deploy checks out the raw tagged tree
+      # instead and has no equivalent step of its own, so without this the
+      # self-updater would reach WordPress.org SVN and fail the exact same
+      # "Plugin Updater detected" automated-scan rejection a manual
+      # first-time submission hit. Deleting it from this ephemeral runner
+      # checkout only -- it never touches the actual repository.
+      - name: Strip GitHub-channel self-updater before SVN deploy
+        if: steps.svn_check.outputs.exists == 'true'
+        run: rm -f includes/modules/class-github-update-checker.php
+
       - name: Deploy to WordPress.org SVN
         if: steps.svn_check.outputs.exists == 'true'
         uses: 10up/action-wordpress-plugin-deploy@stable
