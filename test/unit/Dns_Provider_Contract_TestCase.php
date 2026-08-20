@@ -96,6 +96,22 @@ abstract class Dns_Provider_Contract_TestCase extends TestCase {
 	/** Queues a 2xx response whose body is not parseable / not shaped as this provider expects. */
 	abstract protected function queue_malformed_response(): void;
 
+	/**
+	 * Whether this provider's zone-discovery and write requests actually
+	 * inspect a response's body when the HTTP status already indicates
+	 * success. Most providers do (parsing a zone ID, record ID, or
+	 * confirmation field out of the body) and should leave this at its
+	 * default of `true`. A provider that determines success purely from
+	 * HTTP status -- never reading the body at all -- should override this
+	 * to `false`; queue_malformed_response() must then supply a genuine 2xx
+	 * response with an unparseable body, and the contract asserts that
+	 * create_txt_record() completes successfully rather than manufacturing
+	 * a failure the driver would never actually produce.
+	 */
+	protected function response_body_is_validated_on_success(): bool {
+		return true;
+	}
+
 	/** Queues a response shaped like a provider-side HTTP failure (5xx, or this provider's own server-error shape). */
 	abstract protected function queue_http_failure(): void;
 
@@ -202,6 +218,18 @@ abstract class Dns_Provider_Contract_TestCase extends TestCase {
 	public function test_malformed_response_does_not_silently_succeed(): void {
 		$provider = $this->make_provider();
 		$this->queue_malformed_response();
+
+		if ( ! $this->response_body_is_validated_on_success() ) {
+			// This provider determines success purely from HTTP status and
+			// never reads the response body -- a malformed body on an
+			// otherwise-2xx response is therefore indistinguishable from a
+			// well-formed one. Completing successfully here is the provider's
+			// actual, documented behaviour, not a gap this contract should
+			// manufacture a failure to paper over.
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->assertNotEmpty( $this->captured_requests(), 'a provider that never validates response bodies must still complete the request when every status is 2xx, even with a malformed body' );
+			return;
+		}
 
 		// A malformed body must not be silently treated as "record created" --
 		// either the provider throws outright, or it throws the same

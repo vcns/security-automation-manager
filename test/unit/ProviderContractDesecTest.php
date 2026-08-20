@@ -12,13 +12,23 @@
  * record list rather than issuing a DELETE.
  *
  * Finding disclosed, not a defect: zone(), create, and delete never parse
- * a response body -- success is determined purely by HTTP status. This
- * means a 2xx response with an unparseable body is indistinguishable from
- * a well-formed 2xx response for this driver; queue_malformed_response()
- * below therefore pairs a malformed body with a non-2xx status (the only
- * way "malformed" can matter here) rather than a genuinely 2xx-malformed
- * case, which this driver would treat as ordinary success. See the batch's
- * PR description for the same finding across deSEC/Gandi/GoDaddy/NS1.
+ * a response body -- success is determined purely by HTTP status.
+ * response_body_is_validated_on_success() is overridden below to declare
+ * this; queue_malformed_response() supplies a genuine 2xx response with an
+ * unparseable body, and the contract confirms this driver completes
+ * successfully rather than manufacturing a failure it would never produce.
+ *
+ * Second finding, also disclosed and not fixed here: zone()'s try/catch
+ * treats every response status >= 400 identically as "not this candidate,
+ * try the next one" (see zone() in the production source). An
+ * authentication failure (401/403) during zone discovery is therefore
+ * swallowed exactly like a genuine 404 and produces the same
+ * "no domain found for {fqdn}" diagnostic once every candidate is
+ * exhausted -- an operator with a bad token sees a zone-not-found message,
+ * not an authentication error. See
+ * test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()
+ * below, which proves this precisely. See the batch's PR description for
+ * the same two findings across deSEC/Gandi/GoDaddy/NS1.
  */
 
 declare( strict_types=1 );
@@ -85,13 +95,19 @@ class ProviderContractDesecTest extends Dns_Provider_Contract_TestCase {
 	}
 
 	protected function queue_malformed_response(): void {
-		// See class docblock: this driver never parses a response body, so a
-		// malformed body only matters when paired with a failing status.
+		// Genuine 2xx responses with an unparseable body -- see class
+		// docblock. This driver never reads the body, on zone lookup or on
+		// the write request, so create_txt_record() is expected to complete
+		// successfully; response_body_is_validated_on_success() below tells
+		// the contract to assert exactly that instead of expecting a throw.
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
-			array( 'response' => array( 'code' => 502 ), 'body' => 'not json at all {{{' ),
-			array( 'response' => array( 'code' => 502 ), 'body' => 'not json at all {{{' ),
-			array( 'response' => array( 'code' => 502 ), 'body' => 'not json at all {{{' ),
+			array( 'response' => array( 'code' => 200 ), 'body' => 'not json at all {{{' ), // zone found on the first candidate
+			array( 'response' => array( 'code' => 200 ), 'body' => 'not json at all {{{' ), // PUT create -- body ignored
 		);
+	}
+
+	protected function response_body_is_validated_on_success(): bool {
+		return false;
 	}
 
 	protected function queue_http_failure(): void {
@@ -130,5 +146,28 @@ class ProviderContractDesecTest extends Dns_Provider_Contract_TestCase {
 		$this->assertSame( 'PUT', $last['args']['method'] ?? null, 'deSEC deletes an rrset by PUTting an empty records array, not by issuing a DELETE' );
 		$body = $this->decoded_body( $last );
 		$this->assertSame( array(), $body['records'] ?? null );
+	}
+
+	// ── Provider-specific: discovery-stage auth failure is misreported ───────
+
+	public function test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found(): void {
+		$provider = $this->make_provider();
+		$GLOBALS['_wp_remote_request_response_queue'] = array(
+			$this->wp_response( 401 ),
+			$this->wp_response( 401 ),
+			$this->wp_response( 401 ),
+		);
+
+		try {
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->fail( 'expected an exception when every zone-discovery candidate is rejected with 401' );
+		} catch ( \RuntimeException $e ) {
+			// Confirms the disclosed finding: an authentication failure
+			// during zone discovery produces the exact same diagnostic a
+			// genuine zone-not-found would, discarding the real cause.
+			$this->assertStringContainsString( 'no domain found', $e->getMessage() );
+		}
+
+		$this->assertCount( 3, $this->captured_requests(), 'an authentication failure during zone discovery must not proceed to a write request' );
 	}
 }

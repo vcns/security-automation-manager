@@ -6,8 +6,10 @@
  * Shape: shared Dns_Provider::request() (JSON), two-part "sso-key" auth
  * header (api_key:api_secret, not Bearer), zone discovery by try/catch
  * around a per-candidate GET (same pattern as deSEC/Gandi -- see
- * ProviderContractDesecTest's docblock for the shared "no body ever
- * parsed" finding). Notably: create_txt_record()'s PATCH body is a
+ * ProviderContractDesecTest's docblock for the two shared, disclosed
+ * findings: "no body ever parsed", and a 401/403 during zone discovery
+ * being misreported as "no domain found"). Notably: create_txt_record()'s
+ * PATCH body is a
  * top-level JSON *array*, not an object -- decoded_body() therefore
  * returns an indexed array here, not an associative one. delete_txt_record()
  * removes ALL TXT records at that name (no per-value targeting), which is
@@ -79,11 +81,17 @@ class ProviderContractGodaddyTest extends Dns_Provider_Contract_TestCase {
 	}
 
 	protected function queue_malformed_response(): void {
+		// Genuine 2xx responses with an unparseable body -- see class
+		// docblock and Provider_Desec fixture. This driver never reads the
+		// body, so create_txt_record() is expected to complete successfully.
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
-			array( 'response' => array( 'code' => 502 ), 'body' => 'not json at all {{{' ),
-			array( 'response' => array( 'code' => 502 ), 'body' => 'not json at all {{{' ),
-			array( 'response' => array( 'code' => 502 ), 'body' => 'not json at all {{{' ),
+			array( 'response' => array( 'code' => 200 ), 'body' => 'not json at all {{{' ),
+			array( 'response' => array( 'code' => 200 ), 'body' => 'not json at all {{{' ),
 		);
+	}
+
+	protected function response_body_is_validated_on_success(): bool {
+		return false;
 	}
 
 	protected function queue_http_failure(): void {
@@ -118,5 +126,25 @@ class ProviderContractGodaddyTest extends Dns_Provider_Contract_TestCase {
 		$last     = end( $requests );
 		$this->assertSame( 'DELETE', $last['args']['method'] ?? null );
 		$this->assertStringContainsString( '/domains/example.com/records/TXT/_acme-challenge.www', $last['url'] );
+	}
+
+	// ── Provider-specific: discovery-stage auth failure is misreported ───────
+
+	public function test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found(): void {
+		$provider = $this->make_provider();
+		$GLOBALS['_wp_remote_request_response_queue'] = array(
+			$this->wp_response( 401 ),
+			$this->wp_response( 401 ),
+			$this->wp_response( 401 ),
+		);
+
+		try {
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->fail( 'expected an exception when every zone-discovery candidate is rejected with 401' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertStringContainsString( 'no domain found', $e->getMessage() );
+		}
+
+		$this->assertCount( 3, $this->captured_requests(), 'an authentication failure during zone discovery must not proceed to a write request' );
 	}
 }

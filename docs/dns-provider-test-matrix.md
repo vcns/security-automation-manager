@@ -5,14 +5,14 @@ been verified. Two columns are kept strictly separate and must never be
 conflated:
 
 - **Mocked-contract coverage** — request-level PHPUnit tests against
-  `test/bootstrap.php`'s WordPress stubs. No real network call is possible
-  from this suite (see `test/bootstrap.php` — WordPress core is never
-  loaded, and the only real network activity anywhere in the suite is one
-  disclosed loopback-only TCP attempt to `127.0.0.1:1`, described under
-  RFC 2136 below). Passing here proves the driver builds the request it
-  claims to build and reacts correctly to the responses it's given. It
-  does **not** prove the real provider API still behaves the way the
-  fixture assumes.
+  `test/bootstrap.php`'s WordPress stubs. WordPress HTTP API calls are
+  intercepted by the test stubs, so these provider-contract tests cannot
+  contact external HTTP services. The separately disclosed RFC 2136 test
+  still performs a refused loopback TCP connection to `127.0.0.1:1`
+  (described under RFC 2136 below). Passing here proves the driver builds
+  the request it claims to build and reacts correctly to the responses
+  it's given. It does **not** prove the real provider API still behaves
+  the way the fixture assumes.
 - **Live verification** — a real issuance/deletion cycle run against the
   real provider API with real credentials and a real DNS zone. As of this
   writing **no provider has live verification**; it was explicitly
@@ -77,6 +77,22 @@ stubs; not yet verified against the live API" — never as "verified" or
 
 ### Notes
 
+- **desec, gandi, godaddy, ns1** (confirmed production defect, not fixed
+  in the test-only Batch 1 PR): each driver's `zone()` wraps every
+  per-candidate lookup in a try/catch that treats *any* response status
+  >= 400 as "not this candidate, try the next one." An authentication
+  failure (401/403) during zone discovery is therefore indistinguishable
+  from a genuine 404 and, once every candidate is exhausted, surfaces as
+  the same generic "no domain/zone found for {fqdn}" diagnostic a real
+  zone-not-found would produce — discarding the actual cause. An operator
+  with a revoked or misscoped token sees a message suggesting a DNS/zone
+  configuration problem, not an authentication problem. Proven precisely
+  by `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
+  in each of the four fixtures (asserts both the misleading message text
+  and that no write request is attempted). Per the standing rule,
+  production defects are corrected only through an explicit regression
+  test plus a clearly disclosed, separate change — not silently, and not
+  in this test-only PR.
 - **namesilo**: the Phase 6C classification pass flagged a possible
   create/delete asymmetry at `includes/certificates/providers/class-provider-namesilo.php:56`
   (`delete_txt_record()` appears to match `<host>` against the full FQDN
