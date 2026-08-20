@@ -73,6 +73,19 @@ class Credential_Vault {
 		return str_starts_with( $value, self::PREFIX );
 	}
 
+	/**
+	 * True when a value is sealed ciphertext that fails to decrypt under the
+	 * current vault key -- distinct from "never configured" (empty string)
+	 * and from "plaintext, not sealed at all". Every existing call site
+	 * coerces open()'s null return to '', which loses this distinction before
+	 * it reaches the admin UI (see docs/credential-vault-assessment.md,
+	 * "Recovery behaviour"); this lets a caller check for it explicitly
+	 * without changing what open() itself returns or how it fails.
+	 */
+	public static function is_sealed_but_undecryptable( string $value ): bool {
+		return self::is_sealed( $value ) && null === self::open( $value );
+	}
+
 	private static function key(): string {
 		if ( defined( 'WP_SAM_CERT_VAULT_KEY' ) && is_string( WP_SAM_CERT_VAULT_KEY ) && '' !== WP_SAM_CERT_VAULT_KEY ) {
 			return hash( 'sha256', 'wp-sam-cert-vault|' . WP_SAM_CERT_VAULT_KEY, true );

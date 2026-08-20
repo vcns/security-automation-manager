@@ -74,6 +74,23 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 	<div class="notice notice-error"><p><?php esc_html_e( 'The pasted private key could not be loaded and was NOT saved. Paste a complete, unencrypted PEM key (BEGIN PRIVATE KEY / BEGIN EC PRIVATE KEY / BEGIN RSA PRIVATE KEY). Passphrase-protected keys are not supported.', 'security-automation-manager' ); ?></p></div>
 	<?php endif; ?>
 
+	<?php
+	$wp_sam_vault_warnings = $wp_sam_cert_store->vault_health_warnings();
+	if ( ! empty( $wp_sam_vault_warnings ) ) :
+		?>
+	<div class="notice notice-warning">
+		<p>
+			<strong><?php esc_html_e( 'Some stored credentials or keys cannot be decrypted.', 'security-automation-manager' ); ?></strong>
+			<?php esc_html_e( 'This usually means the encryption key changed since these were saved -- most often WP_SAM_CERT_VAULT_KEY being edited or removed in wp-config.php, or WordPress\'s own AUTH_KEY/AUTH_SALT being regenerated. The affected values were NOT erased or replaced; they still exist encrypted in the database and will keep failing to decrypt until either the original key is restored or each one is re-entered below.', 'security-automation-manager' ); ?>
+		</p>
+		<ul style="list-style: disc; margin-left: 1.5em;">
+			<?php foreach ( $wp_sam_vault_warnings as $wp_sam_vault_field ) : ?>
+			<li><?php echo esc_html( $wp_sam_vault_field ); ?></li>
+			<?php endforeach; ?>
+		</ul>
+	</div>
+	<?php endif; ?>
+
 	<?php if ( ! extension_loaded( 'openssl' ) || ! function_exists( 'sodium_crypto_secretbox' ) ) : ?>
 	<div class="notice notice-error">
 		<p>

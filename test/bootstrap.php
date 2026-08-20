@@ -72,6 +72,12 @@ if ( ! function_exists( 'get_option' ) ) {
 	}
 }
 
+if ( ! function_exists( 'status_header' ) ) {
+	function status_header( int $code ): void {
+		$GLOBALS['_wp_status_header_calls'][] = $code;
+	}
+}
+
 if ( ! function_exists( 'update_option' ) ) {
 	function update_option( string $option, mixed $value, bool|string $autoload = true ): bool {
 		$GLOBALS['_wp_options'][ $option ] = $value;
@@ -305,6 +311,9 @@ if ( ! function_exists( 'wp_remote_get' ) ) {
 			'url'  => $url,
 			'args' => $args,
 		);
+		if ( ! empty( $GLOBALS['_wp_remote_get_response_queue'] ) && is_array( $GLOBALS['_wp_remote_get_response_queue'] ) ) {
+			return array_shift( $GLOBALS['_wp_remote_get_response_queue'] );
+		}
 		return $GLOBALS['_wp_remote_get_response'] ?? [ 'response' => [ 'code' => 200 ], 'body' => '' ];
 	}
 }
@@ -315,6 +324,9 @@ if ( ! function_exists( 'wp_remote_post' ) ) {
 			'url'  => $url,
 			'args' => $args,
 		);
+		if ( ! empty( $GLOBALS['_wp_remote_post_response_queue'] ) && is_array( $GLOBALS['_wp_remote_post_response_queue'] ) ) {
+			return array_shift( $GLOBALS['_wp_remote_post_response_queue'] );
+		}
 		return $GLOBALS['_wp_remote_post_response'] ?? [ 'response' => [ 'code' => 200 ], 'body' => '' ];
 	}
 }
@@ -338,9 +350,29 @@ if ( ! function_exists( 'wp_delete_file' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_mkdir_p' ) ) {
+	function wp_mkdir_p( string $target ): bool {
+		if ( is_dir( $target ) ) {
+			return true;
+		}
+		// @-suppressed: a path occupied by a file (not a directory) is a real,
+		// intentionally-exercised test scenario (see DeployerTest's
+		// "directory creation failure" case) -- mkdir()'s native warning for
+		// that case is expected noise, not a stub bug, and WordPress's real
+		// wp_mkdir_p() would emit the same warning in the same situation.
+		return @mkdir( $target, 0777, true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir, WordPress.PHP.NoSilencedErrors.Discouraged -- test stub.
+	}
+}
+
 if ( ! function_exists( 'apply_filters' ) ) {
 	function apply_filters( string $hook, mixed $value, mixed ...$args ): mixed {
 		return $value;
+	}
+}
+
+if ( ! function_exists( 'wp_rand' ) ) {
+	function wp_rand( int $min = 0, int $max = 0 ): int {
+		return random_int( $min, max( $min, $max ) ?: PHP_INT_MAX );
 	}
 }
 
@@ -362,6 +394,9 @@ if ( ! function_exists( 'wp_remote_head' ) ) {
 			'url'  => $url,
 			'args' => $args,
 		);
+		if ( ! empty( $GLOBALS['_wp_remote_head_response_queue'] ) && is_array( $GLOBALS['_wp_remote_head_response_queue'] ) ) {
+			return array_shift( $GLOBALS['_wp_remote_head_response_queue'] );
+		}
 		return $GLOBALS['_wp_remote_head_response'] ?? [ 'response' => [ 'code' => 200 ], 'headers' => [] ];
 	}
 }
@@ -373,6 +408,26 @@ if ( ! function_exists( 'wp_remote_retrieve_headers' ) ) {
 		}
 
 		return $response['headers'] ?? [];
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
+	function wp_remote_retrieve_header( array|WP_Error $response, string $header ): mixed {
+		if ( $response instanceof WP_Error ) {
+			return '';
+		}
+
+		$headers = $response['headers'] ?? [];
+		// A real WP_HTTP_Requests_Response's headers object is case-insensitive
+		// on lookup; the stub's fixture arrays are plain assoc arrays, so match
+		// case-insensitively here to mirror that behaviour.
+		foreach ( $headers as $key => $value ) {
+			if ( 0 === strcasecmp( (string) $key, $header ) ) {
+				return $value;
+			}
+		}
+
+		return '';
 	}
 }
 
@@ -722,6 +777,20 @@ if ( ! function_exists( 'wp_schedule_event' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_schedule_single_event' ) ) {
+	function wp_schedule_single_event( int $timestamp, string $hook ): bool {
+		$GLOBALS['_wp_cron'][ $hook ] = $timestamp;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'spawn_cron' ) ) {
+	function spawn_cron(): bool {
+		++$GLOBALS['_wp_spawn_cron_calls'];
+		return true;
+	}
+}
+
 if ( ! function_exists( 'wp_unschedule_hook' ) ) {
 	function wp_unschedule_hook( string $hook ): int {
 		unset( $GLOBALS['_wp_cron'][ $hook ] );
@@ -759,14 +828,19 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_rest_url_should_throw'] = false;
 
 	$GLOBALS['_wp_remote_get_response']  = null;
+	$GLOBALS['_wp_remote_get_response_queue'] = [];
 	$GLOBALS['_wp_remote_get_requests']  = [];
 	$GLOBALS['_wp_remote_post_response'] = null;
+	$GLOBALS['_wp_remote_post_response_queue'] = [];
 	$GLOBALS['_wp_remote_post_requests'] = [];
 	$GLOBALS['_wp_download_url_response'] = '';
 	$GLOBALS['_wp_download_url_requests'] = [];
 	$GLOBALS['_wp_deleted_files']        = [];
 	$GLOBALS['_wp_remote_head_response'] = null;
+	$GLOBALS['_wp_remote_head_response_queue'] = [];
 	$GLOBALS['_wp_remote_head_requests'] = [];
+	$GLOBALS['_wp_spawn_cron_calls']     = 0;
+	$GLOBALS['_wp_status_header_calls']  = [];
 	$GLOBALS['_wp_is_admin']             = false;
 	$GLOBALS['_wp_is_ssl']               = false;
 	$GLOBALS['_wp_doing_cron']           = false;
