@@ -24,6 +24,17 @@ cloudflare/
 # Offline/proprietary modules - gitignored and never distributed
 offline/
 
+# GitHub-channel self-updater - release-package.yml already strips this from
+# the WordPress.org-channel ZIP via an explicit rm, but the WordPress.org SVN
+# deploy (wporg-deploy.yml, via 10up/action-wordpress-plugin-deploy) checks
+# out the raw tagged tree and relies on .distignore alone, with no equivalent
+# rm step -- so this repo-root file is the only thing standing between an
+# SVN push and the exact "Plugin Updater detected" rejection this same file's
+# other entries were already fixing. build-channel.php is generated only at
+# release-package.yml build time and never exists in a raw checkout, so it
+# needs no entry here.
+includes/modules/class-github-update-checker.php
+
 # Build artefacts and local tooling
 build/
 dist/
@@ -55,6 +66,7 @@ SPECIFICATION.md
 CHANGELOG.md
 COMMERCIAL_TERMS.md
 CONTRIBUTING.md
+CONTRIBUTORS.md
 SECURITY.md
 TRADEMARK_POLICY.md
 README.md
