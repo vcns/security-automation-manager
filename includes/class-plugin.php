@@ -93,6 +93,14 @@ final class Plugin {
 	// ── Text domain ───────────────────────────────────────────────────────────
 
 	private function load_textdomain(): void {
+		// WordPress core auto-loads translations for WordPress.org-hosted plugins
+		// (matched by slug against the wp.org translation API) since 4.6 -- calling
+		// this there is discouraged/redundant. The GitHub-channel build isn't
+		// installed from wp.org, so that automatic loading never applies to it;
+		// it still needs this call to load its own bundled languages/ directory.
+		if ( 'github' !== WP_SAM_DISTRIBUTION_CHANNEL ) {
+			return;
+		}
 		load_plugin_textdomain(
 			'security-automation-manager',
 			false,

@@ -314,10 +314,8 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					/>
 					<code>require-trusted-types-for: 'script'</code>
 					<?php
-					echo Risk_Badge::render(
-						'report-only',
-						__( "Trusted Types. Pinned to report-only; enforcing it needs application code most WordPress sites don't have yet.", 'security-automation-manager' )
-					); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+					$trusted_types_note = __( "Trusted Types. Pinned to report-only; enforcing it needs application code most WordPress sites don't have yet.", 'security-automation-manager' );
+					echo Risk_Badge::render( 'report-only', $trusted_types_note ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
 					?>
 				</label>
 			</td>
