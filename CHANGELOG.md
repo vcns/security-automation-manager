@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.19] - 2026-08-20
+
+### Changed
+
+- CSP > Profiles tab's Experimental column (Trusted Types) now matches the Bypass Best Practices column's layout: checkbox, then `require-trusted-types-for: 'script'` in code formatting, then a badge -- instead of a checkbox labelled "Trusted Types" with a separate description paragraph underneath. The badge reads "Report-only" rather than a risk tier, since Trusted Types is a hardening feature rather than a relaxation; a risk-tier label there would misleadingly imply enabling it is itself risky. Adds a neutral `.risk-report-only` badge style alongside the existing risk-tier colours.
+
 ## [2.9.18] - 2026-08-20
 
 ### Added
