@@ -28,6 +28,24 @@
  * identically to deSEC et al. Proven by
  * test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()
  * below.
+ *
+ * [Unverified] -- not classified as a confirmed pagination defect:
+ * delete_txt_record()'s GET /dns/managed/{id}/records call has no
+ * page/rows parameter. api-docs.dnsmadeeasy.com did not render its
+ * content for automated retrieval, so no accessible official primary
+ * source could confirm this endpoint's pagination behaviour. A
+ * third-party Go client library (github.com/john-k/dnsmadeeasy) defines
+ * a RecordsResp struct with totalRecords/totalPages/page fields, which is
+ * evidence a pagination mechanism likely exists, but a third-party
+ * client's struct definitions reflect that library's own interpretation
+ * of observed API responses, not a confirmed current provider contract --
+ * the same standard applied to Name.com/easyDNS/Hetzner in Batches 2-3.
+ * test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()
+ * below proves the observable behaviour without asserting a pagination
+ * mechanism that isn't authoritatively confirmed; the totalRecords/
+ * totalPages/page fields are retained in that test's queued response
+ * purely as provisional contract evidence should an accessible primary
+ * source surface later, not as proof pagination is confirmed now.
  */
 
 declare( strict_types=1 );
@@ -178,9 +196,9 @@ class ProviderContractDnsmadeeasyTest extends Dns_Provider_Contract_TestCase {
 		$this->assertCount( 3, $this->captured_requests(), 'all three candidates are tried via the empty-check path, none via an exception' );
 	}
 
-	// ── Provider-specific: confirmed pagination defect on the records list ───
+	// ── Provider-specific: absent-record handling, pagination [Unverified] ───
 
-	public function test_records_list_pagination_can_leave_a_matching_record_undeleted(): void {
+	public function test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->wp_response( 404 ),
@@ -190,6 +208,12 @@ class ProviderContractDnsmadeeasyTest extends Dns_Provider_Contract_TestCase {
 				200,
 				array(
 					'data'         => array( array( 'id' => 1, 'value' => '"unrelated"' ) ),
+					// totalRecords/totalPages/page are retained here as
+					// provisional contract evidence (a third-party client
+					// library's interpretation of DNS Made Easy's response
+					// shape) should an accessible primary source confirm
+					// pagination later -- see class docblock. Not proof
+					// pagination is confirmed now.
 					'totalRecords' => 31,
 					'totalPages'   => 2,
 					'page'         => 1,
@@ -200,7 +224,7 @@ class ProviderContractDnsmadeeasyTest extends Dns_Provider_Contract_TestCase {
 		$provider->delete_txt_record( $this->fqdn(), $this->record_value() );
 
 		$requests = $this->captured_requests();
-		$this->assertCount( 4, $requests, 'the driver never inspects "totalPages" or requests a further page, so a record on a later page is silently left undeleted' );
+		$this->assertCount( 4, $requests, 'a record absent from the fetched list must not cause a DELETE request, and must not throw' );
 	}
 
 	// ── Provider-specific: discovery-stage auth failure is misreported ───────

@@ -335,23 +335,32 @@ stubs; not yet verified against the live API" — never as "verified" or
   `test_a_2xx_response_with_no_matching_domain_id_is_treated_as_not_found_without_throwing()`,
   which confirms this second, non-exception failure path also falls
   through correctly without ever throwing mid-loop.
-- **Confirmed pagination defects — dnsimple, dnsmadeeasy** (Batch 4,
-  verified against each API's current authoritative documentation):
-  dnsimple's records-list endpoint documents `page`/`per_page`
-  pagination (default `per_page=30`) per
+- **Confirmed pagination defect — dnsimple** (Batch 4, verified against
+  current authoritative documentation): the records-list endpoint
+  documents `page`/`per_page` pagination (default `per_page=30`) per
   [developer.dnsimple.com](https://developer.dnsimple.com/v2/zones/records/)
   and DNSimple's general pagination guide; the driver sends neither
-  parameter. dnsmadeeasy's records-list response carries
-  `totalRecords`/`totalPages`/`page` fields, confirmed via a third-party
-  Go client library reflecting DNS Made Easy's real API response schema
-  (the official docs site did not render its content for automated
-  retrieval); the driver sends no page parameter either. Both list calls
-  are already server-filtered by record name and type, making an
-  overflow less likely in practice than an unfiltered list, but the
-  pagination mechanism is confirmed to exist and go unused in both
-  cases — proven by
-  `test_records_list_pagination_can_leave_a_matching_record_undeleted()`
-  in each fixture.
+  parameter. The list call is already server-filtered by record name and
+  type, making an overflow less likely in practice than an unfiltered
+  list, but the pagination mechanism is confirmed to exist and go unused —
+  proven by
+  `test_records_list_pagination_can_leave_a_matching_record_undeleted()`.
+- **[Unverified] — dnsmadeeasy**: `api-docs.dnsmadeeasy.com` did not
+  render its content for automated retrieval, so no accessible official
+  primary source could confirm this endpoint's pagination behaviour. A
+  third-party Go client library
+  (`github.com/john-k/dnsmadeeasy`) defines a `RecordsResp` struct with
+  `totalRecords`/`totalPages`/`page` fields, evidence a mechanism likely
+  exists, but a third-party client's struct definitions reflect that
+  library's own interpretation of observed responses, not a confirmed
+  current provider contract — the same evidence standard applied to
+  Name.com/easyDNS/Hetzner in Batches 2–3. Not counted in the confirmed
+  pagination defect total. Test renamed to
+  `test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()`
+  to avoid asserting a mechanism that isn't authoritatively confirmed; the
+  `totalRecords`/`totalPages`/`page` fields are retained in that test's
+  queued response purely as provisional contract evidence should an
+  accessible primary source surface later.
 - **No pagination mechanism applicable — porkbun** (confirmed directly
   against Porkbun's own published API documentation): neither
   `POST /dns/retrieve/{domain}` nor
