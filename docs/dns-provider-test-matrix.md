@@ -46,11 +46,11 @@ stubs; not yet verified against the live API" — never as "verified" or
 | bunny | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractBunnyTest`) | ❌ | 2 |
 | domeneshop | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractDomeneshopTest`) | ❌ | 2 |
 | vercel | ✅ | ✅ (Phase 6C Batch 2, `ProviderContractVercelTest`) | ❌ | 2 |
-| ionos | ✅ | ⏳ not yet | ❌ | 3 |
-| linode | ✅ | ⏳ not yet | ❌ | 3 |
-| netlify | ✅ | ⏳ not yet | ❌ | 3 |
-| powerdns | ✅ | ⏳ not yet | ❌ | 3 |
-| dynu | ✅ | ⏳ not yet | ❌ | 3 |
+| ionos | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractIonosTest`) | ❌ | 3 |
+| linode | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractLinodeTest`) | ❌ | 3 |
+| netlify | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractNetlifyTest`) | ❌ | 3 |
+| powerdns | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractPowerdnsTest`) | ❌ | 3 |
+| dynu | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractDynuTest`) | ❌ | 3 |
 | dnsimple | ✅ | ⏳ not yet | ❌ | 4 |
 | dnsmadeeasy | ✅ | ⏳ not yet | ❌ | 4 |
 | porkbun | ✅ | ⏳ not yet | ❌ | 4 |
@@ -72,7 +72,7 @@ stubs; not yet verified against the live API" — never as "verified" or
 | inwx | ✅ | ⏳ not yet | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **16/41** have mocked-contract
+**41/41** have registry/metadata coverage. **21/41** have mocked-contract
 (request-level) coverage. **0/41** have live verification.
 
 ### Notes
@@ -189,6 +189,84 @@ stubs; not yet verified against the live API" — never as "verified" or
   handling rather than pagination. None of this is fixed here — per the
   standing rule, production defects are corrected only through an
   explicit regression test plus a clearly disclosed, separate change.
+- **ionos, linode, netlify, powerdns, dynu** (contrast finding, extends
+  hetzner/bunny/domeneshop's, not a defect): all five Batch 3 providers
+  discover their zone with exactly ONE request — either by enumerating the
+  whole zone/domain list once and filtering client-side across every
+  zone_candidates() entry (ionos, linode, netlify, powerdns), or by
+  delegating zone-and-label resolution entirely to a specialised
+  server-side endpoint that replaces the candidate walk altogether (dynu's
+  `getroot`). None of the five has a try/catch around that one request, so
+  a 401/403 propagates immediately and distinctly as the shared
+  `request()` helper's own "API error (HTTP …)" message — never retried,
+  never collapsed into a "zone/domain not found" diagnostic. Proven by
+  `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
+  in each of the five fixtures. This means **12 of 21** mocked-contract
+  providers so far use a discovery shape immune to the Batch 1/2
+  auth-misdiagnosis defect (hetzner, bunny, domeneshop + these five), and
+  **9 of 21** share the defect (desec, gandi, godaddy, ns1, digitalocean,
+  vultr, namecom, easydns, vercel).
+- **Batch 3 pagination/record-listing findings, verified per provider
+  against each API's current authoritative documentation** (2026-08-20):
+
+  - **Confirmed pagination defect — ionos**, more severe than any Batch 2
+    finding: `GET /zones` (the single call zone discovery depends on
+    entirely) paginates via `offset`/`limit`, default `limit=100`, per
+    IONOS's own published Go SDK reference derived from their OpenAPI spec
+    ([sdk-go-dns ZonesApi.md](https://github.com/ionos-cloud/sdk-go-dns/blob/master/docs/api/ZonesApi.md)).
+    zone() sends neither parameter. An account with more than 100 DNS
+    zones can have its correct zone fall outside that default page,
+    causing `create_txt_record()` to throw "no zone found" even though
+    the zone genuinely exists — this can break issuance entirely, not just
+    leave a cleanup record behind.
+  - **Confirmed pagination defect — linode**, on *both* endpoints zone()
+    and delete_txt_record() depend on: Linode's v4 API documents
+    `page`/`page_size` pagination (default page_size 100, maximum 500)
+    with `page`/`pages`/`results` response fields, verified directly
+    against Linode's (Akamai TechDocs) published reference
+    ([get-domain-records](https://techdocs.akamai.com/linode-api/reference/get-domain-records)).
+    The driver sends `page_size=500` (the documented maximum) on both the
+    domains list and the records list, but never checks `pages` or
+    requests a further page on either. An account with more than 500
+    domains breaks zone discovery entirely; a zone with more than 500
+    records leaves a matching cleanup record undeleted.
+  - **No applicable mechanism — powerdns** (record identifiers *and*
+    pagination, confirmed directly against
+    [doc.powerdns.com's Zone API reference](https://doc.powerdns.com/authoritative/http-api/zone.html)):
+    this driver's create/delete both PATCH an entire RRset (changetype
+    REPLACE/DELETE) rather than listing records and deleting by
+    server-assigned ID — there is no records-list endpoint to paginate or
+    extract an identifier from at all. Confirmed directly: `GET /zones`
+    documents no pagination parameters, and `GET /zones/{id}` returns
+    complete RRsets in one response with no separate records endpoint.
+    delete_txt_record() also ignores the `$value` parameter entirely
+    (removes the whole RRset regardless of content) — disclosed as a
+    consequence of REPLACE's overwrite semantics guaranteeing the RRset
+    can only ever hold this plugin's own last-written value, not a defect.
+  - **[Unverified] — netlify**: the operation-specific OpenAPI spec for
+    `GET /dns_zones/{zone_id}/dns_records`
+    ([open-api.netlify.com, getGetDnsRecords](https://open-api.netlify.com/#tag/dnsZone/operation/getDnsRecords))
+    documents no pagination parameters at all, while Netlify's general
+    platform documentation separately states pagination is "applied to
+    all API requests that return over 100 items" — a genuine
+    inconsistency between the endpoint's own specification and the
+    general platform documentation that could not be resolved with
+    confidence either way.
+  - **[Unverified] — dynu**: no authoritative v2 API documentation for
+    `GET /dns/{id}/record`'s pagination behaviour could be located; the
+    only reachable Dynu documentation page described a different (v1)
+    endpoint path, giving no confidence it was even the correct reference
+    for the v2 endpoint this driver calls.
+
+  Test naming follows the same convention established in Batch 2:
+  ionos/linode use pagination-specific test names describing the
+  confirmed defect; netlify/dynu use
+  `test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()`
+  (no pagination claim); powerdns has no equivalent test at all, since no
+  list-of-records response exists to be incomplete. None of this is fixed
+  here — per the standing rule, production defects are corrected only
+  through an explicit regression test plus a clearly disclosed, separate
+  change, and are kept out of batch coverage PRs entirely.
 - **namesilo**: the Phase 6C classification pass flagged a possible
   create/delete asymmetry at `includes/certificates/providers/class-provider-namesilo.php:56`
   (`delete_txt_record()` appears to match `<host>` against the full FQDN
