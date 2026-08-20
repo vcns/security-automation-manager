@@ -51,9 +51,9 @@ stubs; not yet verified against the live API" — never as "verified" or
 | netlify | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractNetlifyTest`) | ❌ | 3 |
 | powerdns | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractPowerdnsTest`) | ❌ | 3 |
 | dynu | ✅ | ✅ (Phase 6C Batch 3, `ProviderContractDynuTest`) | ❌ | 3 |
-| dnsimple | ✅ | ⏳ not yet | ❌ | 4 |
-| dnsmadeeasy | ✅ | ⏳ not yet | ❌ | 4 |
-| porkbun | ✅ | ⏳ not yet | ❌ | 4 |
+| dnsimple | ✅ | ✅ (Phase 6C Batch 4, `ProviderContractDnsimpleTest`) | ❌ | 4 |
+| dnsmadeeasy | ✅ | ✅ (Phase 6C Batch 4, `ProviderContractDnsmadeeasyTest`) | ❌ | 4 |
+| porkbun | ✅ | ✅ (Phase 6C Batch 4, `ProviderContractPorkbunTest`) | ❌ | 4 |
 | acmedns | ✅ | ⏳ not yet | ❌ | 5 |
 | dreamhost | ✅ | ⏳ not yet | ❌ | 5 |
 | joker | ✅ | ⏳ not yet | ❌ | 5 |
@@ -72,7 +72,7 @@ stubs; not yet verified against the live API" — never as "verified" or
 | inwx | ✅ | ⏳ not yet | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **21/41** have mocked-contract
+**41/41** have registry/metadata coverage. **24/41** have mocked-contract
 (request-level) coverage. **0/41** have live verification.
 
 ### Notes
@@ -303,6 +303,92 @@ stubs; not yet verified against the live API" — never as "verified" or
   here — per the standing rule, production defects are corrected only
   through an explicit regression test plus a clearly disclosed, separate
   change, and are kept out of batch coverage PRs entirely.
+- **dnsimple, dnsmadeeasy, porkbun** (Batch 4, extends the established
+  Batch 1/2/3 auth-during-discovery family, each with direct code
+  evidence — not inferred from similarity alone): all three drivers wrap
+  their per-candidate zone lookup in a try/catch identical in shape to
+  deSEC's, so a genuine authentication failure (a request that actually
+  throws, e.g. 401) during zone discovery is misreported as "no zone/
+  managed domain found" once every candidate is exhausted. This brings
+  the family to **12 of 24** mocked-contract providers. Proven per
+  provider by
+  `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`.
+  dnsimple's version of this runs through an added memoised
+  account-resolution pre-step (`account()`, calling `GET /whoami`) that
+  is evaluated *inside* the same try block — a throwing whoami() (e.g.
+  401) is swallowed identically, and since `account_id` is only cached
+  after a *non-throwing* whoami response, a persistent auth failure
+  causes whoami() to be retried once per zone candidate (proven by
+  `test_whoami_is_called_once_and_cached_across_create_and_delete()`
+  showing the *success* case caches after one call, by contrast).
+  Distinctly, dnsimple's own malformed-response behaviour is **not** the
+  same code path: a malformed-but-2xx whoami response throws exactly once
+  (candidate 1 only) because `account_id` is assigned *before* its own
+  empty-value check runs, then permanently caches an empty ID and stops
+  retrying whoami() at all — from candidate 2 onward the zone check
+  behaves like Batch 1's status-only providers (a non-throwing response,
+  regardless of body content, is treated as "zone found").
+  `response_body_is_validated_on_success()` is false for both dnsimple
+  and porkbun (their zone-check success path never reads a body); dns
+  made easy's is true, since its zone() explicitly checks
+  `!empty($response['body']['id'])` on top of the try/catch — proven by
+  `test_a_2xx_response_with_no_matching_domain_id_is_treated_as_not_found_without_throwing()`,
+  which confirms this second, non-exception failure path also falls
+  through correctly without ever throwing mid-loop.
+- **Confirmed pagination defect — dnsimple** (Batch 4, verified against
+  current authoritative documentation): the records-list endpoint
+  documents `page`/`per_page` pagination (default `per_page=30`) per
+  [developer.dnsimple.com](https://developer.dnsimple.com/v2/zones/records/)
+  and DNSimple's general pagination guide; the driver sends neither
+  parameter. The list call is already server-filtered by record name and
+  type, making an overflow less likely in practice than an unfiltered
+  list, but the pagination mechanism is confirmed to exist and go unused —
+  proven by
+  `test_records_list_pagination_can_leave_a_matching_record_undeleted()`.
+- **[Unverified] — dnsmadeeasy**: `api-docs.dnsmadeeasy.com` did not
+  render its content for automated retrieval, so no accessible official
+  primary source could confirm this endpoint's pagination behaviour. A
+  third-party Go client library
+  (`github.com/john-k/dnsmadeeasy`) defines a `RecordsResp` struct with
+  `totalRecords`/`totalPages`/`page` fields, evidence a mechanism likely
+  exists, but a third-party client's struct definitions reflect that
+  library's own interpretation of observed responses, not a confirmed
+  current provider contract — the same evidence standard applied to
+  Name.com/easyDNS/Hetzner in Batches 2–3. Not counted in the confirmed
+  pagination defect total. Test renamed to
+  `test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()`
+  to avoid asserting a mechanism that isn't authoritatively confirmed; the
+  `totalRecords`/`totalPages`/`page` fields are retained in that test's
+  queued response purely as provisional contract evidence should an
+  accessible primary source surface later.
+- **No pagination mechanism applicable — porkbun** (confirmed directly
+  against Porkbun's own published API documentation): neither
+  `POST /dns/retrieve/{domain}` nor
+  `POST /dns/retrieveByNameType/{domain}/{type}/{subdomain}` documents
+  any offset/limit/pagination parameter, and both return complete result
+  sets. This finding is unrelated to, and must not be conflated with, the
+  separate confirmed destructive defect below.
+- **Confirmed production defect — porkbun, destructive and avoidable**
+  (not fixed here; a genuinely new finding, independently verified — NOT
+  an extension of the PowerDNS destructive-write family from Batch 3,
+  which has a different root cause): verified directly against Porkbun's
+  own published API documentation
+  (porkbun.com/api/json/v3/documentation and llms-full.txt).
+  `delete_txt_record()` calls
+  `POST /dns/deleteByNameType/{zone}/TXT/{relative}`, which removes every
+  TXT record at that name regardless of content — the driver never
+  inspects `$value` when deleting at all, and never lists or retrieves
+  records first. Unlike PowerDNS (whose API has no by-value deletion
+  mechanism at all below a version threshold), Porkbun's own API
+  documents both `POST /dns/delete/{domain}/{id}` ("Delete DNS record by
+  ID") and `POST /dns/retrieveByNameType/{domain}/{type}/{subdomain}`
+  ("Retrieve DNS records by name and type", returning each record's ID)
+  — the exact safe list-then-delete-by-ID pattern nearly every other
+  provider in this registry already uses is directly available in
+  Porkbun's API and simply isn't used here, making this an *avoidable*
+  defect rather than an architectural limitation. Proven by
+  `test_delete_uses_delete_by_name_type_and_ignores_the_provided_value()`
+  and `test_delete_never_lists_or_retrieves_records_first()`.
 - **namesilo**: the Phase 6C classification pass flagged a possible
   create/delete asymmetry at `includes/certificates/providers/class-provider-namesilo.php:56`
   (`delete_txt_record()` appears to match `<host>` against the full FQDN
