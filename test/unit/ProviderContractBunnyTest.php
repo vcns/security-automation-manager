@@ -9,13 +9,18 @@
  * ProviderContractHetznerTest's docblock for the deliberate contrast with
  * the try/catch providers' auth-during-discovery misdiagnosis). Bunny uses
  * PascalCase field names throughout (Type/Name/Value/Ttl/Id) and a numeric
- * TXT type (3) rather than a string. delete_txt_record() fetches the
- * zone's own detail object (GET /dnszone/{id}, a single-resource fetch, not
- * a classic paginated list endpoint) and reads its nested "Records" array
- * -- a record absent from that array is still silently not found/not
- * deleted, same observable behaviour as the other batch members' list
- * endpoints, tested below for consistency even though the underlying risk
- * (a genuinely paginated list) doesn't apply the same way here.
+ * TXT type (3) rather than a string.
+ *
+ * No pagination mechanism applicable (confirmed directly against Bunny's
+ * published OpenAPI reference): delete_txt_record() fetches the zone's own
+ * detail object (GET /dnszone/{id}) and reads its nested "Records" array.
+ * This is a single-resource fetch, not a list endpoint -- the Records
+ * array carries no pagination parameters, and no separate paginated
+ * records-listing endpoint exists for this API. A record absent from that
+ * array is still silently not found/not deleted, so the observable
+ * behaviour is tested below, but named around absent-record handling
+ * rather than pagination, since no pagination cursor exists here to be
+ * ignored.
  */
 
 declare( strict_types=1 );

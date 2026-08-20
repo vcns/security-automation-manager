@@ -15,6 +15,14 @@
  * client-side, so multiple records sharing that host and type but
  * different data can still collide on identifier selection -- tested
  * below.
+ *
+ * No pagination mechanism applicable (confirmed directly against
+ * Domeneshop's published API docs, https://api.domeneshop.no/docs/): the
+ * DNS records list endpoint documents only "host" and "type" filter
+ * parameters -- no page, cursor, or limit parameter exists at all. The
+ * absent-record test below therefore proves this driver's handling of a
+ * record missing from a server-filtered query, not an ignored pagination
+ * cursor, since none exists for this endpoint.
  */
 
 declare( strict_types=1 );

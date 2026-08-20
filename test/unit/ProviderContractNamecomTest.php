@@ -7,9 +7,19 @@
  * (username:api_token), try/catch zone discovery (same status-only-on-create
  * finding and recurring auth-during-discovery misdiagnosis as
  * DigitalOcean/Vultr -- see ProviderContractDigitaloceanTest's docblock).
- * Uses "host"/"answer" field names (not "name"/"data"). delete_txt_record()
- * lists ALL records with no page-size parameter at all (not even a large
- * one) -- single-call, single-page, same documented limitation.
+ * Uses "host"/"answer" field names (not "name"/"data").
+ *
+ * [Unverified] -- not classified as a confirmed pagination defect:
+ * delete_txt_record() lists ALL records with no page-size parameter at
+ * all. Name.com's docs confirm perPage/page pagination as a general
+ * convention for "List functions" platform-wide, but no source located
+ * (including two direct fetches of name.com's own primary documentation)
+ * explicitly confirms whether GET /v4/domains/{domainName}/records
+ * specifically is paginated or always returns every record in one
+ * response. test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()
+ * below proves the observable behaviour (a record this driver doesn't
+ * see is silently not deleted) without asserting a pagination mechanism
+ * that hasn't been confirmed to exist for this endpoint.
  */
 
 declare( strict_types=1 );
@@ -147,9 +157,9 @@ class ProviderContractNamecomTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringContainsString( '/domains/example.com/records/222', $last['url'] );
 	}
 
-	// ── Provider-specific: single-page fetch, documented limitation ──────────
+	// ── Provider-specific: absent-record handling, pagination [Unverified] ───
 
-	public function test_pagination_only_fetches_a_single_page_of_records(): void {
+	public function test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->wp_response( 404 ),
@@ -168,7 +178,7 @@ class ProviderContractNamecomTest extends Dns_Provider_Contract_TestCase {
 		$provider->delete_txt_record( $this->fqdn(), $this->record_value() );
 
 		$requests = $this->captured_requests();
-		$this->assertCount( 4, $requests, 'a record absent from the single fetched page must not cause a DELETE request, and must not throw' );
+		$this->assertCount( 4, $requests, 'a record absent from the fetched list must not cause a DELETE request, and must not throw' );
 	}
 
 	// ── Provider-specific: discovery-stage auth failure is misreported ───────

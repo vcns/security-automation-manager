@@ -9,8 +9,21 @@
  * auth-during-discovery misdiagnosis). Vultr quotes the TXT value in its
  * "data" field (`"value"`) on create, and delete_txt_record() strips the
  * quotes with trim() before comparing -- create/delete asymmetry, tested
- * below. delete lists with ?per_page=500, single page only (same
- * documented limitation as DigitalOcean).
+ * below.
+ *
+ * Confirmed production defect, not fixed here: Vultr's v2 API documents
+ * cursor-based pagination (`per_page` plus a `meta.links.next`/`prev`
+ * cursor) as a platform-wide convention for all v2 list endpoints,
+ * including the domain-records list. This driver sends per_page=500 but
+ * never follows meta.links.next. Verified against Vultr's own published
+ * API documentation (vultr.com/api, docs.vultr.com); direct automated
+ * retrieval of the specific records-endpoint page was blocked by the
+ * server (403/404), so this rests on the pagination convention Vultr
+ * documents for this endpoint's own API family rather than a single
+ * directly-quoted endpoint page -- disclosed in the evidence matrix with
+ * that caveat. A matching record beyond the first per_page=500 remains
+ * undeleted, with no error surfaced -- proven by
+ * test_pagination_only_fetches_a_single_page_of_records() below.
  */
 
 declare( strict_types=1 );
@@ -144,7 +157,7 @@ class ProviderContractVultrTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringContainsString( '/domains/example.com/records/rec-2', $last['url'], 'must match the unquoted value and TXT type, ignoring the A record with the same quoted data' );
 	}
 
-	// ── Provider-specific: single-page fetch, documented limitation ──────────
+	// ── Provider-specific: confirmed pagination defect (see class docblock) ──
 
 	public function test_pagination_only_fetches_a_single_page_of_records(): void {
 		$provider = $this->make_provider();

@@ -18,6 +18,21 @@
  * the response body (to find the matching zone), so this driver validates
  * bodies on the create path (response_body_is_validated_on_success() stays
  * at its default true) -- unlike DigitalOcean/Vultr/Name.com/easyDNS.
+ *
+ * [Unverified] -- not classified as a confirmed pagination defect:
+ * delete_txt_record()'s /records?zone_id=X list call carries no per_page
+ * parameter. Hetzner's current API documentation URL
+ * (dns.hetzner.com/api-docs) now redirects to a login-required console
+ * rather than a publicly accessible reference. Third-party,
+ * non-authoritative sources (community client libraries, a generated doc
+ * derived from an older copy of the OpenAPI spec) describe a
+ * page/per_page/next_page pagination structure with a default per_page of
+ * 25 for Hetzner's list endpoints generally, which would make this a real
+ * risk if accurate -- but this could not be confirmed against Hetzner's
+ * current, official documentation.
+ * test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()
+ * below proves the observable behaviour without asserting a pagination
+ * mechanism that couldn't be confirmed.
  */
 
 declare( strict_types=1 );
@@ -152,9 +167,9 @@ class ProviderContractHetznerTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringContainsString( '/records/rec-b', $last['url'] );
 	}
 
-	// ── Provider-specific: single-page fetch, documented limitation ──────────
+	// ── Provider-specific: absent-record handling, pagination [Unverified] ───
 
-	public function test_pagination_only_fetches_a_single_page_of_records(): void {
+	public function test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->wp_response( 200, array( 'zones' => array() ) ),
@@ -173,7 +188,7 @@ class ProviderContractHetznerTest extends Dns_Provider_Contract_TestCase {
 		$provider->delete_txt_record( $this->fqdn(), $this->record_value() );
 
 		$requests = $this->captured_requests();
-		$this->assertCount( 4, $requests, 'a record absent from the single fetched page must not cause a DELETE request, and must not throw' );
+		$this->assertCount( 4, $requests, 'a record absent from the fetched list must not cause a DELETE request, and must not throw' );
 	}
 
 	// ── Provider-specific: discovery-stage auth failure is NOT misreported ───

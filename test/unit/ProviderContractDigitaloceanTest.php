@@ -14,14 +14,18 @@
  * delete path, which the shared malformed-response contract test doesn't
  * exercise (it only calls create_txt_record()).
  *
- * Disclosed, not fixed: delete_txt_record() fetches a single page
- * (per_page=200, no cursor/next-page follow-up). If the target record
- * isn't present on that one page, delete_txt_record() completes without
- * error and without deleting anything -- proven by
- * test_pagination_only_fetches_a_single_page_of_records() below. Given
- * this plugin only ever creates one ACME challenge TXT record per zone at
- * a time, this is a documented limitation rather than a confirmed
- * functional defect, logged in the evidence matrix.
+ * Confirmed production defect, not fixed here: DigitalOcean's List All
+ * Domain Records endpoint documents `per_page` (1-200, default 20),
+ * `page`, and a `name` filter for narrowing to a single record name
+ * (https://docs.digitalocean.com/products/networking/dns/reference/api/domain-records/,
+ * verified directly against the current published docs). This driver
+ * sends per_page=200 (the documented maximum) but never follows a
+ * further page, and never uses the documented `name` filter that would
+ * make the whole risk moot. A matching record beyond the first 200
+ * remains undeleted, with no error surfaced -- proven by
+ * test_pagination_only_fetches_a_single_page_of_records() below. Logged
+ * in the evidence matrix as a confirmed pagination defect, not a
+ * documented limitation.
  *
  * Disclosed, matches the existing Batch 1 finding, not fixed here: zone()'s
  * try/catch treats any status >= 400 identically as "not this candidate" --
@@ -166,7 +170,7 @@ class ProviderContractDigitaloceanTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringContainsString( '/domains/example.com/records/222', $last['url'], 'must delete by the ID of the record matching both name and value, not any other candidate' );
 	}
 
-	// ── Provider-specific: single-page fetch, documented limitation ──────────
+	// ── Provider-specific: confirmed pagination defect (see class docblock) ──
 
 	public function test_pagination_only_fetches_a_single_page_of_records(): void {
 		$provider = $this->make_provider();

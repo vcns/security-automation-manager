@@ -15,6 +15,16 @@
  * are wrapped in "data" (not "records"/"domain_records"), fields
  * host/rdata/id, and the type comparison is case-insensitive
  * (strtoupper()) on the way out but sent as literal "TXT" on the way in.
+ *
+ * [Unverified] -- not classified as a confirmed pagination defect:
+ * easyDNS's REST API documentation is not publicly accessible
+ * (docs.rest.easydns.net did not resolve; available search results
+ * indicate documentation access requires a request/account), so no
+ * authoritative statement about pagination on /zones/records/all/{domain}
+ * could be established.
+ * test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw()
+ * below proves the observable behaviour without asserting a pagination
+ * mechanism that couldn't be confirmed.
  */
 
 declare( strict_types=1 );
@@ -152,9 +162,9 @@ class ProviderContractEasydnsTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringContainsString( '/zones/records/example.com/rec-2', $last['url'] );
 	}
 
-	// ── Provider-specific: single-page fetch, documented limitation ──────────
+	// ── Provider-specific: absent-record handling, pagination [Unverified] ───
 
-	public function test_pagination_only_fetches_a_single_page_of_records(): void {
+	public function test_a_record_absent_from_the_fetched_list_is_not_deleted_and_does_not_throw(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->wp_response( 404 ),
@@ -173,7 +183,7 @@ class ProviderContractEasydnsTest extends Dns_Provider_Contract_TestCase {
 		$provider->delete_txt_record( $this->fqdn(), $this->record_value() );
 
 		$requests = $this->captured_requests();
-		$this->assertCount( 4, $requests, 'a record absent from the single fetched page must not cause a DELETE request, and must not throw' );
+		$this->assertCount( 4, $requests, 'a record absent from the fetched list must not cause a DELETE request, and must not throw' );
 	}
 
 	// ── Provider-specific: discovery-stage auth failure is misreported ───────

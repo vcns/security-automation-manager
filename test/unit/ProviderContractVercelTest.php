@@ -13,8 +13,18 @@
  * configured, appended via team_query() -- tested as part of
  * "authentication construction" below since an omitted or wrong team scope
  * is effectively an authorization-scope defect even though the Bearer
- * token itself is unaffected. delete_txt_record() lists with ?limit=100,
- * single page only (same documented limitation as DigitalOcean/Vultr).
+ * token itself is unaffected.
+ *
+ * Confirmed production defect, not fixed here: the List existing DNS
+ * records endpoint documents a `limit` parameter (default 20) and
+ * `since`/`until` timestamp cursors, returning a `pagination.next`/`prev`
+ * object when more records exist than fit in one page
+ * (https://vercel.com/docs/rest-api/reference/endpoints/dns/list-existing-dns-records,
+ * verified directly against the current published docs). This driver
+ * sends ?limit=100 but never uses since/until to fetch a further page. A
+ * matching record beyond the first 100 remains undeleted, with no error
+ * surfaced -- proven by test_pagination_only_fetches_a_single_page_of_records()
+ * below.
  */
 
 declare( strict_types=1 );
@@ -148,7 +158,7 @@ class ProviderContractVercelTest extends Dns_Provider_Contract_TestCase {
 		$this->assertStringContainsString( '/v2/domains/example.com/records/rec-2', $last['url'] );
 	}
 
-	// ── Provider-specific: single-page fetch, documented limitation ──────────
+	// ── Provider-specific: confirmed pagination defect (see class docblock) ──
 
 	public function test_pagination_only_fetches_a_single_page_of_records(): void {
 		$provider = $this->make_provider();
