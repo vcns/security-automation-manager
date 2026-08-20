@@ -312,11 +312,14 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 						data-surface="<?php echo esc_attr( $profile['surface'] ); ?>"
 						<?php checked( ! empty( $profile['trusted_types'] ) ); ?>
 					/>
-					<?php esc_html_e( 'Trusted Types', 'security-automation-manager' ); ?>
+					<code>require-trusted-types-for: 'script'</code>
+					<?php
+					echo Risk_Badge::render(
+						'report-only',
+						__( "Trusted Types. Pinned to report-only; enforcing it needs application code most WordPress sites don't have yet.", 'security-automation-manager' )
+					); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+					?>
 				</label>
-				<p class="description" style="margin:4px 0 0;">
-					<?php esc_html_e( "require-trusted-types-for 'script' -- pinned to report-only; enforcing it needs application code most WordPress sites don't have yet.", 'security-automation-manager' ); ?>
-				</p>
 			</td>
 			<td>
 				<?php

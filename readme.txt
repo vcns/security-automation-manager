@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, headers, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.9.18
+Stable tag: 2.9.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,10 @@ The Scripts page's Internal tab, when enabled for a surface, reads this site's o
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
 
 == Changelog ==
+
+= 2.9.19 =
+
+* CSP > Profiles tab's Experimental column (Trusted Types) now shows the same layout as Bypass Best Practices: checkbox, then `require-trusted-types-for: 'script'`, then a badge -- instead of a checkbox labelled "Trusted Types" with a separate description paragraph underneath.
 
 = 2.9.18 =
 
