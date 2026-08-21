@@ -5,14 +5,14 @@ been verified. Two columns are kept strictly separate and must never be
 conflated:
 
 - **Mocked-contract coverage** — request-level PHPUnit tests against
-  `test/bootstrap.php`'s WordPress stubs. WordPress HTTP API calls are
-  intercepted by the test stubs, so these provider-contract tests cannot
-  contact external HTTP services. The separately disclosed RFC 2136 test
-  still performs a refused loopback TCP connection to `127.0.0.1:1`
-  (described under RFC 2136 below). Passing here proves the driver builds
-  the request it claims to build and reacts correctly to the responses
-  it's given. It does **not** prove the real provider API still behaves
-  the way the fixture assumes.
+  `test/bootstrap.php`'s WordPress stubs (for the 40 HTTP/API providers),
+  or against a genuinely local, loopback-only TCP fake server process (for
+  rfc2136 specifically — described under RFC 2136 below, since it speaks
+  raw DNS over a socket, not any WordPress HTTP API call the stubs could
+  intercept). No external network access occurs in either case. Passing
+  here proves the driver builds the request it claims to build and reacts
+  correctly to the responses it's given. It does **not** prove the real
+  provider API/server still behaves the way the fixture assumes.
 - **Live verification** — a real issuance/deletion cycle run against the
   real provider API with real credentials and a real DNS zone. As of this
   writing **no provider has live verification**; it was explicitly
@@ -70,11 +70,11 @@ stubs; not yet verified against the live API" — never as "verified" or
 | azure | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAzureTest` -- see note, destructive create/delete) | ❌ | 7 |
 | mythicbeasts | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractMythicbeastsTest`) | ❌ | 7 |
 | inwx | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractInwxTest` -- see note, cookieless-login gap) | ❌ | 7 |
-| rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
+| rfc2136 | ✅ | ✅ (`ProviderRfc2136Test` — bespoke socket-level harness, see note) | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **40/41** have mocked-contract
-(request-level) coverage — every provider except rfc2136 (partial, see
-note). **0/41** have live verification.
+**41/41** have registry/metadata coverage. **41/41** have mocked-contract
+(request-level) coverage — Phase 6C's HTTP/API and socket-level coverage
+is now complete. **0/41** have live verification.
 
 ### Notes
 
@@ -788,15 +788,95 @@ note). **0/41** have live verification.
     documents no page/limit parameter for this call, consistent with the
     driver's own read-modify-write design (a partial host list would
     itself be unsafe to write back).
-- **rfc2136**: out of scope for the HTTP-transport contract framework —
-  it speaks raw DNS over `stream_socket_client()`, never any `wp_remote_*`
-  function, so `Dns_Provider_Contract_TestCase` does not apply. One real
-  (disclosed, loopback-only) connection-failure test already exists
-  (`CertificateManagerTest::test_dns_provider_transport_failure_is_recorded_as_a_failed_run`,
-  Phase 6A, attempts a real TCP connect to `127.0.0.1:1` which is
-  immediately refused). A dedicated controlled local socket-level test
-  harness — covering successful TXT add/delete, TSIG authentication,
-  and failure paths — is a separate, not-yet-built deliverable required
-  before Phase 6C can be marked complete.
+- **rfc2136 — socket-level harness, the final Phase 6C deliverable**:
+  out of scope for the HTTP-transport contract framework — it speaks raw
+  DNS over `stream_socket_client()`, never any `wp_remote_*` function, so
+  `Dns_Provider_Contract_TestCase`'s stubs have nothing to intercept.
+  Covered instead by a bespoke `ProviderRfc2136Test`, following the same
+  precedent `AcmednsProviderTest` established for acme-dns (Batch 5).
+  - **Why a subprocess, not just a second socket**: PHP has no
+    user-registerable "tcp" stream transport (`stream_wrapper_register()`
+    covers `fopen()`-style wrappers, a distinct registry keyed by scheme,
+    not the transports `stream_socket_client()` resolves), so nothing
+    in-process can intercept the driver's connection attempt. Because
+    `Provider_Rfc2136::exchange()` makes fully blocking
+    `fwrite()`/`fread()` calls, a same-process fake server couldn't
+    interleave accept/respond with the driver's blocking calls even if one
+    could be registered. The test therefore spawns
+    `test/fixtures/rfc2136-fake-server.php` via `proc_open()` — a genuine,
+    separate OS process — for every scenario needing a live response; it
+    binds to `127.0.0.1:0` (an OS-assigned ephemeral port), accepts exactly
+    one connection, and either responds with a canned wire-format message
+    or closes without responding. All sockets throughout stay on
+    `127.0.0.1` only — no external network access occurs anywhere in this
+    file, consistent with the one pre-existing RFC 2136 test from Phase 6A
+    (`CertificateManagerTest::test_dns_provider_transport_failure_is_recorded_as_a_failed_run`,
+    a real refused connection to `127.0.0.1:1`).
+  - **TSIG signing verified by actual recomputation, not just shape**: the
+    test parses the captured wire-format request by hand (header, zone RR,
+    update RR, and the TSIG RR's algorithm/time/fudge/MAC fields), then
+    independently recomputes the HMAC over the digested message plus TSIG
+    variables using the same shared secret, and asserts it byte-for-byte
+    matches the MAC the driver actually sent — for all four supported
+    algorithms (hmac-sha256/512/1/md5). This is the direct equivalent of
+    every other provider fixture's `assert_authenticated_correctly()`,
+    adapted to a signing scheme rather than a header/query-string
+    credential.
+  - **Contrast finding, not a defect**: RFC 2136 has no "relative name"
+    concept at all, unlike almost every HTTP-based provider in this suite
+    — every RR's owner name is sent fully qualified on the wire, which is
+    simply how the DNS protocol represents names. `delete_txt_record()`'s
+    CLASS NONE deletion is a precise, exact-match protocol primitive (RFC
+    2136 removes only an RR whose rdata matches exactly) — a well-designed
+    by-value delete at the protocol level itself, not merely a client-side
+    convention.
+  - **Confirmed dead/misleading code, noted by direct inspection, not a
+    live-tested scenario** (corrected 2026-08-21 after review — see the
+    correction bullet immediately below for what changed and why):
+    `send_update()` computes `$rcode = $flags & 0x000F`, mathematically
+    bounded to [0,15] by the mask alone — the classic DNS header's 4-bit
+    RCODE field. The driver's own `$names` map nonetheless includes
+    `16 => 'BADSIG'`, `17 => 'BADKEY'`, `18 => 'BADTIME'` — array keys this
+    mask can never select, since no bit pattern makes `$anything & 0x000F`
+    equal 16 or higher. This is an arithmetic fact about the `&` operator;
+    no wire-format test is needed or included to demonstrate it.
+  - **Correction, 2026-08-21**: this PR originally claimed a response
+    whose header "RCODE field literally holds 16" would have that value
+    silently masked to 0 and accepted as a successful update, proven by a
+    test that set `$flags |= 16` on a canned response. That claim was
+    incorrect and has been removed, along with the two tests that made it
+    (`test_badsig_rcode_masks_to_zero_and_is_silently_treated_as_success()`
+    and
+    `test_badkey_and_badtime_rcode_names_are_unreachable_and_reported_generically()`).
+    RCODE occupies bits 0-3 of the flags word; bit 4 is the unrelated CD
+    flag. `$flags |= 16` sets bit 4 only — it does not touch the RCODE
+    bits, so the "RCODE 16" response those tests constructed was a
+    perfectly ordinary NOERROR (RCODE 0) response throughout, and neither
+    test actually exercised a BADSIG scenario. A value of 16 cannot be
+    expressed in a 4-bit field by any bit manipulation; there is no
+    "adjacent bit" that inserts it.
+  - **Confirmed production defect, the corrected, substantive finding,
+    discovered directly through this harness (not fixed here)**:
+    `send_update()` reads only the first 4 bytes of a response (message ID
+    plus flags) and never parses any resource record it carries — so it
+    never inspects a response's TSIG RR at all, including that RR's own
+    Error field, which is where RFC 8945 (TSIG) actually represents
+    BADSIG/BADKEY/BADTIME. A TSIG rejection is still correctly detected
+    and thrown for at the header-RCODE level (a real server commonly sets
+    NOTAUTH for this), just without the more specific reason a real
+    server's TSIG RR would have carried in its Error field. Proven with a
+    genuine, wire-format-constructed TSIG RR (Error field set to BADSIG)
+    attached to a NOTAUTH response, confirming the exception message
+    contains the generic "NOTAUTH" the header carries but never the more
+    specific "BADSIG" the TSIG RR's Error field carries — by
+    `test_response_side_tsig_error_detail_is_never_inspected()`.
+    **[Unverified]**: how commonly real servers actually populate the TSIG
+    Error field on a rejection versus relying on the header RCODE alone —
+    the code-level blindness (this driver never reads that field under any
+    circumstance) is confirmed regardless.
+  - **Pure-validation failures require no socket at all**: an unconfigured
+    zone, an invalid-base64 TSIG secret, and a DNS label exceeding 63
+    octets each throw before `exchange()` is ever called — proven without
+    spawning a fake server, since no connection is attempted.
 
 This matrix is updated with every Phase 6C batch PR.
