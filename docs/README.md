@@ -9,6 +9,7 @@ The following files are published through GitHub Pages and are intended for Word
 - `index.html` - public landing page, product explanation, learning curve, rollout model, and help index
 - `user-guide.html` - end-user guide covering installation, configuration, scanning, approvals, enforcement, and troubleshooting
 - `faq.html` - practical FAQ covering rollout, approvals, violations, compatibility, privacy, and incident recovery
+- `certificates.md` - ACME/Let's Encrypt TLS certificate automation: how it works, per-hosting-platform installation, DNS-01 provider coverage and known driver limitations, and troubleshooting
 - `styles.css` - shared styles for the public help pages
 - `404.html` - GitHub Pages not-found page
 
@@ -24,6 +25,7 @@ These documents are written for maintainers, release managers, security reviewer
 - `release-and-publishing.md` - versioning, branching, packaging, and WordPress.org publishing flow
 - `rollback-and-recovery.md` - schema-downgrade detection, configuration snapshot/restore, and manual database-backup recovery for a bad release
 - `wordpress-org-assets.md` - listing artwork, screenshot requirements, and WordPress.org asset handling
+- `dns-provider-test-matrix.md` - per-provider request-level test evidence for all 41 DNS-01 drivers: what is mocked-contract tested vs. live-verified, and every confirmed defect, contrast finding, and `[Unverified]` research gap discovered while building that coverage
 
 ## Source Of Truth
 

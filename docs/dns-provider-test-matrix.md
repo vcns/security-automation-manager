@@ -435,9 +435,15 @@ is now complete. **0/41** have live verification.
   their per-candidate zone lookup in a try/catch identical in shape to
   deSEC's, so a genuine authentication failure (a request that actually
   throws, e.g. 401) during zone discovery is misreported as "no zone/
-  managed domain found" once every candidate is exhausted. This brings
-  the family to **12 of 24** mocked-contract providers. Proven per
-  provider by
+  managed domain found" once every candidate is exhausted. (Historical
+  note, corrected during the Phase 6D documentation pass: this bullet
+  originally claimed the family total stood at "12 of 24" at the time of
+  Batch 4 — that running total is superseded by the complete, recalculated
+  classification and totals in the dedicated auth-misdiagnosis note near
+  the top of this section, currently 19 of 40; that total is authoritative,
+  not this one, matching the same historical-note treatment already
+  applied to the ionos/linode/netlify/powerdns/dynu bullet below.) Proven
+  per provider by
   `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`.
   dnsimple's version of this runs through an added memoised
   account-resolution pre-step (`account()`, calling `GET /whoami`) that

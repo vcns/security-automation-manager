@@ -56,6 +56,61 @@ your hosting platform**.
 6. **Renewal** - a daily WP-Cron task re-issues production certificates
    inside the 30-day window before expiry.
 
+## DNS-01 provider coverage: what's tested, and known limitations
+
+Every one of the 41 providers listed above - including acme-dns and RFC
+2136 - has **request-level test coverage**: an automated test suite
+verifies each driver builds the correct API request (or, for RFC 2136,
+the correct signed DNS wire-protocol message) and reacts correctly to a
+range of simulated success, failure, and malformed responses. This proves
+the driver's *logic* is sound. It does **not** prove the real provider's
+live API still behaves exactly the way those simulated responses assume -
+that requires a real issuance/deletion cycle against the real API with
+real credentials, which as of this writing hasn't been done for any
+provider (Cloudflare, AWS Route 53, DigitalOcean, Google Cloud DNS, and
+Azure DNS are next in line for that, once a suitable test zone and
+credentials are arranged). The full per-provider evidence, including
+every known limitation below and exactly how each was verified, is
+tracked in
+[`docs/dns-provider-test-matrix.md`](dns-provider-test-matrix.md) for
+anyone who wants the exact detail before trusting a given provider in
+production.
+
+**A few drivers have known limitations worth knowing about before you rely
+on them:**
+
+- **Azure DNS, Akamai Edge DNS, PowerDNS (self-hosted), and Porkbun**
+  create/remove the ACME challenge TXT record by replacing (or deleting)
+  *everything* at that exact record name, rather than adding/removing just
+  the one value. If nothing else ever uses a TXT record at
+  `_acme-challenge.<your domain>`, this makes no practical difference. If
+  something else does - another automation, a manually-added TXT record,
+  a concurrent certificate order for the same name - that value can be
+  silently overwritten or removed. Avoid sharing that exact record name
+  with anything else when using one of these four providers.
+- **INWX**: in a rare edge case, a session that appears to log in
+  successfully but doesn't return the expected session cookie can leave
+  later requests unauthenticated for the rest of that certificate
+  operation. If issuance repeatedly reports "no zone found" despite
+  correct credentials and zone configuration, this is worth ruling out -
+  retry the operation, and double-check your INWX account doesn't have
+  two-factor authentication enabled on the API user (INWX's API doesn't
+  support 2FA-protected accounts at all; use a dedicated API sub-account).
+- **Several providers** report a generic "no zone found" or "no domain
+  found" error even when the actual cause is invalid credentials or an API
+  access/IP-whitelist restriction, not a real DNS configuration problem.
+  If issuance fails with that message and your DNS zone genuinely exists,
+  check your API credentials and any IP-allowlist requirement (e.g.
+  Namecheap) before assuming a zone-configuration issue.
+- **RFC 2136**: a rejected update is always detected and reported, but the
+  specific TSIG reason (bad key, bad signature, clock skew) isn't always
+  distinguished in the plugin's own error message. Check your DNS server's
+  own logs for the precise reason if updates are rejected.
+
+None of the above prevents a driver from working correctly in the
+overwhelming majority of setups - they're edge cases worth knowing about,
+not reasons to avoid a provider.
+
 ## ⚠ Installing the certificate: platform-dependent
 
 **Issuing** a certificate is pure PHP and works everywhere. **Installing** it
