@@ -43,6 +43,26 @@
  * primitive (RFC 2136 removes only an RR whose rdata matches exactly) --
  * a well-designed, precise by-value delete at the protocol level itself,
  * proven by test_delete_sends_a_class_none_deletion_with_the_exact_value().
+ *
+ * Confirmed production defect (not fixed here), and dead/misleading code
+ * (noted, not separately tested -- see the comment above
+ * test_response_side_tsig_error_detail_is_never_inspected()):
+ * send_update() only ever reads the first 4 bytes of a response (ID plus
+ * flags) -- it never parses any resource record the response carries, so
+ * it never inspects a response's TSIG RR at all, including that RR's own
+ * Error field, which is where RFC 8945 actually represents BADSIG/BADKEY/
+ * BADTIME. A rejection is still correctly detected and thrown for at the
+ * header-RCODE level (commonly NOTAUTH for a TSIG failure), just without
+ * the more specific reason a real server's TSIG RR would have carried.
+ * Separately, and independent of any live response: `$rcode = $flags &
+ * 0x000F` is mathematically bounded to [0,15], so the driver's own
+ * 16 => 'BADSIG'/17 => 'BADKEY'/18 => 'BADTIME' map entries can never be
+ * selected by that lookup -- dead code, confirmed by inspection alone. An
+ * earlier version of this fixture incorrectly claimed a response could
+ * "place RCODE 16 in the header" and have it silently masked to a false
+ * NOERROR; that claim was wrong (a 4-bit field cannot hold 16 by any bit
+ * manipulation) and has been removed -- see the correction comment near
+ * the bottom of the RCODE section for what changed and why.
  */
 
 declare( strict_types=1 );
@@ -414,58 +434,84 @@ class ProviderRfc2136Test extends \PHPUnit\Framework\TestCase {
 		}
 	}
 
-	/**
-	 * Confirmed production defect, discovered directly through this harness
-	 * (not fixed here): $rcode is computed as `$flags & 0x000F`, strictly
-	 * bounded to [0,15] -- the classic DNS header's 4-bit RCODE field. The
-	 * driver's own $names map includes 16 => 'BADSIG', 17 => 'BADKEY',
-	 * 18 => 'BADTIME', but no value this mask can ever produce equals 16,
-	 * 17, or 18 -- masking first, matching second, means these entries can
-	 * never be selected. Two distinct severities result, not one uniform
-	 * "dead code" finding:
-	 * - RCODE 16 (BADSIG) masks to exactly 0, which the preceding
-	 *   `0 !== $rcode` check treats as NOERROR -- a response whose header
-	 *   RCODE field literally holds 16 is silently accepted as a
-	 *   *successful* update, not detected as a signature rejection at all.
-	 * - RCODE 17 (BADKEY) masks to 1 and RCODE 18 (BADTIME) masks to 2 --
-	 *   both still throw (as FORMERR and SERVFAIL respectively, both
-	 *   already-mapped names), just under a more generic name than the
-	 *   developer clearly intended for these specific cases.
-	 * [Unverified]: whether any real, non-EDNS DNS server implementation
-	 * would ever actually place 16/17/18 in the classic header RCODE field
-	 * in the first place -- RFC 8945 (TSIG) conventionally reports
-	 * signature/key/time errors via the TSIG RR's own Error field, with the
-	 * header RCODE commonly set to a classic code like NOTAUTH(9) instead
-	 * (which this driver already detects and throws for correctly), and
-	 * this driver never parses a response's TSIG RR at all. The code-level
-	 * gap is confirmed regardless of how often a real server would trigger
-	 * the RCODE-16 case specifically.
-	 */
-	public function test_badsig_rcode_masks_to_zero_and_is_silently_treated_as_success(): void {
-		$server   = $this->start_fake_server( 'respond', $this->rcode_response( 16 ) );
-		$provider = $this->make_provider( $server['port'] );
+	// ── Response-side TSIG blindness ──────────────────────────────────────────
+	//
+	// Confirmed dead/misleading code (not fixed here), noted by direct
+	// inspection rather than a live test: send_update() computes
+	// `$rcode = $flags & 0x000F`, mathematically bounded to [0,15] by the
+	// mask alone. The driver's own $names map nonetheless includes
+	// 16 => 'BADSIG', 17 => 'BADKEY', 18 => 'BADTIME' -- array keys this
+	// mask can never select, since no bit pattern makes `$anything & 0x000F`
+	// equal 16 or higher. This is an arithmetic fact about the `&` operator,
+	// not something a wire-format test is needed to demonstrate, so none is
+	// asserted for it here.
+	//
+	// CORRECTION: an earlier version of this fixture claimed OR-ing the
+	// literal integer 16 into the response flags word "placed RCODE 16 into
+	// the header", silently masked to 0 and accepted as success. That was
+	// wrong and has been removed. RCODE occupies bits 0-3 of the flags word;
+	// bit 4 is the unrelated CD flag. `$flags |= 16` sets bit 4 only -- it
+	// does not touch the RCODE bits at all, so that response was a perfectly
+	// ordinary NOERROR (RCODE 0) response throughout, and the test proved
+	// nothing about BADSIG. A value of 16 cannot be expressed in a 4-bit
+	// field by any bit manipulation; there is no "adjacent bit" that inserts
+	// it. The substantive, testable gap is different, and is what the test
+	// below actually proves: the driver never parses the response beyond
+	// its first 4 bytes (ID + flags), so it never reads a response's TSIG
+	// resource record at all -- including the TSIG RR's own Error field,
+	// which is where RFC 8945 actually represents BADSIG/BADKEY/BADTIME.
 
-		// No exception: RCODE 16 & 0x000F === 0, indistinguishable from NOERROR.
-		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+	/** A response TSIG RR whose Error field carries a specific RFC 8945 error code. */
+	private function response_tsig_rr( int $error ): string {
+		$key_name = 'wp-sam';
+		$mac      = '';
 
-		$this->captured_request( $server );
-		$this->stop_fake_server( $server );
+		$tsig_rdata = $this->encode_name( 'hmac-sha256' )
+			. pack( 'n', 0 ) . pack( 'N', 0 ) // time48, kept at zero for this fixture.
+			. pack( 'n2', 300, strlen( $mac ) )
+			. $mac
+			. self::ID_SENTINEL // original ID -- echoed by the fake server, same as the message ID.
+			. pack( 'n2', $error, 0 );
+
+		return $this->encode_name( $key_name )
+			. pack( 'n2N', 250, 255, 0 )
+			. pack( 'n', strlen( $tsig_rdata ) )
+			. $tsig_rdata;
 	}
 
-	public function test_badkey_and_badtime_rcode_names_are_unreachable_and_reported_generically(): void {
-		foreach ( array( 17 => 'FORMERR', 18 => 'SERVFAIL' ) as $rcode => $actually_reported_as ) {
-			$server   = $this->start_fake_server( 'respond', $this->rcode_response( $rcode ) );
-			$provider = $this->make_provider( $server['port'] );
+	/** A NOTAUTH response that also carries a genuine TSIG RR with a specific Error field. */
+	private function notauth_response_with_tsig_error( int $error ): string {
+		$header = self::ID_SENTINEL . pack( 'n5', 0x8000 | ( 5 << 11 ) | 9, 0, 0, 0, 1 );
+		return $header . $this->response_tsig_rr( $error );
+	}
 
-			try {
-				$provider->create_txt_record( $this->fqdn(), $this->record_value() );
-				$this->fail( "expected an exception for RCODE {$rcode}" );
-			} catch ( \RuntimeException $e ) {
-				$this->assertStringContainsString( $actually_reported_as, $e->getMessage(), "RCODE {$rcode} masks to a lower, already-mapped RCODE and is reported under that generic name instead" );
-			} finally {
-				$this->captured_request( $server );
-				$this->stop_fake_server( $server );
-			}
+	/**
+	 * The real, wire-format-verified finding behind the removed BADSIG
+	 * claim above: send_update() reads only the first 4 bytes of the
+	 * response (ID + flags) and never parses any resource record in it --
+	 * so even when the fake server sends back a genuine TSIG RR whose
+	 * Error field is set to BADSIG(16), the driver's exception carries only
+	 * the generic header RCODE name (NOTAUTH) a real server would set at
+	 * the header level, never the more specific TSIG Error detail actually
+	 * present in the wire response.
+	 * [Unverified]: how commonly real servers populate the TSIG Error
+	 * field on a rejection versus relying on the header RCODE alone -- the
+	 * code-level blindness (this driver never reads that field under any
+	 * circumstance) is confirmed regardless.
+	 */
+	public function test_response_side_tsig_error_detail_is_never_inspected(): void {
+		$server   = $this->start_fake_server( 'respond', $this->notauth_response_with_tsig_error( 16 ) );
+		$provider = $this->make_provider( $server['port'] );
+
+		try {
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->fail( 'expected an exception for a NOTAUTH response' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertStringContainsString( 'NOTAUTH', $e->getMessage(), 'the header RCODE is still correctly detected and thrown for' );
+			$this->assertStringNotContainsString( 'BADSIG', $e->getMessage(), 'the response TSIG RR\'s own Error field (set to BADSIG here) is never read at all' );
+		} finally {
+			$this->captured_request( $server );
+			$this->stop_fake_server( $server );
 		}
 	}
 

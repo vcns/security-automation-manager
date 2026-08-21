@@ -830,33 +830,50 @@ is now complete. **0/41** have live verification.
     2136 removes only an RR whose rdata matches exactly) — a well-designed
     by-value delete at the protocol level itself, not merely a client-side
     convention.
-  - **Confirmed production defect, discovered directly through this
-    harness (not fixed here)**: `send_update()` computes
-    `$rcode = $flags & 0x000F`, strictly bounded to [0,15] — the classic
-    DNS header's 4-bit RCODE field — but the driver's own `$names` map
-    includes `16 => 'BADSIG'`, `17 => 'BADKEY'`, `18 => 'BADTIME'`, values
-    this mask can never produce. Two distinct severities, not one uniform
-    "dead code" finding:
-    - RCODE 16 (BADSIG) masks to exactly 0, which the preceding
-      `0 !== $rcode` check treats as NOERROR — a response whose header
-      RCODE field literally holds 16 is **silently accepted as a
-      successful update**, not detected as a signature rejection at all.
-      Proven by
-      `test_badsig_rcode_masks_to_zero_and_is_silently_treated_as_success()`.
-    - RCODE 17 (BADKEY) masks to 1 and RCODE 18 (BADTIME) masks to 2 —
-      both still throw (as FORMERR and SERVFAIL respectively, both
-      already-mapped names), just under a more generic name than intended.
-      Proven by
-      `test_badkey_and_badtime_rcode_names_are_unreachable_and_reported_generically()`.
-    - **[Unverified]**: whether any real, non-EDNS DNS server
-      implementation would ever actually place 16/17/18 in the classic
-      header RCODE field in the first place — RFC 8945 (TSIG)
-      conventionally reports signature/key/time errors via the TSIG RR's
-      own Error field, with the header RCODE commonly set to a classic
-      code like NOTAUTH(9) instead (which this driver already detects and
-      throws for correctly), and this driver never parses a response's
-      TSIG RR at all. The code-level gap is confirmed regardless of how
-      often a real server would trigger the RCODE-16 case specifically.
+  - **Confirmed dead/misleading code, noted by direct inspection, not a
+    live-tested scenario** (corrected 2026-08-21 after review — see the
+    correction bullet immediately below for what changed and why):
+    `send_update()` computes `$rcode = $flags & 0x000F`, mathematically
+    bounded to [0,15] by the mask alone — the classic DNS header's 4-bit
+    RCODE field. The driver's own `$names` map nonetheless includes
+    `16 => 'BADSIG'`, `17 => 'BADKEY'`, `18 => 'BADTIME'` — array keys this
+    mask can never select, since no bit pattern makes `$anything & 0x000F`
+    equal 16 or higher. This is an arithmetic fact about the `&` operator;
+    no wire-format test is needed or included to demonstrate it.
+  - **Correction, 2026-08-21**: this PR originally claimed a response
+    whose header "RCODE field literally holds 16" would have that value
+    silently masked to 0 and accepted as a successful update, proven by a
+    test that set `$flags |= 16` on a canned response. That claim was
+    incorrect and has been removed, along with the two tests that made it
+    (`test_badsig_rcode_masks_to_zero_and_is_silently_treated_as_success()`
+    and
+    `test_badkey_and_badtime_rcode_names_are_unreachable_and_reported_generically()`).
+    RCODE occupies bits 0-3 of the flags word; bit 4 is the unrelated CD
+    flag. `$flags |= 16` sets bit 4 only — it does not touch the RCODE
+    bits, so the "RCODE 16" response those tests constructed was a
+    perfectly ordinary NOERROR (RCODE 0) response throughout, and neither
+    test actually exercised a BADSIG scenario. A value of 16 cannot be
+    expressed in a 4-bit field by any bit manipulation; there is no
+    "adjacent bit" that inserts it.
+  - **Confirmed production defect, the corrected, substantive finding,
+    discovered directly through this harness (not fixed here)**:
+    `send_update()` reads only the first 4 bytes of a response (message ID
+    plus flags) and never parses any resource record it carries — so it
+    never inspects a response's TSIG RR at all, including that RR's own
+    Error field, which is where RFC 8945 (TSIG) actually represents
+    BADSIG/BADKEY/BADTIME. A TSIG rejection is still correctly detected
+    and thrown for at the header-RCODE level (a real server commonly sets
+    NOTAUTH for this), just without the more specific reason a real
+    server's TSIG RR would have carried in its Error field. Proven with a
+    genuine, wire-format-constructed TSIG RR (Error field set to BADSIG)
+    attached to a NOTAUTH response, confirming the exception message
+    contains the generic "NOTAUTH" the header carries but never the more
+    specific "BADSIG" the TSIG RR's Error field carries — by
+    `test_response_side_tsig_error_detail_is_never_inspected()`.
+    **[Unverified]**: how commonly real servers actually populate the TSIG
+    Error field on a rejection versus relying on the header RCODE alone —
+    the code-level blindness (this driver never reads that field under any
+    circumstance) is confirmed regardless.
   - **Pure-validation failures require no socket at all**: an unconfigured
     zone, an invalid-base64 TSIG secret, and a DNS label exceeding 63
     octets each throw before `exchange()` is ever called — proven without
