@@ -22,19 +22,30 @@
  * authorization failures, not an in-band 200 body) -- confirmed immune to
  * the auth-misdiagnosis defect for this dimension with high confidence.
  *
- * Confirmed production defect: delete_txt_record() issues an unconditional
- * DELETE of the entire TXT recordset at the resolved name -- it never reads
- * the recordset's current TXTRecords values, never compares against
- * $value, and the DELETE request carries no body at all. A TXT recordset
- * that happens to hold more than one value at the same name (e.g. a second,
- * unrelated TXT record, or a concurrent DNS-01 validation for another
- * certificate sharing that name) is destroyed in its entirety, not just
- * the single value this call was asked to remove.
- * [Unverified]: whether Azure DNS's ARM API offers a safer partial-update
- * mechanism (e.g. PATCH/PUT with a reduced TXTRecords array to remove only
- * one value) that this driver could have used instead of a full-recordset
- * DELETE. No operation-specific authoritative evidence currently confirms
- * or rules out such a mechanism for this driver's exact call shape.
+ * Confirmed production defects, bidirectional and avoidable -- the same
+ * risk shape as PowerDNS's REPLACE/DELETE (Batch 3), though the API and
+ * implementation differ:
+ * - create_txt_record() PUTs the record set with only the single new
+ *   challenge value -- no GET of the existing record set precedes it, so
+ *   PUT (which replaces the whole record set, not merges into it) can
+ *   silently overwrite an unrelated TXT value already present at the same
+ *   name.
+ * - delete_txt_record() issues an unconditional DELETE of the entire TXT
+ *   recordset at the resolved name -- it never reads the recordset's
+ *   current TXTRecords values, never compares against $value, and the
+ *   DELETE request carries no body at all.
+ * Both are avoidable, not architectural: Azure's Record Sets API documents
+ * GET (returns the complete record set, including TXTRecords) and PUT
+ * (updates the record set) as a pair, plus If-Match support using the
+ * record set's ETag to guard against overwriting a concurrent change --
+ * see https://learn.microsoft.com/en-us/rest/api/dns/record-sets/get?view=rest-dns-2018-05-01
+ * and https://learn.microsoft.com/en-us/rest/api/dns/record-sets/create-or-update?view=rest-dns-2018-05-01.
+ * A safe implementation could GET the record set, add/remove only the
+ * matching TXT value from TXTRecords, PUT the revised collection with
+ * If-Match set to the retrieved ETag, and fall back to a whole-recordset
+ * DELETE only once no values remain. Proven by
+ * test_create_replaces_the_entire_txt_recordset_without_reading_it_first()
+ * and test_delete_removes_the_entire_txt_recordset_without_checking_the_value().
  */
 
 declare( strict_types=1 );
@@ -167,6 +178,35 @@ class ProviderContractAzureTest extends Dns_Provider_Contract_TestCase {
 		$this->expectExceptionMessageMatches( '/Azure token request failed/' );
 
 		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+	}
+
+	// ── Provider-specific: confirmed destructive whole-recordset create/delete ──
+
+	public function test_create_replaces_the_entire_txt_recordset_without_reading_it_first(): void {
+		$provider = $this->make_provider();
+		$this->queue_successful_create();
+
+		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+
+		$requests = $this->captured_requests();
+		// Three requests total: the OAuth2 token POST, the zone list, then
+		// the PUT itself -- no GET of the specific TXT record set precedes
+		// the write.
+		$this->assertCount( 3, $requests );
+		$record_set_reads = array_filter(
+			$requests,
+			static fn( array $r ): bool => 'GET' === ( $r['args']['method'] ?? null ) && str_contains( (string) ( $r['url'] ?? '' ), '/TXT/_acme-challenge.www' )
+		);
+		$this->assertCount( 0, $record_set_reads, 'no GET of the existing TXT record set precedes the PUT -- an unrelated value already present there would never be seen, let alone preserved' );
+
+		$put_request = end( $requests );
+		$this->assertSame( 'PUT', $put_request['args']['method'] ?? null );
+		$body = $this->decoded_body( $put_request );
+		$this->assertSame(
+			array( array( 'value' => array( $this->record_value() ) ) ),
+			$body['properties']['TXTRecords'] ?? null,
+			'the PUT body contains only the new ACME value -- any pre-existing TXT value at this name is replaced, not merged with'
+		);
 	}
 
 	// ── Provider-specific: confirmed destructive whole-recordset delete ─────

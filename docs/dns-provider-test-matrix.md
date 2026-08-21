@@ -64,10 +64,10 @@ stubs; not yet verified against the live API" — never as "verified" or
 | njalla | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractNjallaTest`) | ❌ | 6 |
 | netcup | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractNetcupTest`) | ❌ | 6 |
 | alidns | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractAlidnsTest` -- see note, unvalidated write responses) | ❌ | 6 |
-| akamai | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAkamaiTest`) | ❌ | 7 |
+| akamai | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAkamaiTest` -- see note, destructive create/delete) | ❌ | 7 |
 | ovh | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractOvhTest`) | ❌ | 7 |
 | namecheap | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractNamecheapTest`) | ❌ | 7 |
-| azure | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAzureTest` -- see note, destructive delete) | ❌ | 7 |
+| azure | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAzureTest` -- see note, destructive create/delete) | ❌ | 7 |
 | mythicbeasts | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractMythicbeastsTest`) | ❌ | 7 |
 | inwx | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractInwxTest` -- see note, cookieless-login gap) | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
@@ -661,29 +661,57 @@ note). **0/41** have live verification.
 - **Batch 7 findings** (akamai, ovh, namecheap, azure, mythicbeasts,
   inwx — the final HTTP/API batch; only rfc2136 remains uncovered by a
   mocked-contract fixture after this batch):
-  - **Confirmed production defect — azure, destructive delete ignoring
-    `$value`**: `delete_txt_record()` issues an unconditional ARM `DELETE`
-    of the entire TXT recordset at the resolved name — no body, no
-    read-before-write, `$value` plays no part in the request at all.
-    Identical in shape to PowerDNS's (Batch 3) and Porkbun's (Batch 4)
-    destructive deletes, but a distinct finding for a distinct driver.
-    Proven by
-    `test_delete_removes_the_entire_txt_recordset_without_checking_the_value()`.
-    **[Unverified]**: whether Azure DNS's ARM API offers a safer
-    partial-update mechanism (e.g. a reduced-`TXTRecords` PUT) this driver
-    could use instead; no operation-specific evidence confirms or rules
-    this out.
-  - **Confirmed production defect — akamai, destructive delete ignoring
-    `$value`**, same shape as azure's: `delete_txt_record()` DELETEs the
-    whole recordset at `{zone}/names/{fqdn}/types/TXT` with `$value`
-    playing no part in the request. Mitigated in the common case by the
-    driver's own code comment ("ACME names are exclusively ours" — an
-    `_acme-challenge.*` name is unlikely to hold an unrelated coexisting
-    TXT value), but the defect is the same: a coexisting value at that
-    exact name would still be destroyed. Proven by
+  - **Confirmed production defects, bidirectional and avoidable — azure**
+    (upgraded from an initial delete-only, partly-`[Unverified]`
+    classification after review; the `[Unverified]` alternative-mechanism
+    language was wrong — a safer mechanism is directly documented):
+    - `create_txt_record()` PUTs the record set with only the single new
+      challenge value and no preceding GET of the existing record set —
+      since ARM's PUT replaces the whole record set rather than merging
+      into it, an unrelated TXT value already present at the same name is
+      silently overwritten. Proven by
+      `test_create_replaces_the_entire_txt_recordset_without_reading_it_first()`.
+    - `delete_txt_record()` issues an unconditional `DELETE` of the entire
+      TXT recordset at the resolved name — no body, no read-before-write,
+      `$value` plays no part in the request at all. Proven by
+      `test_delete_removes_the_entire_txt_recordset_without_checking_the_value()`.
+    - Both are avoidable: Azure's Record Sets API documents `GET` (returns
+      the complete record set, including `TXTRecords`) and `PUT` (updates
+      the record set) as a pair, plus `If-Match` using the record set's
+      ETag to guard against a concurrent overwrite — confirmed directly
+      against
+      [Azure Record Sets: Get](https://learn.microsoft.com/en-us/rest/api/dns/record-sets/get?view=rest-dns-2018-05-01)
+      and
+      [Azure Record Sets: Create or Update](https://learn.microsoft.com/en-us/rest/api/dns/record-sets/create-or-update?view=rest-dns-2018-05-01).
+      A safe implementation could GET the record set, add/remove only the
+      matching value from `TXTRecords`, PUT the revised collection with
+      `If-Match` set to the retrieved ETag, and fall back to a
+      whole-recordset DELETE only once no values remain. Identical in risk
+      shape to PowerDNS's (Batch 3) REPLACE/DELETE, though the API and
+      implementation differ.
+  - **Confirmed production defects, bidirectional and avoidable — akamai**
+    (same upgrade as azure's, for the same reason): `create_txt_record()`
+    PUTs `{zone}/names/{fqdn}/types/TXT` with only the single new value in
+    `rdata`, no preceding GET — PUT upserts (replaces) the whole record set
+    at that name+type. `delete_txt_record()` DELETEs the same whole
+    recordset with `$value` playing no part in the request. Mitigated in
+    the common case by the driver's own code comment ("ACME names are
+    exclusively ours" — an `_acme-challenge.*` name is unlikely to hold an
+    unrelated coexisting TXT value), but the defect is the same: a
+    coexisting value at that exact name would still be destroyed. Both are
+    avoidable: Akamai's Config DNS v2 API documents "Get a record set"
+    (the same path, GET, returning the current `rdata` array) alongside
+    "Replace a record set" (PUT to the same path) — confirmed directly
+    against
+    [techdocs.akamai.com/edge-dns/reference/get-zone-name-type](https://techdocs.akamai.com/edge-dns/reference/get-zone-name-type).
+    A safe implementation could GET the current `rdata`, add/remove only
+    the matching quoted value, PUT the revised array back, and fall back
+    to a whole-recordset DELETE only once no values remain — the same
+    read-filter-replace pattern Azure's API supports. Proven by
+    `test_create_replaces_the_entire_txt_recordset_without_reading_it_first()`
+    and
     `test_delete_removes_the_entire_txt_recordset_without_checking_the_value()`
-    in akamai's own fixture. **[Unverified]**: whether Akamai's Config DNS
-    v2 API offers a per-rdata-value removal mechanism instead.
+    in akamai's own fixture.
   - **Confirmed production defect — inwx, cookieless-successful-login
     permanently disables authentication**, a distinct code-level gap from
     the auth-misdiagnosis family above (though it produces the same

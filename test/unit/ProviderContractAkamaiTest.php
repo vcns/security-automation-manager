@@ -27,17 +27,32 @@
  * success purely from request_raw() not having thrown (i.e. HTTP status
  * alone). Proven directly by test_write_operations_never_read_the_response_body().
  *
- * Confirmed production defect: delete_txt_record() issues an unconditional
- * DELETE of the entire TXT recordset at {zone}/names/{fqdn}/types/TXT --
- * $value plays no part in the request at all, identical in shape to
- * Azure's whole-recordset delete. The class's own comment ("ACME names are
- * exclusively ours") argues this is lower-risk in the common case where
- * nothing else shares that exact `_acme-challenge.*` name, but the defect
- * is the same: a coexisting, unrelated TXT value at that exact name would
- * still be destroyed.
- * [Unverified]: whether Akamai's Config DNS v2 API offers a per-rdata-value
- * removal mechanism (rather than whole-recordset PUT/DELETE) that this
- * driver could have used instead.
+ * Confirmed production defects, bidirectional and avoidable -- the same
+ * risk shape as Azure's and PowerDNS's REPLACE/DELETE (Batch 3), though
+ * the API and implementation differ:
+ * - create_txt_record() PUTs {zone}/names/{fqdn}/types/TXT with only the
+ *   single new challenge value in `rdata` -- no GET of the existing
+ *   record set precedes it, and PUT upserts (replaces) the whole record
+ *   set at that name+type, so an unrelated TXT value already present at
+ *   the same name is silently overwritten.
+ * - delete_txt_record() issues an unconditional DELETE of the entire TXT
+ *   recordset at the same path -- $value plays no part in the request at
+ *   all. The class's own comment ("ACME names are exclusively ours")
+ *   argues this is lower-risk in the common case where nothing else
+ *   shares that exact `_acme-challenge.*` name, but the defect is the
+ *   same: a coexisting, unrelated TXT value at that exact name would
+ *   still be destroyed.
+ * Both are avoidable, not architectural: Akamai's Config DNS v2 API
+ * documents "Get a record set" (GET the same {zone}/names/{name}/types/
+ * {type} path, returning the current `rdata` array) alongside "Replace a
+ * record set" (PUT to the same path) -- see
+ * https://techdocs.akamai.com/edge-dns/reference/get-zone-name-type. A
+ * safe implementation could GET the current rdata, add/remove only the
+ * matching quoted value, PUT the revised array back, and fall back to a
+ * whole-recordset DELETE only once no values remain -- the same
+ * read-filter-replace pattern Azure's documented API supports. Proven by
+ * test_create_replaces_the_entire_txt_recordset_without_reading_it_first()
+ * and test_delete_removes_the_entire_txt_recordset_without_checking_the_value().
  */
 
 declare( strict_types=1 );
@@ -167,7 +182,33 @@ class ProviderContractAkamaiTest extends Dns_Provider_Contract_TestCase {
 		$this->assertCount( 4, $this->captured_requests() );
 	}
 
-	// ── Provider-specific: confirmed whole-recordset delete ignores $value ───
+	// ── Provider-specific: confirmed whole-recordset create/delete ───────────
+
+	public function test_create_replaces_the_entire_txt_recordset_without_reading_it_first(): void {
+		$provider = $this->make_provider();
+		$this->queue_successful_create();
+
+		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+
+		$requests = $this->captured_requests();
+		// Four requests total: the three zone candidates, then the PUT
+		// itself -- no GET of the specific TXT record set precedes the write.
+		$this->assertCount( 4, $requests );
+		$record_set_reads = array_filter(
+			$requests,
+			fn( array $r ): bool => 'GET' === ( $r['args']['method'] ?? null ) && str_contains( (string) ( $r['url'] ?? '' ), '/names/' . $this->fqdn() . '/types/TXT' )
+		);
+		$this->assertCount( 0, $record_set_reads, 'no GET of the existing TXT record set precedes the PUT -- an unrelated value already present there would never be seen, let alone preserved' );
+
+		$put_request = end( $requests );
+		$this->assertSame( 'PUT', $put_request['args']['method'] ?? null );
+		$body = json_decode( (string) ( $put_request['args']['body'] ?? '' ), true );
+		$this->assertSame(
+			array( '"' . $this->record_value() . '"' ),
+			$body['rdata'] ?? null,
+			'the PUT body contains only the new ACME value -- any pre-existing TXT value at this name is replaced, not merged with'
+		);
+	}
 
 	public function test_delete_removes_the_entire_txt_recordset_without_checking_the_value(): void {
 		$provider = $this->make_provider();
