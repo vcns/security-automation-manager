@@ -60,10 +60,10 @@ stubs; not yet verified against the live API" — never as "verified" or
 | cloudns | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractCloudnsTest`) | ❌ | 5 |
 | namesilo | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractNamesiloTest` -- see note, asymmetry confirmed NOT a defect) | ❌ | 5 |
 | dnspod | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractDnspodTest`) | ❌ | 5 |
-| glesys | ✅ | ⏳ not yet | ❌ | 6 |
-| njalla | ✅ | ⏳ not yet | ❌ | 6 |
-| netcup | ✅ | ⏳ not yet | ❌ | 6 |
-| alidns | ✅ | ⏳ not yet | ❌ | 6 |
+| glesys | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractGlesysTest`) | ❌ | 6 |
+| njalla | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractNjallaTest`) | ❌ | 6 |
+| netcup | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractNetcupTest`) | ❌ | 6 |
+| alidns | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractAlidnsTest` -- see note, unvalidated write responses) | ❌ | 6 |
 | akamai | ✅ | ⏳ not yet | ❌ | 7 |
 | ovh | ✅ | ⏳ not yet | ❌ | 7 |
 | namecheap | ✅ | ⏳ not yet | ❌ | 7 |
@@ -72,26 +72,37 @@ stubs; not yet verified against the live API" — never as "verified" or
 | inwx | ✅ | ⏳ not yet | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **30/41** have mocked-contract
+**41/41** have registry/metadata coverage. **34/41** have mocked-contract
 (request-level) coverage. **0/41** have live verification.
 
 ### Notes
 
 - **Auth-during-discovery misdiagnosis defect — complete, recalculated
-  classification across all 30 mocked-contract providers** (last
+  classification across all 34 mocked-contract providers** (last
   recalculated 2026-08-21, after a Batch 5 review correction; see the
   correction note immediately below for what changed and why). Every
   provider falls into exactly one of three groups:
 
-  - **Confirmed defect — 15 providers**: desec, gandi, godaddy, ns1
+  - **Confirmed defect — 17 providers**: desec, gandi, godaddy, ns1
     (Batch 1); digitalocean, vultr, namecom, easydns, vercel (Batch 2);
     dnsimple, dnsmadeeasy, porkbun (Batch 4); cloudns, namesilo, dnspod
-    (Batch 5). Two distinct code shapes produce the identical outcome:
+    (Batch 5); glesys, netcup (Batch 6). Two distinct code shapes produce
+    the identical outcome:
     - deSEC-style (desec/gandi/godaddy/ns1/digitalocean/vultr/namecom/
-      easydns/vercel/dnsimple/dnsmadeeasy/porkbun): `zone()` wraps every
-      per-candidate lookup in a try/catch that treats *any* response
-      status >= 400 as "not this candidate, try the next one." A genuine
+      easydns/vercel/dnsimple/dnsmadeeasy/porkbun/glesys/netcup): `zone()`
+      wraps every per-candidate lookup in a try/catch that treats *any*
+      response status >= 400 (or, for netcup, any thrown `call()` failure
+      — see below) as "not this candidate, try the next one." A genuine
       authentication failure (401/403) is caught identically to a 404.
+      glesys's own official Go client (`glesys-go`) confirms its API
+      signals failure via real HTTP status codes, so this is the standard
+      try/catch shape, not the in-band-body variant. netcup's `call()`
+      explicitly validates a `status` field in the body for every
+      operation (robust design), but a login failure inside its memoised
+      session pre-step — structurally identical to dnsimple's `whoami()`
+      (Batch 4) — is itself thrown from inside the same try/catch and
+      retried once per candidate exactly like dnsimple's, since the
+      session is only cached after a *non-throwing* login response.
     - ClouDNS-style (cloudns/namesilo/dnspod): `zone()` has *no*
       try/catch at all, but determines "found" via a plain body-content
       check (a substring search or a decoded status field) rather than
@@ -112,45 +123,57 @@ stubs; not yet verified against the live API" — never as "verified" or
 
     Proven precisely by
     `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
-    in each of the fifteen fixtures (asserts both the misleading message
-    text and that no write request is attempted), using each provider's
-    own authentic failure representation (a real HTTP 401/403 for the
-    deSEC-style group; the provider's own documented in-band 200-status
-    failure shape for the ClouDNS-style group). The same fix, if
-    authorised, would need to land across all fifteen drivers together,
-    with two different code changes depending on shape. Per the standing
-    rule, production defects are corrected only through an explicit
-    regression test plus a clearly disclosed, separate change — not
-    silently, and not mixed into batch coverage work.
-  - **Contrast finding, not a defect — 12 providers**: cloudflare,
+    in each of the seventeen fixtures (asserts both the misleading
+    message text and that no write request is attempted), using each
+    provider's own authentic failure representation (a real HTTP 401/403
+    for the deSEC-style group; the provider's own documented in-band
+    200-status failure shape for the ClouDNS-style group). The same fix,
+    if authorised, would need to land across all seventeen drivers
+    together, with two different code changes depending on shape. Per the
+    standing rule, production defects are corrected only through an
+    explicit regression test plus a clearly disclosed, separate change —
+    not silently, and not mixed into batch coverage work.
+  - **Contrast finding, not a defect — 14 providers**: cloudflare,
     route53, google-cloud (Phase 6B); scaleway (Batch 1); hetzner, bunny,
     domeneshop (Batch 2); ionos, linode, netlify, powerdns, dynu (Batch
-    3). Every one of these discovers its zone via a client-side filter
-    over a 200 response's body, or (ionos/linode/netlify/powerdns/dynu)
-    a single upfront enumeration, with *no* try/catch around the lookup
-    at all — confirmed directly against each provider's source. A
-    genuinely throwing HTTP-level error (401/403, or any status >= 400)
-    on the very first zone-discovery candidate therefore propagates
-    immediately and directly as the shared `request()`/`request_raw()`
-    helper's own distinct "API error (HTTP …)" message — it is never
-    retried against further candidates, and never collapsed into a "zone
-    not found" diagnostic. Proven by
+    3); njalla, alidns (Batch 6). Most of these discover their zone via a
+    client-side filter over a 200 response's body, or a single upfront
+    enumeration, with *no* try/catch around the lookup at all — confirmed
+    directly against each provider's source. njalla is additionally
+    well-designed against the ClouDNS-style risk specifically: its
+    single `list-domains` call has no try/catch, AND `call()` itself
+    explicitly checks for a JSON-RPC `"error"` key in the decoded body and
+    throws a distinct exception if present — converting any in-band
+    failure into a genuine, uncaught exception regardless of shape.
+    alidns is immune for this specific dimension based on Alibaba Cloud's
+    general documented convention that authentication/signature failures
+    use real HTTP status codes (403/400) — see alidns's own separate,
+    more significant confirmed defect below, which is unrelated to this
+    dimension. A genuinely throwing HTTP-level error (401/403, or any
+    status >= 400) on the very first zone-discovery candidate therefore
+    propagates immediately and directly as the shared
+    `request()`/`request_raw()` helper's own distinct "API error (HTTP
+    …)" message — it is never retried against further candidates, and
+    never collapsed into a "zone not found" diagnostic. Proven by
     `test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly()`
     (cloudns/namesilo/dnspod's fixtures; renamed from the prior,
-    overclaiming name after the correction below) and
+    overclaiming name after the correction below),
     `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
-    (the remaining fixtures in this group), deliberately included to
-    confirm the test framework distinguishes real defects from correct
-    behaviour rather than flagging every provider uniformly. Note this is
-    narrower than "immune to auth-misdiagnosis" for cloudns/namesilo/
-    dnspod specifically — see the correction below; it only holds when
-    the failure is a genuine HTTP-level status, which is not how those
-    three providers' real APIs represent an authentication failure.
+    (most of the remaining fixtures in this group), and
+    `test_an_in_band_json_rpc_error_during_zone_discovery_is_not_misreported()`
+    (njalla specifically, proving immunity to the in-band-failure risk
+    too), deliberately included to confirm the test framework
+    distinguishes real defects from correct behaviour rather than
+    flagging every provider uniformly. Note this immunity is narrower
+    than blanket safety for cloudns/namesilo/dnspod specifically — see
+    the correction below; it only holds when the failure is a genuine
+    HTTP-level status, which is not how those three providers' real APIs
+    represent an authentication failure.
   - **No applicable mechanism — 3 providers**: acmedns, dreamhost, joker
     (Batch 5) — none has a zone-discovery request resembling either shape
     above (see the dedicated note below for each).
 
-  15 + 12 + 3 = 30, all mocked-contract providers accounted for.
+  17 + 14 + 3 = 34, all mocked-contract providers accounted for.
 
 - **Correction, 2026-08-21**: cloudns, namesilo, and dnspod were
   originally classified as contrast-group (immune), based on the true but
@@ -526,6 +549,73 @@ stubs; not yet verified against the live API" — never as "verified" or
     REPLACE/DELETE (Batch 3) but via Joker's own simpler, single-value
     Dynamic-DNS-style protocol — no records list or record ID exists at
     all for this provider.
+- **alidns, unvalidated write responses** (Batch 6, not fixed here,
+  unrelated to the pagination finding below — keep separate). Split
+  precisely into what is confirmed and what remains open, per review
+  correction (2026-08-21 — the initial classification conflated the two):
+  - **Confirmed defect**: `create_txt_record()`'s `AddDomainRecord` call
+    and the specific `DeleteDomainRecord` call inside
+    `delete_txt_record()` (the write that performs the actual deletion)
+    both discard their responses entirely — neither checks the field
+    Alibaba Cloud documents in a successful response (`RecordId` for
+    both operations —
+    [AddDomainRecord](https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-adddomainrecord),
+    [DeleteDomainRecord](https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-deletedomainrecord)).
+    This is not true of every operation this driver makes — `zone()`'s
+    `GetMainDomainName` call does validate (throws if `DomainName` is
+    absent), and `delete_txt_record()`'s own `DescribeDomainRecords` call
+    does inspect its documented response shape (reads the `Record` array
+    and filters by `RR`/`Value`). Only the two write calls skip validating
+    their documented success field. Concretely: a malformed or unexpected
+    HTTP 200 response to either write call is silently accepted as
+    success. Proven directly by
+    `test_create_accepts_an_unexpected_2xx_response_without_validating_it()`
+    and
+    `test_delete_accepts_an_unexpected_2xx_response_without_validating_it()`,
+    both of which use a deliberately malformed-shaped body to demonstrate
+    the missing validation, not to assert AliDNS genuinely returns that
+    specific body.
+  - **[Unverified]**: whether AliDNS's `AddDomainRecord`/
+    `DeleteDomainRecord` operations specifically can also return a
+    *business-error* body (`Code`/`Message` fields, Alibaba Cloud's
+    general documented error shape —
+    [alibabacloud.com/help/en/doc-detail/25491.html](https://www.alibabacloud.com/help/en/doc-detail/25491.html))
+    at HTTP 200, as opposed to the 4xx status their signature/auth
+    failures are confirmed to use (which is what makes alidns immune
+    specifically to the auth-during-discovery dimension above — a
+    separate dimension from this finding). Alibaba Cloud's own
+    documentation notes this "may vary by service" and no
+    DNS-operation-specific confirmation either way could be established.
+    This is a separate, unconfirmed question from the validation gap
+    above — the code-level absence of validation is confirmed regardless
+    of whether this specific response shape is ever actually returned in
+    practice.
+- **Batch 6 pagination findings, verified per provider against current
+  authoritative documentation**:
+  - **No pagination mechanism applicable — glesys**: confirmed directly
+    against GleSYS's own API documentation
+    ([github.com/GleSYS/API-docs wiki](https://github.com/GleSYS/API-docs/wiki/API-Documentation)) —
+    `domain/listrecords` documents no page parameter or pagination
+    metadata at all, in explicit contrast to other GleSYS endpoints (e.g.
+    `email/overview`) which do document a `page` parameter and `meta`
+    pagination info.
+  - **[Unverified] — njalla**: Njalla's `list-records` documentation
+    requires an authenticated account to access in full; no accessible
+    public source could confirm or rule out a pagination mechanism for
+    this endpoint.
+  - **No pagination mechanism applicable — netcup**: netcup's own
+    documentation describes `infoDnsRecords` as "Obtain all DNS records
+    of a zone"
+    ([netcup.com/en/helpcenter/documentation/domain/our-api](https://netcup.com/en/helpcenter/documentation/domain/our-api)) —
+    no page/limit parameter documented anywhere for this operation.
+  - **Confirmed pagination defect — alidns**: `DescribeDomainRecords`
+    documents `PageNumber` (default 1) and `PageSize` (default 20,
+    maximum 500)
+    ([alibabacloud.com/help/en/dns/api-alidns-2015-01-09-describedomainrecords](https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-describedomainrecords),
+    verified directly). The driver's call is already filtered by
+    `RRKeyWord`/`TypeKeyWord`, narrowing results, but sends neither
+    pagination parameter, so the mechanism is confirmed to exist and go
+    unused.
 - **rfc2136**: out of scope for the HTTP-transport contract framework —
   it speaks raw DNS over `stream_socket_client()`, never any `wp_remote_*`
   function, so `Dns_Provider_Contract_TestCase` does not apply. One real
