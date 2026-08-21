@@ -77,38 +77,99 @@ stubs; not yet verified against the live API" — never as "verified" or
 
 ### Notes
 
-- **desec, gandi, godaddy, ns1, digitalocean, vultr, namecom, easydns,
-  vercel** (confirmed production defect, not fixed in the test-only Batch
-  1/Batch 2 PRs): each driver's `zone()` wraps every per-candidate lookup
-  in a try/catch that treats *any* response status >= 400 as "not this
-  candidate, try the next one." An authentication failure (401/403) during
-  zone discovery is therefore indistinguishable from a genuine 404 and,
-  once every candidate is exhausted, surfaces as the same generic
-  "no domain/zone found for {fqdn}" diagnostic a real zone-not-found would
-  produce — discarding the actual cause. An operator with a revoked or
-  mis-scoped token sees a message suggesting a DNS/zone configuration
-  problem, not an authentication problem. Proven precisely by
-  `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
-  in each of the nine fixtures (asserts both the misleading message text
-  and that no write request is attempted). Batch 2 confirms this is a
-  recurring pattern across the try/catch-shaped zone-discovery family, not
-  an isolated Batch 1 issue — the same fix, if authorised, would need to
-  land across all nine drivers together. Per the standing rule, production
-  defects are corrected only through an explicit regression test plus a
-  clearly disclosed, separate change — not silently, and not mixed into
-  batch coverage work.
-- **hetzner, bunny, domeneshop** (contrast finding, not a defect): these
-  three drivers discover their zone via a client-side filter over a 200
-  response's body (matching Cloudflare's/Scaleway's shape) with *no*
-  try/catch around the lookup at all. A 401/403 on the very first
-  zone-discovery candidate therefore propagates immediately and directly
-  as the shared `request()` helper's own distinct "API error (HTTP 401)"
-  message — it is never retried against further candidates, and never
-  collapsed into a "zone not found" diagnostic. Proven by
-  `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
-  in each of the three fixtures, deliberately included to confirm the test
-  framework distinguishes real defects from correct behaviour rather than
-  flagging every provider uniformly.
+- **Auth-during-discovery misdiagnosis defect — complete, recalculated
+  classification across all 30 mocked-contract providers** (last
+  recalculated 2026-08-21, after a Batch 5 review correction; see the
+  correction note immediately below for what changed and why). Every
+  provider falls into exactly one of three groups:
+
+  - **Confirmed defect — 15 providers**: desec, gandi, godaddy, ns1
+    (Batch 1); digitalocean, vultr, namecom, easydns, vercel (Batch 2);
+    dnsimple, dnsmadeeasy, porkbun (Batch 4); cloudns, namesilo, dnspod
+    (Batch 5). Two distinct code shapes produce the identical outcome:
+    - deSEC-style (desec/gandi/godaddy/ns1/digitalocean/vultr/namecom/
+      easydns/vercel/dnsimple/dnsmadeeasy/porkbun): `zone()` wraps every
+      per-candidate lookup in a try/catch that treats *any* response
+      status >= 400 as "not this candidate, try the next one." A genuine
+      authentication failure (401/403) is caught identically to a 404.
+    - ClouDNS-style (cloudns/namesilo/dnspod): `zone()` has *no*
+      try/catch at all, but determines "found" via a plain body-content
+      check (a substring search or a decoded status field) rather than
+      relying on an HTTP-level exception. These three providers'
+      real-world APIs represent an authentication failure as an HTTP 200
+      response with the failure encoded in the body (ClouDNS:
+      `{"status":"Failed",...}`; NameSilo: a non-`300` `<code>`; DNSPod:
+      `status.code` other than `1`, with `-1` specifically documented as
+      "Login fails") — exactly the shape each zone() check treats as "not
+      this candidate," so the failure falls through silently (no
+      exception at all) rather than being caught. The end result is
+      identical: once every candidate is exhausted, both shapes collapse
+      into the same generic "no domain/zone found for {fqdn}" diagnostic
+      a real zone-not-found would produce, discarding the actual cause.
+      An operator with a revoked or mis-scoped credential sees a message
+      suggesting a DNS/zone configuration problem, not an authentication
+      problem.
+
+    Proven precisely by
+    `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
+    in each of the fifteen fixtures (asserts both the misleading message
+    text and that no write request is attempted), using each provider's
+    own authentic failure representation (a real HTTP 401/403 for the
+    deSEC-style group; the provider's own documented in-band 200-status
+    failure shape for the ClouDNS-style group). The same fix, if
+    authorised, would need to land across all fifteen drivers together,
+    with two different code changes depending on shape. Per the standing
+    rule, production defects are corrected only through an explicit
+    regression test plus a clearly disclosed, separate change — not
+    silently, and not mixed into batch coverage work.
+  - **Contrast finding, not a defect — 12 providers**: cloudflare,
+    route53, google-cloud (Phase 6B); scaleway (Batch 1); hetzner, bunny,
+    domeneshop (Batch 2); ionos, linode, netlify, powerdns, dynu (Batch
+    3). Every one of these discovers its zone via a client-side filter
+    over a 200 response's body, or (ionos/linode/netlify/powerdns/dynu)
+    a single upfront enumeration, with *no* try/catch around the lookup
+    at all — confirmed directly against each provider's source. A
+    genuinely throwing HTTP-level error (401/403, or any status >= 400)
+    on the very first zone-discovery candidate therefore propagates
+    immediately and directly as the shared `request()`/`request_raw()`
+    helper's own distinct "API error (HTTP …)" message — it is never
+    retried against further candidates, and never collapsed into a "zone
+    not found" diagnostic. Proven by
+    `test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly()`
+    (cloudns/namesilo/dnspod's fixtures; renamed from the prior,
+    overclaiming name after the correction below) and
+    `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
+    (the remaining fixtures in this group), deliberately included to
+    confirm the test framework distinguishes real defects from correct
+    behaviour rather than flagging every provider uniformly. Note this is
+    narrower than "immune to auth-misdiagnosis" for cloudns/namesilo/
+    dnspod specifically — see the correction below; it only holds when
+    the failure is a genuine HTTP-level status, which is not how those
+    three providers' real APIs represent an authentication failure.
+  - **No applicable mechanism — 3 providers**: acmedns, dreamhost, joker
+    (Batch 5) — none has a zone-discovery request resembling either shape
+    above (see the dedicated note below for each).
+
+  15 + 12 + 3 = 30, all mocked-contract providers accounted for.
+
+- **Correction, 2026-08-21**: cloudns, namesilo, and dnspod were
+  originally classified as contrast-group (immune), based on the true but
+  incomplete observation that each has no try/catch in `zone()`. Review
+  established that immunity from a *caught* exception does not imply
+  immunity from the defect overall: these three providers' real APIs
+  represent authentication failures as HTTP 200 responses with the
+  failure encoded in the body, which is exactly the shape each zone()
+  check already treats as "not this candidate" — the same misdiagnosis
+  results, just via silent fall-through rather than a caught exception.
+  Reclassified as confirmed-defect (see above); the original 401-based
+  tests were kept (renamed, not deleted) since they still correctly prove
+  a narrower, genuinely-distinct fact — that a real HTTP-level error is
+  not misdiagnosed — and new tests were added using each provider's
+  actual documented in-band failure shape to prove the real defect. This
+  also surfaced that cloudflare, route53, google-cloud, and scaleway had
+  never been explicitly named in this matrix's contrast-group list, even
+  though they share that exact shape (verified directly against their
+  source in this same review) — they are now listed above.
 - **Batch 2 pagination findings, verified per provider against each
   API's current authoritative documentation** (2026-08-20) rather than
   treated as one uniform limitation. `delete_txt_record()`'s record-listing
@@ -201,11 +262,11 @@ stubs; not yet verified against the live API" — never as "verified" or
   `request()` helper's own "API error (HTTP …)" message — never retried,
   never collapsed into a "zone/domain not found" diagnostic. Proven by
   `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
-  in each of the five fixtures. This means **12 of 21** mocked-contract
-  providers so far use a discovery shape immune to the Batch 1/2
-  auth-misdiagnosis defect (hetzner, bunny, domeneshop + these five), and
-  **9 of 21** share the defect (desec, gandi, godaddy, ns1, digitalocean,
-  vultr, namecom, easydns, vercel).
+  in each of the five fixtures. (Historical note: this bullet's original
+  "12 of 21 immune / 9 of 21 share it" running total is superseded by the
+  complete, recalculated classification and totals in the dedicated
+  auth-misdiagnosis note near the top of this section — that total is
+  authoritative, not this one.)
 - **Confirmed production defect — powerdns, destructive, not merely an
   architectural consequence** (not fixed here; unrelated to, and must not
   be conflated with, powerdns's separate "no applicable mechanism" finding
@@ -394,7 +455,8 @@ stubs; not yet verified against the live API" — never as "verified" or
   at `class-provider-namesilo.php:56` (`delete_txt_record()` matches
   `<host>` against the full fqdn while `create_txt_record()` submits a
   zone-relative name via `rrhost`). Investigated directly against two
-  independent primary sources: `dnsAddRecord`'s `rrhost` parameter is
+  independent pieces of primary-source evidence from NameSilo's own
+  official API documentation: `dnsAddRecord`'s `rrhost` parameter is
   documented as relative-only ("there is no need to include the
   '.DOMAIN'", namesilo.com/api-reference, dns/dns-add-record), while
   `dnsListRecords`' own official example response shows the returned
@@ -410,19 +472,6 @@ stubs; not yet verified against the live API" — never as "verified" or
   which confirms the full-fqdn match is deliberate and exact (a scenario
   NameSilo's real API does not actually produce). No production defect is
   logged for this finding.
-- **cloudns, namesilo, dnspod** (Batch 5, contrast finding, extends
-  Hetzner/Bunny/Domeneshop/IONOS/Linode/Netlify/PowerDNS/Dynu): all three
-  drivers use `Dns_Provider::request_raw()` with a body/text-content
-  "found" check (a substring search or a decoded status field) and have
-  *no try/catch anywhere in zone()* — confirmed by direct code inspection.
-  Since `request_raw()` throws directly on any HTTP status >= 400, a
-  genuine authentication failure during discovery propagates immediately
-  and distinctly, never retried across candidates and never collapsed
-  into a "zone/domain not found" diagnostic. This brings the contrast
-  group to **15 of 30** mocked-contract providers immune to the
-  auth-misdiagnosis defect; **12 of 30** still share it (unchanged list
-  from Batch 4). Proven per provider by
-  `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`.
 - **Confirmed pagination defects — cloudns, dnspod** (Batch 5, verified
   against current authoritative documentation): cloudns's "List records"
   endpoint documents `rows-per-page` (10/20/30/50/100) and `page`

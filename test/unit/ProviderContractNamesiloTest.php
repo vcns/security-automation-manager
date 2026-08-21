@@ -7,20 +7,37 @@
  * Shape: Dns_Provider::request_raw() (raw XML body, "key" credential as a
  * query parameter), zone discovery via a per-candidate GET whose "found"
  * determination is a substring search for `<code>300</code>` -- no
- * try/catch anywhere in zone(). Since request_raw() throws directly on
- * any HTTP status >= 400, and nothing catches that exception here, a
- * genuine authentication failure during discovery propagates immediately
- * and distinctly -- confirmed by direct code inspection, joining the
- * established contrast group (Hetzner/Bunny/Domeneshop/IONOS/Linode/
- * Netlify/PowerDNS/Dynu/ClouDNS). zone() reads the response body (the
- * substring check), so response_body_is_validated_on_success() stays at
- * its default true.
+ * try/catch anywhere in zone(). response_body_is_validated_on_success()
+ * stays at its default true, since zone() reads the response body
+ * directly.
+ *
+ * CORRECTED classification (this file previously, incorrectly, called
+ * NameSilo immune to the auth-misdiagnosis defect): the absence of a
+ * try/catch only means a genuine HTTP-level error (status >= 400)
+ * propagates distinctly, since request_raw() throws before zone() ever
+ * sees a body -- proven narrowly by
+ * test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly()
+ * below. NameSilo's own API represents an authentication failure as an
+ * HTTP 200 response body containing a non-300 `<code>` (this fixture
+ * already uses `<code>150</code>`, "Invalid API key," for the write-stage
+ * auth-failure case below), which is *exactly* the shape zone()'s
+ * substring check treats as "not this candidate" -- falling through
+ * silently, with no exception at all, to the next candidate. Once every
+ * candidate is exhausted this collapses into the identical generic
+ * "no domain found for {fqdn}" diagnostic a real zone-not-found would
+ * produce -- NameSilo therefore DOES share the established
+ * auth-misdiagnosis defect (deSEC et al.), just via a different mechanism
+ * (silent fall-through rather than a caught exception) than the
+ * try/catch-shaped family. Proven by
+ * test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()
+ * below.
  *
  * INVESTIGATION -- the previously flagged create/delete naming asymmetry
  * (create_txt_record() sends relative_name() as "rrhost"; delete_txt_record()
  * matches "<host>{$fqdn}</host>" using the FULL fqdn) is CONFIRMED CORRECT,
- * not a production defect, verified against two independent primary
- * sources:
+ * not a production defect, verified against two independent pieces of
+ * primary-source evidence from NameSilo's own official API
+ * documentation:
  *   - dnsAddRecord's "rrhost" parameter is documented as accepting a
  *     RELATIVE hostname: "there is no need to include the '.DOMAIN'"
  *     (namesilo.com/api-reference, dns/dns-add-record) -- matches
@@ -187,9 +204,10 @@ class ProviderContractNamesiloTest extends Dns_Provider_Contract_TestCase {
 		$this->assertCount( 4, $requests, 'a resource_record whose <host> is only the relative name does not match the full-fqdn check, so no DELETE request is made -- this is not exercised by NameSilo\'s real API, which always returns the fully qualified host' );
 	}
 
-	// ── Provider-specific: discovery-stage auth failure is NOT misreported ───
+	// ── Provider-specific: a genuine HTTP-level error is NOT misreported ─────
+	// (a narrower finding than overall immunity -- see class docblock)
 
-	public function test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found(): void {
+	public function test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->xml_response( 401, 'Unauthorized' ),
@@ -204,5 +222,26 @@ class ProviderContractNamesiloTest extends Dns_Provider_Contract_TestCase {
 		}
 
 		$this->assertCount( 1, $this->captured_requests(), 'with no try/catch around zone(), a rejected first candidate must not be retried against further candidates' );
+	}
+
+	// ── Provider-specific: confirmed auth-misdiagnosis defect (realistic) ────
+
+	public function test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found(): void {
+		$provider           = $this->make_provider();
+		$invalid_key_reply = $this->reply( '150', '<detail>Invalid API key</detail>' );
+		$GLOBALS['_wp_remote_request_response_queue'] = array(
+			$this->xml_response( 200, $invalid_key_reply ),
+			$this->xml_response( 200, $invalid_key_reply ),
+			$this->xml_response( 200, $invalid_key_reply ),
+		);
+
+		try {
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->fail( 'expected an exception when every zone-discovery candidate reports an invalid API key' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertStringContainsString( 'no domain found', $e->getMessage() );
+		}
+
+		$this->assertCount( 3, $this->captured_requests(), 'an authentication failure reported in-band (HTTP 200 with a non-300 code) during zone discovery must not proceed to a write request' );
 	}
 }

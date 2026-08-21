@@ -9,14 +9,29 @@
  * discovery via a per-candidate GET whose "found" determination is a
  * plain substring search (`str_contains($body, '"name"') &&
  * !str_contains($body, '"Failed"')`) with NO try/catch anywhere in
- * zone(). Since request_raw() throws directly on any HTTP status >= 400,
- * and nothing in zone() catches that exception, a genuine authentication
- * failure during discovery propagates immediately and distinctly --
- * confirmed by direct code inspection (no try/catch exists to swallow it),
- * joining the established contrast group (Hetzner/Bunny/Domeneshop/
- * IONOS/Linode/Netlify/PowerDNS/Dynu). zone() reads the response body (the
- * substring check), so response_body_is_validated_on_success() stays at
- * its default true.
+ * zone(). response_body_is_validated_on_success() stays at its default
+ * true, since zone() reads the response body directly.
+ *
+ * CORRECTED classification (this file previously, incorrectly, called
+ * ClouDNS immune to the auth-misdiagnosis defect): the absence of a
+ * try/catch only means a genuine HTTP-level error (status >= 400)
+ * propagates distinctly, since request_raw() throws before zone() ever
+ * sees a body -- proven narrowly by
+ * test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly()
+ * below. ClouDNS's own documented API convention represents an
+ * authentication failure as an HTTP 200 response with
+ * `{"status":"Failed",...}` in the body
+ * (https://www.cloudns.net/wiki/article/57/), which is *exactly* the
+ * shape zone()'s substring check treats as "not this candidate" --
+ * falling through silently, with no exception at all, to the next
+ * candidate. Once every candidate is exhausted this collapses into the
+ * identical generic "no zone found for {fqdn}" diagnostic a real
+ * zone-not-found would produce -- ClouDNS therefore DOES share the
+ * established auth-misdiagnosis defect (deSEC et al.), just via a
+ * different mechanism (silent fall-through rather than a caught
+ * exception) than the try/catch-shaped family. Proven by
+ * test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()
+ * below.
  *
  * Confirmed production defect, not fixed here: ClouDNS's "List records"
  * endpoint (records.json) documents `rows-per-page` (10/20/30/50/100) and
@@ -198,9 +213,10 @@ class ProviderContractCloudnsTest extends Dns_Provider_Contract_TestCase {
 		$this->assertCount( 4, $requests, 'the driver never requests rows-per-page/page, so a record beyond the default page is silently left undeleted' );
 	}
 
-	// ── Provider-specific: discovery-stage auth failure is NOT misreported ───
+	// ── Provider-specific: a genuine HTTP-level error is NOT misreported ─────
+	// (a narrower finding than overall immunity -- see class docblock)
 
-	public function test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found(): void {
+	public function test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->raw_response( 401, 'Unauthorized' ),
@@ -215,5 +231,26 @@ class ProviderContractCloudnsTest extends Dns_Provider_Contract_TestCase {
 		}
 
 		$this->assertCount( 1, $this->captured_requests(), 'with no try/catch around zone(), a rejected first candidate must not be retried against further candidates' );
+	}
+
+	// ── Provider-specific: confirmed auth-misdiagnosis defect (realistic) ────
+
+	public function test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found(): void {
+		$provider          = $this->make_provider();
+		$auth_failure_body = '{"status":"Failed","statusDescription":"Invalid login or password."}';
+		$GLOBALS['_wp_remote_request_response_queue'] = array(
+			$this->raw_response( 200, $auth_failure_body ),
+			$this->raw_response( 200, $auth_failure_body ),
+			$this->raw_response( 200, $auth_failure_body ),
+		);
+
+		try {
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->fail( 'expected an exception when every zone-discovery candidate reports an authentication failure' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertStringContainsString( 'no zone found', $e->getMessage() );
+		}
+
+		$this->assertCount( 3, $this->captured_requests(), 'an authentication failure reported in-band (HTTP 200 with a "Failed" status) during zone discovery must not proceed to a write request' );
 	}
 }

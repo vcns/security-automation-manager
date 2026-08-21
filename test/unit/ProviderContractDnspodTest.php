@@ -8,17 +8,34 @@
  * response manually decoded in call()), "login_token" credential built as
  * "{token_id},{token}" in the body. Zone discovery via a per-candidate
  * call whose "found" determination checks a decoded `status.code` field
- * -- no try/catch anywhere in zone(). Since request_raw() throws directly
- * on any HTTP status >= 400, and nothing catches that exception here, a
- * genuine authentication failure during discovery propagates immediately
- * and distinctly -- confirmed by direct code inspection, joining the
- * established contrast group (Hetzner/Bunny/Domeneshop/IONOS/Linode/
- * Netlify/PowerDNS/Dynu/ClouDNS/NameSilo). zone() reads the decoded body
- * (the status.code check), so response_body_is_validated_on_success()
- * stays at its default true. call()'s own json_decode() coerces an
- * unparseable body to an empty array rather than throwing, so a malformed
- * response is indistinguishable from a "status.code missing" response --
- * both fall through to the next candidate identically.
+ * -- no try/catch anywhere in zone(). response_body_is_validated_on_success()
+ * stays at its default true, since zone() reads the decoded body directly.
+ * call()'s own json_decode() coerces an unparseable body to an empty
+ * array rather than throwing, so a malformed response is indistinguishable
+ * from a "status.code missing" response -- both fall through to the next
+ * candidate identically.
+ *
+ * CORRECTED classification (this file previously, incorrectly, called
+ * DNSPod immune to the auth-misdiagnosis defect): the absence of a
+ * try/catch only means a genuine HTTP-level error (status >= 400)
+ * propagates distinctly, since request_raw() throws before zone() ever
+ * sees a body -- proven narrowly by
+ * test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly()
+ * below. DNSPod's own API documents `status.code = -1` as "Login fails"
+ * (https://docs.dnspod.com/api-legacy/info.html, verified directly), an
+ * HTTP 200 response that is *exactly* the shape zone()'s `'1' ===
+ * $body['status']['code']` check treats as "not this candidate" --
+ * falling through silently, with no exception at all, to the next
+ * candidate (this fixture's own `queue_zone_not_found()` already uses
+ * this identical code, coincidentally, without having been labelled as
+ * an authentication scenario). Once every candidate is exhausted this
+ * collapses into the identical generic "no domain found for {fqdn}"
+ * diagnostic a real zone-not-found would produce -- DNSPod therefore DOES
+ * share the established auth-misdiagnosis defect (deSEC et al.), just via
+ * a different mechanism (silent fall-through rather than a caught
+ * exception) than the try/catch-shaped family. Proven by
+ * test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()
+ * below.
  *
  * Confirmed production defect, not fixed here: DNSPod's Record.List
  * endpoint documents `offset`/`length` pagination, returning at most 500
@@ -183,9 +200,10 @@ class ProviderContractDnspodTest extends Dns_Provider_Contract_TestCase {
 		$this->assertCount( 4, $requests, 'the driver never sends offset/length, so a record beyond the default 500-record response is silently left undeleted' );
 	}
 
-	// ── Provider-specific: discovery-stage auth failure is NOT misreported ───
+	// ── Provider-specific: a genuine HTTP-level error is NOT misreported ─────
+	// (a narrower finding than overall immunity -- see class docblock)
 
-	public function test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found(): void {
+	public function test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			array( 'response' => array( 'code' => 401 ), 'body' => 'Unauthorized' ),
@@ -200,5 +218,27 @@ class ProviderContractDnspodTest extends Dns_Provider_Contract_TestCase {
 		}
 
 		$this->assertCount( 1, $this->captured_requests(), 'with no try/catch around zone(), a rejected first candidate must not be retried against further candidates' );
+	}
+
+	// ── Provider-specific: confirmed auth-misdiagnosis defect (realistic) ────
+
+	public function test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found(): void {
+		$provider = $this->make_provider();
+		// -1 is DNSPod's documented "Login fails" code
+		// (docs.dnspod.com/api-legacy/info.html) -- an HTTP 200 response.
+		$GLOBALS['_wp_remote_request_response_queue'] = array(
+			$this->raw_response( 200, $this->dnspod_status( '-1', 'Login fails' ) ),
+			$this->raw_response( 200, $this->dnspod_status( '-1', 'Login fails' ) ),
+			$this->raw_response( 200, $this->dnspod_status( '-1', 'Login fails' ) ),
+		);
+
+		try {
+			$provider->create_txt_record( $this->fqdn(), $this->record_value() );
+			$this->fail( 'expected an exception when every zone-discovery candidate reports a login failure' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertStringContainsString( 'no domain found', $e->getMessage() );
+		}
+
+		$this->assertCount( 3, $this->captured_requests(), 'an authentication failure reported in-band (HTTP 200 with status.code -1) during zone discovery must not proceed to a write request' );
 	}
 }
