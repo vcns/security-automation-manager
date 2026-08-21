@@ -4,7 +4,8 @@
  *
  * Writes lifecycle events to three destinations:
  *   1. sam_audit_log table - append-only, immutable record (R10). Never UPDATEd or DELETEd.
- *   2. wp_options FIFO queue (max 20) - for transient admin notice display only.
+ *   2. wp_options queue (max 20, de-duplicated per component/event) - for
+ *      transient admin notice display only.
  *   3. PHP error_log - for warnings and errors.
  *
  * Scan lifecycle records go to sam_scan_logs via start_scan() / finish_scan().
@@ -158,6 +159,18 @@ class Audit_Log {
 
 	// ── Admin notices ─────────────────────────────────────────────────────────
 
+	/**
+	 * Recurring conditions (e.g. an hourly rate-limit hit) re-log on the
+	 * same component/event on every occurrence. display_admin_notices()
+	 * only drains this queue when an admin actually visits wp-admin, so
+	 * without de-duplication a condition recurring for days before that
+	 * next visit would dump one near-identical banner per occurrence --
+	 * confirmed in production, 2026-08-21: 15+ hash_budget_exceeded /
+	 * hash_learning_rate_limited notices from several days of unattended
+	 * hourly recurrences appearing at once. Replacing the existing queued
+	 * entry for the same component/event keeps at most one notice per
+	 * event type, always reflecting its latest occurrence.
+	 */
 	private function push_admin_notice( array $entry ): void {
 		if ( 'info' === $entry['severity'] ) {
 			return; // Only surface warnings and errors.
@@ -168,6 +181,14 @@ class Audit_Log {
 			$notices = array();
 		}
 
+		$key = $entry['component'] . '/' . $entry['event'];
+		foreach ( $notices as $index => $existing ) {
+			if ( ( $existing['component'] ?? '' ) . '/' . ( $existing['event'] ?? '' ) === $key ) {
+				unset( $notices[ $index ] );
+			}
+		}
+
+		$notices   = array_values( $notices );
 		$notices[] = $entry;
 
 		// Cap at 20 notices to prevent unbounded option growth.
