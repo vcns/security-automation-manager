@@ -8,7 +8,7 @@ Stable tag: 2.9.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Roll out and enforce CSP, HSTS, X-Frame-Options, Referrer-Policy, and other security headers safely, with violation reports plus free ACME (Let's Encrypt) SSL/TLS certificate automation for WordPress.
+Roll out and enforce CSP, HSTS, X-Frame-Options headers with violation reports; free ACME/Let's Encrypt SSL/TLS certificate automation.
 
 == Description ==
 

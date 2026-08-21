@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
- * Description:       Rolls out and enforces Content Security Policy (CSP), HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy, and other security headers via guided, report-based automation with violation analysis, plus free ACME (Let's Encrypt) SSL/TLS certificate issuance and renewal, for WordPress.
+ * Description:       Roll out and enforce CSP, HSTS, X-Frame-Options headers with violation reports; free ACME/Let's Encrypt SSL/TLS certificate automation.
  * Version:           2.9.20
  * Requires at least: 6.4
  * Requires PHP:      8.1
