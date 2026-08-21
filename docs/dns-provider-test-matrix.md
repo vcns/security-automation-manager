@@ -64,37 +64,38 @@ stubs; not yet verified against the live API" — never as "verified" or
 | njalla | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractNjallaTest`) | ❌ | 6 |
 | netcup | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractNetcupTest`) | ❌ | 6 |
 | alidns | ✅ | ✅ (Phase 6C Batch 6, `ProviderContractAlidnsTest` -- see note, unvalidated write responses) | ❌ | 6 |
-| akamai | ✅ | ⏳ not yet | ❌ | 7 |
-| ovh | ✅ | ⏳ not yet | ❌ | 7 |
-| namecheap | ✅ | ⏳ not yet | ❌ | 7 |
-| azure | ✅ | ⏳ not yet | ❌ | 7 |
-| mythicbeasts | ✅ | ⏳ not yet | ❌ | 7 |
-| inwx | ✅ | ⏳ not yet | ❌ | 7 |
+| akamai | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAkamaiTest`) | ❌ | 7 |
+| ovh | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractOvhTest`) | ❌ | 7 |
+| namecheap | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractNamecheapTest`) | ❌ | 7 |
+| azure | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractAzureTest` -- see note, destructive delete) | ❌ | 7 |
+| mythicbeasts | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractMythicbeastsTest`) | ❌ | 7 |
+| inwx | ✅ | ✅ (Phase 6C Batch 7, `ProviderContractInwxTest` -- see note, cookieless-login gap) | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **34/41** have mocked-contract
-(request-level) coverage. **0/41** have live verification.
+**41/41** have registry/metadata coverage. **40/41** have mocked-contract
+(request-level) coverage — every provider except rfc2136 (partial, see
+note). **0/41** have live verification.
 
 ### Notes
 
 - **Auth-during-discovery misdiagnosis defect — complete, recalculated
-  classification across all 34 mocked-contract providers** (last
-  recalculated 2026-08-21, after a Batch 5 review correction; see the
-  correction note immediately below for what changed and why). Every
+  classification across all 40 mocked-contract providers** (last
+  recalculated 2026-08-21, after Batch 7; see the correction note below
+  the Batch 5 entry for the last classification-changing review). Every
   provider falls into exactly one of three groups:
 
-  - **Confirmed defect — 17 providers**: desec, gandi, godaddy, ns1
+  - **Confirmed defect — 19 providers**: desec, gandi, godaddy, ns1
     (Batch 1); digitalocean, vultr, namecom, easydns, vercel (Batch 2);
     dnsimple, dnsmadeeasy, porkbun (Batch 4); cloudns, namesilo, dnspod
-    (Batch 5); glesys, netcup (Batch 6). Two distinct code shapes produce
-    the identical outcome:
+    (Batch 5); glesys, netcup (Batch 6); akamai, namecheap (Batch 7). Three
+    distinct code shapes produce the identical outcome:
     - deSEC-style (desec/gandi/godaddy/ns1/digitalocean/vultr/namecom/
-      easydns/vercel/dnsimple/dnsmadeeasy/porkbun/glesys/netcup): `zone()`
-      wraps every per-candidate lookup in a try/catch that treats *any*
-      response status >= 400 (or, for netcup, any thrown `call()` failure
-      — see below) as "not this candidate, try the next one." A genuine
-      authentication failure (401/403) is caught identically to a 404.
-      glesys's own official Go client (`glesys-go`) confirms its API
+      easydns/vercel/dnsimple/dnsmadeeasy/porkbun/glesys/netcup/akamai):
+      `zone()` wraps every per-candidate lookup in a try/catch that treats
+      *any* response status >= 400 (or, for netcup, any thrown `call()`
+      failure — see below) as "not this candidate, try the next one." A
+      genuine authentication failure (401/403) is caught identically to a
+      404. glesys's own official Go client (`glesys-go`) confirms its API
       signals failure via real HTTP status codes, so this is the standard
       try/catch shape, not the in-band-body variant. netcup's `call()`
       explicitly validates a `status` field in the body for every
@@ -103,6 +104,11 @@ stubs; not yet verified against the live API" — never as "verified" or
       (Batch 4) — is itself thrown from inside the same try/catch and
       retried once per candidate exactly like dnsimple's, since the
       session is only cached after a *non-throwing* login response.
+      akamai's EdgeGrid-signed `GET /config-dns/v2/zones/{candidate}`
+      check is the same shape, and additionally never reads any response
+      body anywhere in the driver (zone/create/delete all discard their
+      return value, deciding success purely from whether `signed()`
+      threw) — proven by `test_write_operations_never_read_the_response_body()`.
     - ClouDNS-style (cloudns/namesilo/dnspod): `zone()` has *no*
       try/catch at all, but determines "found" via a plain body-content
       check (a substring search or a decoded status field) rather than
@@ -120,46 +126,82 @@ stubs; not yet verified against the live API" — never as "verified" or
       An operator with a revoked or mis-scoped credential sees a message
       suggesting a DNS/zone configuration problem, not an authentication
       problem.
+    - Namecheap-style (namecheap only, Batch 7) — a third, distinct
+      mechanism: `zone()` has no try/catch either, and needs none, because
+      Namecheap's XML API always returns HTTP 200 regardless of the
+      logical outcome — `request_raw()` itself never throws for an
+      in-band API-level failure. Every failure, including an invalid API
+      key or a non-whitelisted client IP, is represented identically to
+      "this candidate isn't a domain in this account": a body containing
+      `Status="ERROR"`. zone()'s only check,
+      `str_contains($body, 'Status="OK"')`, cannot distinguish the two.
+      Unlike the ClouDNS-style shape, this isn't a try/catch-adjacent
+      body-content check standing in for an HTTP exception — it's the
+      *only* mechanism this API exposes for reporting failure at all.
+      Distinctly, a genuine HTTP-level failure (5xx, or a transport
+      WP_Error) is NOT subject to this — `zone()` has nothing to catch it
+      with, so it propagates immediately and distinctly, proven by
+      `test_a_genuine_http_failure_during_discovery_propagates_directly_unlike_an_in_band_auth_error()`.
 
     Proven precisely by
     `test_authentication_failure_during_zone_discovery_is_misreported_as_zone_not_found()`
-    in each of the seventeen fixtures (asserts both the misleading
-    message text and that no write request is attempted), using each
-    provider's own authentic failure representation (a real HTTP 401/403
-    for the deSEC-style group; the provider's own documented in-band
-    200-status failure shape for the ClouDNS-style group). The same fix,
-    if authorised, would need to land across all seventeen drivers
-    together, with two different code changes depending on shape. Per the
-    standing rule, production defects are corrected only through an
+    in each deSEC-style and ClouDNS-style fixture (including akamai's own
+    copy of that same test), and by
+    `test_authentication_failure_during_zone_discovery_is_misreported_as_no_manageable_domain_found()`
+    for namecheap specifically (asserts both the misleading message
+    text and that no write request is attempted), using each provider's
+    own authentic failure representation (a real HTTP 401/403 for the
+    deSEC-style group; the provider's own documented in-band 200-status
+    failure shape for the ClouDNS-style and Namecheap-style groups). The
+    same fix, if authorised, would need to land across all nineteen
+    drivers together, with different code changes depending on shape. Per
+    the standing rule, production defects are corrected only through an
     explicit regression test plus a clearly disclosed, separate change —
     not silently, and not mixed into batch coverage work.
-  - **Contrast finding, not a defect — 14 providers**: cloudflare,
+  - **Contrast finding, not a defect — 18 providers**: cloudflare,
     route53, google-cloud (Phase 6B); scaleway (Batch 1); hetzner, bunny,
     domeneshop (Batch 2); ionos, linode, netlify, powerdns, dynu (Batch
-    3); njalla, alidns (Batch 6). Most of these discover their zone via a
-    client-side filter over a 200 response's body, or a single upfront
-    enumeration, with *no* try/catch around the lookup at all — confirmed
-    directly against each provider's source. njalla is additionally
-    well-designed against the ClouDNS-style risk specifically: its
-    single `list-domains` call has no try/catch, AND `call()` itself
-    explicitly checks for a JSON-RPC `"error"` key in the decoded body and
-    throws a distinct exception if present — converting any in-band
-    failure into a genuine, uncaught exception regardless of shape.
-    alidns is immune for this specific dimension based on Alibaba Cloud's
-    general documented convention that authentication/signature failures
-    use real HTTP status codes (403/400) — see alidns's own separate,
-    more significant confirmed defect below, which is unrelated to this
-    dimension. A genuinely throwing HTTP-level error (401/403, or any
-    status >= 400) on the very first zone-discovery candidate therefore
-    propagates immediately and directly as the shared
-    `request()`/`request_raw()` helper's own distinct "API error (HTTP
-    …)" message — it is never retried against further candidates, and
-    never collapsed into a "zone not found" diagnostic. Proven by
+    3); njalla, alidns (Batch 6); ovh, azure, mythicbeasts, inwx (Batch
+    7). Most of these discover their zone via a client-side filter over a
+    200 response's body, or a single upfront enumeration, with *no*
+    try/catch around the lookup at all — confirmed directly against each
+    provider's source. njalla is additionally well-designed against the
+    ClouDNS-style risk specifically: its single `list-domains` call has no
+    try/catch, AND `call()` itself explicitly checks for a JSON-RPC
+    `"error"` key in the decoded body and throws a distinct exception if
+    present — converting any in-band failure into a genuine, uncaught
+    exception regardless of shape. alidns is immune for this specific
+    dimension based on Alibaba Cloud's general documented convention that
+    authentication/signature failures use real HTTP status codes
+    (403/400) — see alidns's own separate, more significant confirmed
+    defect below, which is unrelated to this dimension. ovh's immunity
+    rests on multiple independent reports of OVH's real API returning
+    genuine HTTP 401/403/400 for signature/consumer-key failures (e.g.
+    `ovh/php-ovh` GitHub issues showing `"httpCode":"403 Forbidden"` for
+    `INVALID_CREDENTIAL`); azure's rests on Azure Resource Manager's
+    well-documented standard error-response convention (real HTTP 401/403
+    for authentication/authorization failures); mythicbeasts's and inwx's
+    each rest on standard OAuth2 Bearer-token semantics (RFC 6750) for
+    rejecting an invalid/expired token via genuine HTTP 401. inwx has no
+    try/catch anywhere in `zone()` either, but for a different reason than
+    ovh/azure/mythicbeasts: a genuine login failure throws from inside
+    `login()`, called as a side effect of the very first `rpc()`, before
+    `zone()`'s per-candidate loop (which doesn't exist as a try/catch to
+    begin with) ever runs — see inwx's own separate, distinct
+    cookieless-login defect below, which shares the same *outcome*
+    (misdiagnosis) via a different mechanism than either family above. A
+    genuinely throwing HTTP-level error (401/403, or any status >= 400) on
+    the very first zone-discovery candidate therefore propagates
+    immediately and directly as the shared `request()`/`request_raw()`
+    helper's own distinct "API error (HTTP …)" message — it is never
+    retried against further candidates, and never collapsed into a "zone
+    not found" diagnostic. Proven by
     `test_a_genuine_http_level_error_during_zone_discovery_surfaces_distinctly()`
     (cloudns/namesilo/dnspod's fixtures; renamed from the prior,
     overclaiming name after the correction below),
     `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`
-    (most of the remaining fixtures in this group), and
+    (most of the remaining fixtures in this group, including ovh, azure,
+    and mythicbeasts), and
     `test_an_in_band_json_rpc_error_during_zone_discovery_is_not_misreported()`
     (njalla specifically, proving immunity to the in-band-failure risk
     too), deliberately included to confirm the test framework
@@ -173,7 +215,7 @@ stubs; not yet verified against the live API" — never as "verified" or
     (Batch 5) — none has a zone-discovery request resembling either shape
     above (see the dedicated note below for each).
 
-  17 + 14 + 3 = 34, all mocked-contract providers accounted for.
+  19 + 18 + 3 = 40, all mocked-contract providers accounted for.
 
 - **Correction, 2026-08-21**: cloudns, namesilo, and dnspod were
   originally classified as contrast-group (immune), based on the true but
@@ -616,6 +658,108 @@ stubs; not yet verified against the live API" — never as "verified" or
     `RRKeyWord`/`TypeKeyWord`, narrowing results, but sends neither
     pagination parameter, so the mechanism is confirmed to exist and go
     unused.
+- **Batch 7 findings** (akamai, ovh, namecheap, azure, mythicbeasts,
+  inwx — the final HTTP/API batch; only rfc2136 remains uncovered by a
+  mocked-contract fixture after this batch):
+  - **Confirmed production defect — azure, destructive delete ignoring
+    `$value`**: `delete_txt_record()` issues an unconditional ARM `DELETE`
+    of the entire TXT recordset at the resolved name — no body, no
+    read-before-write, `$value` plays no part in the request at all.
+    Identical in shape to PowerDNS's (Batch 3) and Porkbun's (Batch 4)
+    destructive deletes, but a distinct finding for a distinct driver.
+    Proven by
+    `test_delete_removes_the_entire_txt_recordset_without_checking_the_value()`.
+    **[Unverified]**: whether Azure DNS's ARM API offers a safer
+    partial-update mechanism (e.g. a reduced-`TXTRecords` PUT) this driver
+    could use instead; no operation-specific evidence confirms or rules
+    this out.
+  - **Confirmed production defect — akamai, destructive delete ignoring
+    `$value`**, same shape as azure's: `delete_txt_record()` DELETEs the
+    whole recordset at `{zone}/names/{fqdn}/types/TXT` with `$value`
+    playing no part in the request. Mitigated in the common case by the
+    driver's own code comment ("ACME names are exclusively ours" — an
+    `_acme-challenge.*` name is unlikely to hold an unrelated coexisting
+    TXT value), but the defect is the same: a coexisting value at that
+    exact name would still be destroyed. Proven by
+    `test_delete_removes_the_entire_txt_recordset_without_checking_the_value()`
+    in akamai's own fixture. **[Unverified]**: whether Akamai's Config DNS
+    v2 API offers a per-rdata-value removal mechanism instead.
+  - **Confirmed production defect — inwx, cookieless-successful-login
+    permanently disables authentication**, a distinct code-level gap from
+    the auth-misdiagnosis family above (though it produces the same
+    outward symptom): `rpc()` only overwrites `$this->cookie` when the
+    login response actually carries a `Set-Cookie` header. A login
+    response with a genuine success `code` (1000) but no `Set-Cookie`
+    header leaves `$cookie` at its permanently-cached empty-string
+    sentinel (assigned by `login()` before its own nested call, "so login
+    itself does not recurse") — not `null` — so `login()` is never retried
+    for the rest of the instance's lifetime, and every subsequent request
+    carries an empty `Cookie` header, which the real server would treat as
+    unauthenticated. Proven at the code level by
+    `test_a_cookieless_successful_login_response_permanently_disables_authentication()`.
+    **[Unverified]**: whether INWX's real API can actually produce this
+    exact combination (a documented success code with no session cookie
+    attached) on any real request path.
+  - **Contrast finding, not a defect — ovh, well-designed list-then-verify
+    delete**: `delete_txt_record()` lists candidate record IDs filtered by
+    `fieldType`/`subDomain`, fetches each candidate individually, and
+    checks its `target` field against `$value` before deleting — genuine
+    per-value discrimination, not a whole-recordset delete. Proven by
+    `test_delete_verifies_the_target_value_before_deleting_by_id()`.
+  - **Contrast finding, not a defect — mythicbeasts, well-designed
+    exact-match delete**: `delete_txt_record()` passes host, record type,
+    and the TXT value itself as path/query parameters to a single DELETE
+    call the API documents as matching all three server-side — no
+    client-side list-then-verify step exists or is needed. Proven by
+    `test_delete_targets_the_exact_host_type_and_value_not_the_whole_recordset()`.
+  - **Contrast finding, not a defect — inwx, well-designed list-then-
+    verify delete**: `delete_txt_record()` lists records via
+    `nameserver.info` and only calls `nameserver.deleteRecord` for the one
+    whose `content` matches `$value` — the same safe pattern as ovh's.
+    Proven by
+    `test_delete_only_removes_the_record_whose_content_matches_the_value()`.
+  - **Contrast finding, not a defect — namecheap, refuses to write on a
+    failed read**: `modify_hosts()`'s read-modify-write never calls
+    `setHosts` (which replaces the *entire* host list at the domain) if
+    its own `getHosts` call didn't return `Status="OK"` — the driver's own
+    docblock states the reasoning ("a partial read must never wipe a
+    zone"), and this is verified directly, not merely asserted: a failed
+    read at the write stage throws distinctly and `setHosts` is never
+    called. Proven by
+    `test_a_failed_get_hosts_during_the_write_step_refuses_to_call_set_hosts()`.
+    Noted but not scored as a defect: `modify_hosts()` re-fetches
+    `getHosts` for the winning zone candidate a second time (zone()'s own
+    matching call already confirmed `Status="OK"` for that exact SLD/TLD
+    pair moments earlier) — a redundant, mildly wasteful round trip, not a
+    functional defect.
+  - **[Unverified] — ovh pagination**: no accessible authoritative
+    documentation for the legacy v1.0 `/domain/zone/{zone}/record`
+    endpoint's pagination behaviour could be located (OVH's newer v2 API
+    documents cursor pagination via response headers, but this endpoint is
+    part of the older, still-current v1.0 API family this driver calls).
+  - **[Unverified] — azure zone-list pagination**: Azure Resource Manager
+    documents a general `nextLink` convention for large list responses
+    across its APIs, but no operation-specific confirmation that
+    `dnsZones?api-version=2018-05-01` actually paginates was established
+    in this batch's research; `zone()` reads only `value` and never checks
+    for a `nextLink` field.
+  - **[Unverified] — mythicbeasts zone-list pagination**: no accessible
+    documentation confirming or ruling out pagination on `GET /zones` was
+    located.
+  - **[Unverified] — inwx nameserver.info pagination**: no
+    operation-specific documentation for `nameserver.info`'s record-list
+    behaviour was located; the only reachable reference described a
+    different method (`nameserver.list`, for listing *domains*, not
+    records within one domain) defaulting to a 20-entry limit, giving no
+    confidence it applies to the endpoint this driver actually calls.
+  - **No pagination mechanism applicable — akamai**: `delete_txt_record()`
+    addresses the recordset directly by `{zone}/names/{fqdn}/types/TXT` —
+    there is no records-list call to paginate at all.
+  - **No pagination mechanism applicable — namecheap**: `getHosts` returns
+    every host at the domain in a single response; Namecheap's XML API
+    documents no page/limit parameter for this call, consistent with the
+    driver's own read-modify-write design (a partial host list would
+    itself be unsafe to write back).
 - **rfc2136**: out of scope for the HTTP-transport contract framework —
   it speaks raw DNS over `stream_socket_client()`, never any `wp_remote_*`
   function, so `Dns_Provider_Contract_TestCase` does not apply. One real

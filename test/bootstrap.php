@@ -380,6 +380,12 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_generate_uuid4' ) ) {
+	function wp_generate_uuid4(): string {
+		return $GLOBALS['_wp_generate_uuid4_response'] ?? 'fixture-0000-0000-0000-000000000000';
+	}
+}
+
 if ( ! function_exists( 'wp_rand' ) ) {
 	function wp_rand( int $min = 0, int $max = 0 ): int {
 		return random_int( $min, max( $min, $max ) ?: PHP_INT_MAX );
