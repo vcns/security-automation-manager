@@ -549,31 +549,47 @@ stubs; not yet verified against the live API" — never as "verified" or
     REPLACE/DELETE (Batch 3) but via Joker's own simpler, single-value
     Dynamic-DNS-style protocol — no records list or record ID exists at
     all for this provider.
-- **Confirmed production defect — alidns, unvalidated write responses**
-  (Batch 6, not fixed here, unrelated to the pagination finding below —
-  keep separate): `call()` never validates the decoded response body for
-  success on *any* operation — it returns whatever JSON decodes to (or an
-  empty array if it doesn't decode), with no check for Alibaba Cloud's
-  own documented error-response shape (`Code`/`Message` fields,
-  [alibabacloud.com/help/en/doc-detail/25491.html](https://www.alibabacloud.com/help/en/doc-detail/25491.html)).
-  `zone()`'s own check (whether `DomainName` is present) incidentally
-  validates the zone-resolution step only; `create_txt_record()`'s
-  `AddDomainRecord` call and `delete_txt_record()`'s `DeleteDomainRecord`
-  call discard their responses entirely. Concretely: a genuine
-  business-error response at HTTP 200 (e.g. `DomainRecordDuplicate`,
-  `DomainRecordNotBelongToUser`) would be silently treated as success.
-  Proven directly by `test_create_does_not_detect_a_2xx_business_error_response()`
-  and `test_delete_does_not_detect_a_2xx_business_error_response()`.
-  **[Unverified]**: whether AliDNS's real `AddDomainRecord`/
-  `DeleteDomainRecord`/`DescribeDomainRecords` operations specifically can
-  return such a 2xx business-error response in practice — Alibaba Cloud's
-  own documentation notes this behaviour "may vary by service" and no
-  DNS-specific confirmation either way could be established; only
-  authentication/signature failures are confirmed to use real HTTP status
-  codes for Alibaba Cloud APIs generally, which is what makes alidns
-  immune specifically to the auth-during-discovery dimension above. The
-  code-level absence of any response validation is confirmed regardless
-  of that uncertainty.
+- **alidns, unvalidated write responses** (Batch 6, not fixed here,
+  unrelated to the pagination finding below — keep separate). Split
+  precisely into what is confirmed and what remains open, per review
+  correction (2026-08-21 — the initial classification conflated the two):
+  - **Confirmed defect**: `create_txt_record()`'s `AddDomainRecord` call
+    and the specific `DeleteDomainRecord` call inside
+    `delete_txt_record()` (the write that performs the actual deletion)
+    both discard their responses entirely — neither checks the field
+    Alibaba Cloud documents in a successful response (`RecordId` for
+    both operations —
+    [AddDomainRecord](https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-adddomainrecord),
+    [DeleteDomainRecord](https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-deletedomainrecord)).
+    This is not true of every operation this driver makes — `zone()`'s
+    `GetMainDomainName` call does validate (throws if `DomainName` is
+    absent), and `delete_txt_record()`'s own `DescribeDomainRecords` call
+    does inspect its documented response shape (reads the `Record` array
+    and filters by `RR`/`Value`). Only the two write calls skip validating
+    their documented success field. Concretely: a malformed or unexpected
+    HTTP 200 response to either write call is silently accepted as
+    success. Proven directly by
+    `test_create_accepts_an_unexpected_2xx_response_without_validating_it()`
+    and
+    `test_delete_accepts_an_unexpected_2xx_response_without_validating_it()`,
+    both of which use a deliberately malformed-shaped body to demonstrate
+    the missing validation, not to assert AliDNS genuinely returns that
+    specific body.
+  - **[Unverified]**: whether AliDNS's `AddDomainRecord`/
+    `DeleteDomainRecord` operations specifically can also return a
+    *business-error* body (`Code`/`Message` fields, Alibaba Cloud's
+    general documented error shape —
+    [alibabacloud.com/help/en/doc-detail/25491.html](https://www.alibabacloud.com/help/en/doc-detail/25491.html))
+    at HTTP 200, as opposed to the 4xx status their signature/auth
+    failures are confirmed to use (which is what makes alidns immune
+    specifically to the auth-during-discovery dimension above — a
+    separate dimension from this finding). Alibaba Cloud's own
+    documentation notes this "may vary by service" and no
+    DNS-operation-specific confirmation either way could be established.
+    This is a separate, unconfirmed question from the validation gap
+    above — the code-level absence of validation is confirmed regardless
+    of whether this specific response shape is ever actually returned in
+    practice.
 - **Batch 6 pagination findings, verified per provider against current
   authoritative documentation**:
   - **No pagination mechanism applicable — glesys**: confirmed directly

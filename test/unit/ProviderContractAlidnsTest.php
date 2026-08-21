@@ -19,27 +19,42 @@
  * below.
  *
  * SEPARATE, more significant confirmed production defect, not fixed
- * here: call() never validates the decoded response body for
- * success/failure on ANY operation -- it simply returns whatever JSON
- * decodes to (or an empty array if it doesn't decode), with no check for
- * Alibaba Cloud's own documented error-response shape ("in most cases an
- * error response contains an error code and an error message" --
- * Code/Message fields, alibabacloud.com/help/en/doc-detail/25491.html).
- * zone()'s own check (whether "DomainName" is present in the response)
- * incidentally catches this for the *zone-resolution* step only;
- * create_txt_record()'s AddDomainRecord call and delete_txt_record()'s
- * DeleteDomainRecord call discard their responses entirely without
- * checking for success at all. Concretely: if AddDomainRecord or
- * DeleteDomainRecord ever returns a 2xx HTTP response containing a
- * Code/Message business-error body (Alibaba Cloud's documentation notes
- * this "may vary by service", and no DNS-specific confirmation either way
- * could be established -- logged as [Unverified] whether this specific
- * scenario is realistic for AliDNS's create/delete operations
- * specifically), create_txt_record()/delete_txt_record() would report
- * success even though nothing was actually created or removed. Proven
- * precisely by test_create_does_not_detect_a_2xx_business_error_response()
- * below. response_body_is_validated_on_success() is false for this
- * reason (create's own response is never inspected).
+ * here, split into what is confirmed versus what remains open:
+ *
+ * CONFIRMED: create_txt_record()'s AddDomainRecord call and the specific
+ * DeleteDomainRecord call inside delete_txt_record() (the write that
+ * performs the actual deletion) both discard their responses entirely --
+ * neither checks the field Alibaba Cloud documents in a successful
+ * response (`RecordId` for both operations --
+ * alibabacloud.com/help/en/dns/api-alidns-2015-01-09-adddomainrecord and
+ * .../api-alidns-2015-01-09-deletedomainrecord). This is not true of
+ * every operation this driver makes: zone()'s GetMainDomainName call
+ * DOES validate (throws if "DomainName" is absent), and
+ * delete_txt_record()'s own DescribeDomainRecords call DOES inspect its
+ * documented response shape (reads the Record array and filters by
+ * RR/Value to decide what to delete). Only the two write calls --
+ * AddDomainRecord and the final DeleteDomainRecord -- skip validating
+ * their documented success field entirely. Concretely: a malformed or
+ * unexpected HTTP 200 response to either call is silently accepted as
+ * success. Proven precisely by
+ * test_create_accepts_an_unexpected_2xx_response_without_validating_it()
+ * and test_delete_accepts_an_unexpected_2xx_response_without_validating_it()
+ * below, both of which use a deliberately malformed-shaped body to
+ * demonstrate the missing validation -- not to assert that AliDNS
+ * genuinely returns that specific body. response_body_is_validated_on_success()
+ * is false for this reason (create's own response is never inspected).
+ *
+ * [Unverified]: whether AliDNS's AddDomainRecord/DeleteDomainRecord
+ * operations specifically can also return a *business-error* body
+ * (Code/Message fields, Alibaba Cloud's general documented error shape --
+ * alibabacloud.com/help/en/doc-detail/25491.html) at HTTP 200, as
+ * opposed to the 4xx status their signature/auth failures are confirmed
+ * to use. Alibaba Cloud's own documentation notes this "may vary by
+ * service" and no DNS-operation-specific confirmation either way could
+ * be established. This is a separate, unconfirmed question from the
+ * validation gap above -- the code-level absence of validation is
+ * confirmed regardless of whether this specific response shape is ever
+ * actually returned in practice.
  *
  * Confirmed pagination defect: DescribeDomainRecords documents
  * PageNumber (default 1) and PageSize (default 20, maximum 500)
@@ -198,29 +213,37 @@ class ProviderContractAlidnsTest extends Dns_Provider_Contract_TestCase {
 	}
 
 	// ── Provider-specific: confirmed defect -- unvalidated write responses ───
+	// These tests demonstrate that an unexpected HTTP 200 response body is
+	// silently accepted by the write calls, without asserting that AliDNS
+	// genuinely returns this specific body shape for these operations --
+	// see the [Unverified] note in the class docblock.
 
-	public function test_create_does_not_detect_a_2xx_business_error_response(): void {
+	public function test_create_accepts_an_unexpected_2xx_response_without_validating_it(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->zone_resolution_response(),
-			// A genuine Alibaba Cloud business-error shape (Code/Message),
-			// but at HTTP 200 -- call() never checks for this at all.
+			// An unexpected body shape (Alibaba Cloud's general documented
+			// error fields, Code/Message) at HTTP 200 -- AddDomainRecord's
+			// documented success field ("RecordId") is absent, but call()
+			// never checks for it at all.
 			$this->raw_response( 200, array( 'Code' => 'DomainRecordDuplicate', 'Message' => 'The specified DNS record already exists.' ) ),
 		);
 
-		// Must NOT throw -- this is the confirmed defect: a genuine
-		// business-level failure, reported at 2xx, is silently treated as
-		// success because create_txt_record() never inspects the response.
+		// Must NOT throw -- this is the confirmed defect: an unexpected
+		// HTTP 200 response, missing the documented "RecordId" success
+		// field, is silently treated as success because create_txt_record()
+		// never inspects the response.
 		$provider->create_txt_record( $this->fqdn(), $this->record_value() );
 
 		$this->assertCount( 2, $this->captured_requests() );
 	}
 
-	public function test_delete_does_not_detect_a_2xx_business_error_response(): void {
+	public function test_delete_accepts_an_unexpected_2xx_response_without_validating_it(): void {
 		$provider = $this->make_provider();
 		$GLOBALS['_wp_remote_request_response_queue'] = array(
 			$this->zone_resolution_response(),
 			$this->raw_response( 200, array( 'DomainRecords' => array( 'Record' => array( array( 'RecordId' => 'rec-9001', 'RR' => '_acme-challenge.www', 'Value' => $this->record_value() ) ) ) ) ),
+			// Same as above, applied to the final DeleteDomainRecord call.
 			$this->raw_response( 200, array( 'Code' => 'DomainRecordNotBelongToUser', 'Message' => 'The domain record does not belong to this user.' ) ),
 		);
 
