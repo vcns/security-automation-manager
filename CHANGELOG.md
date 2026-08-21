@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.20] - 2026-08-21
+
+### Fixed
+
+- Admin notice queue (`Audit_Log::push_admin_notice()`) now de-duplicates by component/event instead of appending every occurrence unconditionally. `display_admin_notices()` only drains the queue when an admin actually visits wp-admin, so a condition that keeps re-logging while unattended (e.g. an hourly rate-limit hit) previously dumped one near-identical banner per occurrence on the next visit -- confirmed in production, 2026-08-21 (staging.alltimetech.co.uk): 15+ `hash_budget_exceeded`/`hash_learning_rate_limited` notices appearing at once after several days without an admin visit. The queue now keeps at most one notice per event type, always reflecting its latest occurrence; the 20-entry cap and the permanent `sam_audit_log` DB record are both unaffected.
+
 ## [2.9.19] - 2026-08-20
 
 ### Changed
