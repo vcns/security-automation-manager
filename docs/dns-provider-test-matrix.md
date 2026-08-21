@@ -54,12 +54,12 @@ stubs; not yet verified against the live API" — never as "verified" or
 | dnsimple | ✅ | ✅ (Phase 6C Batch 4, `ProviderContractDnsimpleTest`) | ❌ | 4 |
 | dnsmadeeasy | ✅ | ✅ (Phase 6C Batch 4, `ProviderContractDnsmadeeasyTest`) | ❌ | 4 |
 | porkbun | ✅ | ✅ (Phase 6C Batch 4, `ProviderContractPorkbunTest`) | ❌ | 4 |
-| acmedns | ✅ | ⏳ not yet | ❌ | 5 |
-| dreamhost | ✅ | ⏳ not yet | ❌ | 5 |
-| joker | ✅ | ⏳ not yet | ❌ | 5 |
-| cloudns | ✅ | ⏳ not yet | ❌ | 5 |
-| namesilo | ✅ | ⏳ not yet (see note) | ❌ | 5 |
-| dnspod | ✅ | ⏳ not yet | ❌ | 5 |
+| acmedns | ✅ | ✅ (Phase 6C Batch 5, `AcmednsProviderTest` -- bespoke, see note) | ❌ | 5 |
+| dreamhost | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractDreamhostTest`) | ❌ | 5 |
+| joker | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractJokerTest`) | ❌ | 5 |
+| cloudns | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractCloudnsTest`) | ❌ | 5 |
+| namesilo | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractNamesiloTest` -- see note, asymmetry confirmed NOT a defect) | ❌ | 5 |
+| dnspod | ✅ | ✅ (Phase 6C Batch 5, `ProviderContractDnspodTest`) | ❌ | 5 |
 | glesys | ✅ | ⏳ not yet | ❌ | 6 |
 | njalla | ✅ | ⏳ not yet | ❌ | 6 |
 | netcup | ✅ | ⏳ not yet | ❌ | 6 |
@@ -72,7 +72,7 @@ stubs; not yet verified against the live API" — never as "verified" or
 | inwx | ✅ | ⏳ not yet | ❌ | 7 |
 | rfc2136 | ✅ | ⚠️ partial — see note | ❌ | separate |
 
-**41/41** have registry/metadata coverage. **24/41** have mocked-contract
+**41/41** have registry/metadata coverage. **30/41** have mocked-contract
 (request-level) coverage. **0/41** have live verification.
 
 ### Notes
@@ -389,14 +389,94 @@ stubs; not yet verified against the live API" — never as "verified" or
   defect rather than an architectural limitation. Proven by
   `test_delete_uses_delete_by_name_type_and_ignores_the_provided_value()`
   and `test_delete_never_lists_or_retrieves_records_first()`.
-- **namesilo**: the Phase 6C classification pass flagged a possible
-  create/delete asymmetry at `includes/certificates/providers/class-provider-namesilo.php:56`
-  (`delete_txt_record()` appears to match `<host>` against the full FQDN
-  while `create_txt_record()` submits a zone-relative name). Not yet
-  confirmed as a live bug. Batch 5 will include a targeted regression test
-  to confirm or rule this out before any production fix is made, per the
-  standing rule that production defects are corrected only through an
-  explicit regression test plus a clearly disclosed change — never silently.
+- **namesilo — investigated and RESOLVED, not a defect** (Batch 5): the
+  earlier classification pass flagged a possible create/delete asymmetry
+  at `class-provider-namesilo.php:56` (`delete_txt_record()` matches
+  `<host>` against the full fqdn while `create_txt_record()` submits a
+  zone-relative name via `rrhost`). Investigated directly against two
+  independent primary sources: `dnsAddRecord`'s `rrhost` parameter is
+  documented as relative-only ("there is no need to include the
+  '.DOMAIN'", namesilo.com/api-reference, dns/dns-add-record), while
+  `dnsListRecords`' own official example response shows the returned
+  `<host>` field as fully qualified — `<host>test.namesilo.com</host>`
+  for a record under namesilo.com
+  (namesilo.com/api-reference/pages?uid=dns/dns-list-records). NameSilo's
+  own API is asymmetric by design (relative on write, fully-qualified on
+  read-back), and the driver correctly mirrors that asymmetry — it is not
+  a bug. Proven by
+  `test_delete_matches_a_resource_record_whose_host_is_the_fully_qualified_name()`
+  and a contrasting negative case,
+  `test_delete_does_not_match_a_resource_record_whose_host_is_only_the_relative_name()`,
+  which confirms the full-fqdn match is deliberate and exact (a scenario
+  NameSilo's real API does not actually produce). No production defect is
+  logged for this finding.
+- **cloudns, namesilo, dnspod** (Batch 5, contrast finding, extends
+  Hetzner/Bunny/Domeneshop/IONOS/Linode/Netlify/PowerDNS/Dynu): all three
+  drivers use `Dns_Provider::request_raw()` with a body/text-content
+  "found" check (a substring search or a decoded status field) and have
+  *no try/catch anywhere in zone()* — confirmed by direct code inspection.
+  Since `request_raw()` throws directly on any HTTP status >= 400, a
+  genuine authentication failure during discovery propagates immediately
+  and distinctly, never retried across candidates and never collapsed
+  into a "zone/domain not found" diagnostic. This brings the contrast
+  group to **15 of 30** mocked-contract providers immune to the
+  auth-misdiagnosis defect; **12 of 30** still share it (unchanged list
+  from Batch 4). Proven per provider by
+  `test_authentication_failure_during_zone_discovery_surfaces_distinctly_not_as_zone_not_found()`.
+- **Confirmed pagination defects — cloudns, dnspod** (Batch 5, verified
+  against current authoritative documentation): cloudns's "List records"
+  endpoint documents `rows-per-page` (10/20/30/50/100) and `page`
+  parameters ([cloudns.net/wiki/article/57](https://www.cloudns.net/wiki/article/57/));
+  dnspod's Record.List documents `offset`/`length`, returning at most 500
+  records by default
+  ([docs.dnspod.com/api-legacy/records.html](https://docs.dnspod.com/api-legacy/records.html):
+  "If there are more than 500 records, only the first 500 will be
+  responded"). Both drivers' list calls are already filtered by
+  domain/type/host or sub_domain, narrowing results, but neither sends
+  any pagination parameter, so the mechanism is confirmed to exist and go
+  unused in both cases.
+- **No pagination mechanism applicable — namesilo** (confirmed directly):
+  `dnsListRecords`' entire documented parameter list is exactly one
+  entry, "domain" — no page, limit, or offset parameter exists
+  (namesilo.com/api-reference/pages?uid=dns/dns-list-records).
+- **No applicable mechanism — acmedns, dreamhost, joker** (zone
+  discovery, record identifiers, and pagination all): none of these three
+  drivers perform any zone lookup, records-list call, or record-ID
+  extraction at all, so none of these dimensions apply.
+  - **acmedns** has no zone concept whatsoever ($fqdn is accepted but
+    never read in either method — the real target is the "subdomain"
+    credential captured once at registration), and `delete_txt_record()`
+    is an intentional, total no-op: acme-dns keeps a rolling window of
+    the last two TXT values server-side and has no delete endpoint at
+    all. This provider is architecturally incompatible with the shared
+    ten-item contract, not merely a variant of it, so it is covered by a
+    **bespoke, non-`Dns_Provider_Contract_TestCase` test file**
+    (`AcmednsProviderTest`) that tests its actual behaviour directly
+    (request construction, malformed/failed-response handling,
+    transport/HTTP failures, and the delete-no-op explicitly) rather than
+    forcing it through hooks that don't reflect real behaviour — the same
+    precedent RFC 2136 already established for this framework.
+  - **dreamhost** takes the full record name directly in its
+    `dns-add_record`/`dns-remove_record` calls — no zone resolution
+    happens at all. It does extend the shared contract (every base test
+    still passes meaningfully, since "zone discovery" only requires "at
+    least one request happened"), but `queue_zone_not_found()` and the
+    write-stage auth-failure hook both simulate a generic body-encoded
+    API failure rather than a distinct discovery-phase failure, since no
+    such phase exists — disclosed in the fixture's docblock. Also
+    disclosed: `delete_txt_record()` treats a `"no_such_record"` failure
+    reason as an already-successful no-op (a record that's already gone
+    is the desired end state for a cleanup call), tested explicitly.
+  - **joker** treats the zone as a trusted, statically-configured
+    credential, never verified against any API call — there is no
+    zone-discovery request of any kind, confirmed by
+    `test_no_zone_discovery_request_precedes_the_write()` (exactly one
+    request total, the write itself). Create and delete route through the
+    same single-TXT-slot "replace" endpoint (delete sends an empty
+    value), architecturally similar in spirit to PowerDNS's RRSet
+    REPLACE/DELETE (Batch 3) but via Joker's own simpler, single-value
+    Dynamic-DNS-style protocol — no records list or record ID exists at
+    all for this provider.
 - **rfc2136**: out of scope for the HTTP-transport contract framework —
   it speaks raw DNS over `stream_socket_client()`, never any `wp_remote_*`
   function, so `Dns_Provider_Contract_TestCase` does not apply. One real
