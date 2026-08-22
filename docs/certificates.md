@@ -62,8 +62,9 @@ Every one of the 41 providers listed above - including acme-dns and RFC
 2136 - has **request-level test coverage**: an automated test suite
 verifies each driver builds the correct API request (or, for RFC 2136,
 the correct signed DNS wire-protocol message) and reacts correctly to a
-range of simulated success, failure, and malformed responses. This proves
-the driver's *logic* is sound. It does **not** prove the real provider's
+range of simulated success, failure, and malformed responses. This
+provides evidence for the request construction and response behaviours
+exercised by the tests. It does **not** prove the real provider's
 live API still behaves exactly the way those simulated responses assume -
 that requires a real issuance/deletion cycle against the real API with
 real credentials, which as of this writing hasn't been done for any
@@ -79,37 +80,42 @@ production.
 **A few drivers have known limitations worth knowing about before you rely
 on them:**
 
-- **Azure DNS, Akamai Edge DNS, PowerDNS (self-hosted), and Porkbun**
-  create/remove the ACME challenge TXT record by replacing (or deleting)
+- **Azure DNS, Akamai Edge DNS, and PowerDNS (self-hosted)** create *and*
+  remove the ACME challenge TXT record by replacing (or deleting)
   *everything* at that exact record name, rather than adding/removing just
-  the one value. If nothing else ever uses a TXT record at
-  `_acme-challenge.<your domain>`, this makes no practical difference. If
-  something else does - another automation, a manually-added TXT record,
-  a concurrent certificate order for the same name - that value can be
-  silently overwritten or removed. Avoid sharing that exact record name
-  with anything else when using one of these four providers.
-- **INWX**: in a rare edge case, a session that appears to log in
-  successfully but doesn't return the expected session cookie can leave
-  later requests unauthenticated for the rest of that certificate
-  operation. If issuance repeatedly reports "no zone found" despite
-  correct credentials and zone configuration, this is worth ruling out -
-  retry the operation, and double-check your INWX account doesn't have
-  two-factor authentication enabled on the API user (INWX's API doesn't
-  support 2FA-protected accounts at all; use a dedicated API sub-account).
+  the one value, in both directions. If nothing else ever uses a TXT
+  record at `_acme-challenge.<your domain>`, this makes no practical
+  difference. If something else does - another automation, a
+  manually-added TXT record, a concurrent certificate order for the same
+  name - that value can be silently overwritten on creation, or removed on
+  deletion. Avoid sharing that exact record name with anything else when
+  using one of these three providers.
+- **Porkbun** has the same risk, but only on deletion: removing the ACME
+  challenge record removes *every* TXT record at that exact name,
+  regardless of value. Creating the record does not have this issue - it
+  adds a new record rather than replacing what's there.
+- **INWX**: testing identified a response-handling limitation where a
+  login response reporting success but missing its expected session
+  cookie would leave every later request in that same certificate
+  operation unauthenticated. Whether INWX's live API can actually return
+  that specific combination has not been confirmed either way.
+  Separately, and independent of the above: INWX's API does not support
+  accounts with two-factor authentication enabled at all - use a
+  dedicated API sub-account without 2FA.
 - **Several providers** report a generic "no zone found" or "no domain
   found" error even when the actual cause is invalid credentials or an API
   access/IP-whitelist restriction, not a real DNS configuration problem.
   If issuance fails with that message and your DNS zone genuinely exists,
   check your API credentials and any IP-allowlist requirement (e.g.
   Namecheap) before assuming a zone-configuration issue.
-- **RFC 2136**: a rejected update is always detected and reported, but the
-  specific TSIG reason (bad key, bad signature, clock skew) isn't always
-  distinguished in the plugin's own error message. Check your DNS server's
-  own logs for the precise reason if updates are rejected.
+- **RFC 2136**: rejections represented by a non-zero header response code
+  are detected. The driver does not inspect the response's TSIG Error
+  field, so its error message may omit the specific TSIG reason (bad key,
+  bad signature, clock skew) even when the DNS server's own logs record
+  it.
 
-None of the above prevents a driver from working correctly in the
-overwhelming majority of setups - they're edge cases worth knowing about,
-not reasons to avoid a provider.
+These are known limitations to be aware of, not necessarily reasons to
+avoid a provider.
 
 ## ⚠ Installing the certificate: platform-dependent
 
