@@ -1,0 +1,42 @@
+name: "OpenAI review: collect"
+
+# Stage 1 -- untrusted. Runs on every pull_request, including forks, with
+# no secrets and the default read-only GITHUB_TOKEN. Its only job is to
+# record which PR number triggered this run, as a hint for Stage 2
+# (openai-review-comment.yml). It never fetches or transmits diff content,
+# and never checks out the PR's own code -- see docs/ci-openai-review.md
+# for the full trust model.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openai-review-collect-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record PR number for Stage 2
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "PR_NUMBER is not a positive integer: $PR_NUMBER" >&2
+            exit 1
+          fi
+          mkdir -p openai-review-artifact
+          printf '{"pr_number": %s}' "$PR_NUMBER" > openai-review-artifact/pr.json
+          cat openai-review-artifact/pr.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openai-review-artifact
+          path: openai-review-artifact/pr.json
+          retention-days: 1
