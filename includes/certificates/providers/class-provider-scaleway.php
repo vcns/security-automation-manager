@@ -24,7 +24,7 @@ class Provider_Scaleway extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'secret_key' => array(
-				'label' => __( 'API secret key', 'security-automation-manager' ),
+				'label' => __( 'API secret key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

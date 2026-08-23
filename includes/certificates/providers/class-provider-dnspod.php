@@ -25,11 +25,11 @@ class Provider_Dnspod extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'token_id' => array(
-				'label'  => __( 'Token ID', 'security-automation-manager' ),
+				'label'  => __( 'Token ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'token'    => array(
-				'label' => __( 'Token', 'security-automation-manager' ),
+				'label' => __( 'Token', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

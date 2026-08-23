@@ -102,7 +102,7 @@ final class Plugin {
 			return;
 		}
 		load_plugin_textdomain(
-			'security-automation-manager',
+			'vcns-security-automation-manager',
 			false,
 			dirname( plugin_basename( WP_SAM_FILE ) ) . '/languages'
 		);

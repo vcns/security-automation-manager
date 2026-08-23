@@ -44,7 +44,7 @@
   <rule ref="WordPress.WP.I18n">
     <properties>
       <property name="text_domain" type="array">
-        <element value="security-automation-manager"/>
+        <element value="vcns-security-automation-manager"/>
       </property>
     </properties>
   </rule>

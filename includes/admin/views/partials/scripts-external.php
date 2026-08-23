@@ -120,28 +120,28 @@ $ext_base_url = admin_url( 'admin.php?page=security-automation-manager-scripts' 
 // at all (the builder skips first-party origins before they're recorded), so
 // it's not a classification an administrator ever needs to pick or filter by.
 $classification_labels = array(
-	'unclassified'     => __( 'Unclassified', 'security-automation-manager' ),
-	'immutable_pinned' => __( 'Approved -- immutable (SRI)', 'security-automation-manager' ),
-	'mutable_provider' => __( 'Approved -- mutable provider (no SRI)', 'security-automation-manager' ),
-	'exception'        => __( 'Exception', 'security-automation-manager' ),
-	'prohibited'       => __( 'Blocked', 'security-automation-manager' ),
+	'unclassified'     => __( 'Unclassified', 'vcns-security-automation-manager' ),
+	'immutable_pinned' => __( 'Approved -- immutable (SRI)', 'vcns-security-automation-manager' ),
+	'mutable_provider' => __( 'Approved -- mutable provider (no SRI)', 'vcns-security-automation-manager' ),
+	'exception'        => __( 'Exception', 'vcns-security-automation-manager' ),
+	'prohibited'       => __( 'Blocked', 'vcns-security-automation-manager' ),
 );
 ?>
 <div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
 	<p style="margin-top:0;">
-		<?php esc_html_e( 'This plugin never fabricates a Subresource Integrity hash. "Approved -- immutable" only ever compares against a hash you paste in yourself -- from a local copy of the file you already trust, or the vendor\'s own published hash -- never one computed by fetching the remote URL.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'This plugin never fabricates a Subresource Integrity hash. "Approved -- immutable" only ever compares against a hash you paste in yourself -- from a local copy of the file you already trust, or the vendor\'s own published hash -- never one computed by fetching the remote URL.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<p style="margin-bottom:0;">
-		<?php esc_html_e( 'Report mode (the default) never removes anything -- it only builds the inventory below. Enforce mode still only ever removes an origin you explicitly marked Blocked, or an "immutable" origin whose SRI hash no longer matches what the page actually served; an Unclassified origin is never silently blocked, even in enforce mode.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'Report mode (the default) never removes anything -- it only builds the inventory below. Enforce mode still only ever removes an origin you explicitly marked Blocked, or an "immutable" origin whose SRI hash no longer matches what the page actually served; an Unclassified origin is never silently blocked, even in enforce mode.', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>
 
 <table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
+			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+			<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+			<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
@@ -164,8 +164,8 @@ $classification_labels = array(
 				</td>
 				<td>
 					<select class="wp-sam-dependency-mode" data-surface="<?php echo esc_attr( $surface ); ?>">
-						<option value="report" <?php selected( $current['mode'], 'report' ); ?>><?php esc_html_e( 'Report only', 'security-automation-manager' ); ?></option>
-						<option value="enforce" <?php selected( $current['mode'], 'enforce' ); ?>><?php esc_html_e( 'Enforce', 'security-automation-manager' ); ?></option>
+						<option value="report" <?php selected( $current['mode'], 'report' ); ?>><?php esc_html_e( 'Report only', 'vcns-security-automation-manager' ); ?></option>
+						<option value="enforce" <?php selected( $current['mode'], 'enforce' ); ?>><?php esc_html_e( 'Enforce', 'vcns-security-automation-manager' ); ?></option>
 					</select>
 				</td>
 			</tr>
@@ -173,71 +173,71 @@ $classification_labels = array(
 	</tbody>
 </table>
 
-<h2 class="title" style="margin-top:1.5em"><?php esc_html_e( 'Inventory', 'security-automation-manager' ); ?></h2>
+<h2 class="title" style="margin-top:1.5em"><?php esc_html_e( 'Inventory', 'vcns-security-automation-manager' ); ?></h2>
 
 <details class="wp-sam-filter-form">
-	<summary><?php esc_html_e( 'Filters', 'security-automation-manager' ); ?></summary>
+	<summary><?php esc_html_e( 'Filters', 'vcns-security-automation-manager' ); ?></summary>
 	<form method="get" action="">
 		<input type="hidden" name="page" value="security-automation-manager-scripts" />
 		<input type="hidden" name="tab" value="external" />
 		<label>
-			<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?>
 			<select name="ext_surface">
-				<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
+				<option value=""><?php esc_html_e( 'Any', 'vcns-security-automation-manager' ); ?></option>
 				<?php foreach ( $surfaces as $s ) : ?>
 				<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $ext_surface, $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
 				<?php endforeach; ?>
 			</select>
 		</label>
 		<label>
-			<?php esc_html_e( 'Type', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?>
 			<select name="ext_type">
-				<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
-				<option value="script" <?php selected( $ext_type, 'script' ); ?>><?php esc_html_e( 'Script', 'security-automation-manager' ); ?></option>
-				<option value="style" <?php selected( $ext_type, 'style' ); ?>><?php esc_html_e( 'Stylesheet', 'security-automation-manager' ); ?></option>
+				<option value=""><?php esc_html_e( 'Any', 'vcns-security-automation-manager' ); ?></option>
+				<option value="script" <?php selected( $ext_type, 'script' ); ?>><?php esc_html_e( 'Script', 'vcns-security-automation-manager' ); ?></option>
+				<option value="style" <?php selected( $ext_type, 'style' ); ?>><?php esc_html_e( 'Stylesheet', 'vcns-security-automation-manager' ); ?></option>
 			</select>
 		</label>
 		<label>
-			<?php esc_html_e( 'Classification', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?>
 			<select name="ext_classification">
-				<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
+				<option value=""><?php esc_html_e( 'Any', 'vcns-security-automation-manager' ); ?></option>
 				<?php foreach ( $classification_labels as $value => $label ) : ?>
 				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $ext_classification, $value ); ?>><?php echo esc_html( $label ); ?></option>
 				<?php endforeach; ?>
 			</select>
 		</label>
 		<label>
-			<?php esc_html_e( 'Origin contains', 'security-automation-manager' ); ?>
-			<input type="text" name="ext_origin" placeholder="<?php esc_attr_e( 'e.g. googletagmanager.com', 'security-automation-manager' ); ?>" value="<?php echo esc_attr( $ext_origin ); ?>" />
+			<?php esc_html_e( 'Origin contains', 'vcns-security-automation-manager' ); ?>
+			<input type="text" name="ext_origin" placeholder="<?php esc_attr_e( 'e.g. googletagmanager.com', 'vcns-security-automation-manager' ); ?>" value="<?php echo esc_attr( $ext_origin ); ?>" />
 		</label>
-		<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_external_scripts', false ); ?>
+		<?php submit_button( __( 'Filter', 'vcns-security-automation-manager' ), 'secondary', 'filter_external_scripts', false ); ?>
 	</form>
 </details>
 
 <table class="widefat fixed striped wp-sam-dependency-inventory-table" style="margin-top:1em">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Type', 'security-automation-manager' ); ?></th>
-			<?php echo Table_Query::sort_header( __( 'Origin', 'security-automation-manager' ), 'origin', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			<th><?php esc_html_e( 'Classification', 'security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Expected SRI', 'security-automation-manager' ); ?></th>
-			<?php echo Table_Query::sort_header( __( 'Evidence', 'security-automation-manager' ), 'evidence', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			<?php echo Table_Query::sort_header( __( 'Last Seen', 'security-automation-manager' ), 'last_seen', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+			<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+			<?php echo Table_Query::sort_header( __( 'Origin', 'vcns-security-automation-manager' ), 'origin', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<th><?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?></th>
+			<th><?php esc_html_e( 'Expected SRI', 'vcns-security-automation-manager' ); ?></th>
+			<?php echo Table_Query::sort_header( __( 'Evidence', 'vcns-security-automation-manager' ), 'evidence', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</tr>
 	</thead>
 	<tbody>
 		<?php foreach ( $inventory as $item ) : ?>
 			<tr data-id="<?php echo esc_attr( (string) $item['id'] ); ?>">
 				<td><?php echo esc_html( ucfirst( $item['surface'] ) ); ?></td>
-				<td><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'security-automation-manager' ) : __( 'Stylesheet', 'security-automation-manager' ) ); ?></td>
+				<td><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'vcns-security-automation-manager' ) : __( 'Stylesheet', 'vcns-security-automation-manager' ) ); ?></td>
 				<td>
 					<code><?php echo esc_html( $item['origin'] ); ?></code>
 					<?php if ( ! empty( $item['last_seen_url'] ) ) : ?>
 					<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
 						<span class="wp-sam-meta-popover" role="tooltip">
 							<div class="wp-sam-meta-row">
-								<strong><?php esc_html_e( 'Last seen URL', 'security-automation-manager' ); ?>:</strong>
+								<strong><?php esc_html_e( 'Last seen URL', 'vcns-security-automation-manager' ); ?>:</strong>
 								<code><?php echo esc_html( (string) $item['last_seen_url'] ); ?></code>
 							</div>
 						</span>
@@ -265,7 +265,7 @@ $classification_labels = array(
 						<input
 							type="url"
 							class="wp-sam-dependency-suggest-url"
-							placeholder="<?php esc_attr_e( 'https://exact/script/url to hash & pin', 'security-automation-manager' ); ?>"
+							placeholder="<?php esc_attr_e( 'https://exact/script/url to hash & pin', 'vcns-security-automation-manager' ); ?>"
 							style="flex:1;font-size:11px"
 							value="<?php echo esc_attr( (string) ( $item['last_seen_url'] ?? '' ) ); ?>"
 							<?php disabled( 'immutable_pinned' !== $item['classification'] ); ?>
@@ -275,7 +275,7 @@ $classification_labels = array(
 							class="button button-small wp-sam-dependency-suggest-button"
 							data-id="<?php echo esc_attr( (string) $item['id'] ); ?>"
 							<?php disabled( 'immutable_pinned' !== $item['classification'] ); ?>
-						><?php esc_html_e( 'Suggest', 'security-automation-manager' ); ?></button>
+						><?php esc_html_e( 'Suggest', 'vcns-security-automation-manager' ); ?></button>
 					</div>
 				</td>
 				<td><?php echo esc_html( (string) $item['evidence_count'] ); ?></td>
@@ -284,7 +284,7 @@ $classification_labels = array(
 		<?php endforeach; ?>
 		<?php if ( empty( $inventory ) ) : ?>
 		<tr>
-			<td colspan="7"><?php esc_html_e( 'No third-party scripts or stylesheets have been observed yet. Enable a surface above and browse the live site to build the inventory.', 'security-automation-manager' ); ?></td>
+			<td colspan="7"><?php esc_html_e( 'No third-party scripts or stylesheets have been observed yet. Enable a surface above and browse the live site to build the inventory.', 'vcns-security-automation-manager' ); ?></td>
 		</tr>
 		<?php endif; ?>
 	</tbody>

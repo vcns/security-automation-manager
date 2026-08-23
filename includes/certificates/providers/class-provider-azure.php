@@ -30,22 +30,22 @@ class Provider_Azure extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'tenant_id'       => array(
-				'label'  => __( 'Directory (tenant) ID', 'security-automation-manager' ),
+				'label'  => __( 'Directory (tenant) ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'client_id'       => array(
-				'label'  => __( 'Application (client) ID', 'security-automation-manager' ),
+				'label'  => __( 'Application (client) ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'client_secret'   => array(
-				'label' => __( 'Client secret', 'security-automation-manager' ),
+				'label' => __( 'Client secret', 'vcns-security-automation-manager' ),
 			),
 			'subscription_id' => array(
-				'label'  => __( 'Subscription ID', 'security-automation-manager' ),
+				'label'  => __( 'Subscription ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'resource_group'  => array(
-				'label'  => __( 'Resource group containing the DNS zone', 'security-automation-manager' ),
+				'label'  => __( 'Resource group containing the DNS zone', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 		);

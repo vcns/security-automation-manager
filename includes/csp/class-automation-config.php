@@ -75,10 +75,10 @@ class Automation_Config {
 
 	public static function mode_labels(): array {
 		return array(
-			self::MODE_MANUAL                         => __( 'Manual', 'security-automation-manager' ),
-			self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL => __( 'Automatic (with medium+high approvals)', 'security-automation-manager' ),
-			self::MODE_AUTOMATIC_HIGH_APPROVAL        => __( 'Automatic (with high approvals only)', 'security-automation-manager' ),
-			self::MODE_FULLY_AUTOMATIC                => __( 'Fully Automatic', 'security-automation-manager' ),
+			self::MODE_MANUAL                         => __( 'Manual', 'vcns-security-automation-manager' ),
+			self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL => __( 'Automatic (with medium+high approvals)', 'vcns-security-automation-manager' ),
+			self::MODE_AUTOMATIC_HIGH_APPROVAL        => __( 'Automatic (with high approvals only)', 'vcns-security-automation-manager' ),
+			self::MODE_FULLY_AUTOMATIC                => __( 'Fully Automatic', 'vcns-security-automation-manager' ),
 		);
 	}
 

@@ -36,63 +36,63 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 global $wpdb;
 
 $mode_options = array(
-	'disabled'    => __( 'Disabled -- header not sent', 'security-automation-manager' ),
-	'report-only' => __( 'Report-Only -- observe without blocking', 'security-automation-manager' ),
-	'enforce'     => __( 'Enforce -- header sent and blocking', 'security-automation-manager' ),
+	'disabled'    => __( 'Disabled -- header not sent', 'vcns-security-automation-manager' ),
+	'report-only' => __( 'Report-Only -- observe without blocking', 'vcns-security-automation-manager' ),
+	'enforce'     => __( 'Enforce -- header sent and blocking', 'vcns-security-automation-manager' ),
 );
 
 $tabs = array(
 	'coep'  => array(
-		'label'          => __( 'Cross-Origin-Embedder-Policy', 'security-automation-manager' ),
+		'label'          => __( 'Cross-Origin-Embedder-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'     => Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
 		'header_name'    => 'Cross-Origin-Embedder-Policy',
-		'intro_html'     => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'security-automation-manager' ) . '</p>',
+		'intro_html'     => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'vcns-security-automation-manager' ) . '</p>',
 		'value_options'  => array(
-			'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'security-automation-manager' ),
-			'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'security-automation-manager' ),
-			'require-corp'   => __( 'require-corp -- every cross-origin resource must explicitly opt in, or it is blocked', 'security-automation-manager' ),
+			'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'vcns-security-automation-manager' ),
+			'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'vcns-security-automation-manager' ),
+			'require-corp'   => __( 'require-corp -- every cross-origin resource must explicitly opt in, or it is blocked', 'vcns-security-automation-manager' ),
 		),
-		'warning_html'   => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Start with Report-Only, and give it at least two weeks of real traffic covering a full content cycle before enforcing -- a page or feature visited only occasionally can easily go unrepresented in a shorter window. You can shorten that wait with deliberate testing: visit every page template, embed, and font source this site uses yourself while Report-Only is active, so you are not relying on organic traffic alone to surface a rare page. The Report-Only Evidence table below only reflects visits from Chromium-based browsers (Chrome, Edge, Opera and similar) -- it cannot show a break a Safari or Firefox visitor would hit, since neither sends these reports yet, so also check the site manually in both before enforcing.', 'security-automation-manager' ) . '</p>',
+		'warning_html'   => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( 'The highest-risk header this plugin manages. "require-corp" blocks every cross-origin subresource (fonts, images, iframes, scripts) that does not explicitly opt in via a matching Cross-Origin-Resource-Policy header or CORS -- most third-party embeds and CDN-hosted fonts, including Google Fonts, do not opt in by default. Start with Report-Only, and give it at least two weeks of real traffic covering a full content cycle before enforcing -- a page or feature visited only occasionally can easily go unrepresented in a shorter window. You can shorten that wait with deliberate testing: visit every page template, embed, and font source this site uses yourself while Report-Only is active, so you are not relying on organic traffic alone to surface a rare page. The Report-Only Evidence table below only reflects visits from Chromium-based browsers (Chrome, Edge, Opera and similar) -- it cannot show a break a Safari or Firefox visitor would hit, since neither sends these reports yet, so also check the site manually in both before enforcing.', 'vcns-security-automation-manager' ) . '</p>',
 		'supports_mode'  => true,
 		'mode_extractor' => array( Cross_Origin_Embedder_Policy_Builder::class, 'extract_mode' ),
 	),
 	'coop'  => array(
-		'label'          => __( 'Cross-Origin-Opener-Policy', 'security-automation-manager' ),
+		'label'          => __( 'Cross-Origin-Opener-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'     => Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
 		'header_name'    => 'Cross-Origin-Opener-Policy',
-		'intro_html'     => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'security-automation-manager' ) . '</p>',
+		'intro_html'     => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'vcns-security-automation-manager' ) . '</p>',
 		'value_options'  => array(
-			'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'security-automation-manager' ),
-			'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'security-automation-manager' ),
-			'same-origin'              => __( 'same-origin -- full isolation', 'security-automation-manager' ),
+			'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'vcns-security-automation-manager' ),
+			'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'vcns-security-automation-manager' ),
+			'same-origin'              => __( 'same-origin -- full isolation', 'vcns-security-automation-manager' ),
 		),
-		'warning_html'   => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. Start with Report-Only, and give it at least two weeks of real traffic covering a full content cycle before enforcing -- a login or checkout flow used only occasionally can easily go unrepresented in a shorter window. You can shorten that wait with deliberate testing: walk through every popup-based sign-in, sharing, or payment flow this site uses yourself while Report-Only is active. The Report-Only Evidence table below only reflects visits from Chromium-based browsers (Chrome, Edge, Opera and similar) -- it cannot show a break a Safari or Firefox visitor would hit, since neither sends these reports yet, so also check the site manually in both before enforcing.', 'security-automation-manager' ) . '</p>',
+		'warning_html'   => '<p style="margin-top:0;margin-bottom:0;">' . esc_html__( '"same-origin" severs window.opener access from any cross-origin popup this site opens or is opened by -- including popup-based OAuth/SSO and payment flows. Start with Report-Only, and give it at least two weeks of real traffic covering a full content cycle before enforcing -- a login or checkout flow used only occasionally can easily go unrepresented in a shorter window. You can shorten that wait with deliberate testing: walk through every popup-based sign-in, sharing, or payment flow this site uses yourself while Report-Only is active. The Report-Only Evidence table below only reflects visits from Chromium-based browsers (Chrome, Edge, Opera and similar) -- it cannot show a break a Safari or Firefox visitor would hit, since neither sends these reports yet, so also check the site manually in both before enforcing.', 'vcns-security-automation-manager' ) . '</p>',
 		'supports_mode'  => true,
 		'mode_extractor' => array( Cross_Origin_Opener_Policy_Builder::class, 'extract_mode' ),
 	),
 	'corp'  => array(
-		'label'         => __( 'Cross-Origin-Resource-Policy', 'security-automation-manager' ),
+		'label'         => __( 'Cross-Origin-Resource-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'    => Cross_Origin_Resource_Policy_Builder::PILLAR_KEY,
 		'header_name'   => 'Cross-Origin-Resource-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via <img>, <script>, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'security-automation-manager' ) . '</p>',
+		'intro_html'    => '<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via <img>, <script>, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'vcns-security-automation-manager' ) . '</p>',
 		'value_options' => array(
-			'same-site'    => __( 'same-site -- allow same-site origins only', 'security-automation-manager' ),
-			'same-origin'  => __( 'same-origin -- allow only this exact origin', 'security-automation-manager' ),
-			'cross-origin' => __( 'cross-origin -- allow any origin', 'security-automation-manager' ),
+			'same-site'    => __( 'same-site -- allow same-site origins only', 'vcns-security-automation-manager' ),
+			'same-origin'  => __( 'same-origin -- allow only this exact origin', 'vcns-security-automation-manager' ),
+			'cross-origin' => __( 'cross-origin -- allow any origin', 'vcns-security-automation-manager' ),
 		),
 		'warning_html'  => '',
 		'supports_mode' => false,
 	),
 	'xpcdp' => array(
-		'label'         => __( 'X-Permitted-Cross-Domain-Policies', 'security-automation-manager' ),
+		'label'         => __( 'X-Permitted-Cross-Domain-Policies', 'vcns-security-automation-manager' ),
 		'pillar_key'    => X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY,
 		'header_name'   => 'X-Permitted-Cross-Domain-Policies',
-		'intro_html'    => '<p>' . esc_html__( 'A legacy header from the Adobe Flash/Acrobat era, controlling whether Flash and PDF plugins may load a cross-domain policy file from this site. Flash is dead, so "none" is almost always the correct value -- this closes a legacy attack surface that would otherwise sit at its permissive browser default.', 'security-automation-manager' ) . '</p>',
+		'intro_html'    => '<p>' . esc_html__( 'A legacy header from the Adobe Flash/Acrobat era, controlling whether Flash and PDF plugins may load a cross-domain policy file from this site. Flash is dead, so "none" is almost always the correct value -- this closes a legacy attack surface that would otherwise sit at its permissive browser default.', 'vcns-security-automation-manager' ) . '</p>',
 		'value_options' => array(
-			'none'            => __( 'none -- no policy files allowed (recommended)', 'security-automation-manager' ),
-			'master-only'     => __( 'master-only -- only the root crossdomain.xml', 'security-automation-manager' ),
-			'by-content-type' => __( 'by-content-type', 'security-automation-manager' ),
-			'all'             => __( 'all -- any policy file, anywhere (not recommended)', 'security-automation-manager' ),
+			'none'            => __( 'none -- no policy files allowed (recommended)', 'vcns-security-automation-manager' ),
+			'master-only'     => __( 'master-only -- only the root crossdomain.xml', 'vcns-security-automation-manager' ),
+			'by-content-type' => __( 'by-content-type', 'vcns-security-automation-manager' ),
+			'all'             => __( 'all -- any policy file, anywhere (not recommended)', 'vcns-security-automation-manager' ),
 		),
 		'warning_html'  => '',
 		'supports_mode' => false,
@@ -129,10 +129,10 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 }
 ?>
 <div class="wrap wp-sam-wrap">
-	<h1><?php esc_html_e( 'Cross-Origin Policies', 'security-automation-manager' ); ?></h1>
+	<h1><?php esc_html_e( 'Cross-Origin Policies', 'vcns-security-automation-manager' ); ?></h1>
 
 	<!-- ── Tabs ──────────────────────────────────────────────────────────── -->
-	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Cross-origin policy pillars', 'security-automation-manager' ); ?>">
+	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Cross-origin policy pillars', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tabs as $tab_key => $tab_data ) : ?>
 		<a class="nav-tab<?php echo $tab_key === $tab ? ' nav-tab-active' : ''; ?>"
 			href="<?php echo esc_url( add_query_arg( 'tab', $tab_key, $base_url ) ); ?>"
@@ -154,13 +154,13 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
 				<?php if ( $active['supports_mode'] ) : ?>
-					<th><?php esc_html_e( 'Mode', 'security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
 				<?php else : ?>
-					<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 				<?php endif; ?>
-				<th><?php esc_html_e( 'Value', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -223,7 +223,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		echo wp_kses_post(
 			sprintf(
 			/* translators: %s: HTTP header name, e.g. "Cross-Origin-Opener-Policy" */
-				__( 'Report-Only sends %s-Report-Only and records what would have been blocked below, without blocking anything. Promoting a surface to Enforce is always a deliberate, manual choice -- nothing here is auto-promoted.', 'security-automation-manager' ),
+				__( 'Report-Only sends %s-Report-Only and records what would have been blocked below, without blocking anything. Promoting a surface to Enforce is always a deliberate, manual choice -- nothing here is auto-promoted.', 'vcns-security-automation-manager' ),
 				'<code>' . esc_html( $active['header_name'] ) . '</code>'
 			)
 		);
@@ -335,7 +335,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		);
 		?>
 
-	<h2><?php esc_html_e( 'Report-Only Evidence', 'security-automation-manager' ); ?></h2>
+	<h2><?php esc_html_e( 'Report-Only Evidence', 'vcns-security-automation-manager' ); ?></h2>
 	<p>
 		<?php
 		if ( $evid_recent_count > 0 ) {
@@ -346,48 +346,48 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 						'%d distinct violation in the last 7 days.',
 						'%d distinct violations in the last 7 days.',
 						$evid_recent_count,
-						'security-automation-manager'
+						'vcns-security-automation-manager'
 					),
 					$evid_recent_count
 				)
 			);
 		} else {
-			esc_html_e( 'No violations in the last 7 days.', 'security-automation-manager' );
+			esc_html_e( 'No violations in the last 7 days.', 'vcns-security-automation-manager' );
 		}
 		?>
 	</p>
 
 	<details class="wp-sam-filter-form">
-		<summary><?php esc_html_e( 'Filters', 'security-automation-manager' ); ?></summary>
+		<summary><?php esc_html_e( 'Filters', 'vcns-security-automation-manager' ); ?></summary>
 		<form method="get" action="">
 			<input type="hidden" name="page" value="security-automation-manager-cross-origin" />
 			<input type="hidden" name="tab" value="<?php echo esc_attr( $tab ); ?>" />
 			<label>
-				<?php esc_html_e( 'Surface', 'security-automation-manager' ); ?>
+				<?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?>
 				<select name="e_surface">
-					<option value=""><?php esc_html_e( 'Any', 'security-automation-manager' ); ?></option>
+					<option value=""><?php esc_html_e( 'Any', 'vcns-security-automation-manager' ); ?></option>
 					<?php foreach ( $surfaces as $s ) : ?>
 					<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $e_surface, $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</label>
 			<label>
-				<?php esc_html_e( 'Report type contains', 'security-automation-manager' ); ?>
+				<?php esc_html_e( 'Report type contains', 'vcns-security-automation-manager' ); ?>
 				<input type="text" name="e_type" value="<?php echo esc_attr( $e_type ); ?>" />
 			</label>
 			<label>
-				<?php esc_html_e( 'Occurrences at least', 'security-automation-manager' ); ?>
+				<?php esc_html_e( 'Occurrences at least', 'vcns-security-automation-manager' ); ?>
 				<input type="number" min="0" name="e_occ_min" style="width:80px" value="<?php echo esc_attr( null !== $e_occ_min ? (string) $e_occ_min : '' ); ?>" />
 			</label>
 			<label>
-				<?php esc_html_e( 'Last seen from', 'security-automation-manager' ); ?>
+				<?php esc_html_e( 'Last seen from', 'vcns-security-automation-manager' ); ?>
 				<input type="datetime-local" name="e_seen_from" value="<?php echo esc_attr( $e_seen_from ); ?>" />
 			</label>
 			<label>
-				<?php esc_html_e( 'to', 'security-automation-manager' ); ?>
+				<?php esc_html_e( 'to', 'vcns-security-automation-manager' ); ?>
 				<input type="datetime-local" name="e_seen_to" value="<?php echo esc_attr( $e_seen_to ); ?>" />
 			</label>
-			<?php submit_button( __( 'Filter', 'security-automation-manager' ), 'secondary', 'filter_evidence', false ); ?>
+			<?php submit_button( __( 'Filter', 'vcns-security-automation-manager' ), 'secondary', 'filter_evidence', false ); ?>
 		</form>
 	</details>
 
@@ -395,14 +395,14 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		<thead>
 			<tr>
 				<?php
-				echo Table_Query::sort_header( __( 'Surface', 'security-automation-manager' ), 'surface', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
-				echo Table_Query::sort_header( __( 'Report Type', 'security-automation-manager' ), 'type', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Disposition', 'security-automation-manager' ), 'disposition', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Occurrences', 'security-automation-manager' ), 'occurrences', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'First Seen', 'security-automation-manager' ), 'first_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Last Seen', 'security-automation-manager' ), 'last_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+				echo Table_Query::sort_header( __( 'Report Type', 'vcns-security-automation-manager' ), 'type', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Disposition', 'vcns-security-automation-manager' ), 'disposition', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'First Seen', 'vcns-security-automation-manager' ), 'first_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				?>
-				<th><?php esc_html_e( 'Details', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -432,7 +432,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 					</span>
 				</span>
 				<?php else : ?>
-				<span class="dashicons dashicons-info-outline wp-sam-meta-icon wp-sam-meta-icon--empty" title="<?php esc_attr_e( 'No metadata captured for this report', 'security-automation-manager' ); ?>"></span>
+				<span class="dashicons dashicons-info-outline wp-sam-meta-icon wp-sam-meta-icon--empty" title="<?php esc_attr_e( 'No metadata captured for this report', 'vcns-security-automation-manager' ); ?>"></span>
 				<?php endif; ?>
 			</td>
 		</tr>
@@ -440,8 +440,8 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		<?php if ( empty( $evidence ) ) : ?>
 		<tr>
 			<td colspan="7">
-				<p><?php esc_html_e( 'No report-only evidence recorded yet.', 'security-automation-manager' ); ?></p>
-				<p><?php esc_html_e( 'Set a surface above to Report-Only, then browse the live site with a Chromium-based browser -- only Chromium currently sends these reports. Evidence appears here as violations are observed.', 'security-automation-manager' ); ?></p>
+				<p><?php esc_html_e( 'No report-only evidence recorded yet.', 'vcns-security-automation-manager' ); ?></p>
+				<p><?php esc_html_e( 'Set a surface above to Report-Only, then browse the live site with a Chromium-based browser -- only Chromium currently sends these reports. Evidence appears here as violations are observed.', 'vcns-security-automation-manager' ); ?></p>
 			</td>
 		</tr>
 		<?php endif; ?>
@@ -456,7 +456,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		echo wp_kses_post(
 			sprintf(
 			/* translators: %s: HTTP header name, e.g. "Cross-Origin-Resource-Policy" */
-				__( 'Changes apply immediately -- there is no report-only mode, discovery workflow, or automation for this pillar. The %s header is either sent exactly as configured, or not sent at all.', 'security-automation-manager' ),
+				__( 'Changes apply immediately -- there is no report-only mode, discovery workflow, or automation for this pillar. The %s header is either sent exactly as configured, or not sent at all.', 'vcns-security-automation-manager' ),
 				'<code>' . esc_html( $active['header_name'] ) . '</code>'
 			)
 		);

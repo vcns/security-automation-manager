@@ -24,11 +24,11 @@ class Provider_Namecom extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'username'  => array(
-				'label'  => __( 'Account username', 'security-automation-manager' ),
+				'label'  => __( 'Account username', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'api_token' => array(
-				'label' => __( 'API token', 'security-automation-manager' ),
+				'label' => __( 'API token', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

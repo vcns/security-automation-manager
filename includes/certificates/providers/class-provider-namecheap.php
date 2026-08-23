@@ -32,14 +32,14 @@ class Provider_Namecheap extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_user'  => array(
-				'label'  => __( 'API user (usually the account username)', 'security-automation-manager' ),
+				'label'  => __( 'API user (usually the account username)', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'api_key'   => array(
-				'label' => __( 'API key', 'security-automation-manager' ),
+				'label' => __( 'API key', 'vcns-security-automation-manager' ),
 			),
 			'client_ip' => array(
-				'label'       => __( 'This server\'s public IP (must be whitelisted at Namecheap)', 'security-automation-manager' ),
+				'label'       => __( 'This server\'s public IP (must be whitelisted at Namecheap)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => '203.0.113.10',
 			),

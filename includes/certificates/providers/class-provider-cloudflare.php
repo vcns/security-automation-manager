@@ -27,7 +27,7 @@ class Provider_Cloudflare extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label'       => __( 'API Token (scoped to Zone / DNS / Edit)', 'security-automation-manager' ),
+				'label'       => __( 'API Token (scoped to Zone / DNS / Edit)', 'vcns-security-automation-manager' ),
 				'placeholder' => 'cf_...',
 			),
 		);

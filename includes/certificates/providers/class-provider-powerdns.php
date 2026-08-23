@@ -25,15 +25,15 @@ class Provider_Powerdns extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_url'   => array(
-				'label'       => __( 'API URL (webserver address of pdns_server)', 'security-automation-manager' ),
+				'label'       => __( 'API URL (webserver address of pdns_server)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'http://127.0.0.1:8081',
 			),
 			'api_key'   => array(
-				'label' => __( 'API key (api-key from pdns.conf)', 'security-automation-manager' ),
+				'label' => __( 'API key (api-key from pdns.conf)', 'vcns-security-automation-manager' ),
 			),
 			'server_id' => array(
-				'label'       => __( 'Server ID (almost always "localhost")', 'security-automation-manager' ),
+				'label'       => __( 'Server ID (almost always "localhost")', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'localhost',
 			),

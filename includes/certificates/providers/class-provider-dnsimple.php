@@ -26,7 +26,7 @@ class Provider_Dnsimple extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label' => __( 'Account access token', 'security-automation-manager' ),
+				'label' => __( 'Account access token', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

@@ -24,11 +24,11 @@ class Provider_Alidns extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'access_key_id'     => array(
-				'label'  => __( 'AccessKey ID', 'security-automation-manager' ),
+				'label'  => __( 'AccessKey ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'access_key_secret' => array(
-				'label' => __( 'AccessKey Secret', 'security-automation-manager' ),
+				'label' => __( 'AccessKey Secret', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

@@ -24,11 +24,11 @@ class Provider_Easydns extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'token' => array(
-				'label'  => __( 'REST API token', 'security-automation-manager' ),
+				'label'  => __( 'REST API token', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'key'   => array(
-				'label' => __( 'REST API key', 'security-automation-manager' ),
+				'label' => __( 'REST API key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

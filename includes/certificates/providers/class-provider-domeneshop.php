@@ -24,11 +24,11 @@ class Provider_Domeneshop extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'token'  => array(
-				'label'  => __( 'API token', 'security-automation-manager' ),
+				'label'  => __( 'API token', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'secret' => array(
-				'label' => __( 'API secret', 'security-automation-manager' ),
+				'label' => __( 'API secret', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

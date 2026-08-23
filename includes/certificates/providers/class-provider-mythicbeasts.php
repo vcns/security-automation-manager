@@ -28,11 +28,11 @@ class Provider_Mythicbeasts extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'key_id' => array(
-				'label'  => __( 'API key ID', 'security-automation-manager' ),
+				'label'  => __( 'API key ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'secret' => array(
-				'label' => __( 'API secret', 'security-automation-manager' ),
+				'label' => __( 'API secret', 'vcns-security-automation-manager' ),
 			),
 		);
 	}
