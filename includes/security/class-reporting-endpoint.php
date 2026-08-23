@@ -34,17 +34,25 @@ class Reporting_Endpoint {
 	 */
 	public const GROUP_NAME = 'csp-endpoint';
 
+	/**
+	 * Delegates entirely to rest_url() -- no independent opinion of its own
+	 * about permalink structure, multisite subsite paths, or the REST URL
+	 * prefix. get_rest_url() (which rest_url() calls) resolves those from
+	 * WordPress's own URL/permalink/rewrite functions and does not require
+	 * `init` to have fired; an earlier version of this method special-cased
+	 * a not-yet-`init`-fired state with a hardcoded `/wp-json/...` fallback,
+	 * which both hardcoded a path WordPress.org's review flagged and could
+	 * silently diverge from rest_url()'s real output (a non-default REST
+	 * prefix, a multisite subsite path, or plain-permalink `?rest_route=`
+	 * form would all have been wrong under that fallback).
+	 */
 	public static function url(): string {
 		$override = trim( (string) get_option( 'wp_sam_report_endpoint_url', '' ) );
 		if ( '' !== $override && self::is_allowed_url( $override ) ) {
 			return esc_url_raw( $override );
 		}
 
-		if ( function_exists( 'did_action' ) && did_action( 'init' ) > 0 ) {
-			return esc_url_raw( rest_url( 'sam/v1/report' ) );
-		}
-
-		return esc_url_raw( home_url( '/wp-json/sam/v1/report' ) );
+		return esc_url_raw( rest_url( 'sam/v1/report' ) );
 	}
 
 	public static function is_allowed_url( string $url ): bool {

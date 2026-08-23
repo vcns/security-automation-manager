@@ -49,7 +49,7 @@ spl_autoload_register( static function ( string $class ): void {
 		$file = WP_SAM_DIR . 'offline/' . $subdir . $filename;
 	}
 	if ( is_readable( $file ) ) {
-		require $file;
+		require_once $file;
 	} else {
 		trigger_error( "WP_SAM test autoloader: cannot resolve {$class}", E_USER_NOTICE );
 	}
@@ -375,7 +375,22 @@ if ( ! function_exists( 'wp_mkdir_p' ) ) {
 }
 
 if ( ! function_exists( 'apply_filters' ) ) {
+	/**
+	 * Actually invokes every add_filter()-registered callback for $hook, in
+	 * priority order, threading $value through each in turn -- matching
+	 * real WordPress. add_filter() and add_action() share the same
+	 * $GLOBALS['_wp_actions'] registration array (see add_filter()'s own
+	 * stub below), so this reads from there too.
+	 */
 	function apply_filters( string $hook, mixed $value, mixed ...$args ): mixed {
+		$registrations = $GLOBALS['_wp_actions'][ $hook ] ?? [];
+		usort( $registrations, static fn( array $a, array $b ): int => $a[1] <=> $b[1] );
+
+		foreach ( $registrations as [ $callback, $priority, $accepted_args ] ) {
+			$call_args = array_slice( [ $value, ...$args ], 0, max( 1, $accepted_args ) );
+			$value     = $callback( ...$call_args );
+		}
+
 		return $value;
 	}
 }
@@ -494,12 +509,27 @@ if ( ! function_exists( 'is_wp_error' ) ) {
 }
 
 if ( ! function_exists( 'rest_url' ) ) {
+	/**
+	 * Models the handful of real WordPress inputs get_rest_url() actually
+	 * varies its output on -- a plain-vs-pretty permalink structure, the
+	 * filterable REST URL prefix (default "wp-json"), and a multisite
+	 * subsite path -- via global flags, following this file's existing
+	 * pattern for configurable stub behaviour (see wp_test_reset_globals()
+	 * for defaults). Deliberately does NOT model an "unsafe before init"
+	 * failure mode: WordPress's own reference docs for rest_url()/
+	 * get_rest_url() document no such requirement, and Reporting_Endpoint::
+	 * url() no longer special-cases it -- see that class's docblock.
+	 */
 	function rest_url( string $path = '' ): string {
-		if ( ! empty( $GLOBALS['_wp_rest_url_should_throw'] ) ) {
-			throw new RuntimeException( 'rest_url called before REST routing is available.' );
+		$prefix       = $GLOBALS['_wp_rest_url_prefix'] ?? 'wp-json';
+		$subsite_path = $GLOBALS['_wp_multisite_subsite_path'] ?? '';
+		$trimmed_path = ltrim( $path, '/' );
+
+		if ( ! empty( $GLOBALS['_wp_rest_url_plain_permalinks'] ) ) {
+			return 'https://example.com' . $subsite_path . '/?rest_route=/' . $trimmed_path;
 		}
 
-		return 'https://example.com/wp-json/' . ltrim( $path, '/' );
+		return 'https://example.com' . $subsite_path . '/' . $prefix . '/' . $trimmed_path;
 	}
 }
 
@@ -599,6 +629,24 @@ if ( ! function_exists( 'add_filter' ) ) {
 if ( ! function_exists( 'did_action' ) ) {
 	function did_action( string $hook ): int {
 		return (int) ( $GLOBALS['_wp_did_actions'][ $hook ] ?? 0 );
+	}
+}
+
+if ( ! function_exists( 'do_action' ) ) {
+	/**
+	 * Actually invokes every add_action()-registered callback for $hook, in
+	 * priority order -- matching real WordPress. Also increments
+	 * did_action()'s counter, matching real WordPress there too.
+	 */
+	function do_action( string $hook, mixed ...$args ): void {
+		$GLOBALS['_wp_did_actions'][ $hook ] = (int) ( $GLOBALS['_wp_did_actions'][ $hook ] ?? 0 ) + 1;
+
+		$registrations = $GLOBALS['_wp_actions'][ $hook ] ?? [];
+		usort( $registrations, static fn( array $a, array $b ): int => $a[1] <=> $b[1] );
+
+		foreach ( $registrations as [ $callback, $priority, $accepted_args ] ) {
+			$callback( ...array_slice( $args, 0, $accepted_args ) );
+		}
 	}
 }
 
@@ -869,7 +917,9 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_transients']           = [];
 	$GLOBALS['_wp_actions']              = [];
 	$GLOBALS['_wp_did_actions']          = [];
-	$GLOBALS['_wp_rest_url_should_throw'] = false;
+	$GLOBALS['_wp_rest_url_prefix']            = 'wp-json';
+	$GLOBALS['_wp_rest_url_plain_permalinks']  = false;
+	$GLOBALS['_wp_multisite_subsite_path']     = '';
 
 	$GLOBALS['_wp_remote_get_response']  = null;
 	$GLOBALS['_wp_remote_get_response_queue'] = [];

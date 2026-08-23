@@ -89,6 +89,12 @@ class Hash_Manager {
 	 */
 	private array $captured_hashes = array();
 
+	/** ob_get_level() recorded at the moment this instance's own buffer opened, or null when none is open. */
+	private ?int $buffer_level = null;
+
+	/** Which surface's buffer is currently open, or null. Used by the shutdown fallback -- see maybe_end_buffer_on_shutdown(). */
+	private ?string $buffer_surface = null;
+
 	public function __construct( Audit_Log $audit, Feature_Gate $gate ) {
 		$this->audit = $audit;
 		$this->gate  = $gate;
@@ -109,28 +115,68 @@ class Hash_Manager {
 		// 10 those blocks were already sent before ob_start() ran, so they
 		// were never hashed and were blocked under an enforce-mode policy.
 		// Front-end surfaces.
-		add_action( 'wp_head', array( $this, 'start_buffer' ), PHP_INT_MIN );
+		add_action( 'wp_head', array( $this, 'start_buffer_frontend' ), PHP_INT_MIN );
 		add_action( 'wp_footer', array( $this, 'end_buffer_frontend' ), PHP_INT_MAX );
 
 		// Admin surface. Note admin_head fires after admin_print_styles, so
 		// admin-enqueued styles still escape capture -- acceptable for now
 		// because wp-admin strict CSP is best-effort (core Trac #59446).
-		add_action( 'admin_head', array( $this, 'start_buffer' ), PHP_INT_MIN );
+		add_action( 'admin_head', array( $this, 'start_buffer_admin' ), PHP_INT_MIN );
 		add_action( 'admin_footer', array( $this, 'end_buffer_admin' ), PHP_INT_MAX );
 
 		// Login surface (wp-login.php emits login_head / login_footer).
-		add_action( 'login_head', array( $this, 'start_buffer' ), PHP_INT_MIN );
+		add_action( 'login_head', array( $this, 'start_buffer_login' ), PHP_INT_MIN );
 		add_action( 'login_footer', array( $this, 'end_buffer_login' ), PHP_INT_MAX );
+
+		// Explicit, plugin-controlled fallback for when the paired
+		// *_footer hook above never fires -- several wp-login.php
+		// POST-handling branches, for example, call login_header() (firing
+		// login_head) then wp_safe_redirect() + exit() without ever
+		// reaching login_footer(); a legacy/iframe admin screen or a fatal
+		// error between a *_head and its *_footer hits the same gap on the
+		// other two surfaces. Only ever acts if start_buffer_*() actually
+		// opened a buffer that flush_buffer() hasn't already closed --
+		// buffer_level is cleared to null on every flush_buffer() path, so
+		// this is a genuine no-op on the normal happy path. Priority
+		// PHP_INT_MAX so Content_Rewriter's own shutdown-time closure (and
+		// any other well-behaved component using the same pattern) gets to
+		// close whatever it nested inside ours first.
+		add_action( 'shutdown', array( $this, 'maybe_end_buffer_on_shutdown' ), PHP_INT_MAX );
 	}
 
 	// ── Output buffer callbacks ───────────────────────────────────────────────
 
 	/**
-	 * Starts an output buffer. Called at the top of each surface head hook.
-	 * Multiple nested ob_start() calls are safe; PHP maintains a buffer stack.
+	 * Starts an output buffer and records this instance's own buffer level
+	 * (and which surface opened it), so flush_buffer() can later verify it
+	 * is closing the exact buffer it opened -- never a different one left
+	 * on the stack by something else.
 	 */
-	public function start_buffer(): void {
-		ob_start();
+	public function start_buffer_frontend(): void {
+		$this->start_buffer( 'frontend' );
+	}
+
+	public function start_buffer_admin(): void {
+		$this->start_buffer( 'admin' );
+	}
+
+	public function start_buffer_login(): void {
+		$this->start_buffer( 'login' );
+	}
+
+	private function start_buffer( string $surface ): void {
+		// Guards against opening a second buffer on top of one already
+		// open (e.g. a hook firing twice in one request) -- without this,
+		// buffer_level would be overwritten with the new, deeper level,
+		// losing track of the original buffer entirely.
+		if ( null !== $this->buffer_level ) {
+			return;
+		}
+
+		if ( ob_start() ) {
+			$this->buffer_level   = ob_get_level();
+			$this->buffer_surface = $surface;
+		}
 	}
 
 	public function end_buffer_frontend(): void {
@@ -146,19 +192,53 @@ class Hash_Manager {
 	}
 
 	/**
+	 * Fallback closure for maybe_end_buffer_on_shutdown() -- see the
+	 * `shutdown` registration in register() for why this exists. Uses the
+	 * surface start_buffer() itself recorded, since the footer hook that
+	 * would normally have supplied it never ran.
+	 */
+	public function maybe_end_buffer_on_shutdown(): void {
+		if ( null === $this->buffer_level || null === $this->buffer_surface ) {
+			return;
+		}
+
+		$this->flush_buffer( $this->buffer_surface );
+	}
+
+	/**
 	 * Flushes the current output buffer, injects a nonce into any
 	 * wp_add_inline_style()-originated <style> block, parses the result for
 	 * remaining inline blocks, records hashes, then re-emits the (possibly
 	 * nonce-injected) content.
 	 *
+	 * Only ever acts on the exact buffer level start_buffer() recorded --
+	 * see the comparison below -- and only ever closes buffers via
+	 * ob_end_flush() (never ob_end_clean()): anything nested inside our own
+	 * buffer that this class doesn't own must have its content preserved,
+	 * not discarded, to reach and close our own buffer (PHP's buffer stack
+	 * is strictly LIFO, so there is no other way to reach it).
+	 *
 	 * @param string $surface  'frontend' | 'admin' | 'login'
 	 */
 	private function flush_buffer( string $surface ): void {
-		if ( 0 === ob_get_level() ) {
+		if ( null === $this->buffer_level || ob_get_level() < $this->buffer_level ) {
+			// Never opened, or already closed by something else (another
+			// plugin unwinding the whole buffer stack, e.g.) -- nothing to
+			// do, and touching a different level here would act on a
+			// buffer this class doesn't own.
+			$this->buffer_level   = null;
+			$this->buffer_surface = null;
 			return;
 		}
 
+		while ( ob_get_level() > $this->buffer_level ) {
+			ob_end_flush();
+		}
+
 		$html = ob_get_clean();
+
+		$this->buffer_level   = null;
+		$this->buffer_surface = null;
 
 		if ( false === $html || '' === $html ) {
 			return;

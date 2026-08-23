@@ -18,16 +18,59 @@ class ReportingEndpointTest extends TestCase {
 		wp_test_reset_globals();
 	}
 
-	public function test_url_uses_home_url_before_init(): void {
-		$GLOBALS['_wp_rest_url_should_throw'] = true;
+	/**
+	 * url() delegates unconditionally to rest_url() -- WordPress's own
+	 * reference docs for rest_url()/get_rest_url() document no `init`
+	 * requirement, and the reviewer explicitly required removing the
+	 * hardcoded pre-init fallback this method used to have. These two tests
+	 * prove indifference to did_action('init') by getting the identical
+	 * result whether or not it's been recorded as fired.
+	 */
+	public function test_url_is_identical_before_init(): void {
+		// did_action('init') deliberately left unset.
+		$this->assertSame( 'https://example.com/wp-json/sam/v1/report', Reporting_Endpoint::url() );
+	}
+
+	public function test_url_is_identical_after_init(): void {
+		$GLOBALS['_wp_did_actions']['init'] = 1;
 
 		$this->assertSame( 'https://example.com/wp-json/sam/v1/report', Reporting_Endpoint::url() );
 	}
 
-	public function test_url_uses_rest_url_after_init(): void {
-		$GLOBALS['_wp_did_actions']['init'] = 1;
-
+	/**
+	 * The remaining tests below prove url() has no independent opinion of
+	 * its own about permalink structure, the REST URL prefix, or a
+	 * multisite subsite path -- it reflects exactly whatever rest_url()
+	 * produces. The test stub (test/bootstrap.php) models each of these as
+	 * a configurable global, standing in for the real WordPress behaviour
+	 * documented for get_rest_url() -- this suite has no real-WordPress
+	 * integration harness (every WP function here is a hand-written stub),
+	 * so these are stub-level simulations of that behaviour, not tests
+	 * against WordPress core itself.
+	 */
+	public function test_url_reflects_pretty_permalinks(): void {
+		// Default stub state already models the pretty-permalink form.
 		$this->assertSame( 'https://example.com/wp-json/sam/v1/report', Reporting_Endpoint::url() );
+	}
+
+	public function test_url_reflects_plain_permalinks(): void {
+		$GLOBALS['_wp_rest_url_plain_permalinks'] = true;
+
+		$this->assertSame( 'https://example.com/?rest_route=/sam/v1/report', Reporting_Endpoint::url() );
+	}
+
+	public function test_url_reflects_a_modified_rest_url_prefix(): void {
+		// Simulates the real `rest_url_prefix` filter changing WordPress's
+		// default "wp-json" segment.
+		$GLOBALS['_wp_rest_url_prefix'] = 'custom-api';
+
+		$this->assertSame( 'https://example.com/custom-api/sam/v1/report', Reporting_Endpoint::url() );
+	}
+
+	public function test_url_reflects_a_multisite_subsite_path(): void {
+		$GLOBALS['_wp_multisite_subsite_path'] = '/mysite';
+
+		$this->assertSame( 'https://example.com/mysite/wp-json/sam/v1/report', Reporting_Endpoint::url() );
 	}
 
 	public function test_url_prefers_valid_configured_override(): void {

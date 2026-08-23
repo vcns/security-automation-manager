@@ -192,6 +192,20 @@ spl_autoload_register(
 	}
 );
 
+// ── Optional extensions ───────────────────────────────────────────────────────
+// Files here self-register via WordPress hooks (see class-plugin.php's
+// wp_sam_register_automation_modes action) -- this file has no knowledge of
+// what, if anything, exists in this directory, and never references any
+// extension's class or file name. The WordPress.org-channel build removes
+// this directory entirely (see .github/workflows/wporg-deploy.yml and
+// release-package.yml); on that channel this glob returns nothing and the
+// loop body never runs.
+$wp_sam_extension_files = glob( WP_SAM_DIR . 'includes/extensions/*.php' );
+foreach ( false !== $wp_sam_extension_files ? $wp_sam_extension_files : array() as $wp_sam_extension_file ) {
+	require $wp_sam_extension_file;
+}
+unset( $wp_sam_extension_files, $wp_sam_extension_file );
+
 // ── Lifecycle hooks ───────────────────────────────────────────────────────────
 register_activation_hook( __FILE__, array( 'WP_SAM\\Activator', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'WP_SAM\\Deactivator', 'deactivate' ) );

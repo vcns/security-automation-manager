@@ -143,13 +143,15 @@ class Decision_Engine {
 		return ( $order[ $b ] ?? 0 ) > ( $order[ $a ] ?? 0 ) ? $b : $a;
 	}
 
+	/**
+	 * Generic against whatever Automation_Mode_Registry currently has
+	 * registered -- no mode identifier is referenced here by name. A mode
+	 * that isn't registered at all in this build (e.g. a paid mode whose
+	 * registering extension is absent) allows no risk tier, same as an
+	 * unrecognised string would.
+	 */
 	private function mode_allows_risk( string $mode, string $risk ): bool {
-		return match ( $mode ) {
-			Automation_Config::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL => 'low' === $risk,
-			Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL        => in_array( $risk, array( 'low', 'medium' ), true ),
-			Automation_Config::MODE_FULLY_AUTOMATIC                => in_array( $risk, array( 'low', 'medium', 'high' ), true ),
-			default                                                => false,
-		};
+		return in_array( $risk, Automation_Mode_Registry::allowed_risks( $mode ), true );
 	}
 
 	private function summarise( string $risk, array $exclusions ): string {

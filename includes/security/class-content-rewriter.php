@@ -33,6 +33,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Content_Rewriter extends Request_Surface {
 
 	private bool $buffer_started = false;
+	private ?int $buffer_level   = null;
 	private bool $streamed       = false;
 	private string $surface      = 'frontend';
 
@@ -40,6 +41,28 @@ abstract class Content_Rewriter extends Request_Surface {
 
 	public function register(): void {
 		add_action( 'template_redirect', array( $this, 'maybe_start_buffer' ) );
+		// Normal closure point: wp_footer is the standard "page output is
+		// essentially complete" signal, and request_exclusion_reason()
+		// above excludes admin and login entirely, so this buffer only
+		// ever opens for the front-end surface -- wp_footer is the one
+		// relevant footer hook, not a three-surface set. Priority
+		// PHP_INT_MAX so this runs after WordPress core's and every other
+		// plugin's own wp_footer output has already been generated into
+		// our buffer.
+		add_action( 'wp_footer', array( $this, 'maybe_end_buffer' ), PHP_INT_MAX );
+		// Fallback only, for what wp_footer cannot cover: a redirect,
+		// wp_die(), or fatal error between template_redirect and wp_footer
+		// (wp_footer never fires at all), or the rare theme that echoes a
+		// small amount of markup after its wp_footer() call returns (e.g.
+		// closing </body></html> tags) -- that trailing content is still
+		// flushed through by this fallback, just not passed through
+		// rewrite() the way content captured before wp_footer is, since it
+		// was never inside our buffer to begin with. maybe_end_buffer() is
+		// idempotent: if wp_footer already closed this buffer,
+		// buffer_started is already false and this is a genuine no-op --
+		// see its docblock. Priority PHP_INT_MAX for the same reason as
+		// above.
+		add_action( 'shutdown', array( $this, 'maybe_end_buffer' ), PHP_INT_MAX );
 	}
 
 	/**
@@ -74,7 +97,53 @@ abstract class Content_Rewriter extends Request_Surface {
 			return;
 		}
 
-		$this->buffer_started = ob_start( array( $this, 'filter_output' ), 0 );
+		if ( ob_start( array( $this, 'filter_output' ), 0 ) ) {
+			$this->buffer_started = true;
+			$this->buffer_level   = ob_get_level();
+		}
+	}
+
+	/**
+	 * Explicitly closes this instance's own buffer, and only this instance's
+	 * own buffer -- never a buffer another component or plugin opened.
+	 * Registered on BOTH wp_footer (the normal closure point) and shutdown
+	 * (the fallback -- see register()) as the exact same callback, which is
+	 * safe and idempotent: buffer_started is set false as this method's
+	 * very last step on every path that does anything at all, so whichever
+	 * hook fires second finds buffer_started already false and returns
+	 * immediately at the guard below, without touching the buffer stack a
+	 * second time.
+	 *
+	 * ob_get_level() is recorded at the moment maybe_start_buffer() opens
+	 * this buffer, and re-checked here before touching anything:
+	 * - If the current level is BELOW the recorded one, something else
+	 *   already closed our buffer (and possibly others) first -- e.g. an
+	 *   aggressive page-cache plugin unwinding the whole buffer stack.
+	 *   Nothing to do; closing again would act on a buffer we don't own.
+	 * - If the current level is AT OR ABOVE the recorded one, every buffer
+	 *   from the top of the stack down to (and including) ours is closed
+	 *   via ob_end_flush() -- never ob_end_clean(), since a buffer nested
+	 *   inside ours that we don't own must have its content preserved, not
+	 *   discarded. This is the only way to reach and close our own buffer
+	 *   when something nested inside it hasn't closed cleanly by the time
+	 *   `shutdown` fires -- PHP's buffer stack is strictly LIFO, so there is
+	 *   no way to close a buffer out from under buffers still open above it.
+	 */
+	public function maybe_end_buffer(): void {
+		if ( ! $this->buffer_started || null === $this->buffer_level ) {
+			return;
+		}
+
+		if ( ob_get_level() < $this->buffer_level ) {
+			$this->buffer_started = false;
+			return;
+		}
+
+		while ( ob_get_level() >= $this->buffer_level ) {
+			ob_end_flush();
+		}
+
+		$this->buffer_started = false;
 	}
 
 	/**

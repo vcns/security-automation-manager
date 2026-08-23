@@ -19,7 +19,6 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
-use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Security\Pillar_Violation_Store;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -69,10 +68,10 @@ class Violation_Reporter {
 	 */
 	private array $profile_mode_cache = array();
 
-	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Feature_Gate $gate = null, ?Pillar_Violation_Store $pillar_violations = null ) {
+	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Pillar_Violation_Store $pillar_violations = null ) {
 		$this->audit             = $audit;
 		$this->learning_window   = $learning_window;
-		$this->policy_changes    = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit, gate: $gate );
+		$this->policy_changes    = null !== $policy_changes ? $policy_changes : new Policy_Change_Manager( $audit );
 		$this->pillar_violations = null !== $pillar_violations ? $pillar_violations : new Pillar_Violation_Store();
 	}
 

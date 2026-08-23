@@ -239,11 +239,19 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Uses get_all_table_suffixes() (filtered), not the base list -- so an
+	 * extension's tables being missing (e.g. the extension was only just
+	 * added to an already-activated site) is itself enough to trigger
+	 * Activator::activate() re-running, which in turn fires
+	 * wp_sam_register_schema and gives that extension the chance to create
+	 * them.
+	 */
 	public static function get_missing_table_names(): array {
 		global $wpdb;
 
 		$missing = array();
-		foreach ( self::get_table_suffixes() as $suffix ) {
+		foreach ( self::get_all_table_suffixes() as $suffix ) {
 			$table = $wpdb->prefix . $suffix;
 			if ( ! self::table_exists( $table ) ) {
 				$missing[] = $table;
@@ -260,8 +268,6 @@ class Activator {
 			'csp_hash_inventory',
 			'csp_violation_reports',
 			'sam_scan_logs',
-			'sam_entitlements',
-			'sam_processed_events',
 			'sam_audit_log',
 			'sam_policy_change_decisions',
 			'sam_policy_versions',
@@ -273,6 +279,18 @@ class Activator {
 			'sam_certificates',
 			'sam_migration_snapshots',
 		);
+	}
+
+	/**
+	 * Every plugin-owned table suffix, including any a loaded extension
+	 * (see includes/extensions/, physically absent from the WordPress.org
+	 * build) registers via the wp_sam_table_suffixes filter for its own
+	 * schema (see create_tables()'s wp_sam_register_schema action) -- this
+	 * file has no knowledge of what those are. Used by Reset Data so a full
+	 * reset on a build with that extension loaded still clears its tables.
+	 */
+	public static function get_all_table_suffixes(): array {
+		return apply_filters( 'wp_sam_table_suffixes', self::get_table_suffixes() );
 	}
 
 	public static function get_option_names(): array {
@@ -295,18 +313,19 @@ class Activator {
 			'wp_sam_acme_account_keys',
 			'wp_sam_acme_http_tokens',
 			'wp_sam_cert_last_run',
-			// Stripe configuration for the (commercial-build-only) Fully
-			// Automatic checkout flow -- see Checkout_Service and
-			// Webhook_Controller in offline/modules/.
-			'wp_sam_stripe_mode',
-			'wp_sam_stripe_secret_key_test',
-			'wp_sam_stripe_secret_key_live',
-			'wp_sam_stripe_price_id_monthly_test',
-			'wp_sam_stripe_price_id_annual_test',
-			'wp_sam_stripe_price_id_monthly_live',
-			'wp_sam_stripe_price_id_annual_live',
-			'wp_sam_webhook_secret',
 		);
+	}
+
+	/**
+	 * Every plugin-owned option name, including any a loaded extension (see
+	 * includes/extensions/, physically absent from the WordPress.org build)
+	 * registers via the wp_sam_option_names filter for its own paid mode's
+	 * settings -- this file has no knowledge of what those are. Used by
+	 * Reset Data / Export Config so cleanup and export cover extension
+	 * options too, without this file naming them.
+	 */
+	public static function get_all_option_names(): array {
+		return apply_filters( 'wp_sam_option_names', self::get_option_names() );
 	}
 
 	public static function get_transient_names(): array {
@@ -478,49 +497,16 @@ class Activator {
 ) {$cc};"
 		);
 
-		// 6. Legacy per-site entitlement compatibility records.
-		dbDelta(
-			"CREATE TABLE {$p}sam_entitlements (
-  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  site_identity varchar(255) NOT NULL,
-  product_key varchar(64) NOT NULL,
-  tier varchar(32) NOT NULL DEFAULT 'free',
-  status varchar(16) NOT NULL DEFAULT 'active',
-  stripe_customer_id varchar(64) DEFAULT NULL,
-  stripe_session_id varchar(255) DEFAULT NULL,
-  stripe_payment_intent_id varchar(255) DEFAULT NULL,
-  config_version varchar(32) DEFAULT NULL,
-  granted_at datetime NOT NULL,
-  expires_at datetime DEFAULT NULL,
-  revoked_at datetime DEFAULT NULL,
-  revocation_reason varchar(255) DEFAULT NULL,
-  grace_until datetime DEFAULT NULL,
-  last_validated_at datetime DEFAULT NULL,
-  created_at datetime NOT NULL,
-  updated_at datetime NOT NULL,
-  PRIMARY KEY  (id),
-  KEY site_identity (site_identity(191)),
-  KEY product_key (product_key),
-  KEY status (status),
-  UNIQUE KEY session_id (stripe_session_id)
-) {$cc};"
-		);
-
-		// 7. Legacy external event idempotency log.
-		dbDelta(
-			"CREATE TABLE {$p}sam_processed_events (
-  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  stripe_event_id varchar(255) NOT NULL,
-  stripe_session_id varchar(255) DEFAULT NULL,
-  event_type varchar(128) NOT NULL,
-  processed_at datetime NOT NULL,
-  outcome varchar(16) NOT NULL,
-  detail varchar(512) DEFAULT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY stripe_event_id (stripe_event_id),
-  KEY stripe_session_id (stripe_session_id)
-) {$cc};"
-		);
+		// 6/7 (legacy per-site entitlement compatibility records, and the
+		// external event idempotency log that guards it) are entirely
+		// extension-owned now -- see includes/extensions/, physically
+		// absent from the WordPress.org build. This file creates neither
+		// table, and has no knowledge of their name or column shape: a
+		// listening extension's own dbDelta() call does that, using the
+		// exact same $wpdb/$cc/$p this method already resolved. A
+		// WordPress.org install therefore never creates either table at
+		// all -- not merely leaves them unused.
+		do_action( 'wp_sam_register_schema', $wpdb, $cc, $p );
 
 		// 8. Append-only structured audit log (R10).
 		// No UPDATE or DELETE is ever issued against this table - it is an immutable record.
@@ -813,12 +799,15 @@ class Activator {
 	 * call on every activation: a no-op once the old-named table is gone.
 	 */
 	private static function migrate_v9_table_renames(): void {
-		global $wpdb;
-
+		// Two more pre-v9 renames, for the commercial-services extension's
+		// own legacy tables, exist too -- they run only from
+		// includes/extensions/commercial-services.php now (physically
+		// absent from the WordPress.org build), via the same
+		// rename_table_if_needed() helper this method uses, immediately
+		// before that extension's own schema registration. This method
+		// must not reference those two tables' names.
 		$renames = array(
 			'csp_scan_logs'                 => 'sam_scan_logs',
-			'csp_entitlements'              => 'sam_entitlements',
-			'csp_processed_events'          => 'sam_processed_events',
 			'csp_audit_log'                 => 'sam_audit_log',
 			'csp_policy_change_decisions'   => 'sam_policy_change_decisions',
 			'csp_policy_versions'           => 'sam_policy_versions',
@@ -826,13 +815,28 @@ class Activator {
 		);
 
 		foreach ( $renames as $old_suffix => $new_suffix ) {
-			$old_table = $wpdb->prefix . $old_suffix;
-			$new_table = $wpdb->prefix . $new_suffix;
+			self::rename_table_if_needed( $old_suffix, $new_suffix );
+		}
+	}
 
-			if ( self::table_exists( $old_table ) && ! self::table_exists( $new_table ) ) {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$wpdb->query( "RENAME TABLE {$old_table} TO {$new_table}" );
-			}
+	/**
+	 * Renames {$wpdb->prefix}{$old_suffix} to {$wpdb->prefix}{$new_suffix}
+	 * if the old-named table exists and the new-named one doesn't yet --
+	 * public so an extension (see includes/extensions/) can reuse it for
+	 * its own legacy table renames without duplicating this logic or
+	 * needing direct $wpdb access for it. Uses RENAME TABLE, not
+	 * create+copy+drop, so existing data is preserved intact. Safe to call
+	 * on every activation: a no-op once the old-named table is gone.
+	 */
+	public static function rename_table_if_needed( string $old_suffix, string $new_suffix ): void {
+		global $wpdb;
+
+		$old_table = $wpdb->prefix . $old_suffix;
+		$new_table = $wpdb->prefix . $new_suffix;
+
+		if ( self::table_exists( $old_table ) && ! self::table_exists( $new_table ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "RENAME TABLE {$old_table} TO {$new_table}" );
 		}
 	}
 

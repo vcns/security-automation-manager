@@ -134,14 +134,16 @@ class SchemaMigrationTest extends TestCase {
 	}
 
 	public function test_missing_table_names_reports_absent_plugin_tables(): void {
+		// sam_entitlements/sam_processed_events deliberately have no entry
+		// here at all -- get_missing_table_names() uses
+		// get_all_table_suffixes(), and this suite never loads the
+		// extension that would add them, so they're never queried.
 		$GLOBALS['_wpdb_get_var_queue'] = array(
 			'wp_csp_policy_profiles',
 			null,
 			'wp_csp_hash_inventory',
 			'wp_csp_violation_reports',
 			'wp_sam_scan_logs',
-			'wp_sam_entitlements',
-			'wp_sam_processed_events',
 			'wp_sam_audit_log',
 			'wp_sam_policy_change_decisions',
 			null,
@@ -631,6 +633,14 @@ class SchemaMigrationTest extends TestCase {
 		);
 	}
 
+	/**
+	 * sam_entitlements/sam_processed_events deliberately excluded -- they
+	 * are extension-owned now (see includes/extensions/commercial-services.php,
+	 * physically absent from the WordPress.org build) and a base
+	 * Activator::activate() run, exactly what this suite exercises since
+	 * it never loads that extension, must not create them. See
+	 * CommercialServicesSchemaTest for the tests proving that directly.
+	 */
 	private function expected_tables(): array {
 		return array(
 			'csp_policy_profiles',
@@ -638,8 +648,6 @@ class SchemaMigrationTest extends TestCase {
 			'csp_hash_inventory',
 			'csp_violation_reports',
 			'sam_scan_logs',
-			'sam_entitlements',
-			'sam_processed_events',
 			'sam_audit_log',
 			'sam_policy_change_decisions',
 			'sam_policy_versions',
