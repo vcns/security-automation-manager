@@ -165,6 +165,14 @@ class Hash_Manager {
 	}
 
 	private function start_buffer( string $surface ): void {
+		// Guards against opening a second buffer on top of one already
+		// open (e.g. a hook firing twice in one request) -- without this,
+		// buffer_level would be overwritten with the new, deeper level,
+		// losing track of the original buffer entirely.
+		if ( null !== $this->buffer_level ) {
+			return;
+		}
+
 		if ( ob_start() ) {
 			$this->buffer_level   = ob_get_level();
 			$this->buffer_surface = $surface;

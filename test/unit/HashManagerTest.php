@@ -192,6 +192,26 @@ class HashManagerTest extends TestCase {
 		$this->assertSame( $baseline, ob_get_level() );
 	}
 
+	public function test_start_buffer_does_not_open_a_second_buffer_if_called_twice(): void {
+		$baseline = ob_get_level();
+		$manager  = $this->make_db_stub_manager();
+
+		ob_start(); // outer capture buffer
+		$manager->start_buffer_frontend();
+		$manager->start_buffer_frontend(); // e.g. wp_head firing twice
+		echo '<style>body{color:red}</style>';
+		$manager->end_buffer_frontend();
+		$output = ob_get_clean();
+
+		// A single flush_buffer() call fully unwinds the stack back to
+		// baseline -- if the second start_buffer_frontend() call had
+		// opened another nested buffer (overwriting buffer_level and
+		// losing track of the first one), this would either leave a stray
+		// buffer level open or capture the wrong content.
+		$this->assertStringContainsString( '<style>body{color:red}</style>', $output );
+		$this->assertSame( $baseline, ob_get_level() );
+	}
+
 	// ── record_hash ───────────────────────────────────────────────────────────
 
 	public function test_record_hash_returns_sha256_prefixed_string(): void {
