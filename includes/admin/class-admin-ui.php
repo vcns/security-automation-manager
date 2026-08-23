@@ -48,6 +48,7 @@ use WP_SAM\Config_Portability;
 use WP_SAM\Plugin;
 use WP_SAM\Rollback_Guard;
 use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Automation_Mode_Registry;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
@@ -124,12 +125,12 @@ class Admin_UI {
 		add_action( 'wp_ajax_wp_sam_set_trusted_types', array( $this, 'ajax_set_trusted_types' ) );
 		add_action( 'wp_ajax_wp_sam_set_bypass_flag', array( $this, 'ajax_set_bypass_flag' ) );
 		add_action( 'wp_ajax_wp_sam_set_automation_mode', array( $this, 'ajax_set_automation_mode' ) );
-		// Checkout is a paid, GitHub-channel-only feature -- the handler must
-		// not be registered at all on the WordPress.org/.com-distributed
-		// build (see Automation_Config::channel_offers_fully_automatic()).
-		if ( Automation_Config::channel_offers_fully_automatic() ) {
-			add_action( 'wp_ajax_wp_sam_create_checkout_session', array( $this, 'ajax_create_checkout_session' ) );
-		}
+		// Checkout is a paid mode's own concern -- its AJAX handler is
+		// registered by whichever extension (see includes/extensions/,
+		// physically absent from the WordPress.org build) registers a paid
+		// automation mode with Automation_Mode_Registry, not here. This
+		// file has no knowledge of a payment provider, checkout, or any
+		// specific paid mode's identifier.
 		add_action( 'wp_ajax_wp_sam_set_pillar_value', array( $this, 'ajax_set_pillar_value' ) );
 		add_action( 'wp_ajax_wp_sam_set_permissions_policy_directive', array( $this, 'ajax_set_permissions_policy_directive' ) );
 		add_action( 'wp_ajax_wp_sam_set_hsts', array( $this, 'ajax_set_hsts' ) );
@@ -271,25 +272,18 @@ class Admin_UI {
 			'wp_sam_violation_retention_days'      => 'absint',
 		);
 
-		// Stripe configuration for the Fully Automatic checkout flow is a
-		// paid, GitHub-channel-only feature (see Automation_Config::
-		// channel_offers_fully_automatic()) -- these settings must not be
-		// registered at all on the WordPress.org/.com-distributed build, not
-		// merely left with no rendered UI for them.
-		if ( Automation_Config::channel_offers_fully_automatic() ) {
-			$settings['wp_sam_stripe_mode']                  = array( $this, 'sanitize_stripe_mode' );
-			$settings['wp_sam_stripe_secret_key_test']       = 'sanitize_text_field';
-			$settings['wp_sam_stripe_secret_key_live']       = 'sanitize_text_field';
-			$settings['wp_sam_stripe_price_id_monthly_test'] = 'sanitize_text_field';
-			$settings['wp_sam_stripe_price_id_annual_test']  = 'sanitize_text_field';
-			$settings['wp_sam_stripe_price_id_monthly_live'] = 'sanitize_text_field';
-			$settings['wp_sam_stripe_price_id_annual_live']  = 'sanitize_text_field';
-			$settings['wp_sam_webhook_secret']               = 'sanitize_text_field';
-		}
-
 		foreach ( $settings as $option => $callback ) {
 			register_setting( 'wp_sam_settings_group', $option, array( 'sanitize_callback' => $callback ) );
 		}
+
+		// Any paid automation mode's own settings (payment-provider
+		// configuration, or anything else it needs) are registered by
+		// whichever extension registers that mode (see includes/extensions/,
+		// physically absent from the WordPress.org build) via its own
+		// admin_init hook, entirely independent of this method -- WordPress's
+		// Settings API supports more than one admin_init callback
+		// registering settings into the same options group. This file has
+		// no knowledge of what, if anything, that registration contains.
 	}
 
 	public function add_plugin_action_links( array $links ): array {
@@ -378,10 +372,6 @@ class Admin_UI {
 		return Policy_Builder::sanitize_custom_policy_header_name( $header_name );
 	}
 
-	public function sanitize_stripe_mode( mixed $mode ): string {
-		return 'live' === $mode ? 'live' : 'test';
-	}
-
 	// ── Asset enqueue ─────────────────────────────────────────────────────────
 
 	public function sanitize_reporting_transport( mixed $transport ): string {
@@ -390,15 +380,28 @@ class Admin_UI {
 
 	public function sanitize_automation_config( mixed $config ): array {
 		$raw        = is_array( $config ) ? $config : array();
-		$normalised = ( new Automation_Config( $this->plugin->gate ) )->normalise_admin_input( $raw );
+		$normalised = ( new Automation_Config() )->normalise_admin_input( $raw );
 
 		foreach ( $normalised as $surface => $surface_config ) {
 			$requested_mode = strtolower( trim( (string) ( $raw[ $surface ]['mode'] ?? '' ) ) );
-			if ( Automation_Config::MODE_FULLY_AUTOMATIC === $requested_mode && Automation_Config::MODE_FULLY_AUTOMATIC !== $surface_config['mode'] ) {
+			// A requested mode this build doesn't even recognise (e.g. the
+			// identifier of a mode only some other build's extension
+			// registers) is deliberately indistinguishable here from any
+			// other unrecognised input -- no notice at all, matching how
+			// genuinely-garbage input has always behaved. Only a
+			// REGISTERED-but-currently-unavailable mode (Automation_Mode_
+			// Registry::is_valid_mode() true) gets this generic notice,
+			// using whatever label that mode itself is registered under.
+			if ( '' !== $requested_mode && $requested_mode !== $surface_config['mode'] && Automation_Mode_Registry::is_valid_mode( $requested_mode ) ) {
 				add_settings_error(
 					'wp_sam_automation_config',
-					'wp_sam_fully_automatic_requires_upgrade',
-					__( 'Fully Automatic mode requires a paid subscription. The affected surface was kept on "Automatic (with high approvals only)" instead.', 'vcns-security-automation-manager' ),
+					'wp_sam_automation_mode_unavailable',
+					sprintf(
+						/* translators: 1: the requested mode's label, 2: the mode it was kept on instead */
+						__( '"%1$s" mode is not currently available. The affected surface was kept on "%2$s" instead.', 'vcns-security-automation-manager' ),
+						Automation_Config::mode_label( $requested_mode ),
+						Automation_Config::mode_label( $surface_config['mode'] )
+					),
 					'warning'
 				);
 			}
@@ -1167,7 +1170,7 @@ class Admin_UI {
 			wp_send_json_error( array( 'message' => __( 'A decision reason is required.', 'vcns-security-automation-manager' ) ) );
 		}
 
-		$manager = new Policy_Change_Manager( $this->plugin->audit, null, new Policy_Version_Manager( $this->plugin->policy_builder ), gate: $this->plugin->gate );
+		$manager = new Policy_Change_Manager( $this->plugin->audit, null, new Policy_Version_Manager( $this->plugin->policy_builder ) );
 		if ( 'approved' === $action ) {
 			$ok = $manager->approve_source( $id, $reason );
 		} elseif ( 'reverted' === $action ) {
@@ -1320,20 +1323,20 @@ class Admin_UI {
 			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
-		if ( ! in_array( $mode, Automation_Config::MODES, true ) ) {
+		if ( ! Automation_Mode_Registry::is_valid_mode( $mode ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid automation mode.', 'vcns-security-automation-manager' ) ) );
 		}
 
-		if ( Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $this->plugin->gate->is_allowed( 'fully_automatic' ) ) {
+		if ( ! Automation_Mode_Registry::is_available( $mode ) ) {
 			wp_send_json_error(
 				array(
-					'message'          => __( 'Fully Automatic mode requires a paid subscription.', 'vcns-security-automation-manager' ),
-					'upgrade_required' => true,
+					/* translators: %s: the requested mode's label */
+					'message' => sprintf( __( '"%s" mode is not currently available.', 'vcns-security-automation-manager' ), Automation_Config::mode_label( $mode ) ),
 				)
 			);
 		}
 
-		( new Automation_Config( $this->plugin->gate ) )->update_surface_mode( $surface, $mode );
+		( new Automation_Config() )->update_surface_mode( $surface, $mode );
 
 		wp_send_json_success(
 			array(
@@ -1343,42 +1346,11 @@ class Admin_UI {
 		);
 	}
 
-	/**
-	 * Creates a Stripe Checkout Session and returns its URL for the browser
-	 * to redirect to. Only available when this is a private/commercial build
-	 * with the offline Checkout_Service module present -- the WordPress.org
-	 * and GitHub-channel builds always return the "not available" error.
-	 */
-	public function ajax_create_checkout_session(): void {
-		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( null, 403 );
-		}
-
-		if ( null === $this->plugin->checkout ) {
-			wp_send_json_error(
-				array( 'message' => __( 'Upgrading is not available in this build of the plugin.', 'vcns-security-automation-manager' ) )
-			);
-		}
-
-		$interval = sanitize_text_field( wp_unslash( $_POST['interval'] ?? 'monthly' ) );
-		if ( ! in_array( $interval, array( 'monthly', 'annual' ), true ) ) {
-			$interval = 'monthly';
-		}
-
-		$session = $this->plugin->checkout->create_session(
-			'csp-automation-manager',
-			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=success' ),
-			admin_url( 'admin.php?page=security-automation-manager-dashboard&wp_sam_checkout=cancelled' ),
-			$interval
-		);
-
-		if ( is_wp_error( $session ) ) {
-			wp_send_json_error( array( 'message' => $session->get_error_message() ) );
-		}
-
-		wp_send_json_success( array( 'url' => $session['url'] ) );
-	}
+	// Any paid automation mode's own checkout AJAX handler is registered by
+	// whichever extension registers that mode (see includes/extensions/,
+	// physically absent from the WordPress.org build) -- this file has no
+	// knowledge of a payment provider, checkout, or any specific paid
+	// mode's identifier.
 
 	// ── AJAX: simple pillar profiles ──────────────────────────────────────────
 

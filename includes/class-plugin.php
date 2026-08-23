@@ -155,7 +155,18 @@ final class Plugin {
 		if ( class_exists( \WP_SAM\Modules\Checkout_Service::class ) && null !== $this->entitlements ) {
 			$this->checkout = new \WP_SAM\Modules\Checkout_Service( $this->entitlements );
 		}
-		$this->gate                                      = new Feature_Gate( $this->entitlements );
+		$this->gate = new Feature_Gate( $this->entitlements );
+
+		// Automation mode registry: the three free modes are registered
+		// here; any paid mode is registered only by a loaded extension
+		// (see includes/extensions/, physically absent from the
+		// WordPress.org build) hooking wp_sam_register_automation_modes --
+		// this file has no knowledge of what, if anything, does. See
+		// Automation_Mode_Registry's own docblock for why this is the
+		// actual compliance boundary, not a channel or entitlement check.
+		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
+		do_action( 'wp_sam_register_automation_modes', $this->gate );
+
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
 		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
@@ -236,7 +247,7 @@ final class Plugin {
 
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers.
-		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window, gate: $this->gate );
+		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window );
 		$report_route_args  = array(
 			'methods'             => \WP_REST_Server::CREATABLE,
 			'callback'            => array( $violation_reporter, 'handle' ),
@@ -255,10 +266,10 @@ final class Plugin {
 		// its own transition window closed long ago.
 		register_rest_route( 'security-manager/v1', '/report', $report_route_args );
 
-		( new Admin_Controller( $this->audit, gate: $this->gate ) )->register_routes();
+		( new Admin_Controller( $this->audit ) )->register_routes();
 
-		// Stripe webhook -- only registered in a private/commercial build
-		// where offline/modules/class-webhook-controller.php is present.
+		// Payment-provider webhook -- only registered in a private/commercial
+		// build where offline/modules/class-webhook-controller.php is present.
 		if ( class_exists( \WP_SAM\Modules\Webhook_Controller::class ) && null !== $this->entitlements && null !== $this->checkout ) {
 			( new \WP_SAM\Modules\Webhook_Controller( $this->entitlements, $this->audit, $this->checkout ) )->register_routes();
 		}

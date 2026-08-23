@@ -22,7 +22,7 @@ class Data_Resetter {
 			'tables_cleared'     => array(),
 			'tables_missing'     => array(),
 			'tables_failed'      => array(),
-			'options_deleted'    => Activator::get_option_names(),
+			'options_deleted'    => Activator::get_all_option_names(),
 			'transients_deleted' => Activator::get_transient_names(),
 		);
 
@@ -44,7 +44,7 @@ class Data_Resetter {
 			$result['tables_cleared'][ $table ] = (int) $deleted;
 		}
 
-		foreach ( Activator::get_option_names() as $option ) {
+		foreach ( Activator::get_all_option_names() as $option ) {
 			delete_option( $option );
 		}
 

@@ -295,18 +295,19 @@ class Activator {
 			'wp_sam_acme_account_keys',
 			'wp_sam_acme_http_tokens',
 			'wp_sam_cert_last_run',
-			// Stripe configuration for the (commercial-build-only) Fully
-			// Automatic checkout flow -- see Checkout_Service and
-			// Webhook_Controller in offline/modules/.
-			'wp_sam_stripe_mode',
-			'wp_sam_stripe_secret_key_test',
-			'wp_sam_stripe_secret_key_live',
-			'wp_sam_stripe_price_id_monthly_test',
-			'wp_sam_stripe_price_id_annual_test',
-			'wp_sam_stripe_price_id_monthly_live',
-			'wp_sam_stripe_price_id_annual_live',
-			'wp_sam_webhook_secret',
 		);
+	}
+
+	/**
+	 * Every plugin-owned option name, including any a loaded extension (see
+	 * includes/extensions/, physically absent from the WordPress.org build)
+	 * registers via the wp_sam_option_names filter for its own paid mode's
+	 * settings -- this file has no knowledge of what those are. Used by
+	 * Reset Data / Export Config so cleanup and export cover extension
+	 * options too, without this file naming them.
+	 */
+	public static function get_all_option_names(): array {
+		return apply_filters( 'wp_sam_option_names', self::get_option_names() );
 	}
 
 	public static function get_transient_names(): array {

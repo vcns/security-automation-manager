@@ -8,7 +8,6 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
-use WP_SAM\Modules\Feature_Gate;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -43,11 +42,11 @@ class Policy_Change_Manager {
 	private ?Policy_Version_Manager $policy_versions;
 	private int $automatic_changes_this_run = 0;
 
-	public function __construct( Audit_Log $audit, ?Decision_Engine $decision_engine = null, ?Policy_Version_Manager $policy_versions = null, ?Automation_Config $automation_config = null, ?Feature_Gate $gate = null ) {
+	public function __construct( Audit_Log $audit, ?Decision_Engine $decision_engine = null, ?Policy_Version_Manager $policy_versions = null, ?Automation_Config $automation_config = null ) {
 		$this->audit             = $audit;
 		$this->decision_engine   = $decision_engine ?? new Decision_Engine();
 		$this->policy_versions   = $policy_versions;
-		$this->automation_config = $automation_config ?? new Automation_Config( $gate );
+		$this->automation_config = $automation_config ?? new Automation_Config();
 	}
 
 	/**
@@ -490,7 +489,7 @@ class Policy_Change_Manager {
 
 	private function automation_config_allows_source( array $source, array $automation ): bool {
 		$mode = (string) ( $automation['mode'] ?? 'manual' );
-		if ( 'manual' === $mode || ! in_array( $mode, Automation_Config::MODES, true ) ) {
+		if ( Automation_Config::MODE_MANUAL === $mode || ! Automation_Mode_Registry::is_valid_mode( $mode ) ) {
 			return false;
 		}
 

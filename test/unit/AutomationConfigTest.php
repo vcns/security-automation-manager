@@ -1,18 +1,28 @@
 <?php
 /**
  * Unit tests for WP_SAM\CSP\Automation_Config.
+ *
+ * This suite never loads includes/extensions/ (nothing in the test harness
+ * requires that directory), so Automation_Mode_Registry only ever has the
+ * three free modes register_defaults() adds -- by construction, exactly the
+ * WordPress.org-channel scenario, not merely a simulation of it. Tests that
+ * need a paid-mode scenario register one directly via
+ * Automation_Mode_Registry::register(), proving the generic mechanism works
+ * for any mode, not a hardcoded "fully_automatic" special case.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\CSP\Automation_Config;
-use WP_SAM\Modules\Feature_Gate;
+use WP_SAM\CSP\Automation_Mode_Registry;
 
 class AutomationConfigTest extends TestCase {
 
 	protected function setUp(): void {
 		wp_test_reset_globals();
+		Automation_Mode_Registry::reset();
+		Automation_Mode_Registry::register_defaults();
 	}
 
 	public function test_defaults_are_automatic_high_approval(): void {
@@ -73,57 +83,59 @@ class AutomationConfigTest extends TestCase {
 			)
 		);
 
-		// No gate injected -- free-tier default. "expert" maps to
-		// Fully Automatic, which is a paid feature, so it downgrades to
-		// the highest free posture instead of passing through unchanged.
+		// 'expert' is a legacy alias only a paid-mode extension registers
+		// (see includes/extensions/) -- unregistered here, so it resolves
+		// to a mode nothing recognises and normalises to manual, exactly
+		// like any other unrecognised string.
 		$config = ( new Automation_Config() )->all();
 
 		$this->assertSame( Automation_Config::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL, $config['frontend']['mode'] );
 		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['admin']['mode'] );
-		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['login']['mode'] );
+		$this->assertSame( Automation_Config::MODE_MANUAL, $config['login']['mode'] );
 	}
 
-	// ── Fully Automatic gating ───────────────────────────────────────────────
-
-	public function test_fully_automatic_downgrades_to_high_approval_without_entitlement(): void {
-		$config = ( new Automation_Config() )->update_surface_mode( 'frontend', Automation_Config::MODE_FULLY_AUTOMATIC );
-
-		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['frontend']['mode'] );
-	}
+	// ── Paid-mode gating (generic -- not specific to any one paid mode) ──────
 
 	/**
-	 * Fully Automatic is a paid, GitHub-channel-only feature: a pro
-	 * entitlement alone is necessary but not sufficient -- the distribution
-	 * channel must also offer it. WP_SAM_DISTRIBUTION_CHANNEL is defined
-	 * once, globally, in test/bootstrap.php as 'wordpress-org' and PHP
-	 * constants can't be redefined per-test (same limitation documented in
-	 * AdminUITest::test_updates_tab_omits_github_fields_on_wordpress_org_build),
-	 * so this only ever exercises the WordPress.org/.com branch. That's
-	 * still the one this requirement is actually about: even a genuinely
-	 * pro-entitled site must never see Fully Automatic accepted on that
-	 * channel.
+	 * "fully_automatic" is a bare string here deliberately, not a shared
+	 * constant -- Automation_Config defines no such constant any more (see
+	 * its own docblock). Nothing in this suite ever registers it, so this
+	 * proves the WordPress.org-channel behaviour: submitting that exact
+	 * identifier is indistinguishable from submitting any other
+	 * unrecognised string.
 	 */
-	public function test_fully_automatic_stays_downgraded_on_wordpress_org_channel_even_with_a_pro_entitlement(): void {
-		$entitlements = new class() {
-			public function get_for_site( string $product_key ): ?array {
-				return array( 'tier' => 'pro' );
-			}
-		};
+	public function test_an_unregistered_paid_mode_identifier_normalises_to_manual(): void {
+		$config = ( new Automation_Config() )->update_surface_mode( 'frontend', 'fully_automatic' );
 
-		$gate   = new Feature_Gate( $entitlements );
-		$config = ( new Automation_Config( $gate ) )->update_surface_mode( 'frontend', Automation_Config::MODE_FULLY_AUTOMATIC );
+		$this->assertSame( Automation_Config::MODE_MANUAL, $config['frontend']['mode'] );
+	}
+
+	public function test_a_registered_but_unavailable_paid_mode_downgrades_to_high_approval(): void {
+		Automation_Mode_Registry::register( 'test_paid_mode', 'Test Paid Mode', array( 'low', 'medium', 'high' ), static fn(): bool => false );
+
+		$config = ( new Automation_Config() )->update_surface_mode( 'frontend', 'test_paid_mode' );
 
 		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['frontend']['mode'] );
 	}
 
-	public function test_channel_offers_fully_automatic_is_false_on_the_wordpress_org_channel(): void {
-		// See the docblock above for why this suite can only exercise the
-		// wordpress-org branch of this check.
-		$this->assertFalse( Automation_Config::channel_offers_fully_automatic() );
+	public function test_a_registered_and_available_paid_mode_is_accepted(): void {
+		Automation_Mode_Registry::register( 'test_paid_mode', 'Test Paid Mode', array( 'low', 'medium', 'high' ), static fn(): bool => true );
+
+		$config = ( new Automation_Config() )->update_surface_mode( 'frontend', 'test_paid_mode' );
+
+		$this->assertSame( 'test_paid_mode', $config['frontend']['mode'] );
 	}
 
-	public function test_mode_labels_omits_fully_automatic_on_the_wordpress_org_channel(): void {
-		$this->assertArrayNotHasKey( Automation_Config::MODE_FULLY_AUTOMATIC, Automation_Config::mode_labels() );
+	public function test_mode_labels_reflects_only_what_is_registered(): void {
+		$labels = Automation_Config::mode_labels();
+
+		$this->assertArrayHasKey( Automation_Config::MODE_MANUAL, $labels );
+		$this->assertArrayHasKey( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $labels );
+		$this->assertArrayNotHasKey( 'fully_automatic', $labels );
+		$this->assertArrayNotHasKey( 'test_paid_mode', $labels );
+
+		Automation_Mode_Registry::register( 'test_paid_mode', 'Test Paid Mode', array( 'low' ) );
+		$this->assertArrayHasKey( 'test_paid_mode', Automation_Config::mode_labels() );
 	}
 
 	public function test_dashboard_mode_update_seeds_change_cap_for_automatic_modes(): void {

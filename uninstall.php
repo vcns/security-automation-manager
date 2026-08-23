@@ -10,6 +10,19 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 global $wpdb;
 
+// This file runs standalone -- WordPress does not load the plugin's own
+// bootstrap for uninstall.php, so an extension (see includes/extensions/,
+// physically absent from the WordPress.org build) gets no chance to
+// register itself unless required directly here. Only the
+// wp_sam_option_names filter registration below (add_filter, a pure
+// closure) actually needs to fire in this minimal context -- no autoloaded
+// class is ever instantiated during an uninstall run.
+$wp_sam_extension_files = glob( __DIR__ . '/includes/extensions/*.php' );
+foreach ( false !== $wp_sam_extension_files ? $wp_sam_extension_files : array() as $wp_sam_extension_file ) {
+	require $wp_sam_extension_file;
+}
+unset( $wp_sam_extension_files, $wp_sam_extension_file );
+
 // ── Drop custom tables ────────────────────────────────────────────────────────
 $tables = array(
 	'csp_policy_profiles',
@@ -53,16 +66,13 @@ $options = array(
 	'wp_sam_acme_account_keys',
 	'wp_sam_acme_http_tokens',
 	'wp_sam_cert_last_run',
-	'wp_sam_stripe_mode',
-	'wp_sam_stripe_secret_key_test',
-	'wp_sam_stripe_secret_key_live',
-	'wp_sam_stripe_price_id_monthly_test',
-	'wp_sam_stripe_price_id_annual_test',
-	'wp_sam_stripe_price_id_monthly_live',
-	'wp_sam_stripe_price_id_annual_live',
-	'wp_sam_webhook_secret',
 	'wp_sam_update_diagnostics',
 );
+
+// Extension-owned option names (e.g. a paid automation mode's own
+// payment-provider settings) are added here, not named in this file --
+// see the require loop above.
+$options = apply_filters( 'wp_sam_option_names', $options );
 
 foreach ( $options as $option ) {
 	delete_option( $option );

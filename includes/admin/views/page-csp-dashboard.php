@@ -61,13 +61,26 @@ $tab_help = array(
 
 // ── Data queries ──────────────────────────────────────────────────────────────
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-$profiles_raw                          = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
-$profiles                              = ! empty( $profiles_raw ) ? $profiles_raw : array();
-$surfaces                              = array( 'frontend', 'admin', 'login', 'api' );
-$automation_config                     = ( new \WP_SAM\CSP\Automation_Config( $this->plugin->gate ) )->all();
-$automation_labels                     = \WP_SAM\CSP\Automation_Config::mode_labels();
-$wp_sam_channel_offers_fully_automatic = \WP_SAM\CSP\Automation_Config::channel_offers_fully_automatic();
-$wp_sam_is_pro                         = $wp_sam_channel_offers_fully_automatic && $this->plugin->gate->is_allowed( 'fully_automatic' );
+$profiles_raw      = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
+$profiles          = ! empty( $profiles_raw ) ? $profiles_raw : array();
+$surfaces          = array( 'frontend', 'admin', 'login', 'api' );
+$automation_config = ( new \WP_SAM\CSP\Automation_Config() )->all();
+$automation_labels = \WP_SAM\CSP\Automation_Config::mode_labels();
+
+// True when at least one registered automation mode is currently
+// unavailable (e.g. a paid mode without an active entitlement) -- used to
+// decide whether an "Upgrade to unlock" affordance has anything to point
+// at. On a build where no such mode is ever registered at all (the
+// WordPress.org channel), $automation_labels never contains one, so this
+// is always false there -- not merely hidden, nothing to compute.
+$wp_sam_has_unavailable_mode = false;
+foreach ( array_keys( $automation_labels ) as $wp_sam_mode_key ) {
+	if ( ! \WP_SAM\CSP\Automation_Mode_Registry::is_available( $wp_sam_mode_key ) ) {
+		$wp_sam_has_unavailable_mode = true;
+		break;
+	}
+}
+unset( $wp_sam_mode_key );
 
 // Shared pagination defaults.
 $per_page = 20;
@@ -291,17 +304,17 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 					title="<?php echo esc_attr( $automation_title ); ?>">
 					<?php foreach ( $automation_labels as $mode => $label ) : ?>
 					<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $automation_mode, $mode ); ?>
-						<?php disabled( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ); ?>>
+						<?php disabled( ! \WP_SAM\CSP\Automation_Mode_Registry::is_available( $mode ) ); ?>>
 						<?php
 						echo esc_html( $label );
-						if ( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ) {
+						if ( ! \WP_SAM\CSP\Automation_Mode_Registry::is_available( $mode ) ) {
 							echo ' ' . esc_html__( '(requires upgrade)', 'vcns-security-automation-manager' );
 						}
 						?>
 					</option>
 					<?php endforeach; ?>
 				</select>
-				<?php if ( $wp_sam_channel_offers_fully_automatic && ! $wp_sam_is_pro ) : ?>
+				<?php if ( $wp_sam_has_unavailable_mode ) : ?>
 				<br /><a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-upgrade' ) ); ?>" style="font-size:0.85em;"><?php esc_html_e( 'Upgrade to unlock →', 'vcns-security-automation-manager' ); ?></a>
 				<?php endif; ?>
 			</td>
@@ -1358,89 +1371,20 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		<p class="description">
 			<?php esc_html_e( 'Configure how far the deterministic engine may go without administrator approval. Manual mode remains the default; hard-excluded, critical, unknown, and insufficient-evidence proposals always require review.', 'vcns-security-automation-manager' ); ?>
 		</p>
-		<?php if ( $wp_sam_channel_offers_fully_automatic && ! $wp_sam_is_pro ) : ?>
-		<div id="wp-sam-upgrade" class="notice notice-info inline" style="padding:16px 20px;margin:1em 0;">
-			<h3 style="margin-top:0;"><?php esc_html_e( 'Unlock Fully Automatic', 'vcns-security-automation-manager' ); ?></h3>
-			<p><?php esc_html_e( 'Fully Automatic auto-applies low, medium, and high-risk proposals within the hard safety exclusions the deterministic engine already enforces -- zero manual review. Every other automation mode, and every other pillar, stays free.', 'vcns-security-automation-manager' ); ?></p>
-			<?php if ( null !== $this->plugin->checkout ) : ?>
-			<div class="wp-sam-product-cards">
-				<div class="wp-sam-product-card">
-					<h3><?php esc_html_e( 'Monthly', 'vcns-security-automation-manager' ); ?></h3>
-					<p class="wp-sam-price">&pound;1.99<span style="font-size:0.4em;font-weight:normal;">/mo</span></p>
-					<button type="button" class="button button-primary wp-sam-upgrade-button" data-interval="monthly"><?php esc_html_e( 'Subscribe monthly', 'vcns-security-automation-manager' ); ?></button>
-				</div>
-				<div class="wp-sam-product-card">
-					<h3><?php esc_html_e( 'Annual', 'vcns-security-automation-manager' ); ?></h3>
-					<p class="wp-sam-price">&pound;19.99<span style="font-size:0.4em;font-weight:normal;">/yr</span></p>
-					<button type="button" class="button button-primary wp-sam-upgrade-button" data-interval="annual"><?php esc_html_e( 'Subscribe annually', 'vcns-security-automation-manager' ); ?></button>
-				</div>
-			</div>
-			<p><span id="wp-sam-upgrade-status" role="status"></span></p>
-			<?php else : ?>
-			<p class="description"><?php esc_html_e( 'Upgrading is not available in this build of the plugin.', 'vcns-security-automation-manager' ); ?></p>
-			<?php endif; ?>
-		</div>
-		<?php endif; ?>
-
-		<?php if ( null !== $this->plugin->checkout ) : ?>
-		<h2 class="title"><?php esc_html_e( 'Stripe Configuration', 'vcns-security-automation-manager' ); ?></h2>
-		<p class="description">
-			<?php esc_html_e( 'This site calls the Stripe API directly to create checkout sessions -- no external proxy is involved. Create one Product with a recurring Monthly and Annual Price in your Stripe dashboard, then paste the resulting IDs below.', 'vcns-security-automation-manager' ); ?>
-		</p>
-		<table class="form-table" role="presentation">
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_mode"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></label></th>
-				<td>
-					<select id="wp_sam_stripe_mode" name="wp_sam_stripe_mode">
-						<option value="test" <?php selected( get_option( 'wp_sam_stripe_mode', 'test' ), 'test' ); ?>><?php esc_html_e( 'Test', 'vcns-security-automation-manager' ); ?></option>
-						<option value="live" <?php selected( get_option( 'wp_sam_stripe_mode', 'test' ), 'live' ); ?>><?php esc_html_e( 'Live', 'vcns-security-automation-manager' ); ?></option>
-					</select>
-					<p class="description"><?php esc_html_e( 'Which key/price pair below is actually used for checkout. Test everything in Test mode first.', 'vcns-security-automation-manager' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_secret_key_test"><?php esc_html_e( 'Test Secret Key', 'vcns-security-automation-manager' ); ?></label></th>
-				<td><input type="password" id="wp_sam_stripe_secret_key_test" name="wp_sam_stripe_secret_key_test" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_secret_key_test', '' ) ); ?>" class="regular-text" autocomplete="off" placeholder="sk_test_…" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_secret_key_live"><?php esc_html_e( 'Live Secret Key', 'vcns-security-automation-manager' ); ?></label></th>
-				<td><input type="password" id="wp_sam_stripe_secret_key_live" name="wp_sam_stripe_secret_key_live" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_secret_key_live', '' ) ); ?>" class="regular-text" autocomplete="off" placeholder="sk_live_…" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_price_id_monthly_test"><?php esc_html_e( 'Test Price ID (Monthly)', 'vcns-security-automation-manager' ); ?></label></th>
-				<td><input type="text" id="wp_sam_stripe_price_id_monthly_test" name="wp_sam_stripe_price_id_monthly_test" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_monthly_test', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_price_id_annual_test"><?php esc_html_e( 'Test Price ID (Annual)', 'vcns-security-automation-manager' ); ?></label></th>
-				<td><input type="text" id="wp_sam_stripe_price_id_annual_test" name="wp_sam_stripe_price_id_annual_test" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_annual_test', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_price_id_monthly_live"><?php esc_html_e( 'Live Price ID (Monthly)', 'vcns-security-automation-manager' ); ?></label></th>
-				<td><input type="text" id="wp_sam_stripe_price_id_monthly_live" name="wp_sam_stripe_price_id_monthly_live" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_monthly_live', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_stripe_price_id_annual_live"><?php esc_html_e( 'Live Price ID (Annual)', 'vcns-security-automation-manager' ); ?></label></th>
-				<td><input type="text" id="wp_sam_stripe_price_id_annual_live" name="wp_sam_stripe_price_id_annual_live" value="<?php echo esc_attr( get_option( 'wp_sam_stripe_price_id_annual_live', '' ) ); ?>" class="regular-text" placeholder="price_…" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="wp_sam_webhook_secret"><?php esc_html_e( 'Webhook Signing Secret', 'vcns-security-automation-manager' ); ?></label></th>
-				<td>
-					<input type="password" id="wp_sam_webhook_secret" name="wp_sam_webhook_secret" value="<?php echo esc_attr( get_option( 'wp_sam_webhook_secret', '' ) ); ?>" class="regular-text" autocomplete="off" placeholder="whsec_…" />
-					<p class="description">
-						<?php
-						echo wp_kses_post(
-							sprintf(
-								/* translators: %s: the webhook URL to register in the Stripe dashboard */
-								__( 'In the Stripe dashboard, add a webhook endpoint at %s listening for checkout.session.completed and checkout.session.async_payment_succeeded, then paste its signing secret here. One endpoint covers both Test and Live mode.', 'vcns-security-automation-manager' ),
-								'<code>' . esc_html( rest_url( 'sam/v1/webhook/stripe' ) ) . '</code>'
-							)
-						);
-						?>
-					</p>
-				</td>
-			</tr>
-		</table>
-		<?php endif; ?>
+		<?php
+		/**
+		 * Any paid automation mode's own upsell presentation (and, in its
+		 * own further hook if it needs one, its own payment-provider
+		 * settings UI) is rendered by whichever extension registers that
+		 * mode (see includes/extensions/, physically absent from the
+		 * WordPress.org build) -- this file has no knowledge of any
+		 * payment provider, checkout mechanism, specific paid mode name,
+		 * or its copy. Passes $wp_sam_has_unavailable_mode so a listening
+		 * extension can skip rendering anything if its own mode is already
+		 * available (entitled).
+		 */
+		do_action( 'wp_sam_automation_upgrade_notice', $wp_sam_has_unavailable_mode );
+		?>
 
 		<table class="widefat striped" role="presentation">
 			<thead>
@@ -1461,10 +1405,10 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 						<select name="wp_sam_automation_config[<?php echo esc_attr( $surface ); ?>][mode]">
 							<?php foreach ( $automation_mode_labels as $mode => $label ) : ?>
 							<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $surface_config['mode'], $mode ); ?>
-								<?php disabled( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ); ?>>
+								<?php disabled( ! \WP_SAM\CSP\Automation_Mode_Registry::is_available( $mode ) ); ?>>
 								<?php
 								echo esc_html( $label );
-								if ( \WP_SAM\CSP\Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $wp_sam_is_pro ) {
+								if ( ! \WP_SAM\CSP\Automation_Mode_Registry::is_available( $mode ) ) {
 									echo ' ' . esc_html__( '(requires upgrade)', 'vcns-security-automation-manager' );
 								}
 								?>

@@ -27,8 +27,8 @@
  *     settings. Never wp_sam_db_version or wp_sam_schema_verified_version
  *     (code-tied, meaningless to move between sites), never any
  *     runtime-state option (admin notices queue, last-material-change
- *     timestamp), never anything Stripe-related (commercial/secret,
- *     offline-only in any case).
+ *     timestamp), never anything payment-provider-related
+ *     (commercial/secret, offline-only in any case).
  *   - Certificate configuration is exported separately from
  *     PORTABLE_OPTIONS, via export_cert_config()/apply_cert_config(),
  *     because wp_sam_cert_config mixes portable fields (domains, DNS
