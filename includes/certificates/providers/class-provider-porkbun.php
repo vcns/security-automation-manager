@@ -24,11 +24,11 @@ class Provider_Porkbun extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_key'    => array(
-				'label'       => __( 'API Key', 'security-automation-manager' ),
+				'label'       => __( 'API Key', 'vcns-security-automation-manager' ),
 				'placeholder' => 'pk1_...',
 			),
 			'api_secret' => array(
-				'label'       => __( 'Secret API Key', 'security-automation-manager' ),
+				'label'       => __( 'Secret API Key', 'vcns-security-automation-manager' ),
 				'placeholder' => 'sk1_...',
 			),
 		);

@@ -24,12 +24,12 @@ class Provider_Glesys extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'account' => array(
-				'label'       => __( 'Account number (CL12345)', 'security-automation-manager' ),
+				'label'       => __( 'Account number (CL12345)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'CL12345',
 			),
 			'api_key' => array(
-				'label' => __( 'API key', 'security-automation-manager' ),
+				'label' => __( 'API key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

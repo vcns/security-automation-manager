@@ -57,10 +57,10 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 				<?php if ( null !== $value_options ) : ?>
-					<th><?php esc_html_e( 'Value', 'security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
 				<?php endif; ?>
 			</tr>
 		</thead>
@@ -108,7 +108,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		echo wp_kses_post(
 			sprintf(
 			/* translators: %s: HTTP header name, e.g. "X-Frame-Options" */
-				__( 'Changes apply immediately -- there is no report-only mode, discovery workflow, or automation for this pillar. The %s header is either sent exactly as configured, or not sent at all.', 'security-automation-manager' ),
+				__( 'Changes apply immediately -- there is no report-only mode, discovery workflow, or automation for this pillar. The %s header is either sent exactly as configured, or not sent at all.', 'vcns-security-automation-manager' ),
 				'<code>' . esc_html( $header_name ) . '</code>'
 			)
 		);

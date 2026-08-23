@@ -31,7 +31,7 @@ class Provider_Google_Cloud extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'service_account_json' => array(
-				'label'    => __( 'Service account key (paste the full JSON file)', 'security-automation-manager' ),
+				'label'    => __( 'Service account key (paste the full JSON file)', 'vcns-security-automation-manager' ),
 				'textarea' => true,
 			),
 		);

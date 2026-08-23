@@ -24,7 +24,7 @@ class Provider_Hetzner extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label' => __( 'DNS API Token', 'security-automation-manager' ),
+				'label' => __( 'DNS API Token', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

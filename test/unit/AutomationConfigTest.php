@@ -91,7 +91,19 @@ class AutomationConfigTest extends TestCase {
 		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['frontend']['mode'] );
 	}
 
-	public function test_fully_automatic_is_accepted_with_a_pro_entitlement(): void {
+	/**
+	 * Fully Automatic is a paid, GitHub-channel-only feature: a pro
+	 * entitlement alone is necessary but not sufficient -- the distribution
+	 * channel must also offer it. WP_SAM_DISTRIBUTION_CHANNEL is defined
+	 * once, globally, in test/bootstrap.php as 'wordpress-org' and PHP
+	 * constants can't be redefined per-test (same limitation documented in
+	 * AdminUITest::test_updates_tab_omits_github_fields_on_wordpress_org_build),
+	 * so this only ever exercises the WordPress.org/.com branch. That's
+	 * still the one this requirement is actually about: even a genuinely
+	 * pro-entitled site must never see Fully Automatic accepted on that
+	 * channel.
+	 */
+	public function test_fully_automatic_stays_downgraded_on_wordpress_org_channel_even_with_a_pro_entitlement(): void {
 		$entitlements = new class() {
 			public function get_for_site( string $product_key ): ?array {
 				return array( 'tier' => 'pro' );
@@ -101,7 +113,17 @@ class AutomationConfigTest extends TestCase {
 		$gate   = new Feature_Gate( $entitlements );
 		$config = ( new Automation_Config( $gate ) )->update_surface_mode( 'frontend', Automation_Config::MODE_FULLY_AUTOMATIC );
 
-		$this->assertSame( Automation_Config::MODE_FULLY_AUTOMATIC, $config['frontend']['mode'] );
+		$this->assertSame( Automation_Config::MODE_AUTOMATIC_HIGH_APPROVAL, $config['frontend']['mode'] );
+	}
+
+	public function test_channel_offers_fully_automatic_is_false_on_the_wordpress_org_channel(): void {
+		// See the docblock above for why this suite can only exercise the
+		// wordpress-org branch of this check.
+		$this->assertFalse( Automation_Config::channel_offers_fully_automatic() );
+	}
+
+	public function test_mode_labels_omits_fully_automatic_on_the_wordpress_org_channel(): void {
+		$this->assertArrayNotHasKey( Automation_Config::MODE_FULLY_AUTOMATIC, Automation_Config::mode_labels() );
 	}
 
 	public function test_dashboard_mode_update_seeds_change_cap_for_automatic_modes(): void {

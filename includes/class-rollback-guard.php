@@ -256,7 +256,7 @@ class Rollback_Guard {
 		if ( ! self::table_exists( $snapshot_table ) ) {
 			return array(
 				'ok'     => false,
-				'reason' => __( 'No snapshot history exists on this site.', 'security-automation-manager' ),
+				'reason' => __( 'No snapshot history exists on this site.', 'vcns-security-automation-manager' ),
 			);
 		}
 
@@ -269,7 +269,7 @@ class Rollback_Guard {
 		if ( empty( $row ) ) {
 			return array(
 				'ok'     => false,
-				'reason' => __( 'That snapshot no longer exists.', 'security-automation-manager' ),
+				'reason' => __( 'That snapshot no longer exists.', 'vcns-security-automation-manager' ),
 			);
 		}
 
@@ -280,7 +280,7 @@ class Rollback_Guard {
 				'ok'     => false,
 				'reason' => sprintf(
 					/* translators: 1: schema version the snapshot was taken for, 2: schema version currently running */
-					__( 'This snapshot was taken for schema v%1$d; the running plugin is on schema v%2$d. Restoring across a schema change is not supported automatically -- see docs/rollback-and-recovery.md for the manual recovery process.', 'security-automation-manager' ),
+					__( 'This snapshot was taken for schema v%1$d; the running plugin is on schema v%2$d. Restoring across a schema change is not supported automatically -- see docs/rollback-and-recovery.md for the manual recovery process.', 'vcns-security-automation-manager' ),
 					$snapshot_to_version,
 					$code_version
 				),
@@ -291,7 +291,7 @@ class Rollback_Guard {
 		if ( ! is_array( $data ) ) {
 			return array(
 				'ok'     => false,
-				'reason' => __( 'That snapshot is corrupted and cannot be restored.', 'security-automation-manager' ),
+				'reason' => __( 'That snapshot is corrupted and cannot be restored.', 'vcns-security-automation-manager' ),
 			);
 		}
 

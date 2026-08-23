@@ -24,12 +24,12 @@ class Provider_Cloudns extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'auth_id'       => array(
-				'label'       => __( 'auth-id (or sub-auth-id, prefixed "sub:")', 'security-automation-manager' ),
+				'label'       => __( 'auth-id (or sub-auth-id, prefixed "sub:")', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => '1234 or sub:1234',
 			),
 			'auth_password' => array(
-				'label' => __( 'API password', 'security-automation-manager' ),
+				'label' => __( 'API password', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

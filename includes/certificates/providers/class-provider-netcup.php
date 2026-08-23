@@ -28,14 +28,14 @@ class Provider_Netcup extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'customer_number' => array(
-				'label'  => __( 'Customer number', 'security-automation-manager' ),
+				'label'  => __( 'Customer number', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'api_key'         => array(
-				'label' => __( 'API key', 'security-automation-manager' ),
+				'label' => __( 'API key', 'vcns-security-automation-manager' ),
 			),
 			'api_password'    => array(
-				'label' => __( 'API password', 'security-automation-manager' ),
+				'label' => __( 'API password', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

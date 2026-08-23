@@ -29,27 +29,27 @@ class Readiness_Checker {
 
 		return array(
 			array(
-				'label'  => __( 'Plugin version', 'security-automation-manager' ),
+				'label'  => __( 'Plugin version', 'vcns-security-automation-manager' ),
 				'value'  => WP_SAM_VERSION,
 				'status' => 'pass',
 			),
 			array(
-				'label'  => __( 'Database schema version', 'security-automation-manager' ),
+				'label'  => __( 'Database schema version', 'vcns-security-automation-manager' ),
 				'value'  => sprintf(
 					/* translators: 1: installed schema version, 2: code schema version */
-					__( 'Installed %1$s, code expects %2$s', 'security-automation-manager' ),
+					__( 'Installed %1$s, code expects %2$s', 'vcns-security-automation-manager' ),
 					$installed_schema,
 					WP_SAM_DB_VERSION
 				),
 				'status' => (string) WP_SAM_DB_VERSION === $installed_schema ? 'pass' : 'fail',
 			),
 			array(
-				'label'  => __( 'Plugin file', 'security-automation-manager' ),
+				'label'  => __( 'Plugin file', 'vcns-security-automation-manager' ),
 				'value'  => plugin_basename( WP_SAM_FILE ),
 				'status' => 'pass',
 			),
 			array(
-				'label'  => __( 'Table prefix in use', 'security-automation-manager' ),
+				'label'  => __( 'Table prefix in use', 'vcns-security-automation-manager' ),
 				'value'  => $this->get_table_prefix(),
 				'status' => 'pass',
 			),
@@ -94,42 +94,42 @@ class Readiness_Checker {
 
 		return array(
 			array(
-				'label'  => __( 'Required policy profiles', 'security-automation-manager' ),
+				'label'  => __( 'Required policy profiles', 'vcns-security-automation-manager' ),
 				'value'  => sprintf(
 					/* translators: %d: policy profile count */
-					__( '%d of 4 expected surfaces are present', 'security-automation-manager' ),
+					__( '%d of 4 expected surfaces are present', 'vcns-security-automation-manager' ),
 					$profile_count
 				),
 				'status' => 4 === $profile_count ? 'pass' : 'fail',
 			),
 			array(
-				'label'  => __( 'Policy version snapshots', 'security-automation-manager' ),
+				'label'  => __( 'Policy version snapshots', 'vcns-security-automation-manager' ),
 				'value'  => sprintf(
 					/* translators: %d: policy version count */
-					__( '%d snapshot records found', 'security-automation-manager' ),
+					__( '%d snapshot records found', 'vcns-security-automation-manager' ),
 					$version_count
 				),
 				'status' => $version_count >= 4 ? 'pass' : 'warning',
 			),
 			array(
-				'label'  => __( 'Reporting endpoint', 'security-automation-manager' ),
+				'label'  => __( 'Reporting endpoint', 'vcns-security-automation-manager' ),
 				'value'  => $report_endpoint,
 				'status' => $this->is_valid_http_url( $report_endpoint ) ? 'pass' : 'fail',
 			),
 			array(
-				'label'  => __( 'Policy header emission', 'security-automation-manager' ),
+				'label'  => __( 'Policy header emission', 'vcns-security-automation-manager' ),
 				'value'  => $this->policy_header_summary(),
 				'status' => 'pass',
 			),
 			array(
-				'label'  => __( 'Daily scan schedule', 'security-automation-manager' ),
+				'label'  => __( 'Daily scan schedule', 'vcns-security-automation-manager' ),
 				'value'  => wp_next_scheduled( 'wp_sam_daily_scan' )
-					? __( 'Scheduled', 'security-automation-manager' )
-					: __( 'Not scheduled', 'security-automation-manager' ),
+					? __( 'Scheduled', 'vcns-security-automation-manager' )
+					: __( 'Not scheduled', 'vcns-security-automation-manager' ),
 				'status' => wp_next_scheduled( 'wp_sam_daily_scan' ) ? 'pass' : 'warning',
 			),
 			array(
-				'label'  => __( 'Automation default posture', 'security-automation-manager' ),
+				'label'  => __( 'Automation default posture', 'vcns-security-automation-manager' ),
 				'value'  => $this->automation_modes_summary(),
 				'status' => 'pass',
 			),
@@ -173,7 +173,7 @@ class Readiness_Checker {
 	private function automation_modes_summary(): string {
 		$config = get_option( 'wp_sam_automation_config', array() );
 		if ( ! is_array( $config ) || empty( $config ) ) {
-			return __( 'No automation configuration found', 'security-automation-manager' );
+			return __( 'No automation configuration found', 'vcns-security-automation-manager' );
 		}
 
 		$modes = array();
@@ -190,14 +190,14 @@ class Readiness_Checker {
 		if ( '' !== $custom ) {
 			return sprintf(
 				/* translators: %s: custom policy header name */
-				__( 'Custom origin header: %s', 'security-automation-manager' ),
+				__( 'Custom origin header: %s', 'vcns-security-automation-manager' ),
 				$custom
 			);
 		}
 
 		return sprintf(
 			/* translators: 1: report-only header name, 2: enforce header name */
-			__( 'Mode based: %1$s or %2$s', 'security-automation-manager' ),
+			__( 'Mode based: %1$s or %2$s', 'vcns-security-automation-manager' ),
 			Policy_Builder::DEFAULT_REPORT_ONLY_HEADER,
 			Policy_Builder::DEFAULT_ENFORCE_HEADER
 		);

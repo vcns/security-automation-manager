@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       Security Automation Manager
+ * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Roll out and enforce CSP, HSTS, X-Frame-Options headers with violation reports; free ACME/Let's Encrypt SSL/TLS certificate automation.
  * Version:           2.9.20
@@ -10,7 +10,7 @@
  * Author URI:        https://vcns.tech
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       security-automation-manager
+ * Text Domain:       vcns-security-automation-manager
  * Domain Path:       /languages
  */
 

@@ -26,7 +26,7 @@ class Provider_Bunny extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
-				'label' => __( 'Account API key', 'security-automation-manager' ),
+				'label' => __( 'Account API key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

@@ -1,5 +1,5 @@
-=== Security Automation Manager ===
-Contributors: vcns
+=== VCNS Security Automation Manager ===
+Contributors: vcnstech
 Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1

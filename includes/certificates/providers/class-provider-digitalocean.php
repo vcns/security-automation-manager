@@ -24,7 +24,7 @@ class Provider_DigitalOcean extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label'       => __( 'Personal Access Token (write scope)', 'security-automation-manager' ),
+				'label'       => __( 'Personal Access Token (write scope)', 'vcns-security-automation-manager' ),
 				'placeholder' => 'dop_v1_...',
 			),
 		);

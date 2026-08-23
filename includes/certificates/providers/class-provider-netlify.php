@@ -24,7 +24,7 @@ class Provider_Netlify extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label' => __( 'Personal access token', 'security-automation-manager' ),
+				'label' => __( 'Personal access token', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

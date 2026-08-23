@@ -34,17 +34,17 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 }
 ?>
 <div class="wrap wp-sam-wrap">
-	<h1><?php esc_html_e( 'Reverse Tabnabbing Protection', 'security-automation-manager' ); ?></h1>
+	<h1><?php esc_html_e( 'Reverse Tabnabbing Protection', 'vcns-security-automation-manager' ); ?></h1>
 
 	<p>
-		<?php esc_html_e( 'A link with target="_blank" opens in a new tab that, unless prevented, can use window.opener to redirect the original tab to a phishing page -- while the new tab looks completely normal. When enabled for a surface, this plugin scans rendered pages for that surface and adds rel="noopener" to any target="_blank" link missing noopener or noreferrer, leaving every other attribute and any existing rel tokens untouched.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'A link with target="_blank" opens in a new tab that, unless prevented, can use window.opener to redirect the original tab to a phishing page -- while the new tab looks completely normal. When enabled for a surface, this plugin scans rendered pages for that surface and adds rel="noopener" to any target="_blank" link missing noopener or noreferrer, leaving every other attribute and any existing rel tokens untouched.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -66,6 +66,6 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Changes apply immediately. This is a content rewrite, not a header -- it never blocks or breaks a link, it only closes an opener-access gap. Only successful, non-streamed HTML page responses are rewritten; admin, login, AJAX, REST, XML-RPC, cron, and CLI requests are never touched.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'Changes apply immediately. This is a content rewrite, not a header -- it never blocks or breaks a link, it only closes an opener-access gap. Only successful, non-streamed HTML page responses are rewritten; admin, login, AJAX, REST, XML-RPC, cron, and CLI requests are never touched.', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>

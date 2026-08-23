@@ -38,25 +38,25 @@ class Provider_Rfc2136 extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'server'    => array(
-				'label'       => __( 'DNS server (host or host:port; port defaults to 53)', 'security-automation-manager' ),
+				'label'       => __( 'DNS server (host or host:port; port defaults to 53)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'ns1.example.com',
 			),
 			'zone'      => array(
-				'label'       => __( 'Zone accepting updates', 'security-automation-manager' ),
+				'label'       => __( 'Zone accepting updates', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'example.com',
 			),
 			'key_name'  => array(
-				'label'       => __( 'TSIG key name', 'security-automation-manager' ),
+				'label'       => __( 'TSIG key name', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'wp-sam',
 			),
 			'secret'    => array(
-				'label' => __( 'TSIG secret (base64)', 'security-automation-manager' ),
+				'label' => __( 'TSIG secret (base64)', 'vcns-security-automation-manager' ),
 			),
 			'algorithm' => array(
-				'label'       => __( 'TSIG algorithm (hmac-sha256, hmac-sha512, hmac-sha1, hmac-md5)', 'security-automation-manager' ),
+				'label'       => __( 'TSIG algorithm (hmac-sha256, hmac-sha512, hmac-sha1, hmac-md5)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'hmac-sha256',
 			),

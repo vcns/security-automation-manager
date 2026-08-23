@@ -74,12 +74,30 @@ class Automation_Config {
 	}
 
 	public static function mode_labels(): array {
-		return array(
-			self::MODE_MANUAL                         => __( 'Manual', 'security-automation-manager' ),
-			self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL => __( 'Automatic (with medium+high approvals)', 'security-automation-manager' ),
-			self::MODE_AUTOMATIC_HIGH_APPROVAL        => __( 'Automatic (with high approvals only)', 'security-automation-manager' ),
-			self::MODE_FULLY_AUTOMATIC                => __( 'Fully Automatic', 'security-automation-manager' ),
+		$labels = array(
+			self::MODE_MANUAL                         => __( 'Manual', 'vcns-security-automation-manager' ),
+			self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL => __( 'Automatic (with medium+high approvals)', 'vcns-security-automation-manager' ),
+			self::MODE_AUTOMATIC_HIGH_APPROVAL        => __( 'Automatic (with high approvals only)', 'vcns-security-automation-manager' ),
 		);
+
+		if ( self::channel_offers_fully_automatic() ) {
+			$labels[ self::MODE_FULLY_AUTOMATIC ] = __( 'Fully Automatic', 'vcns-security-automation-manager' );
+		}
+
+		return $labels;
+	}
+
+	/**
+	 * Fully Automatic is a paid, GitHub-channel-only feature: the
+	 * WordPress.org/.com-distributed build must never list it, offer it, or
+	 * describe it as something to unlock, regardless of entitlement state --
+	 * not merely leave it selectable-but-gated. This is a distribution-channel
+	 * check, separate from and in addition to Feature_Gate::is_allowed()
+	 * (which still governs whether a github-channel site's entitlement is
+	 * active) -- the WordPress.org build must never even present the option.
+	 */
+	public static function channel_offers_fully_automatic(): bool {
+		return defined( 'WP_SAM_DISTRIBUTION_CHANNEL' ) && 'github' === WP_SAM_DISTRIBUTION_CHANNEL;
 	}
 
 	public static function mode_label( string $mode ): string {
@@ -172,11 +190,14 @@ class Automation_Config {
 		$mode = self::LEGACY_MODE_MAP[ $mode ] ?? $mode;
 		$mode = in_array( $mode, self::MODES, true ) ? $mode : self::MODE_MANUAL;
 
-		// Fully Automatic (zero human review) is a paid feature. Downgrade
-		// here -- the single funnel every read/write of this option passes
-		// through -- so a lapsed entitlement can't leave a stale option
-		// value still auto-applying changes with no review.
-		if ( self::MODE_FULLY_AUTOMATIC === $mode && ! $this->gate->is_allowed( 'fully_automatic' ) ) {
+		// Fully Automatic (zero human review) is a paid, GitHub-channel-only
+		// feature. Downgrade here -- the single funnel every read/write of
+		// this option passes through -- so a lapsed entitlement, or a stale
+		// option value carried over from a github-channel install, can never
+		// leave the WordPress.org/.com build auto-applying changes with no
+		// review, and a lapsed entitlement can't do the same on the
+		// github channel either.
+		if ( self::MODE_FULLY_AUTOMATIC === $mode && ( ! self::channel_offers_fully_automatic() || ! $this->gate->is_allowed( 'fully_automatic' ) ) ) {
 			return self::MODE_AUTOMATIC_HIGH_APPROVAL;
 		}
 

@@ -22,18 +22,18 @@ class Provider_Akamai extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'host'          => array(
-				'label'       => __( 'API host (from the .edgerc credential set)', 'security-automation-manager' ),
+				'label'       => __( 'API host (from the .edgerc credential set)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'akab-xxxx.luna.akamaiapis.net',
 			),
 			'client_token'  => array(
-				'label' => __( 'Client token', 'security-automation-manager' ),
+				'label' => __( 'Client token', 'vcns-security-automation-manager' ),
 			),
 			'client_secret' => array(
-				'label' => __( 'Client secret', 'security-automation-manager' ),
+				'label' => __( 'Client secret', 'vcns-security-automation-manager' ),
 			),
 			'access_token'  => array(
-				'label' => __( 'Access token', 'security-automation-manager' ),
+				'label' => __( 'Access token', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

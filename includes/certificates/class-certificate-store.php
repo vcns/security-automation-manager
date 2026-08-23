@@ -265,16 +265,16 @@ class Certificate_Store {
 		$stored = is_array( $stored ) ? $stored : array();
 
 		if ( Credential_Vault::is_sealed_but_undecryptable( (string) ( $stored['cpanel_token'] ?? '' ) ) ) {
-			$warnings[] = __( 'cPanel API token', 'security-automation-manager' );
+			$warnings[] = __( 'cPanel API token', 'vcns-security-automation-manager' );
 		}
 		if ( Credential_Vault::is_sealed_but_undecryptable( (string) ( $stored['custom_key_pem'] ?? '' ) ) ) {
-			$warnings[] = __( 'Custom certificate private key', 'security-automation-manager' );
+			$warnings[] = __( 'Custom certificate private key', 'vcns-security-automation-manager' );
 		}
 		foreach ( (array) ( $stored['dns_credentials'] ?? array() ) as $field => $sealed ) {
 			if ( Credential_Vault::is_sealed_but_undecryptable( (string) $sealed ) ) {
 				$warnings[] = sprintf(
 					/* translators: %s: DNS provider credential field name */
-					__( 'DNS provider credential: %s', 'security-automation-manager' ),
+					__( 'DNS provider credential: %s', 'vcns-security-automation-manager' ),
 					(string) $field
 				);
 			}
@@ -286,7 +286,7 @@ class Certificate_Store {
 			if ( Credential_Vault::is_sealed_but_undecryptable( (string) ( $account['key_pem'] ?? '' ) ) ) {
 				$warnings[] = sprintf(
 					/* translators: %s: ACME environment (staging or production) */
-					__( 'ACME account key (%s)', 'security-automation-manager' ),
+					__( 'ACME account key (%s)', 'vcns-security-automation-manager' ),
 					(string) $environment
 				);
 			}
@@ -299,7 +299,7 @@ class Certificate_Store {
 			if ( Credential_Vault::is_sealed_but_undecryptable( (string) $row['key_pem'] ) ) {
 				$warnings[] = sprintf(
 					/* translators: %s: ACME environment (staging or production) */
-					__( 'Issued certificate private key (%s)', 'security-automation-manager' ),
+					__( 'Issued certificate private key (%s)', 'vcns-security-automation-manager' ),
 					(string) $row['environment']
 				);
 			}
