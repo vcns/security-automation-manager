@@ -16,10 +16,19 @@
  * claims, turn it back off.
  */
 
-const audience = process.env.OPENAI_WIF_AUDIENCE || 'openai';
+// No fallback default: OPENAI_WIF_AUDIENCE must be deliberately set before
+// this diagnostic is ever run (docs/ci-openai-review.md's setup sequence
+// puts choosing and setting the audience before step 4, "enable the
+// debug gate") -- requesting a token against a silently-assumed default
+// audience would defeat the point of observing real claims before
+// configuring the OpenAI-side mapping.
+const audience = process.env.OPENAI_WIF_AUDIENCE;
 const requestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
 const requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
 
+if (!audience) {
+  throw new Error('OPENAI_WIF_AUDIENCE is not set -- decide the intended audience (normally https://api.openai.com/v1) and set it as a repository variable before running this diagnostic.');
+}
 if (!requestUrl || !requestToken) {
   throw new Error('ACTIONS_ID_TOKEN_REQUEST_URL/ACTIONS_ID_TOKEN_REQUEST_TOKEN are not set -- this job is missing `id-token: write`.');
 }

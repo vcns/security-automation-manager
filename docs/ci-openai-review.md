@@ -22,9 +22,9 @@ for that record if you need the "why", not just the "what".
   AI-generated, unverified, and require human judgement.
 - Does **not** post inline/per-line review comments (deferred to a later
   phase, pending evaluation of the single-comment format's accuracy).
-- Does **not** review pull requests from forked repositories. This is a
-  deliberate consequence of the trust model below, not an oversight --
-  see "Why fork PRs aren't reviewed."
+- Currently does **not** review pull requests from forked repositories in
+  practice, as a deliberate consequence of the trust model below -- see
+  "Fork-originated pull requests."
 
 ## Architecture: two workflows, untrusted then trusted
 
@@ -48,24 +48,27 @@ entirely from its own, independent, trusted API calls -- never from
 anything Stage 1 produced. See `.github/scripts/openai-review/src/trust.mjs`
 for the exact validation sequence, and its test suite
 (`.github/scripts/openai-review/test/trust.test.mjs`) for the specific
-attack scenarios it's proven to reject (a fork-originated run, a forged
-artifact pointing at an unrelated PR, a stale run whose commit has moved
-on, and a same-SHA/branch scenario from a different repository).
+attack scenarios it's proven to reject with simulated fixture events (an
+empty `pull_requests` association, a forged artifact pointing at an
+unrelated PR, a stale run whose commit has moved on, and a same-SHA/branch
+scenario from a different repository).
 
-### Why fork PRs aren't reviewed
+### Fork-originated pull requests
 
 Stage 2 requires the PR number to appear in GitHub's own trusted
 `workflow_run.pull_requests` association -- this is what prevents an
 attacker-controlled Stage 1 artifact from pointing the review at an
-unrelated PR. GitHub does not populate that association for
-fork-originated runs at all (this is documented GitHub behaviour, not a
-gap in our own code). The design's answer to that gap is to fail open --
-skip the review entirely, log why, post nothing -- rather than fall back
-to trusting the artifact alone for exactly the case where trusting it
-would matter most. The practical result: only pull requests from
-branches within this repository get an automated review; external
-contributions do not, until GitHub offers some other verifiable
-association for fork-originated `workflow_run` events.
+unrelated PR. If `workflow_run.pull_requests` is empty, the review is
+skipped because the trusted event does not provide the required PR
+association. This was reproduced with a simulated fork-originated event
+(see `.github/scripts/openai-review/test/trust.test.mjs`). **Fork-originated
+review support remains unverified until observed against a real fork PR**
+-- GitHub documents the `pull_requests` field but does not guarantee it is
+empty for every fork-originated run, so treat "fork PRs are unsupported"
+as the current, conservative, tested behaviour rather than a documented
+GitHub guarantee. The secure behaviour either way is unaffected: an empty
+or non-matching association must never fall back to trusting the
+artifact, regardless of why it's empty.
 
 ## Authentication: workload identity federation, API key fallback
 
@@ -74,25 +77,40 @@ Preferred: [OpenAI workload identity federation](https://developers.openai.com/a
 credentials on every run. No long-lived `OPENAI_API_KEY` needs to exist at
 all if this is configured.
 
-**One-time setup, in order:**
+**One-time setup, in this exact order** -- `OPENAI_WIF_AUDIENCE` must exist
+*before* requesting the diagnostic OIDC token, since the token request
+itself needs an audience value to ask for, and that value must be the one
+later configured on the OpenAI side, not a script-internal default:
 
-1. Temporarily set the repository variable `OPENAI_WIF_CLAIMS_DEBUG` to
-   `true`, then trigger Stage 2 once (open or update any PR from a branch
-   in this repository). The "Setup only: print observed OIDC claims" step
-   will print this exact job's real claims (`repository`, `ref`,
-   `workflow_ref`, `aud`, `sub`, etc.) to the workflow log -- **use those
-   observed values, not an assumption**, when configuring the mapping
-   below. In particular, do not assume `ref` is `refs/heads/main` without
-   checking it here first for this specific `workflow_run` job shape.
-2. In the OpenAI dashboard, create a Workload Identity Provider for
+1. Create the dedicated OpenAI project this pipeline will use (see "Cost
+   controls" below).
+2. Decide the intended audience -- normally `https://api.openai.com/v1`.
+3. Set the repository **variable** `OPENAI_WIF_AUDIENCE` to that value.
+4. Temporarily set the repository variable `OPENAI_WIF_CLAIMS_DEBUG` to
+   `true`.
+5. Trigger the real Stage 2 job (open or update any PR from a branch in
+   this repository).
+6. Inspect the decoded claims the "Setup only: print observed OIDC
+   claims" step prints (`repository`, `ref`, `workflow_ref`, `aud`,
+   `sub`, etc.) in the workflow log -- **use those observed values, not
+   an assumption**, for the mapping in the next step. In particular, do
+   not assume `ref` is `refs/heads/main` without checking it here first
+   for this specific `workflow_run` job shape.
+7. In the OpenAI dashboard, create a Workload Identity Provider for
    GitHub's OIDC issuer, and a service account mapping restricted to the
-   observed claims from step 1 -- at minimum, exact-match on `repository`
-   and `workflow_ref` (not organisation-wide, not a wildcard).
-3. Set the repository **variables** (not secrets -- this configuration
-   isn't a credential): `OPENAI_IDENTITY_PROVIDER_ID`,
-   `OPENAI_SERVICE_ACCOUNT_ID`, `OPENAI_WIF_AUDIENCE`.
-4. Set `OPENAI_WIF_CLAIMS_DEBUG` back to `false` (or delete it) -- it is a
+   observed claims from step 6 -- at minimum, exact-match on `repository`
+   and `workflow_ref` (not organisation-wide, not a wildcard), and
+   matching the audience set in step 3.
+8. Set the repository variables `OPENAI_IDENTITY_PROVIDER_ID` and
+   `OPENAI_SERVICE_ACCOUNT_ID` from what was created in step 7.
+9. Set `OPENAI_WIF_CLAIMS_DEBUG` back to `false` (or delete it) -- it is a
    setup diagnostic, not something that should run on every review.
+10. Run a live validation: trigger Stage 2 again on a real same-repository
+    PR and confirm the full path -- token exchange, the OpenAI Responses
+    API call, and comment publication -- actually completes, not just
+    that the trust checks pass. Nothing above proves the OIDC exchange or
+    the OpenAI call itself works end to end; only a real run against the
+    now-configured OpenAI project does.
 
 **Fallback**, if federation is not yet configured: set the repository
 **secret** `OPENAI_API_KEY` to a key created under its own dedicated

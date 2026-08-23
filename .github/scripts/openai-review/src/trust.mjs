@@ -54,9 +54,16 @@ export function validatePreConditions(workflowRun, expectedRepoFullName, expecte
 /**
  * Step 2: the artifact's PR number is only a hint -- it must appear in
  * GitHub's own trusted association for this exact workflow_run. If
- * workflow_run.pull_requests is empty (always true for fork-originated
- * runs) or does not contain the artifact's number, this fails closed.
- * There is no fallback to trusting the artifact alone.
+ * workflow_run.pull_requests is empty, this fails closed. There is no
+ * fallback to trusting the artifact alone.
+ *
+ * GitHub documents this field but does not guarantee it is empty for
+ * every fork-originated run, or non-empty for every same-repository run
+ * -- this check is written to react correctly to whatever the trusted
+ * event actually contains, not to a specific assumption about when that
+ * will be empty. In practice, this has only been observed empty for a
+ * simulated fork-originated event, not yet against a real fork PR -- see
+ * docs/ci-openai-review.md's "Fork-originated pull requests" section.
  *
  * @param {object} workflowRun - github.event.workflow_run
  * @param {number} artifactPrNumber - the PR number Stage 1's artifact claims
@@ -67,7 +74,7 @@ export function validatePrAssociation(workflowRun, artifactPrNumber) {
   if (!Array.isArray(pullRequests) || pullRequests.length === 0) {
     return {
       ok: false,
-      reason: 'workflow_run.pull_requests is empty -- this is always the case for fork-originated runs, and GitHub provides no other verifiable PR association for them, so this pipeline does not review fork-originated pull requests by design',
+      reason: 'workflow_run.pull_requests is empty -- the trusted event does not provide the required PR association, so this run is skipped rather than falling back to the artifact',
     };
   }
   const matches = pullRequests.some((pr) => pr.number === artifactPrNumber);

@@ -65,10 +65,10 @@ describe('validatePrAssociation', () => {
     assert.equal(result.prNumber, 42);
   });
 
-  test('fails closed when pull_requests is empty (fork-originated run) -- does not fall back to trusting the artifact', () => {
+  test('fails closed when pull_requests is empty (simulated fork-originated run) -- does not fall back to trusting the artifact', () => {
     const result = validatePrAssociation(fakeWorkflowRun({ pull_requests: [] }), 42);
     assert.equal(result.ok, false);
-    assert.match(result.reason, /fork/);
+    assert.match(result.reason, /does not provide the required PR association/);
   });
 
   test('fails when the artifact PR number does not appear in the trusted array (forged/mismatched artifact)', () => {
@@ -146,7 +146,7 @@ describe('validateTrust (full sequence)', () => {
     assert.equal(result.prNumber, 42);
   });
 
-  test('a fork-originated run (empty pull_requests) is rejected before any PR resolution would matter', () => {
+  test('a run with an empty pull_requests association (simulated fork-originated) is rejected before any PR resolution would matter', () => {
     const result = validateTrust({
       workflowRun: fakeWorkflowRun({ pull_requests: [] }),
       expectedRepoFullName: REPO,
@@ -155,7 +155,7 @@ describe('validateTrust (full sequence)', () => {
       resolvedPr: fakeResolvedPr(), // even a perfectly valid PR object must not rescue this
     });
     assert.equal(result.ok, false);
-    assert.match(result.reason, /fork/);
+    assert.match(result.reason, /does not provide the required PR association/);
   });
 
   test('an artifact claiming an unrelated, otherwise-valid open PR is rejected', () => {

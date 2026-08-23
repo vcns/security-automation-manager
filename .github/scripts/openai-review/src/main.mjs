@@ -97,7 +97,9 @@ async function run() {
   const association = validatePrAssociation(workflowRun, artifactPrNumber);
   if (!association.ok) {
     // Explicitly: no OpenAI call, no comment posted anywhere, including
-    // the empty-pull_requests (fork PR) case this exists to cover.
+    // whenever workflow_run.pull_requests comes back empty (observed for
+    // a simulated fork-originated event; real fork-PR behaviour is not
+    // yet independently confirmed -- see docs/ci-openai-review.md).
     writeSummary(`OpenAI review: skipped -- ${association.reason}`);
     return;
   }
