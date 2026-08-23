@@ -42,24 +42,154 @@ class HashManagerTest extends TestCase {
 	public function test_register_opens_buffer_before_core_style_printing(): void {
 		$this->manager->register();
 
-		foreach ( array( 'wp_head', 'admin_head', 'login_head' ) as $hook ) {
+		// Each surface has its own start method (start_buffer_frontend/
+		// _admin/_login) rather than one shared start_buffer(), so
+		// flush_buffer() can later verify it's closing the exact buffer
+		// level+surface it opened -- see Hash_Manager::start_buffer()'s
+		// docblock.
+		$hook_to_method = array(
+			'wp_head'    => 'start_buffer_frontend',
+			'admin_head' => 'start_buffer_admin',
+			'login_head' => 'start_buffer_login',
+		);
+
+		foreach ( $hook_to_method as $hook => $method ) {
 			$registrations = array_filter(
 				$GLOBALS['_wp_actions'][ $hook ] ?? array(),
-				static function ( array $registration ): bool {
-					return is_array( $registration[0] ) && 'start_buffer' === ( $registration[0][1] ?? '' );
+				static function ( array $registration ) use ( $method ): bool {
+					return is_array( $registration[0] ) && $method === ( $registration[0][1] ?? '' );
 				}
 			);
 
-			$this->assertNotEmpty( $registrations, "start_buffer is not registered on {$hook}." );
+			$this->assertNotEmpty( $registrations, "{$method} is not registered on {$hook}." );
 
 			foreach ( $registrations as $registration ) {
 				$this->assertLessThan(
 					8,
 					$registration[1],
-					"start_buffer on {$hook} must run before wp_print_styles (priority 8)."
+					"{$method} on {$hook} must run before wp_print_styles (priority 8)."
 				);
 			}
 		}
+	}
+
+	public function test_register_installs_a_shutdown_fallback_closer(): void {
+		$this->manager->register();
+
+		$registrations = array_filter(
+			$GLOBALS['_wp_actions']['shutdown'] ?? array(),
+			static function ( array $registration ): bool {
+				return is_array( $registration[0] ) && 'maybe_end_buffer_on_shutdown' === ( $registration[0][1] ?? '' );
+			}
+		);
+
+		$this->assertNotEmpty( $registrations, 'maybe_end_buffer_on_shutdown is not registered on shutdown.' );
+	}
+
+	// ── Buffer lifecycle ─────────────────────────────────────────────────────
+	// Every test opens its OWN outer capture buffer BEFORE the manager opens
+	// its buffer (nested inside the capture buffer), matching the real-world
+	// scenario this class's own docblock describes -- nested inside any
+	// buffer a page-cache plugin opened earlier in the request -- so
+	// whatever the manager re-emits flows into the capture buffer rather
+	// than escaping past it. Opening the capture buffer AFTER the manager's
+	// own start() would put it on the wrong side of the stack: the
+	// manager's own unwind loop would then treat the capture buffer itself
+	// as unowned nested content and flush it away before the manager's real
+	// content is ever captured.
+
+	public function test_normal_lifecycle_captures_and_reemits_its_own_content(): void {
+		$baseline = ob_get_level();
+		$manager  = $this->make_db_stub_manager();
+
+		ob_start(); // outer capture buffer
+		$manager->start_buffer_frontend();
+		echo '<style>body{color:red}</style>';
+		$manager->end_buffer_frontend();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<style>body{color:red}</style>', $output );
+		$this->assertSame( $baseline, ob_get_level(), 'flush_buffer() must leave the buffer stack exactly as it found it.' );
+	}
+
+	public function test_flush_buffer_is_a_no_op_when_something_else_already_closed_it(): void {
+		$baseline = ob_get_level();
+		$manager  = $this->make_db_stub_manager();
+
+		ob_start(); // outer capture buffer
+		$manager->start_buffer_frontend();
+		// Simulate another plugin (or PHP itself) already having closed our
+		// buffer before our own footer hook got a chance to run.
+		ob_end_clean();
+
+		// Must not throw, and must not touch whatever buffer level is
+		// current now (there may be none, or a completely unrelated one).
+		$manager->end_buffer_frontend();
+		ob_end_clean(); // this test's own outer capture buffer
+
+		$this->assertSame( $baseline, ob_get_level() );
+	}
+
+	public function test_nested_buffer_opened_by_something_else_is_preserved_not_discarded(): void {
+		$baseline = ob_get_level();
+		$manager  = $this->make_db_stub_manager();
+
+		ob_start(); // outer capture buffer
+		$manager->start_buffer_frontend();
+		echo '<style>body{color:blue}</style>';
+
+		// Something else (another plugin) nests its own buffer inside ours
+		// without closing it before our footer hook fires.
+		ob_start();
+		echo '<!-- another plugin\'s buffered content -->';
+
+		$manager->end_buffer_frontend();
+		$output = ob_get_clean();
+
+		// Our own buffer's content was captured/re-emitted; the other
+		// plugin's nested content was flushed through (preserved), not
+		// discarded, even though this class doesn't own it.
+		$this->assertStringContainsString( '<style>body{color:blue}</style>', $output );
+		$this->assertStringContainsString( "<!-- another plugin's buffered content -->", $output );
+		$this->assertSame( $baseline, ob_get_level(), 'both buffers must be fully unwound.' );
+	}
+
+	public function test_shutdown_fallback_closes_a_buffer_whose_footer_hook_never_fired(): void {
+		$baseline = ob_get_level();
+		$manager  = $this->make_db_stub_manager();
+
+		ob_start(); // outer capture buffer
+		// login_head fired, but the request redirected + exit()ed before
+		// login_footer ever ran -- the exact gap several wp-login.php
+		// POST-handling branches hit.
+		$manager->start_buffer_login();
+		echo '<style>body{color:green}</style>';
+		$manager->maybe_end_buffer_on_shutdown();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<style>body{color:green}</style>', $output );
+		$this->assertSame( $baseline, ob_get_level() );
+	}
+
+	public function test_shutdown_fallback_is_a_no_op_after_a_normal_footer_close(): void {
+		$baseline = ob_get_level();
+		$manager  = $this->make_db_stub_manager();
+
+		ob_start();
+		$manager->start_buffer_frontend();
+		echo '<style>body{color:red}</style>';
+		$manager->end_buffer_frontend();
+		ob_get_clean();
+
+		// The normal happy path: footer hook already closed everything.
+		// The shutdown fallback must be a genuine no-op here, not a second
+		// attempt to close something that no longer exists.
+		ob_start();
+		$manager->maybe_end_buffer_on_shutdown();
+		$fallback_output = ob_get_clean();
+
+		$this->assertSame( '', $fallback_output );
+		$this->assertSame( $baseline, ob_get_level() );
 	}
 
 	// ── record_hash ───────────────────────────────────────────────────────────

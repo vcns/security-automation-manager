@@ -494,12 +494,27 @@ if ( ! function_exists( 'is_wp_error' ) ) {
 }
 
 if ( ! function_exists( 'rest_url' ) ) {
+	/**
+	 * Models the handful of real WordPress inputs get_rest_url() actually
+	 * varies its output on -- a plain-vs-pretty permalink structure, the
+	 * filterable REST URL prefix (default "wp-json"), and a multisite
+	 * subsite path -- via global flags, following this file's existing
+	 * pattern for configurable stub behaviour (see wp_test_reset_globals()
+	 * for defaults). Deliberately does NOT model an "unsafe before init"
+	 * failure mode: WordPress's own reference docs for rest_url()/
+	 * get_rest_url() document no such requirement, and Reporting_Endpoint::
+	 * url() no longer special-cases it -- see that class's docblock.
+	 */
 	function rest_url( string $path = '' ): string {
-		if ( ! empty( $GLOBALS['_wp_rest_url_should_throw'] ) ) {
-			throw new RuntimeException( 'rest_url called before REST routing is available.' );
+		$prefix       = $GLOBALS['_wp_rest_url_prefix'] ?? 'wp-json';
+		$subsite_path = $GLOBALS['_wp_multisite_subsite_path'] ?? '';
+		$trimmed_path = ltrim( $path, '/' );
+
+		if ( ! empty( $GLOBALS['_wp_rest_url_plain_permalinks'] ) ) {
+			return 'https://example.com' . $subsite_path . '/?rest_route=/' . $trimmed_path;
 		}
 
-		return 'https://example.com/wp-json/' . ltrim( $path, '/' );
+		return 'https://example.com' . $subsite_path . '/' . $prefix . '/' . $trimmed_path;
 	}
 }
 
@@ -869,7 +884,9 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_transients']           = [];
 	$GLOBALS['_wp_actions']              = [];
 	$GLOBALS['_wp_did_actions']          = [];
-	$GLOBALS['_wp_rest_url_should_throw'] = false;
+	$GLOBALS['_wp_rest_url_prefix']            = 'wp-json';
+	$GLOBALS['_wp_rest_url_plain_permalinks']  = false;
+	$GLOBALS['_wp_multisite_subsite_path']     = '';
 
 	$GLOBALS['_wp_remote_get_response']  = null;
 	$GLOBALS['_wp_remote_get_response_queue'] = [];

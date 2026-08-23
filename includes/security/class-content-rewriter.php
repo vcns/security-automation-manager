@@ -33,6 +33,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Content_Rewriter extends Request_Surface {
 
 	private bool $buffer_started = false;
+	private ?int $buffer_level   = null;
 	private bool $streamed       = false;
 	private string $surface      = 'frontend';
 
@@ -40,6 +41,17 @@ abstract class Content_Rewriter extends Request_Surface {
 
 	public function register(): void {
 		add_action( 'template_redirect', array( $this, 'maybe_start_buffer' ) );
+		// Explicit, plugin-controlled closure -- see maybe_end_buffer()'s
+		// docblock for why this exists alongside (not instead of) the
+		// callback-based ob_start() below: PHP's own implicit end-of-script
+		// buffer flush would still invoke filter_output() correctly on its
+		// own, but the reviewer requires an intentional close in the
+		// plugin's own controlled flow, not a reliance on that implicit
+		// behaviour. Priority PHP_INT_MAX so any other component's own
+		// shutdown-time buffer closure (this plugin's Hash_Manager, or a
+		// well-behaved third-party plugin using the same pattern) gets to
+		// close whatever it nested inside ours first.
+		add_action( 'shutdown', array( $this, 'maybe_end_buffer' ), PHP_INT_MAX );
 	}
 
 	/**
@@ -74,7 +86,46 @@ abstract class Content_Rewriter extends Request_Surface {
 			return;
 		}
 
-		$this->buffer_started = ob_start( array( $this, 'filter_output' ), 0 );
+		if ( ob_start( array( $this, 'filter_output' ), 0 ) ) {
+			$this->buffer_started = true;
+			$this->buffer_level   = ob_get_level();
+		}
+	}
+
+	/**
+	 * Explicitly closes this instance's own buffer, and only this instance's
+	 * own buffer -- never a buffer another component or plugin opened.
+	 *
+	 * ob_get_level() is recorded at the moment maybe_start_buffer() opens
+	 * this buffer, and re-checked here before touching anything:
+	 * - If the current level is BELOW the recorded one, something else
+	 *   already closed our buffer (and possibly others) first -- e.g. an
+	 *   aggressive page-cache plugin unwinding the whole buffer stack.
+	 *   Nothing to do; closing again would act on a buffer we don't own.
+	 * - If the current level is AT OR ABOVE the recorded one, every buffer
+	 *   from the top of the stack down to (and including) ours is closed
+	 *   via ob_end_flush() -- never ob_end_clean(), since a buffer nested
+	 *   inside ours that we don't own must have its content preserved, not
+	 *   discarded. This is the only way to reach and close our own buffer
+	 *   when something nested inside it hasn't closed cleanly by the time
+	 *   `shutdown` fires -- PHP's buffer stack is strictly LIFO, so there is
+	 *   no way to close a buffer out from under buffers still open above it.
+	 */
+	public function maybe_end_buffer(): void {
+		if ( ! $this->buffer_started || null === $this->buffer_level ) {
+			return;
+		}
+
+		if ( ob_get_level() < $this->buffer_level ) {
+			$this->buffer_started = false;
+			return;
+		}
+
+		while ( ob_get_level() >= $this->buffer_level ) {
+			ob_end_flush();
+		}
+
+		$this->buffer_started = false;
 	}
 
 	/**
