@@ -67,6 +67,31 @@ describe('buildReviewCommentBody', () => {
     assert.match(body, /vendor\/x\.php/);
     assert.match(body, /excluded by file-type\/path rule/);
   });
+
+  test('sanitises model-produced evidence before publishing (no raw HTML, no live mention, no live link)', () => {
+    const body = buildReviewCommentBody(
+      [finding({ evidence: 'cc @someone <img src=x> see [bait](https://evil.example)' })],
+      []
+    );
+    assert.doesNotMatch(body, /@someone/);
+    assert.doesNotMatch(body, /<img/);
+    assert.doesNotMatch(body, /(?<!\\)\[bait\]\(/);
+  });
+
+  test('sanitises model-produced remediation the same way', () => {
+    const body = buildReviewCommentBody([finding({ remediation: '<script>alert(1)</script>' })], []);
+    assert.doesNotMatch(body, /<script>/);
+  });
+
+  test('sanitises a finding\'s file path before publishing', () => {
+    const body = buildReviewCommentBody([finding({ file: 'weird`@file.php' })], []);
+    assert.doesNotMatch(body, /`@file\.php/); // the raw backtick+@ sequence must not survive
+  });
+
+  test('sanitises excluded-file paths before publishing', () => {
+    const body = buildReviewCommentBody([], [{ filename: 'weird`@file.php', reason: 'excluded by file-type/path rule' }]);
+    assert.doesNotMatch(body, /`@file\.php/);
+  });
 });
 
 describe('buildUnavailableCommentBody', () => {

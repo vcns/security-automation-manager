@@ -35,21 +35,31 @@ jobs:
     # everything else) explicitly and logs why, rather than the job
     # silently not running with no visible trace of why.
     steps:
+      # Privileged job: every action below is pinned to an immutable commit
+      # SHA, not a mutable major-version tag, since this job holds OpenAI
+      # credentials and a comment-writing GitHub token -- stricter than
+      # this repository's routine-CI convention elsewhere, deliberately,
+      # for exactly the jobs that hold credentials.
       - name: Checkout (default branch only -- never the PR's own ref)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.ref }}
           sparse-checkout: |
             .github/scripts/openai-review
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22"
 
       - name: Install reviewer dependencies
         working-directory: .github/scripts/openai-review
-        run: npm ci --omit=dev
+        # --ignore-scripts: the only dependency (openai) defines no
+        # install/postinstall/prepare lifecycle script, confirmed directly
+        # against its published package.json, so nothing is lost by
+        # refusing to run arbitrary install-time scripts from any
+        # dependency (including transitive ones) as a matter of policy.
+        run: npm ci --omit=dev --ignore-scripts
 
       # One-time setup diagnostic, gated off by default. Set the repository
       # variable OPENAI_WIF_CLAIMS_DEBUG to "true" temporarily to print this
@@ -66,17 +76,20 @@ jobs:
         run: node src/print-oidc-claims.mjs
 
       - name: Download Stage 1 artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
           name: openai-review-artifact
           path: openai-review-artifact
         # A run that produced no artifact (Stage 1 failed before uploading,
-        # or never ran on a path that uploads one) is exactly the kind of
-        # thing main.mjs's own trust checks should surface, not something
-        # papered over by continuing past a missing download here.
-        continue-on-error: false
+        # or never ran on a path that uploads one) must not fail the job
+        # outright -- that would skip the "Run reviewer" step entirely,
+        # silently defeating main.mjs's own fail-open handling for exactly
+        # this case (it already handles a missing/unreadable artifact file
+        # gracefully). Let the step fail without failing the job, and let
+        # main.mjs surface the reason instead.
+        continue-on-error: true
 
       - name: Run reviewer
         working-directory: .github/scripts/openai-review

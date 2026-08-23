@@ -73,9 +73,20 @@ export function isExcludedByPattern(filename, extraExcludePatterns = []) {
 }
 
 /**
- * Counts added/removed lines in a unified diff patch, excluding the
- * `+++`/`---` file-header lines (which also begin with '+'/'-' but are not
- * content lines) and `@@` hunk headers.
+ * Counts added/removed lines in a unified diff patch, excluding only `@@`
+ * hunk headers.
+ *
+ * Deliberately does NOT try to skip `+++`/`---`-prefixed lines as file
+ * headers: GitHub's "list pull request files" `patch` field is a per-file
+ * fragment that starts directly at the first `@@` hunk header -- it never
+ * includes the `--- a/path`/`+++ b/path` preamble a raw `git diff` or
+ * `diff -u` would (the file identity is already given by this same API
+ * response's own `filename` field). An earlier version of this function
+ * skipped any line starting with the literal three-character sequence
+ * `+++` or `---`, which silently miscounted genuine added/removed content
+ * lines that happen to start with that sequence (e.g. an added line whose
+ * code content itself begins with `++`, or a removed line beginning with
+ * `--`) -- falsely flagging an otherwise-complete patch as incomplete.
  *
  * @param {string} patch
  * @returns {{additions: number, deletions: number}}
@@ -84,7 +95,6 @@ export function countPatchLines(patch) {
   let additions = 0;
   let deletions = 0;
   for (const line of patch.split('\n')) {
-    if (line.startsWith('+++') || line.startsWith('---')) continue; // file header, not content
     if (line.startsWith('@@')) continue; // hunk header
     if (line.startsWith('+')) additions++;
     else if (line.startsWith('-')) deletions++;
@@ -102,8 +112,14 @@ export function countPatchLines(patch) {
  * @returns {{included: true, file: object} | {included: false, filename: string, reason: string}}
  */
 export function classifyFile(file, extraExcludePatterns = []) {
-  if (file.status !== 'modified' && file.status !== 'added') {
-    return { included: false, filename: file.filename, reason: `status is "${file.status}", not reviewed` };
+  // Reviewed regardless of status (added/removed/modified/renamed/copied/
+  // changed) -- "changed files only" means every file GitHub reports as
+  // part of this PR's diff, not merely the modified/added subset. A
+  // security-relevant removal (e.g. deleting an authorisation check) is
+  // exactly the kind of change that must not be excluded here. Only a
+  // genuinely content-free status is skipped.
+  if (file.status === 'unchanged') {
+    return { included: false, filename: file.filename, reason: 'status is "unchanged", nothing to review' };
   }
   if (isExcludedByPattern(file.filename, extraExcludePatterns)) {
     return { included: false, filename: file.filename, reason: 'excluded by file-type/path rule' };

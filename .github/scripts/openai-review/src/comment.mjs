@@ -2,7 +2,17 @@
  * Comment deduplication and body construction. Pure functions -- given an
  * already-fetched comment list, decide what to do; given findings, build
  * the body text. I/O (pagination, posting) lives in github.mjs / main.mjs.
+ *
+ * Every model-produced string (`evidence`, `remediation`) and every
+ * attacker-influenceable string derived from the diff (file paths) is
+ * sanitised via sanitize.mjs before being interpolated into the comment
+ * body -- treated as untrusted output, not merely validated input.
+ * validate-findings.mjs having already confirmed a finding's `file`/`line`
+ * correspond to something genuinely in the diff does not mean the
+ * `evidence`/`remediation` text, or the file path's own characters, are
+ * safe to interpolate into Markdown unescaped.
  */
+import { sanitizeModelText, sanitizeFilePath } from './sanitize.mjs';
 
 export const MARKER = '<!-- openai-review:v1 -->';
 export const MAX_PUBLISHED_FINDINGS = 20;
@@ -54,11 +64,12 @@ export function buildReviewCommentBody(findings, excludedFiles) {
     lines.push('No findings for this revision.');
   } else {
     for (const finding of shown) {
-      lines.push(`### ${SEVERITY_LABEL[finding.severity] ?? finding.severity}: \`${finding.file}\`:${finding.line}`);
+      const safeFile = sanitizeFilePath(finding.file);
+      lines.push(`### ${SEVERITY_LABEL[finding.severity] ?? finding.severity}: \`${safeFile}\`:${finding.line}`);
       lines.push('');
-      lines.push(finding.evidence);
+      lines.push(sanitizeModelText(finding.evidence));
       lines.push('');
-      lines.push(`**Suggested fix:** ${finding.remediation}`);
+      lines.push(`**Suggested fix:** ${sanitizeModelText(finding.remediation)}`);
       lines.push('');
     }
   }
@@ -71,7 +82,7 @@ export function buildReviewCommentBody(findings, excludedFiles) {
   if (excludedFiles.length > 0) {
     lines.push('<details><summary>Files not reviewed</summary>', '');
     for (const { filename, reason } of excludedFiles) {
-      lines.push(`- \`${filename}\`: ${reason}`);
+      lines.push(`- \`${sanitizeFilePath(filename)}\`: ${reason}`);
     }
     lines.push('', '</details>', '');
   }

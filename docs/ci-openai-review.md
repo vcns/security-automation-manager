@@ -176,14 +176,28 @@ Layered, so no single control failing is catastrophic:
 
 In scope: production PHP, tests, GitHub Actions workflow files, build/CI
 scripts, configuration, and documentation where it makes a behaviour or
-security claim. Out of scope, and only this: generated files, bundled or
-minified assets, vendored third-party code, binary files, and dependency
-lockfiles (`composer.lock`, `package-lock.json`, etc.) -- see the
+security claim -- **regardless of whether a file was added, modified,
+removed, renamed, or copied.** Reviewing "changed files" means every file
+GitHub's diff reports as part of the PR, not just the added/modified
+subset; a security-relevant removal (deleting an authorisation check, for
+example) is exactly the kind of change that must not be silently skipped.
+Out of scope, and only this: generated files, bundled or minified assets,
+vendored third-party code, binary files, and dependency lockfiles
+(`composer.lock`, `package-lock.json`, etc.) -- see the
 `DEFAULT_EXCLUDE_PATTERNS` list in
 `.github/scripts/openai-review/src/diff.mjs`. Tests and CI workflow files
 are deliberately **not** excluded, even though they're excluded from this
 project's own PHPCS scope -- that exclusion exists to keep a style linter
 focused, which is a different purpose from code review.
+
+**Known limitation for pure deletions**: a finding's `line` must cite a
+line that exists in the *new* version of the file (an added or unchanged
+context line -- see `validate-findings.mjs`). A fully removed file has no
+new-file lines at all, so the model can still see and describe a
+deletion's content in a finding's `evidence`/`remediation` text, but a
+finding attempting to cite a specific line number against a purely
+deleted file will always fail validation and be discarded. Citing
+old-file line numbers for deletions is not currently supported.
 
 ## Failure behaviour
 

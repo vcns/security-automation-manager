@@ -10,6 +10,13 @@
  * writes a plain-language (never account/token-detail) reason to the job
  * summary and workflow logs, and to the PR comment where a validated PR
  * is already known.
+ *
+ * Every comment write -- success, or any "review unavailable" notice --
+ * goes through publishIfFresh(), which re-validates the PR's current
+ * state immediately before writing, every time. A comment is never
+ * published against a stale understanding of the PR just because the
+ * failure that triggered it happened early (before any freshness-sensitive
+ * work) rather than late.
  */
 import { readFileSync, appendFileSync } from 'node:fs';
 import { makeGitHubClient } from './github.mjs';
@@ -17,16 +24,24 @@ import { validatePreConditions, validatePrAssociation, validateResolvedPr } from
 import { collectDiff } from './diff.mjs';
 import { detectSecretShape } from './redact.mjs';
 import { requestReview, createOpenAIClient } from './review.mjs';
+import { validateFindings } from './validate-findings.mjs';
 import { MARKER, findExistingMarkedComment, buildReviewCommentBody, buildUnavailableCommentBody } from './comment.mjs';
 
 const STAGE1_WORKFLOW_NAME = 'OpenAI review: collect';
 const EXPECTED_BOT_LOGIN = 'github-actions[bot]';
+const MAX_LOGGED_DETAIL_LENGTH = 300;
 
 function writeSummary(text) {
   console.log(text); // eslint-disable-line no-console
   if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`, 'utf8');
   }
+}
+
+/** Bounds any detail string before it's ever written to a log/summary -- defence in depth against an unexpectedly long value, from any source. */
+function boundedDetail(text) {
+  const value = String(text ?? '');
+  return value.length > MAX_LOGGED_DETAIL_LENGTH ? `${value.slice(0, MAX_LOGGED_DETAIL_LENGTH)}…` : value;
 }
 
 function classifyApiError(err) {
@@ -43,7 +58,33 @@ function classifyApiError(err) {
   return 'the OpenAI API call failed';
 }
 
-async function publishOrUpdate(gh, prNumber, body) {
+/**
+ * The single, trusted publication path -- every comment write, success or
+ * "unavailable" notice alike, goes through this. Re-fetches the PR and
+ * re-validates it against the trusted workflow_run event immediately
+ * before writing, every time, regardless of how early or late in the
+ * pipeline the caller is. A PR that has moved on (new commit, closed)
+ * since trust was last confirmed is never published to -- the result is
+ * silently discarded (logged, not published) rather than risk overwriting
+ * a newer review with a stale one.
+ *
+ * @returns {Promise<boolean>} whether the comment was actually published
+ */
+async function publishIfFresh(gh, prNumber, workflowRun, repoFullName, body) {
+  let freshPr;
+  try {
+    freshPr = await gh.getPullRequest(prNumber);
+  } catch {
+    writeSummary(`OpenAI review: PR #${prNumber} -- could not re-resolve PR immediately before publishing, discarding result.`);
+    return false;
+  }
+
+  const freshnessCheck = validateResolvedPr(freshPr, workflowRun, repoFullName);
+  if (!freshnessCheck.ok) {
+    writeSummary(`OpenAI review: PR #${prNumber} changed since validation, discarding result -- ${freshnessCheck.reason}`);
+    return false;
+  }
+
   const comments = await gh.listAllComments(prNumber);
   const existing = findExistingMarkedComment(comments, EXPECTED_BOT_LOGIN);
   if (existing) {
@@ -51,6 +92,7 @@ async function publishOrUpdate(gh, prNumber, body) {
   } else {
     await gh.createComment(prNumber, body);
   }
+  return true;
 }
 
 async function run() {
@@ -89,14 +131,14 @@ async function run() {
   let artifactPrNumber;
   try {
     artifactPrNumber = JSON.parse(readFileSync(artifactPath, 'utf8')).pr_number;
-  } catch (err) {
-    writeSummary(`OpenAI review: skipped -- could not read Stage 1 artifact at ${artifactPath}: ${err.message}`);
+  } catch {
+    writeSummary('OpenAI review: skipped -- could not read or parse the Stage 1 artifact.');
     return;
   }
 
   const association = validatePrAssociation(workflowRun, artifactPrNumber);
   if (!association.ok) {
-    // Explicitly: no OpenAI call, no comment posted anywhere, including
+    // Explicitly: no OpenAI call, no comment published anywhere, including
     // whenever workflow_run.pull_requests comes back empty (observed for
     // a simulated fork-originated event; real fork-PR behaviour is not
     // yet independently confirmed -- see docs/ci-openai-review.md).
@@ -110,35 +152,36 @@ async function run() {
   let resolvedPr;
   try {
     resolvedPr = await gh.getPullRequest(prNumber);
-  } catch (err) {
-    writeSummary(`OpenAI review: skipped -- could not resolve PR #${prNumber}: ${err.message}`);
+  } catch {
+    writeSummary(`OpenAI review: skipped -- could not resolve PR #${prNumber}.`);
     return;
   }
 
   const preCheck = validateResolvedPr(resolvedPr, workflowRun, repoFullName);
   if (!preCheck.ok) {
-    // No trusted PR to post to at this point -- log only, per the same
+    // No trusted PR to publish to at this point -- log only, per the same
     // reasoning as the association-failure case above.
     writeSummary(`OpenAI review: skipped -- ${preCheck.reason}`);
     return;
   }
 
-  // From here on, prNumber is a validated, trusted target -- a "review
-  // unavailable" notice may legitimately be posted to it on any later
-  // failure, since we know this is the right PR.
+  // From here on, prNumber is a validated target as of this moment -- but
+  // every actual publish below still re-validates freshness itself via
+  // publishIfFresh(), rather than relying on this one-time check staying
+  // true for the rest of the run.
 
   let diffResult;
   try {
     diffResult = await collectDiff(gh.fetchFilesPage(prNumber), { maxBytes, maxFiles });
-  } catch (err) {
-    writeSummary(`OpenAI review: could not fetch diff for PR #${prNumber}: ${err.message}`);
-    await publishOrUpdate(gh, prNumber, buildUnavailableCommentBody('the diff could not be retrieved')).catch(() => {});
+  } catch {
+    writeSummary(`OpenAI review: PR #${prNumber} -- could not fetch the diff.`);
+    await publishIfFresh(gh, prNumber, workflowRun, repoFullName, buildUnavailableCommentBody('the diff could not be retrieved'));
     return;
   }
 
   if (diffResult.status === 'too_large') {
     writeSummary(`OpenAI review: PR #${prNumber} diff too large -- ${diffResult.reason}`);
-    await publishOrUpdate(gh, prNumber, buildUnavailableCommentBody(`the diff is too large for automated review (${diffResult.reason})`)).catch(() => {});
+    await publishIfFresh(gh, prNumber, workflowRun, repoFullName, buildUnavailableCommentBody(`the diff is too large for automated review (${diffResult.reason})`));
     return;
   }
 
@@ -157,7 +200,7 @@ async function run() {
 
   if (filesToSend.length === 0) {
     writeSummary(`OpenAI review: PR #${prNumber} has no reviewable files after exclusions.`);
-    await publishOrUpdate(gh, prNumber, buildUnavailableCommentBody('no files remained reviewable after applying exclusion rules')).catch(() => {});
+    await publishIfFresh(gh, prNumber, workflowRun, repoFullName, buildUnavailableCommentBody('no files remained reviewable after applying exclusion rules'));
     return;
   }
 
@@ -175,21 +218,7 @@ async function run() {
     // surfaced.
     const reason = classifyApiError(err);
     writeSummary(`OpenAI review: PR #${prNumber} -- ${reason}.`);
-    await publishOrUpdate(gh, prNumber, buildUnavailableCommentBody(reason)).catch(() => {});
-    return;
-  }
-
-  // --- Freshness recheck immediately before publishing. ---
-  let freshPr;
-  try {
-    freshPr = await gh.getPullRequest(prNumber);
-  } catch (err) {
-    writeSummary(`OpenAI review: PR #${prNumber} -- could not re-resolve PR before publishing, discarding result: ${err.message}`);
-    return;
-  }
-  const freshnessCheck = validateResolvedPr(freshPr, workflowRun, repoFullName);
-  if (!freshnessCheck.ok) {
-    writeSummary(`OpenAI review: PR #${prNumber} changed since review started, discarding result -- ${freshnessCheck.reason}`);
+    await publishIfFresh(gh, prNumber, workflowRun, repoFullName, buildUnavailableCommentBody(reason));
     return;
   }
 
@@ -200,18 +229,33 @@ async function run() {
         : reviewResult.status === 'incomplete'
           ? 'the response did not complete (likely the output-token limit was reached)'
           : 'the response did not match the expected format';
-    writeSummary(`OpenAI review: PR #${prNumber} -- ${reason} (${reviewResult.reason}).`);
-    await publishOrUpdate(gh, prNumber, buildUnavailableCommentBody(reason)).catch(() => {});
+    writeSummary(`OpenAI review: PR #${prNumber} -- ${reason} (${boundedDetail(reviewResult.reason)}).`);
+    await publishIfFresh(gh, prNumber, workflowRun, repoFullName, buildUnavailableCommentBody(reason));
     return;
   }
 
-  const body = buildReviewCommentBody(reviewResult.findings, excludedFiles);
-  await publishOrUpdate(gh, prNumber, body);
-  writeSummary(`OpenAI review: posted ${Math.min(reviewResult.findings.length, 20)} finding(s) for PR #${prNumber} (marker: ${MARKER}).`);
+  // Deterministic validation after parsing: strict schema enforcement
+  // guarantees shape, not that a finding's file/line genuinely correspond
+  // to something in the diff that was actually sent, or that its fields
+  // are sanely bounded. Invalid findings are rejected individually; the
+  // discarded count is reported, not silently absorbed.
+  const { accepted, rejectedCount } = validateFindings(reviewResult.findings, filesToSend);
+
+  const body = buildReviewCommentBody(accepted, excludedFiles);
+  const published = await publishIfFresh(gh, prNumber, workflowRun, repoFullName, body);
+  if (published) {
+    writeSummary(
+      `OpenAI review: posted ${accepted.length} finding(s) for PR #${prNumber}` +
+        (rejectedCount > 0 ? ` (${rejectedCount} discarded by validation)` : '') +
+        ` (marker: ${MARKER}).`
+    );
+  }
 }
 
-run().catch((err) => {
+run().catch(() => {
   // Absolute last-resort backstop: never let an uncaught error fail the
-  // build. Log plainly; no account/token detail.
-  writeSummary(`OpenAI review: unexpected error, review skipped for this run. (${err?.message ?? err})`);
+  // build, and never surface its message -- this exists specifically to
+  // catch whatever wasn't anticipated by the specific handling above, so
+  // by definition its content is not something this code can vouch for.
+  writeSummary('OpenAI review: unexpected error, review skipped for this run.');
 });

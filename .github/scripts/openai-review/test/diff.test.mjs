@@ -28,10 +28,8 @@ describe('globMatch / isExcludedByPattern', () => {
 });
 
 describe('countPatchLines', () => {
-  test('counts additions and deletions, excluding +++/--- file headers', () => {
+  test('counts additions and deletions in a realistic GitHub-shaped patch (no --- a/ / +++ b/ preamble)', () => {
     const patch = [
-      '--- a/foo.php',
-      '+++ b/foo.php',
       '@@ -1,3 +1,4 @@',
       ' unchanged line',
       '-removed line',
@@ -43,8 +41,23 @@ describe('countPatchLines', () => {
     assert.deepEqual(result, { additions: 2, deletions: 1 });
   });
 
-  test('a patch with only header lines counts zero', () => {
-    const patch = ['--- a/foo.php', '+++ b/foo.php', '@@ -1,1 +1,1 @@'].join('\n');
+  test('regression: a content line whose own text begins with "+++" or "---" is counted, not mistaken for a file header', () => {
+    // GitHub's per-file `patch` field never includes a --- a/ / +++ b/
+    // preamble (the filename is already given elsewhere in the same API
+    // response), so a line starting with that literal sequence here is
+    // always genuine added/removed content, e.g. an added YAML document
+    // separator or a removed line of code that itself starts with "--".
+    const patch = [
+      '@@ -1,2 +1,2 @@',
+      '-----old marker line',
+      '+++new marker line',
+    ].join('\n');
+    const result = countPatchLines(patch);
+    assert.deepEqual(result, { additions: 1, deletions: 1 });
+  });
+
+  test('a patch containing only a hunk header (no body lines) counts zero', () => {
+    const patch = '@@ -1,1 +1,1 @@';
     assert.deepEqual(countPatchLines(patch), { additions: 0, deletions: 0 });
   });
 });
@@ -62,10 +75,22 @@ describe('classifyFile', () => {
     assert.equal(result.included, true);
   });
 
-  test('excludes a removed file', () => {
-    const result = classifyFile({ filename: 'foo.php', status: 'removed', additions: 0, deletions: 5, patch: '' });
+  test('includes a removed file with a real patch -- "changed files only" is not narrower than GitHub\'s own diff, and a security-relevant removal must not be silently skipped', () => {
+    const file = { filename: 'foo.php', status: 'removed', additions: 0, deletions: 5, patch: '@@ -1,5 +0,0 @@\n-line one\n-line two\n-line three\n-line four\n-line five' };
+    const result = classifyFile(file);
+    assert.equal(result.included, true);
+  });
+
+  test('excludes a file whose status is genuinely content-free ("unchanged")', () => {
+    const result = classifyFile({ filename: 'foo.php', status: 'unchanged', additions: 0, deletions: 0, patch: '' });
     assert.equal(result.included, false);
     assert.match(result.reason, /status/);
+  });
+
+  test('includes a renamed file with a real patch', () => {
+    const file = { filename: 'new-name.php', status: 'renamed', previous_filename: 'old-name.php', additions: 1, deletions: 0, patch: '@@ -1,1 +1,2 @@\n unchanged\n+added' };
+    const result = classifyFile(file);
+    assert.equal(result.included, true);
   });
 
   test('excludes a file matching a default pattern', () => {
