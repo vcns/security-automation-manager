@@ -26,12 +26,18 @@ export const FINDINGS_SCHEMA = {
         type: 'object',
         properties: {
           file: { type: 'string', description: 'Exact file path as it appears in the diff.' },
-          line: { type: 'integer', description: 'Line number in the new version of the file, from the diff hunk.' },
+          line: { type: 'integer', description: 'Line number to cite -- which version of the file it refers to is given by "side".' },
+          side: {
+            type: 'string',
+            enum: ['old', 'new'],
+            description:
+              'Which version of the file "line" is numbered against. Use "new" for an added or unchanged/context line, numbered as it appears in the new version of the file. Use "old" for a line that only existed before this change -- removed code, or any line of a fully deleted file -- numbered as it appeared in the old version of the file.',
+          },
           severity: { type: 'string', enum: ['blocking', 'advisory', 'nit'] },
           evidence: { type: 'string', description: 'The specific code or behaviour this finding is about, quoted from the diff.' },
           remediation: { type: 'string', description: 'A concrete suggested fix.' },
         },
-        required: ['file', 'line', 'severity', 'evidence', 'remediation'],
+        required: ['file', 'line', 'side', 'severity', 'evidence', 'remediation'],
         additionalProperties: false,
       },
     },
@@ -51,7 +57,7 @@ Classify every finding's severity exactly as one of:
 - "advisory": a real but non-blocking concern (e.g. missing test coverage, a minor inefficiency).
 - "nit": a cosmetic observation.
 
-Every finding must cite the exact file path and a line number that actually appears in the diff you were given, plus a specific, actionable remediation. If a file has no genuine findings, do not invent one to fill space.`;
+Every finding must cite the exact file path, a line number that actually appears in the diff you were given, and which side that line number belongs to: "new" for an added or unchanged line (numbered as it appears in the new version of the file), or "old" for a removed line -- including every line of a fully deleted file -- numbered as it appeared in the old version of the file, since deleted lines have no line number in the new version at all. Every finding must also include a specific, actionable remediation. If a file has no genuine findings, do not invent one to fill space.`;
 
 /**
  * @param {Array<{filename: string, patch: string}>} files

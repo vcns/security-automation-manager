@@ -65,7 +65,8 @@ export function buildReviewCommentBody(findings, excludedFiles) {
   } else {
     for (const finding of shown) {
       const safeFile = sanitizeFilePath(finding.file);
-      lines.push(`### ${SEVERITY_LABEL[finding.severity] ?? finding.severity}: \`${safeFile}\`:${finding.line}`);
+      const location = finding.side === 'old' ? `former line ${finding.line}` : `line ${finding.line}`;
+      lines.push(`### ${SEVERITY_LABEL[finding.severity] ?? finding.severity}: \`${safeFile}\` (${location})`);
       lines.push('');
       lines.push(sanitizeModelText(finding.evidence));
       lines.push('');

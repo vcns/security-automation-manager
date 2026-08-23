@@ -190,14 +190,15 @@ are deliberately **not** excluded, even though they're excluded from this
 project's own PHPCS scope -- that exclusion exists to keep a style linter
 focused, which is a different purpose from code review.
 
-**Known limitation for pure deletions**: a finding's `line` must cite a
-line that exists in the *new* version of the file (an added or unchanged
-context line -- see `validate-findings.mjs`). A fully removed file has no
-new-file lines at all, so the model can still see and describe a
-deletion's content in a finding's `evidence`/`remediation` text, but a
-finding attempting to cite a specific line number against a purely
-deleted file will always fail validation and be discarded. Citing
-old-file line numbers for deletions is not currently supported.
+**Deletions**: every finding carries a `side` field (`"new"` or `"old"`),
+required by the schema, alongside its `line` number -- see
+`validate-findings.mjs`. `"new"` cites a line number in the new version of
+the file (added or unchanged/context content); `"old"` cites a line
+number as it appeared in the old version, which is how a finding about
+removed code -- including a line within an otherwise-modified file, or any
+line of a fully deleted file -- is validated and published. A finding is
+displayed as "former line N" when its side is `"old"`, versus "line N"
+otherwise.
 
 ## Failure behaviour
 

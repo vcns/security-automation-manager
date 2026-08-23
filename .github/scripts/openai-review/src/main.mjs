@@ -29,19 +29,12 @@ import { MARKER, findExistingMarkedComment, buildReviewCommentBody, buildUnavail
 
 const STAGE1_WORKFLOW_NAME = 'OpenAI review: collect';
 const EXPECTED_BOT_LOGIN = 'github-actions[bot]';
-const MAX_LOGGED_DETAIL_LENGTH = 300;
 
 function writeSummary(text) {
   console.log(text); // eslint-disable-line no-console
   if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`, 'utf8');
   }
-}
-
-/** Bounds any detail string before it's ever written to a log/summary -- defence in depth against an unexpectedly long value, from any source. */
-function boundedDetail(text) {
-  const value = String(text ?? '');
-  return value.length > MAX_LOGGED_DETAIL_LENGTH ? `${value.slice(0, MAX_LOGGED_DETAIL_LENGTH)}…` : value;
 }
 
 function classifyApiError(err) {
@@ -229,7 +222,12 @@ async function run() {
         : reviewResult.status === 'incomplete'
           ? 'the response did not complete (likely the output-token limit was reached)'
           : 'the response did not match the expected format';
-    writeSummary(`OpenAI review: PR #${prNumber} -- ${reason} (${boundedDetail(reviewResult.reason)}).`);
+    // Deliberately never includes reviewResult.reason here: for a refusal,
+    // that string originates from the model's own response and is
+    // therefore untrusted -- it could contain active Markdown or
+    // attacker/prompt-influenced text. `reason` above is a fixed,
+    // pre-written classification, not anything derived from model output.
+    writeSummary(`OpenAI review: PR #${prNumber} -- ${reason}.`);
     await publishIfFresh(gh, prNumber, workflowRun, repoFullName, buildUnavailableCommentBody(reason));
     return;
   }

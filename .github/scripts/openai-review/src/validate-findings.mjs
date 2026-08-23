@@ -15,61 +15,84 @@
  */
 
 const VALID_SEVERITIES = new Set(['blocking', 'advisory', 'nit']);
+const VALID_SIDES = new Set(['old', 'new']);
 const MAX_EVIDENCE_LENGTH = 2000;
 const MAX_REMEDIATION_LENGTH = 1000;
 
 /**
- * Parses a unified diff patch and returns the set of new-file line numbers
- * that a review comment could legitimately target: added lines and
- * context lines (both exist in the new version of the file). Deleted-only
- * lines are excluded -- they don't exist in the new file at all, so a
- * finding citing one cannot be a genuine reference to reviewable content.
+ * Parses a unified diff patch and returns the sets of line numbers a
+ * finding could legitimately cite, split by which version of the file
+ * they belong to:
+ *
+ * - `newLines`: added and context lines -- both exist in the new version
+ *   of the file, numbered as they appear there. This is what a finding
+ *   about ordinary added/unchanged content should cite (`side: "new"`).
+ * - `oldLines`: deleted lines -- exist only in the old version of the
+ *   file (including every line of a fully deleted file, which has no
+ *   `newLines` entries at all), numbered as they appeared there. This is
+ *   what a finding about a removal should cite (`side: "old"`). Context
+ *   lines are deliberately NOT added here even though they also exist in
+ *   the old file -- citing unchanged content is unambiguous via the new
+ *   side for every file except a pure deletion, so there is no case that
+ *   needs a context line to be old-side-valid.
+ *
+ * A `\ No newline at end of file` marker is not a content line: it is
+ * skipped entirely, contributing to neither set and advancing neither
+ * line counter.
  *
  * @param {string} patch
- * @returns {Set<number>}
+ * @returns {{newLines: Set<number>, oldLines: Set<number>}}
  */
 export function extractValidLineNumbers(patch) {
-  const valid = new Set();
+  const newLines = new Set();
+  const oldLines = new Set();
   let newLine = null;
+  let oldLine = null;
 
   for (const line of patch.split('\n')) {
-    const hunkMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+    const hunkMatch = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
     if (hunkMatch) {
-      newLine = Number(hunkMatch[1]);
+      oldLine = Number(hunkMatch[1]);
+      newLine = Number(hunkMatch[2]);
       continue;
     }
-    if (newLine === null) continue; // content before any hunk header is not addressable
+    if (newLine === null || oldLine === null) continue; // content before any hunk header is not addressable
+
+    if (line.startsWith('\\')) continue; // "\ No newline at end of file" -- not a content line
 
     if (line.startsWith('+')) {
-      valid.add(newLine);
+      newLines.add(newLine);
       newLine += 1;
     } else if (line.startsWith('-')) {
-      // Old-file-only line -- does not exist in, and does not advance,
-      // the new-file line count.
+      oldLines.add(oldLine);
+      oldLine += 1;
     } else {
-      // Context line (present in both old and new versions).
-      valid.add(newLine);
+      // Context line: present in, and numbered independently in, both versions.
+      newLines.add(newLine);
       newLine += 1;
+      oldLine += 1;
     }
   }
 
-  return valid;
+  return { newLines, oldLines };
 }
 
 /**
  * @param {unknown} finding
- * @param {Map<string, Set<number>>} validLinesByFile
+ * @param {Map<string, {newLines: Set<number>, oldLines: Set<number>}>} diffInfoByFile
  * @returns {boolean}
  */
-function isValidFinding(finding, validLinesByFile) {
+function isValidFinding(finding, diffInfoByFile) {
   if (!finding || typeof finding !== 'object') return false;
-  if (typeof finding.file !== 'string' || !validLinesByFile.has(finding.file)) return false;
+  if (typeof finding.file !== 'string' || !diffInfoByFile.has(finding.file)) return false;
   if (!VALID_SEVERITIES.has(finding.severity)) return false;
+  if (!VALID_SIDES.has(finding.side)) return false;
   if (typeof finding.evidence !== 'string' || finding.evidence.length === 0 || finding.evidence.length > MAX_EVIDENCE_LENGTH) return false;
   if (typeof finding.remediation !== 'string' || finding.remediation.length === 0 || finding.remediation.length > MAX_REMEDIATION_LENGTH) return false;
   if (!Number.isInteger(finding.line)) return false;
 
-  const validLines = validLinesByFile.get(finding.file);
+  const diffInfo = diffInfoByFile.get(finding.file);
+  const validLines = finding.side === 'old' ? diffInfo.oldLines : diffInfo.newLines;
   return validLines.has(finding.line);
 }
 
@@ -79,13 +102,13 @@ function isValidFinding(finding, validLinesByFile) {
  * @returns {{accepted: Array<object>, rejectedCount: number}}
  */
 export function validateFindings(findings, filesToSend) {
-  const validLinesByFile = new Map(filesToSend.map((file) => [file.filename, extractValidLineNumbers(file.patch)]));
+  const diffInfoByFile = new Map(filesToSend.map((file) => [file.filename, extractValidLineNumbers(file.patch)]));
 
   const accepted = [];
   let rejectedCount = 0;
 
   for (const finding of Array.isArray(findings) ? findings : []) {
-    if (isValidFinding(finding, validLinesByFile)) {
+    if (isValidFinding(finding, diffInfoByFile)) {
       accepted.push(finding);
     } else {
       rejectedCount += 1;

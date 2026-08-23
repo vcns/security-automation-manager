@@ -35,7 +35,7 @@ describe('findExistingMarkedComment', () => {
 
 describe('buildReviewCommentBody', () => {
   function finding(overrides = {}) {
-    return { file: 'foo.php', line: 1, severity: 'advisory', evidence: 'evidence text', remediation: 'fix it', ...overrides };
+    return { file: 'foo.php', line: 1, side: 'new', severity: 'advisory', evidence: 'evidence text', remediation: 'fix it', ...overrides };
   }
 
   test('includes the standing human-review notice', () => {
@@ -91,6 +91,16 @@ describe('buildReviewCommentBody', () => {
   test('sanitises excluded-file paths before publishing', () => {
     const body = buildReviewCommentBody([], [{ filename: 'weird`@file.php', reason: 'excluded by file-type/path rule' }]);
     assert.doesNotMatch(body, /`@file\.php/);
+  });
+
+  test('labels a side:"new" finding as a plain line number', () => {
+    const body = buildReviewCommentBody([finding({ line: 5, side: 'new' })], []);
+    assert.match(body, /\(line 5\)/);
+  });
+
+  test('labels a side:"old" finding (e.g. about a deleted line) as a former line number', () => {
+    const body = buildReviewCommentBody([finding({ line: 5, side: 'old' })], []);
+    assert.match(body, /\(former line 5\)/);
   });
 });
 
