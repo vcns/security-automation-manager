@@ -166,8 +166,15 @@ async function run() {
     const client = createOpenAIClient(process.env);
     reviewResult = await requestReview(client, model, filesToSend, { maxOutputTokens, timeoutMs });
   } catch (err) {
+    // Deliberately never includes err.message here: some API client
+    // errors echo back partial request/credential detail in their own
+    // message text (e.g. "Incorrect API key provided: sk-***"), and this
+    // reason is written to a job summary/log visible to anyone with
+    // repository read access. classifyApiError()'s output is a fixed,
+    // safe, generic phrase -- nothing derived from the raw error is ever
+    // surfaced.
     const reason = classifyApiError(err);
-    writeSummary(`OpenAI review: PR #${prNumber} -- ${reason}. (${err.message})`);
+    writeSummary(`OpenAI review: PR #${prNumber} -- ${reason}.`);
     await publishOrUpdate(gh, prNumber, buildUnavailableCommentBody(reason)).catch(() => {});
     return;
   }

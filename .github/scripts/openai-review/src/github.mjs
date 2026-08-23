@@ -27,8 +27,13 @@ async function request(token, path, options = {}) {
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`GitHub API ${options.method ?? 'GET'} ${path} failed: ${response.status} ${response.statusText} ${body.slice(0, 500)}`);
+    // Deliberately does not include the response body: it can contain
+    // detail a maintainer wouldn't want promoted into a job summary or PR
+    // comment. The status code alone is enough for main.mjs's fail-open
+    // handling to classify and log a safe, generic reason.
+    const error = new Error(`GitHub API ${options.method ?? 'GET'} ${path} failed with HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) return null;
