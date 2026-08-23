@@ -26,6 +26,7 @@ These documents are written for maintainers, release managers, security reviewer
 - `rollback-and-recovery.md` - schema-downgrade detection, configuration snapshot/restore, and manual database-backup recovery for a bad release
 - `wordpress-org-assets.md` - listing artwork, screenshot requirements, and WordPress.org asset handling
 - `dns-provider-test-matrix.md` - per-provider request-level test evidence for all 41 DNS-01 drivers: what is mocked-contract tested vs. live-verified, and every confirmed defect, contrast finding, and `[Unverified]` research gap discovered while building that coverage
+- `ci-openai-review.md` - the advisory, repository-owned OpenAI PR code-review pipeline: architecture, trust model, authentication setup (workload identity federation), cost controls, data handling, and rollback
 
 ## Source Of Truth
 

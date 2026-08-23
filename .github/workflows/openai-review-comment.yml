@@ -1,0 +1,113 @@
+name: "OpenAI review: comment"
+
+# Stage 2 -- trusted. Triggered after Stage 1 completes; always runs the
+# default-branch copy of this file (workflow_run semantics), regardless
+# of which branch/fork triggered Stage 1. This is the only job with
+# OpenAI credentials and a comment-writing GitHub token in scope.
+#
+# It never checks out the pull request's own code, and treats Stage 1's
+# artifact as an untrusted hint only -- every fact used to decide whether
+# to review or publish is independently re-derived from the trusted
+# workflow_run event and a fresh PR lookup. See src/trust.mjs and
+# docs/ci-openai-review.md for the full trust model and rationale.
+
+on:
+  workflow_run:
+    workflows: ["OpenAI review: collect"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: openai-review-comment-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # No `if: github.event.workflow_run.conclusion == 'success'` gate here
+    # deliberately -- main.mjs's own trust validation checks this (and
+    # everything else) explicitly and logs why, rather than the job
+    # silently not running with no visible trace of why.
+    steps:
+      # Privileged job: every action below is pinned to an immutable commit
+      # SHA, not a mutable major-version tag, since this job holds OpenAI
+      # credentials and a comment-writing GitHub token -- stricter than
+      # this repository's routine-CI convention elsewhere, deliberately,
+      # for exactly the jobs that hold credentials.
+      - name: Checkout (default branch only -- never the PR's own ref)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.ref }}
+          sparse-checkout: |
+            .github/scripts/openai-review
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+
+      - name: Install reviewer dependencies
+        working-directory: .github/scripts/openai-review
+        # --ignore-scripts: the only dependency (openai) defines no
+        # install/postinstall/prepare lifecycle script, confirmed directly
+        # against its published package.json, so nothing is lost by
+        # refusing to run arbitrary install-time scripts from any
+        # dependency (including transitive ones) as a matter of policy.
+        run: npm ci --omit=dev --ignore-scripts
+
+      # One-time setup diagnostic, gated off by default. Set the repository
+      # variable OPENAI_WIF_CLAIMS_DEBUG to "true" temporarily to print this
+      # exact job's real OIDC claims (never the token itself) to the log,
+      # then use those observed values -- not assumed ones -- to configure
+      # the OpenAI Workload Identity Provider mapping. Turn the variable
+      # back off once the mapping is configured; this step is not part of
+      # the review pipeline's normal operation.
+      - name: "Setup only: print observed OIDC claims"
+        if: ${{ vars.OPENAI_WIF_CLAIMS_DEBUG == 'true' }}
+        working-directory: .github/scripts/openai-review
+        env:
+          OPENAI_WIF_AUDIENCE: ${{ vars.OPENAI_WIF_AUDIENCE }}
+        run: node src/print-oidc-claims.mjs
+
+      - name: Download Stage 1 artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          name: openai-review-artifact
+          path: openai-review-artifact
+        # A run that produced no artifact (Stage 1 failed before uploading,
+        # or never ran on a path that uploads one) must not fail the job
+        # outright -- that would skip the "Run reviewer" step entirely,
+        # silently defeating main.mjs's own fail-open handling for exactly
+        # this case (it already handles a missing/unreadable artifact file
+        # gracefully). Let the step fail without failing the job, and let
+        # main.mjs surface the reason instead.
+        continue-on-error: true
+
+      - name: Run reviewer
+        working-directory: .github/scripts/openai-review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          ARTIFACT_PATH: ${{ github.workspace }}/openai-review-artifact/pr.json
+          # Workload identity federation (preferred) -- see
+          # docs/ci-openai-review.md for the one-time OpenAI-side setup
+          # this depends on. Falls back to OPENAI_API_KEY if unset.
+          OPENAI_IDENTITY_PROVIDER_ID: ${{ vars.OPENAI_IDENTITY_PROVIDER_ID }}
+          OPENAI_SERVICE_ACCOUNT_ID: ${{ vars.OPENAI_SERVICE_ACCOUNT_ID }}
+          OPENAI_WIF_AUDIENCE: ${{ vars.OPENAI_WIF_AUDIENCE }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_REVIEW_MODEL }}
+          MAX_DIFF_BYTES: ${{ vars.OPENAI_REVIEW_MAX_DIFF_BYTES }}
+          MAX_DIFF_FILES: ${{ vars.OPENAI_REVIEW_MAX_DIFF_FILES }}
+          MAX_OUTPUT_TOKENS: ${{ vars.OPENAI_REVIEW_MAX_OUTPUT_TOKENS }}
+          OPENAI_TIMEOUT_MS: ${{ vars.OPENAI_REVIEW_TIMEOUT_MS }}
+        run: node src/main.mjs

@@ -1,0 +1,16 @@
+{
+  "name": "sam-openai-review",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Repository-owned advisory PR code-review pipeline (CI-governance workstream). Not published; used only by .github/workflows/openai-review-*.yml.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "openai": "7.5.0"
+  }
+}
