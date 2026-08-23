@@ -28,11 +28,11 @@ class Provider_Inwx extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'username' => array(
-				'label'  => __( 'Username', 'security-automation-manager' ),
+				'label'  => __( 'Username', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'password' => array(
-				'label' => __( 'Password', 'security-automation-manager' ),
+				'label' => __( 'Password', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

@@ -37,39 +37,39 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 }
 
 $max_age_options = array(
-	300      => __( '5 minutes (testing only)', 'security-automation-manager' ),
-	86400    => __( '1 day', 'security-automation-manager' ),
-	604800   => __( '1 week', 'security-automation-manager' ),
-	2592000  => __( '30 days', 'security-automation-manager' ),
-	15552000 => __( '180 days', 'security-automation-manager' ),
-	31536000 => __( '1 year (minimum for preload)', 'security-automation-manager' ),
-	63072000 => __( '2 years (recommended for preload)', 'security-automation-manager' ),
+	300      => __( '5 minutes (testing only)', 'vcns-security-automation-manager' ),
+	86400    => __( '1 day', 'vcns-security-automation-manager' ),
+	604800   => __( '1 week', 'vcns-security-automation-manager' ),
+	2592000  => __( '30 days', 'vcns-security-automation-manager' ),
+	15552000 => __( '180 days', 'vcns-security-automation-manager' ),
+	31536000 => __( '1 year (minimum for preload)', 'vcns-security-automation-manager' ),
+	63072000 => __( '2 years (recommended for preload)', 'vcns-security-automation-manager' ),
 );
 ?>
 <div class="wrap wp-sam-wrap">
-	<h1><?php esc_html_e( 'Strict-Transport-Security (HSTS)', 'security-automation-manager' ); ?></h1>
+	<h1><?php esc_html_e( 'Strict-Transport-Security (HSTS)', 'vcns-security-automation-manager' ); ?></h1>
 
 	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
 		<p style="margin-top:0;">
-			<?php esc_html_e( 'Unlike this plugin\'s other headers, HSTS is sticky. Once a browser receives this header, it remembers the Max-Age and refuses plain-HTTP connections to this site for that long -- disabling the header afterward does not undo that for browsers that already cached it. There is no report-only mode to rehearse a rollout with either.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Unlike this plugin\'s other headers, HSTS is sticky. Once a browser receives this header, it remembers the Max-Age and refuses plain-HTTP connections to this site for that long -- disabling the header afterward does not undo that for browsers that already cached it. There is no report-only mode to rehearse a rollout with either.', 'vcns-security-automation-manager' ); ?>
 		</p>
 		<p style="margin-bottom:0;">
-			<?php esc_html_e( 'Start with a short Max-Age while confirming every surface, subdomain, and asset genuinely works over HTTPS, then increase it once confident. Preload goes further still: submitting this domain to browsers\' built-in preload lists can take months to reverse, so it stays off until Max-Age and Include Subdomains already meet the submission requirements below.', 'security-automation-manager' ); ?>
+			<?php esc_html_e( 'Start with a short Max-Age while confirming every surface, subdomain, and asset genuinely works over HTTPS, then increase it once confident. Preload goes further still: submitting this domain to browsers\' built-in preload lists can take months to reverse, so it stays off until Max-Age and Include Subdomains already meet the submission requirements below.', 'vcns-security-automation-manager' ); ?>
 		</p>
 	</div>
 
 	<p>
-		<?php esc_html_e( 'This header is only ever sent over an HTTPS connection -- sending it over plain HTTP would have no effect on browsers and would misrepresent the site as HTTPS-only before it actually is.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'This header is only ever sent over an HTTPS connection -- sending it over plain HTTP would have no effect on browsers and would misrepresent the site as HTTPS-only before it actually is.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Max-Age', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Include Subdomains', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Preload', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Max-Age', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Include Subdomains', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Preload', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -128,6 +128,6 @@ $max_age_options = array(
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Changes apply immediately. Preload is only selectable once Max-Age is at least 1 year and Include Subdomains is on -- the minimum hstspreload.org requires for submission. There is no report-only mode, discovery workflow, or automation for this pillar.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'Changes apply immediately. Preload is only selectable once Max-Age is at least 1 year and Include Subdomains is on -- the minimum hstspreload.org requires for submission. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>

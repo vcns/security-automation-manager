@@ -24,10 +24,10 @@ class Provider_Vercel extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label' => __( 'Access token', 'security-automation-manager' ),
+				'label' => __( 'Access token', 'vcns-security-automation-manager' ),
 			),
 			'team_id'   => array(
-				'label'       => __( 'Team ID (blank for personal scope)', 'security-automation-manager' ),
+				'label'       => __( 'Team ID (blank for personal scope)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'team_...',
 			),

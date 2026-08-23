@@ -24,7 +24,7 @@ class Provider_Gandi extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label'       => __( 'Personal Access Token', 'security-automation-manager' ),
+				'label'       => __( 'Personal Access Token', 'vcns-security-automation-manager' ),
 				'placeholder' => 'pat-...',
 			),
 		);

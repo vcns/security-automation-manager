@@ -158,7 +158,7 @@ class Config_Portability {
 		if ( ! is_array( $decoded ) ) {
 			return array(
 				'ok'     => false,
-				'reason' => __( 'That file is not a valid configuration export (not a JSON object).', 'security-automation-manager' ),
+				'reason' => __( 'That file is not a valid configuration export (not a JSON object).', 'vcns-security-automation-manager' ),
 			);
 		}
 
@@ -167,7 +167,7 @@ class Config_Portability {
 				'ok'     => false,
 				'reason' => sprintf(
 					/* translators: %s: the format_version value found in the uploaded file, or "none" */
-					__( 'Unrecognised export format (format_version: %s). This importer only understands format_version 1.', 'security-automation-manager' ),
+					__( 'Unrecognised export format (format_version: %s). This importer only understands format_version 1.', 'vcns-security-automation-manager' ),
 					isset( $decoded['format_version'] ) ? (string) $decoded['format_version'] : 'none'
 				),
 			);
@@ -176,7 +176,7 @@ class Config_Portability {
 		if ( ! isset( $decoded['tables'] ) || ! is_array( $decoded['tables'] ) ) {
 			return array(
 				'ok'     => false,
-				'reason' => __( 'That file has no "tables" section -- it does not look like a Security Automation Manager configuration export.', 'security-automation-manager' ),
+				'reason' => __( 'That file has no "tables" section -- it does not look like a Security Automation Manager configuration export.', 'vcns-security-automation-manager' ),
 			);
 		}
 

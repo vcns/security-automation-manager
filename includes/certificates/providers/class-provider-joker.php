@@ -28,15 +28,15 @@ class Provider_Joker extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'zone'     => array(
-				'label'       => __( 'Zone (the registered domain)', 'security-automation-manager' ),
+				'label'       => __( 'Zone (the registered domain)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'example.com',
 			),
 			'username' => array(
-				'label' => __( 'Dynamic DNS username', 'security-automation-manager' ),
+				'label' => __( 'Dynamic DNS username', 'vcns-security-automation-manager' ),
 			),
 			'password' => array(
-				'label' => __( 'Dynamic DNS password', 'security-automation-manager' ),
+				'label' => __( 'Dynamic DNS password', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

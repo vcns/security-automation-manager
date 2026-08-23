@@ -33,24 +33,24 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 }
 
 $token_labels = array(
-	''     => __( '(browser default)', 'security-automation-manager' ),
-	'none' => __( 'None', 'security-automation-manager' ),
-	'self' => __( 'Self', 'security-automation-manager' ),
-	'all'  => __( 'All -- any origin, including third-party iframes and embeds (not recommended)', 'security-automation-manager' ),
+	''     => __( '(browser default)', 'vcns-security-automation-manager' ),
+	'none' => __( 'None', 'vcns-security-automation-manager' ),
+	'self' => __( 'Self', 'vcns-security-automation-manager' ),
+	'all'  => __( 'All -- any origin, including third-party iframes and embeds (not recommended)', 'vcns-security-automation-manager' ),
 );
 ?>
 <div class="wrap wp-sam-wrap">
-	<h1><?php esc_html_e( 'Permissions-Policy', 'security-automation-manager' ); ?></h1>
+	<h1><?php esc_html_e( 'Permissions-Policy', 'vcns-security-automation-manager' ); ?></h1>
 
 	<p>
-		<?php esc_html_e( 'Controls which browser features (camera, geolocation, and similar) this site allows, per surface. A directive left at "(browser default)" is not emitted for that surface -- the browser applies its own default policy for that feature.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'Controls which browser features (camera, geolocation, and similar) this site allows, per surface. A directive left at "(browser default)" is not emitted for that surface -- the browser applies its own default policy for that feature.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 				<?php foreach ( $directives as $directive ) : ?>
 					<th><code><?php echo esc_html( $directive ); ?></code></th>
 				<?php endforeach; ?>
@@ -96,6 +96,6 @@ $token_labels = array(
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Changes apply immediately. "None" blocks the feature entirely, "Self" allows it for this origin only, "All" allows any origin. There is no report-only mode, discovery workflow, or automation for this pillar.', 'security-automation-manager' ); ?>
+		<?php esc_html_e( 'Changes apply immediately. "None" blocks the feature entirely, "Self" allows it for this origin only, "All" allows any origin. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>

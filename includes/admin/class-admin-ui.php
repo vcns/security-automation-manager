@@ -137,8 +137,8 @@ class Admin_UI {
 
 	public function add_menu_pages(): void {
 		add_menu_page(
-			__( 'Security Automation Manager', 'security-automation-manager' ),
-			__( 'Security Automation Manager', 'security-automation-manager' ),
+			__( 'Security Automation Manager', 'vcns-security-automation-manager' ),
+			__( 'Security Automation Manager', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager',
 			array( $this, 'render_overview' ),
@@ -152,8 +152,8 @@ class Admin_UI {
 		// page (see page-overview.php), not a separate menu entry.
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Overview', 'security-automation-manager' ),
-			__( 'Overview', 'security-automation-manager' ),
+			__( 'Overview', 'vcns-security-automation-manager' ),
+			__( 'Overview', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager',
 			array( $this, 'render_overview' )
@@ -161,8 +161,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'TLS Certificates (ACME)', 'security-automation-manager' ),
-			__( 'Certificates', 'security-automation-manager' ),
+			__( 'TLS Certificates (ACME)', 'vcns-security-automation-manager' ),
+			__( 'Certificates', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-certificates',
 			array( $this, 'render_certificates' )
@@ -170,8 +170,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Cross-Origin Policies', 'security-automation-manager' ),
-			__( 'Cross-Origin Policies', 'security-automation-manager' ),
+			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
+			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-cross-origin',
 			array( $this, 'render_cross_origin' )
@@ -179,8 +179,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'CSP', 'security-automation-manager' ),
-			__( 'CSP', 'security-automation-manager' ),
+			__( 'CSP', 'vcns-security-automation-manager' ),
+			__( 'CSP', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-dashboard',
 			array( $this, 'render_dashboard' )
@@ -188,8 +188,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Strict-Transport-Security', 'security-automation-manager' ),
-			__( 'HSTS', 'security-automation-manager' ),
+			__( 'Strict-Transport-Security', 'vcns-security-automation-manager' ),
+			__( 'HSTS', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-hsts',
 			array( $this, 'render_hsts' )
@@ -197,8 +197,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Permissions-Policy', 'security-automation-manager' ),
-			__( 'Permissions-Policy', 'security-automation-manager' ),
+			__( 'Permissions-Policy', 'vcns-security-automation-manager' ),
+			__( 'Permissions-Policy', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-permissions-policy',
 			array( $this, 'render_permissions_policy' )
@@ -206,8 +206,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Referrer-Policy', 'security-automation-manager' ),
-			__( 'Referrer-Policy', 'security-automation-manager' ),
+			__( 'Referrer-Policy', 'vcns-security-automation-manager' ),
+			__( 'Referrer-Policy', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-referrer-policy',
 			array( $this, 'render_referrer_policy' )
@@ -215,8 +215,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Reverse Tabnabbing Protection', 'security-automation-manager' ),
-			__( 'Reverse Tabnabbing', 'security-automation-manager' ),
+			__( 'Reverse Tabnabbing Protection', 'vcns-security-automation-manager' ),
+			__( 'Reverse Tabnabbing', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-reverse-tabnabbing',
 			array( $this, 'render_reverse_tabnabbing' )
@@ -224,8 +224,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Scripts', 'security-automation-manager' ),
-			__( 'Scripts', 'security-automation-manager' ),
+			__( 'Scripts', 'vcns-security-automation-manager' ),
+			__( 'Scripts', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-scripts',
 			array( $this, 'render_scripts' )
@@ -233,8 +233,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'X-Content-Type-Options', 'security-automation-manager' ),
-			__( 'X-Content-Type-Options', 'security-automation-manager' ),
+			__( 'X-Content-Type-Options', 'vcns-security-automation-manager' ),
+			__( 'X-Content-Type-Options', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-xcto',
 			array( $this, 'render_x_content_type_options' )
@@ -242,8 +242,8 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'X-Frame-Options', 'security-automation-manager' ),
-			__( 'X-Frame-Options', 'security-automation-manager' ),
+			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
+			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager-xfo',
 			array( $this, 'render_x_frame_options' )
@@ -288,13 +288,13 @@ class Admin_UI {
 		$settings_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
 			esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings' ) ),
-			esc_html__( 'Settings', 'security-automation-manager' )
+			esc_html__( 'Settings', 'vcns-security-automation-manager' )
 		);
 
 		$reset_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
 			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=recovery#wp-sam-reset' ) ),
-			esc_html__( 'Reset', 'security-automation-manager' )
+			esc_html__( 'Reset', 'vcns-security-automation-manager' )
 		);
 
 		return array(
@@ -309,8 +309,8 @@ class Admin_UI {
 		}
 
 		$update_posture = 'github' === WP_SAM_DISTRIBUTION_CHANNEL
-			? __( 'Updates: GitHub Releases channel with checksum verification.', 'security-automation-manager' )
-			: __( 'Updates: WordPress.org package; no custom updater runs in this build.', 'security-automation-manager' );
+			? __( 'Updates: GitHub Releases channel with checksum verification.', 'vcns-security-automation-manager' )
+			: __( 'Updates: WordPress.org package; no custom updater runs in this build.', 'vcns-security-automation-manager' );
 
 		$links[] = sprintf(
 			'<span class="wp-sam-update-posture">%s</span>',
@@ -390,7 +390,7 @@ class Admin_UI {
 				add_settings_error(
 					'wp_sam_automation_config',
 					'wp_sam_fully_automatic_requires_upgrade',
-					__( 'Fully Automatic mode requires a paid subscription. The affected surface was kept on "Automatic (with high approvals only)" instead.', 'security-automation-manager' ),
+					__( 'Fully Automatic mode requires a paid subscription. The affected surface was kept on "Automatic (with high approvals only)" instead.', 'vcns-security-automation-manager' ),
 					'warning'
 				);
 			}
@@ -452,11 +452,11 @@ class Admin_UI {
 				'nonce'     => wp_create_nonce( 'wp_sam_admin_nonce' ),
 				'restNonce' => wp_create_nonce( 'wp_rest' ),
 				'i18n'      => array(
-					'scanning'        => __( 'Scanning…', 'security-automation-manager' ),
-					'scanDone'        => __( 'Scan complete.', 'security-automation-manager' ),
-					'scanError'       => __( 'Scan failed. Check error log.', 'security-automation-manager' ),
-					'reasonRequired'  => __( 'A decision reason is required.', 'security-automation-manager' ),
-					'upgradeStarting' => __( 'Starting checkout…', 'security-automation-manager' ),
+					'scanning'        => __( 'Scanning…', 'vcns-security-automation-manager' ),
+					'scanDone'        => __( 'Scan complete.', 'vcns-security-automation-manager' ),
+					'scanError'       => __( 'Scan failed. Check error log.', 'vcns-security-automation-manager' ),
+					'reasonRequired'  => __( 'A decision reason is required.', 'vcns-security-automation-manager' ),
+					'upgradeStarting' => __( 'Starting checkout…', 'vcns-security-automation-manager' ),
 				),
 			)
 		);
@@ -466,7 +466,7 @@ class Admin_UI {
 
 	public function render_overview(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		$readiness = ( new Readiness_Checker() )->get_report();
 		require WP_SAM_DIR . 'includes/admin/views/page-overview.php';
@@ -474,7 +474,7 @@ class Admin_UI {
 
 	public function render_dashboard(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
 	}
@@ -482,12 +482,12 @@ class Admin_UI {
 	public function render_x_frame_options(): void {
 		$this->render_pillar_page(
 			X_Frame_Options_Builder::PILLAR_KEY,
-			__( 'X-Frame-Options', 'security-automation-manager' ),
+			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			'X-Frame-Options',
-			'<p>' . esc_html__( 'Controls whether this site may be embedded in a frame or iframe on another site, as a defense against clickjacking. CSP\'s frame-ancestors directive supersedes this header in browsers that support it; X-Frame-Options remains a fallback for older browsers that don\'t.', 'security-automation-manager' ) . '</p>',
+			'<p>' . esc_html__( 'Controls whether this site may be embedded in a frame or iframe on another site, as a defense against clickjacking. CSP\'s frame-ancestors directive supersedes this header in browsers that support it; X-Frame-Options remains a fallback for older browsers that don\'t.', 'vcns-security-automation-manager' ) . '</p>',
 			array(
-				'DENY'       => __( 'DENY -- never allow framing', 'security-automation-manager' ),
-				'SAMEORIGIN' => __( 'SAMEORIGIN -- allow framing only by pages on this same site', 'security-automation-manager' ),
+				'DENY'       => __( 'DENY -- never allow framing', 'vcns-security-automation-manager' ),
+				'SAMEORIGIN' => __( 'SAMEORIGIN -- allow framing only by pages on this same site', 'vcns-security-automation-manager' ),
 			)
 		);
 	}
@@ -495,16 +495,16 @@ class Admin_UI {
 	public function render_x_content_type_options(): void {
 		$this->render_pillar_page(
 			X_Content_Type_Options_Builder::PILLAR_KEY,
-			__( 'X-Content-Type-Options', 'security-automation-manager' ),
+			__( 'X-Content-Type-Options', 'vcns-security-automation-manager' ),
 			'X-Content-Type-Options',
-			'<p>' . esc_html__( 'Stops browsers from guessing ("MIME-sniffing") a response\'s content type away from what the server declared, closing off a class of content-sniffing attacks. nosniff is the only defined value for this header, so each surface is simply on or off.', 'security-automation-manager' ) . '</p>',
+			'<p>' . esc_html__( 'Stops browsers from guessing ("MIME-sniffing") a response\'s content type away from what the server declared, closing off a class of content-sniffing attacks. nosniff is the only defined value for this header, so each surface is simply on or off.', 'vcns-security-automation-manager' ) . '</p>',
 			null
 		);
 	}
 
 	public function render_cross_origin(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
 	}
@@ -517,7 +517,7 @@ class Admin_UI {
 		// downgrade from HTTPS to plain HTTP.
 		$risky_value_labels = array(
 			/* translators: %s: policy value token */
-			'unsafe-url' => __( '%s (not recommended -- always sends the full URL, including query string, even cross-origin and over plain HTTP)', 'security-automation-manager' ),
+			'unsafe-url' => __( '%s (not recommended -- always sends the full URL, including query string, even cross-origin and over plain HTTP)', 'vcns-security-automation-manager' ),
 		);
 
 		$options = array();
@@ -525,7 +525,7 @@ class Admin_UI {
 			if ( Referrer_Policy_Builder::DEFAULT_VALUE === $value ) {
 				$options[ $value ] = sprintf(
 					/* translators: %s: policy value token */
-					__( '%s (recommended)', 'security-automation-manager' ),
+					__( '%s (recommended)', 'vcns-security-automation-manager' ),
 					$value
 				);
 			} elseif ( isset( $risky_value_labels[ $value ] ) ) {
@@ -537,16 +537,16 @@ class Admin_UI {
 
 		$this->render_pillar_page(
 			Referrer_Policy_Builder::PILLAR_KEY,
-			__( 'Referrer-Policy', 'security-automation-manager' ),
+			__( 'Referrer-Policy', 'vcns-security-automation-manager' ),
 			'Referrer-Policy',
-			'<p>' . esc_html__( 'Controls how much of this site\'s URL is sent as the Referer header when a user follows a link away from it. Sent as an HTTP header only -- this plugin does not inject a <meta name="referrer"> tag into page content.', 'security-automation-manager' ) . '</p>',
+			'<p>' . esc_html__( 'Controls how much of this site\'s URL is sent as the Referer header when a user follows a link away from it. Sent as an HTTP header only -- this plugin does not inject a <meta name="referrer"> tag into page content.', 'vcns-security-automation-manager' ) . '</p>',
 			$options
 		);
 	}
 
 	public function render_permissions_policy(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-permissions-policy.php';
 	}
@@ -560,28 +560,28 @@ class Admin_UI {
 	 */
 	private function render_pillar_page( string $pillar_key, string $page_title, string $header_name, string $intro_html, ?array $value_options, string $warning_html = '' ): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-pillar-simple.php';
 	}
 
 	public function render_hsts(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-hsts.php';
 	}
 
 	public function render_reverse_tabnabbing(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-reverse-tabnabbing.php';
 	}
 
 	public function render_scripts(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
 	}
@@ -589,7 +589,7 @@ class Admin_UI {
 	public function handle_reset_data(): void {
 		check_admin_referer( 'wp_sam_reset_data' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to reset plugin data.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to reset plugin data.', 'vcns-security-automation-manager' ) );
 		}
 
 		$password     = (string) wp_unslash( $_POST['wp_sam_current_password'] ?? '' );
@@ -620,14 +620,14 @@ class Admin_UI {
 	public function handle_restore_snapshot(): void {
 		check_admin_referer( 'wp_sam_restore_snapshot' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to restore plugin configuration.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to restore plugin configuration.', 'vcns-security-automation-manager' ) );
 		}
 
 		$snapshot_id = (int) ( $_POST['wp_sam_snapshot_id'] ?? 0 );
 		$confirmed   = ! empty( $_POST['wp_sam_restore_confirmation'] );
 
 		if ( $snapshot_id <= 0 || ! $confirmed ) {
-			$this->redirect_to_recovery_restore( 'failed', __( 'Confirmation checkbox was not checked.', 'security-automation-manager' ) );
+			$this->redirect_to_recovery_restore( 'failed', __( 'Confirmation checkbox was not checked.', 'vcns-security-automation-manager' ) );
 		}
 
 		$result = Rollback_Guard::restore_snapshot( $snapshot_id );
@@ -646,7 +646,7 @@ class Admin_UI {
 	public function handle_export_config(): void {
 		check_admin_referer( 'wp_sam_export_config' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to export plugin configuration.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to export plugin configuration.', 'vcns-security-automation-manager' ) );
 		}
 
 		$export   = ( new Config_Portability( $this->plugin->audit ) )->export();
@@ -671,15 +671,15 @@ class Admin_UI {
 	public function handle_import_config(): void {
 		check_admin_referer( 'wp_sam_import_config' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to import plugin configuration.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to import plugin configuration.', 'vcns-security-automation-manager' ) );
 		}
 
 		if ( empty( $_POST['wp_sam_import_confirmation'] ) ) {
-			$this->redirect_to_recovery_import( 'failed', __( 'Confirmation checkbox was not checked.', 'security-automation-manager' ) );
+			$this->redirect_to_recovery_import( 'failed', __( 'Confirmation checkbox was not checked.', 'vcns-security-automation-manager' ) );
 		}
 
 		if ( empty( $_FILES['wp_sam_import_file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['wp_sam_import_file']['tmp_name'] ) ) {
-			$this->redirect_to_recovery_import( 'failed', __( 'No file was uploaded.', 'security-automation-manager' ) );
+			$this->redirect_to_recovery_import( 'failed', __( 'No file was uploaded.', 'vcns-security-automation-manager' ) );
 		}
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_get_contents -- a temp upload path, not a plugin-tree file; WP_Filesystem is unavailable this early and unnecessary for a one-shot read of PHP's own upload temp file.
@@ -724,7 +724,7 @@ class Admin_UI {
 	public function handle_dismiss_conflicts(): void {
 		check_admin_referer( 'wp_sam_dismiss_conflicts' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to dismiss these notices.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to dismiss these notices.', 'vcns-security-automation-manager' ) );
 		}
 
 		update_option( 'wp_sam_conflict_dismissed_at', current_time( 'mysql', true ), false );
@@ -743,7 +743,7 @@ class Admin_UI {
 
 	public function render_certificates(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this page.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-certificates.php';
 	}
@@ -758,7 +758,7 @@ class Admin_UI {
 	public function handle_save_cert_settings(): void {
 		check_admin_referer( 'wp_sam_save_cert_settings' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to change certificate settings.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to change certificate settings.', 'vcns-security-automation-manager' ) );
 		}
 
 		$store   = new \WP_SAM\Certificates\Certificate_Store();
@@ -883,7 +883,7 @@ class Admin_UI {
 	public function handle_issue_certificate(): void {
 		check_admin_referer( 'wp_sam_issue_certificate' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to issue certificates.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to issue certificates.', 'vcns-security-automation-manager' ) );
 		}
 
 		$this->plugin->cert_schedule->queue_issue_now();
@@ -895,13 +895,13 @@ class Admin_UI {
 	public function handle_download_certificate(): void {
 		check_admin_referer( 'wp_sam_download_certificate' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to download certificates.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'You do not have permission to download certificates.', 'vcns-security-automation-manager' ) );
 		}
 
 		$which  = sanitize_key( wp_unslash( $_GET['file'] ?? '' ) );
 		$latest = ( new \WP_SAM\Certificates\Certificate_Store() )->latest_certificate();
 		if ( null === $latest || ! in_array( $which, array( 'fullchain', 'privkey' ), true ) ) {
-			wp_die( esc_html__( 'No issued certificate available.', 'security-automation-manager' ) );
+			wp_die( esc_html__( 'No issued certificate available.', 'vcns-security-automation-manager' ) );
 		}
 
 		$content = 'privkey' === $which ? (string) $latest['key_pem'] : (string) $latest['fullchain_pem'];
@@ -985,7 +985,7 @@ class Admin_UI {
 				printf(
 					'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> [%3$s] %4$s</p></div>',
 					esc_attr( $type ),
-					esc_html__( 'Security Automation Manager:', 'security-automation-manager' ),
+					esc_html__( 'Security Automation Manager:', 'vcns-security-automation-manager' ),
 					esc_html( $key ),
 					esc_html( $notice['detail'] )
 				);
@@ -995,9 +995,9 @@ class Admin_UI {
 			printf(
 				'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> %3$s</p><details><summary>%4$s</summary><p class="description"><code>%5$s</code></p></details></div>',
 				esc_attr( $type ),
-				esc_html__( 'Security Automation Manager:', 'security-automation-manager' ),
+				esc_html__( 'Security Automation Manager:', 'vcns-security-automation-manager' ),
 				esc_html( $summary ),
-				esc_html__( 'Technical detail (for a developer)', 'security-automation-manager' ),
+				esc_html__( 'Technical detail (for a developer)', 'vcns-security-automation-manager' ),
 				esc_html( $key . ': ' . $notice['detail'] )
 			);
 		}
@@ -1019,17 +1019,17 @@ class Admin_UI {
 
 		printf(
 			'<div class="notice notice-error"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a></p></div>',
-			esc_html__( 'Security Automation Manager: database schema is newer than the running plugin code.', 'security-automation-manager' ),
+			esc_html__( 'Security Automation Manager: database schema is newer than the running plugin code.', 'vcns-security-automation-manager' ),
 			esc_html(
 				sprintf(
 					/* translators: 1: installed database schema version, 2: currently running plugin code's schema version */
-					__( 'The installed database is at schema v%1$d, but this plugin version only knows schema v%2$d. No automatic migration has been attempted. This usually means an older plugin version was installed over a site a newer version already upgraded.', 'security-automation-manager' ),
+					__( 'The installed database is at schema v%1$d, but this plugin version only knows schema v%2$d. No automatic migration has been attempted. This usually means an older plugin version was installed over a site a newer version already upgraded.', 'vcns-security-automation-manager' ),
 					(int) ( $flag['installed'] ?? 0 ),
 					(int) ( $flag['code'] ?? 0 )
 				)
 			),
 			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=recovery' ) ),
-			esc_html__( 'View recovery guidance', 'security-automation-manager' )
+			esc_html__( 'View recovery guidance', 'vcns-security-automation-manager' )
 		);
 	}
 
@@ -1060,7 +1060,7 @@ class Admin_UI {
 			wp_kses(
 				sprintf(
 					/* translators: %s: URL to WordPress core Trac ticket */
-					__( '<strong>Security Automation Manager:</strong> The wp-admin CSP surface is in <strong>enforce mode</strong>. WordPress core <a href="%s" target="_blank" rel="noopener">Trac #59446</a> is unresolved - some admin UI components may be blocked. Monitor violation reports before keeping enforce mode active.', 'security-automation-manager' ),
+					__( '<strong>Security Automation Manager:</strong> The wp-admin CSP surface is in <strong>enforce mode</strong>. WordPress core <a href="%s" target="_blank" rel="noopener">Trac #59446</a> is unresolved - some admin UI components may be blocked. Monitor violation reports before keeping enforce mode active.', 'vcns-security-automation-manager' ),
 					'https://core.trac.wordpress.org/ticket/59446'
 				),
 				array(
@@ -1080,7 +1080,7 @@ class Admin_UI {
 	public function ajax_manual_scan(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'security-automation-manager' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'vcns-security-automation-manager' ) ), 403 );
 		}
 
 		$scheduler = new Scheduler( $this->plugin->audit );
@@ -1129,12 +1129,12 @@ class Admin_UI {
 
 	private function decide_source( int $id, string $action ): void {
 		if ( $id <= 0 ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid source ID.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid source ID.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$reason = sanitize_text_field( wp_unslash( $_POST['reason'] ?? '' ) );
 		if ( '' === trim( $reason ) ) {
-			wp_send_json_error( array( 'message' => __( 'A decision reason is required.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'A decision reason is required.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$manager = new Policy_Change_Manager( $this->plugin->audit, null, new Policy_Version_Manager( $this->plugin->policy_builder ), gate: $this->plugin->gate );
@@ -1149,7 +1149,7 @@ class Admin_UI {
 		}
 
 		if ( ! $ok ) {
-			wp_send_json_error( array( 'message' => __( 'Could not record policy decision.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Could not record policy decision.', 'vcns-security-automation-manager' ) ) );
 		}
 		wp_send_json_success();
 	}
@@ -1204,7 +1204,7 @@ class Admin_UI {
 		$enabled = ! empty( $_POST['enabled'] );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1241,11 +1241,11 @@ class Admin_UI {
 		$enabled = ! empty( $_POST['enabled'] );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		if ( ! isset( Policy_Builder::BYPASS_CATALOG[ $flag ] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid bypass flag.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid bypass flag.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1287,17 +1287,17 @@ class Admin_UI {
 		$mode    = sanitize_text_field( wp_unslash( $_POST['mode'] ?? '' ) );
 
 		if ( ! in_array( $surface, Automation_Config::SURFACES, true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		if ( ! in_array( $mode, Automation_Config::MODES, true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid automation mode.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid automation mode.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		if ( Automation_Config::MODE_FULLY_AUTOMATIC === $mode && ! $this->plugin->gate->is_allowed( 'fully_automatic' ) ) {
 			wp_send_json_error(
 				array(
-					'message'          => __( 'Fully Automatic mode requires a paid subscription.', 'security-automation-manager' ),
+					'message'          => __( 'Fully Automatic mode requires a paid subscription.', 'vcns-security-automation-manager' ),
 					'upgrade_required' => true,
 				)
 			);
@@ -1327,7 +1327,7 @@ class Admin_UI {
 
 		if ( null === $this->plugin->checkout ) {
 			wp_send_json_error(
-				array( 'message' => __( 'Upgrading is not available in this build of the plugin.', 'security-automation-manager' ) )
+				array( 'message' => __( 'Upgrading is not available in this build of the plugin.', 'vcns-security-automation-manager' ) )
 			);
 		}
 
@@ -1368,7 +1368,7 @@ class Admin_UI {
 		$mode = sanitize_text_field( wp_unslash( $_POST['mode'] ?? '' ) );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$sanitized_value = '';
@@ -1390,40 +1390,40 @@ class Admin_UI {
 			case X_Frame_Options_Builder::PILLAR_KEY:
 				$sanitized_value = X_Frame_Options_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
-					wp_send_json_error( array( 'message' => __( 'Invalid X-Frame-Options value.', 'security-automation-manager' ) ) );
+					wp_send_json_error( array( 'message' => __( 'Invalid X-Frame-Options value.', 'vcns-security-automation-manager' ) ) );
 				}
 				break;
 
 			case Referrer_Policy_Builder::PILLAR_KEY:
 				$sanitized_value = Referrer_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
-					wp_send_json_error( array( 'message' => __( 'Invalid Referrer-Policy value.', 'security-automation-manager' ) ) );
+					wp_send_json_error( array( 'message' => __( 'Invalid Referrer-Policy value.', 'vcns-security-automation-manager' ) ) );
 				}
 				break;
 
 			case Cross_Origin_Resource_Policy_Builder::PILLAR_KEY:
 				$sanitized_value = Cross_Origin_Resource_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
-					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Resource-Policy value.', 'security-automation-manager' ) ) );
+					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Resource-Policy value.', 'vcns-security-automation-manager' ) ) );
 				}
 				break;
 
 			case X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY:
 				$sanitized_value = X_Permitted_Cross_Domain_Policies_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
-					wp_send_json_error( array( 'message' => __( 'Invalid X-Permitted-Cross-Domain-Policies value.', 'security-automation-manager' ) ) );
+					wp_send_json_error( array( 'message' => __( 'Invalid X-Permitted-Cross-Domain-Policies value.', 'vcns-security-automation-manager' ) ) );
 				}
 				break;
 
 			case Cross_Origin_Opener_Policy_Builder::PILLAR_KEY:
 				$sanitized_value = Cross_Origin_Opener_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
-					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy value.', 'security-automation-manager' ) ) );
+					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy value.', 'vcns-security-automation-manager' ) ) );
 				}
 				if ( '' !== $mode ) {
 					$sanitized_mode = Cross_Origin_Opener_Policy_Builder::sanitize_mode( $mode );
 					if ( '' === $sanitized_mode ) {
-						wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy mode.', 'security-automation-manager' ) ) );
+						wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Opener-Policy mode.', 'vcns-security-automation-manager' ) ) );
 					}
 				}
 				break;
@@ -1431,18 +1431,18 @@ class Admin_UI {
 			case Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY:
 				$sanitized_value = Cross_Origin_Embedder_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
-					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy value.', 'security-automation-manager' ) ) );
+					wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy value.', 'vcns-security-automation-manager' ) ) );
 				}
 				if ( '' !== $mode ) {
 					$sanitized_mode = Cross_Origin_Embedder_Policy_Builder::sanitize_mode( $mode );
 					if ( '' === $sanitized_mode ) {
-						wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy mode.', 'security-automation-manager' ) ) );
+						wp_send_json_error( array( 'message' => __( 'Invalid Cross-Origin-Embedder-Policy mode.', 'vcns-security-automation-manager' ) ) );
 					}
 				}
 				break;
 
 			default:
-				wp_send_json_error( array( 'message' => __( 'Invalid pillar.', 'security-automation-manager' ) ) );
+				wp_send_json_error( array( 'message' => __( 'Invalid pillar.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1494,7 +1494,7 @@ class Admin_UI {
 		$enabled   = ! empty( $_POST['enabled'] );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1506,7 +1506,7 @@ class Admin_UI {
 
 		if ( '' !== $directive ) {
 			if ( ! in_array( $directive, Permissions_Policy_Builder::KNOWN_DIRECTIVES, true ) ) {
-				wp_send_json_error( array( 'message' => __( 'Invalid directive.', 'security-automation-manager' ) ) );
+				wp_send_json_error( array( 'message' => __( 'Invalid directive.', 'vcns-security-automation-manager' ) ) );
 			}
 
 			$sanitized_token = Permissions_Policy_Builder::sanitize_token( $value );
@@ -1561,7 +1561,7 @@ class Admin_UI {
 		$preload            = ! empty( $_POST['preload'] ) && Strict_Transport_Security_Builder::preload_eligible( $max_age, $include_subdomains );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1613,7 +1613,7 @@ class Admin_UI {
 		$mode    = 'enforce' === $mode ? 'enforce' : 'report';
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1662,17 +1662,17 @@ class Admin_UI {
 		$expected_sri   = sanitize_text_field( wp_unslash( $_POST['expected_sri'] ?? '' ) );
 
 		if ( $id <= 0 ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		if ( ! in_array( $classification, Dependency_Governance_Builder::CLASSIFICATIONS, true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid classification.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid classification.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$sanitized_sri = null;
 		if ( 'immutable_pinned' === $classification && '' !== trim( $expected_sri ) ) {
 			if ( ! preg_match( '/^sha(256|384|512)-[A-Za-z0-9+\/]+=*$/', trim( $expected_sri ) ) ) {
-				wp_send_json_error( array( 'message' => __( 'Expected SRI hash must look like sha256-…, sha384-… or sha512-… (base64).', 'security-automation-manager' ) ) );
+				wp_send_json_error( array( 'message' => __( 'Expected SRI hash must look like sha256-…, sha384-… or sha512-… (base64).', 'vcns-security-automation-manager' ) ) );
 			}
 			$sanitized_sri = trim( $expected_sri );
 		}
@@ -1724,11 +1724,11 @@ class Admin_UI {
 		$url = esc_url_raw( trim( (string) wp_unslash( $_POST['url'] ?? '' ) ) );
 
 		if ( $id <= 0 || '' === $url ) {
-			wp_send_json_error( array( 'message' => __( 'A URL is required.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'A URL is required.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		if ( ! preg_match( '#^https://#i', $url ) ) {
-			wp_send_json_error( array( 'message' => __( 'Only https:// URLs can be hashed.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Only https:// URLs can be hashed.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		global $wpdb;
@@ -1736,12 +1736,12 @@ class Admin_UI {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT origin FROM {$table} WHERE id = %d", $id ), ARRAY_A );
 		if ( empty( $row ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$url_origin = Dependency_Governance_Builder::normalize_origin( $url );
 		if ( null === $url_origin || $url_origin !== $row['origin'] ) {
-			wp_send_json_error( array( 'message' => __( 'That URL must be on the same origin already shown for this row.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'That URL must be on the same origin already shown for this row.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$response = wp_remote_get(
@@ -1752,17 +1752,17 @@ class Admin_UI {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			wp_send_json_error( array( 'message' => __( 'Could not fetch that URL.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Could not fetch that URL.', 'vcns-security-automation-manager' ) ) );
 		}
 		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
-			wp_send_json_error( array( 'message' => __( 'That URL did not return a successful response.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'That URL did not return a successful response.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$body = wp_remote_retrieve_body( $response );
 		// 5 MB is generously above any legitimate third-party script/stylesheet;
 		// guards against hashing an unexpectedly huge response.
 		if ( '' === $body || strlen( $body ) > 5 * MB_IN_BYTES ) {
-			wp_send_json_error( array( 'message' => __( 'That URL returned an empty or unexpectedly large response.', 'security-automation-manager' ) ) );
+			wp_send_json_error( array( 'message' => __( 'That URL returned an empty or unexpectedly large response.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		$hash = 'sha384-' . base64_encode( hash( 'sha384', $body, true ) );
@@ -1803,7 +1803,7 @@ class Admin_UI {
 		);
 
 		if ( ( $src_count + $hash_count ) === 0 ) {
-			return __( 'Cannot promote to enforce: no approved sources or hashes found for this surface. Run a scan and approve at least one source first.', 'security-automation-manager' );
+			return __( 'Cannot promote to enforce: no approved sources or hashes found for this surface. Run a scan and approve at least one source first.', 'vcns-security-automation-manager' );
 		}
 
 		// ── Gate 2: no violations within the configured time window ───────────
@@ -1824,7 +1824,7 @@ class Admin_UI {
 		if ( $recent_violations > 0 ) {
 			return sprintf(
 				/* translators: 1: violation count, 2: hours */
-				__( 'Cannot promote to enforce: %1$d violation(s) recorded for this surface in the last %2$d hour(s). Resolve violations in report-only mode first, or extend the violation window in Settings.', 'security-automation-manager' ),
+				__( 'Cannot promote to enforce: %1$d violation(s) recorded for this surface in the last %2$d hour(s). Resolve violations in report-only mode first, or extend the violation window in Settings.', 'vcns-security-automation-manager' ),
 				$recent_violations,
 				$window_hours
 			);
@@ -1849,7 +1849,7 @@ class Admin_UI {
 				if ( false !== $expires_ts && $expires_ts > time() ) {
 					return sprintf(
 						/* translators: 1: override owner, 2: expiry datetime */
-						__( 'Cannot promote to enforce: a temporary override set by "%1$s" is active until %2$s. Wait for it to expire or remove it before enabling enforce mode.', 'security-automation-manager' ),
+						__( 'Cannot promote to enforce: a temporary override set by "%1$s" is active until %2$s. Wait for it to expire or remove it before enabling enforce mode.', 'vcns-security-automation-manager' ),
 						esc_html( $owner ),
 						esc_html( $expires_at )
 					);

@@ -40,11 +40,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if svn info "https://plugins.svn.wordpress.org/security-automation-manager" --non-interactive > /dev/null 2>&1; then
+          if svn info "https://plugins.svn.wordpress.org/vcns-security-automation-manager" --non-interactive > /dev/null 2>&1; then
             echo "exists=true" >> "${GITHUB_OUTPUT}"
           else
             echo "exists=false" >> "${GITHUB_OUTPUT}"
-            echo "::warning::WordPress.org SVN repository for 'security-automation-manager' does not exist yet (plugin review pending?). Skipping SVN deploy; GitHub Release and update feed are unaffected."
+            echo "::warning::WordPress.org SVN repository for 'vcns-security-automation-manager' does not exist yet (plugin review pending?). Skipping SVN deploy; GitHub Release and update feed are unaffected."
           fi
 
       # release-package.yml's rsync-based build strips this file from its
@@ -68,4 +68,4 @@ jobs:
         env:
           SVN_USERNAME: ${{ vars.SVC_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          SLUG: security-automation-manager
+          SLUG: vcns-security-automation-manager

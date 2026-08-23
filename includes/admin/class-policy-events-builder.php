@@ -46,10 +46,10 @@ final class Policy_Events_Builder {
 		$when_from    = $filters['when_from'] ?? '';
 		$when_to      = $filters['when_to'] ?? '';
 
-		$decision_label  = __( 'Decision', 'security-automation-manager' );
-		$version_label   = __( 'Policy version', 'security-automation-manager' );
-		$discovery_label = __( 'Discovery', 'security-automation-manager' );
-		$snapshot_label  = __( 'Snapshot', 'security-automation-manager' );
+		$decision_label  = __( 'Decision', 'vcns-security-automation-manager' );
+		$version_label   = __( 'Policy version', 'vcns-security-automation-manager' );
+		$discovery_label = __( 'Discovery', 'vcns-security-automation-manager' );
+		$snapshot_label  = __( 'Snapshot', 'vcns-security-automation-manager' );
 
 		$run_decisions = empty( $type_labels ) || in_array( $decision_label, $type_labels, true );
 		$run_versions  = empty( $type_labels ) || in_array( $version_label, $type_labels, true );
@@ -162,8 +162,8 @@ final class Policy_Events_Builder {
 
 	private static function discovery_event_label( string $raw_event ): string {
 		return 'proposal_suppressed' === $raw_event
-			? __( 'Suppressed proposal', 'security-automation-manager' )
-			: __( 'Proposed source', 'security-automation-manager' );
+			? __( 'Suppressed proposal', 'vcns-security-automation-manager' )
+			: __( 'Proposed source', 'vcns-security-automation-manager' );
 	}
 
 	private static function fetch_decisions( \wpdb $wpdb, array $surface, array $directive, string $host, array $risk, array $actions, string $policy_ver, string $suppression, array $actor, string $detail, string $when_from, string $when_to, bool &$truncated ): array {
@@ -199,7 +199,7 @@ final class Policy_Events_Builder {
 			$events[] = array(
 				'created_at'     => (string) $decision['created_at'],
 				'event'          => ucfirst( (string) $decision['action'] ),
-				'type'           => __( 'Decision', 'security-automation-manager' ),
+				'type'           => __( 'Decision', 'vcns-security-automation-manager' ),
 				'actor'          => (string) ( $decision['actor_type'] ?? 'administrator' ),
 				'surface'        => (string) $decision['surface'],
 				'directive'      => (string) $decision['directive'],
@@ -207,7 +207,7 @@ final class Policy_Events_Builder {
 				'risk_level'     => (string) $decision['risk_level'],
 				'risk_reason'    => (string) $decision['risk_reason'],
 				'policy_version' => ! empty( $decision['policy_version_id'] ) ? (string) $decision['policy_version_id'] : '',
-				'suppression'    => ! empty( $decision['suppression_active'] ) ? __( 'Active', 'security-automation-manager' ) : '',
+				'suppression'    => ! empty( $decision['suppression_active'] ) ? __( 'Active', 'vcns-security-automation-manager' ) : '',
 				'detail'         => (string) $decision['reason'],
 			);
 		}
@@ -234,17 +234,17 @@ final class Policy_Events_Builder {
 
 		$events = array();
 		foreach ( $rows as $version ) {
-			$actor_label = 'decision' === (string) $version['trigger_type'] ? __( 'system', 'security-automation-manager' ) : (string) $version['trigger_type'];
+			$actor_label = 'decision' === (string) $version['trigger_type'] ? __( 'system', 'vcns-security-automation-manager' ) : (string) $version['trigger_type'];
 			if ( ! empty( $actor ) && ! in_array( $actor_label, $actor, true ) ) {
 				continue;
 			}
 
 			$detail_text = sprintf(
 				/* translators: 1: policy mode, 2: trigger type, 3: trigger identifier */
-				__( 'Captured %1$s policy snapshot from %2$s trigger %3$s.', 'security-automation-manager' ),
+				__( 'Captured %1$s policy snapshot from %2$s trigger %3$s.', 'vcns-security-automation-manager' ),
 				(string) $version['mode'],
 				(string) $version['trigger_type'],
-				! empty( $version['trigger_id'] ) ? '#' . (string) $version['trigger_id'] : __( 'without an ID', 'security-automation-manager' )
+				! empty( $version['trigger_id'] ) ? '#' . (string) $version['trigger_id'] : __( 'without an ID', 'vcns-security-automation-manager' )
 			);
 			if ( '' !== $detail && false === stripos( $detail_text, $detail ) ) {
 				continue;
@@ -252,8 +252,8 @@ final class Policy_Events_Builder {
 
 			$events[] = array(
 				'created_at'     => (string) $version['created_at'],
-				'event'          => __( 'Snapshot', 'security-automation-manager' ),
-				'type'           => __( 'Policy version', 'security-automation-manager' ),
+				'event'          => __( 'Snapshot', 'vcns-security-automation-manager' ),
+				'type'           => __( 'Policy version', 'vcns-security-automation-manager' ),
 				'actor'          => $actor_label,
 				'surface'        => (string) $version['surface'],
 				'directive'      => '',
@@ -295,7 +295,7 @@ final class Policy_Events_Builder {
 
 		$events = array();
 		foreach ( $rows as $audit_event ) {
-			$actor_label = empty( $audit_event['user_id'] ) ? __( 'system', 'security-automation-manager' ) : __( 'administrator', 'security-automation-manager' );
+			$actor_label = empty( $audit_event['user_id'] ) ? __( 'system', 'vcns-security-automation-manager' ) : __( 'administrator', 'vcns-security-automation-manager' );
 			if ( ! empty( $actor ) && ! in_array( $actor_label, $actor, true ) ) {
 				continue;
 			}
@@ -303,7 +303,7 @@ final class Policy_Events_Builder {
 			$events[] = array(
 				'created_at'     => (string) $audit_event['created_at'],
 				'event'          => self::discovery_event_label( (string) $audit_event['event'] ),
-				'type'           => __( 'Discovery', 'security-automation-manager' ),
+				'type'           => __( 'Discovery', 'vcns-security-automation-manager' ),
 				'actor'          => $actor_label,
 				'surface'        => '',
 				'directive'      => '',
@@ -311,7 +311,7 @@ final class Policy_Events_Builder {
 				'risk_level'     => '',
 				'risk_reason'    => '',
 				'policy_version' => '',
-				'suppression'    => 'proposal_suppressed' === (string) $audit_event['event'] ? __( 'Active', 'security-automation-manager' ) : '',
+				'suppression'    => 'proposal_suppressed' === (string) $audit_event['event'] ? __( 'Active', 'vcns-security-automation-manager' ) : '',
 				'detail'         => (string) $audit_event['detail'],
 			);
 		}

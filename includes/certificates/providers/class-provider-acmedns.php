@@ -32,18 +32,18 @@ class Provider_Acmedns extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'server_url' => array(
-				'label'       => __( 'acme-dns server URL', 'security-automation-manager' ),
+				'label'       => __( 'acme-dns server URL', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'https://auth.acme-dns.io',
 			),
 			'username'   => array(
-				'label' => __( 'Username (from /register)', 'security-automation-manager' ),
+				'label' => __( 'Username (from /register)', 'vcns-security-automation-manager' ),
 			),
 			'password'   => array(
-				'label' => __( 'Password (from /register)', 'security-automation-manager' ),
+				'label' => __( 'Password (from /register)', 'vcns-security-automation-manager' ),
 			),
 			'subdomain'  => array(
-				'label'       => __( 'Subdomain (from /register)', 'security-automation-manager' ),
+				'label'       => __( 'Subdomain (from /register)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'd420c923-bbd7-4056-ab64-c3ca54c9b3cf',
 			),

@@ -29,11 +29,11 @@ class Provider_Route53 extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'access_key_id'     => array(
-				'label'  => __( 'Access Key ID', 'security-automation-manager' ),
+				'label'  => __( 'Access Key ID', 'vcns-security-automation-manager' ),
 				'secret' => false,
 			),
 			'secret_access_key' => array(
-				'label' => __( 'Secret Access Key', 'security-automation-manager' ),
+				'label' => __( 'Secret Access Key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

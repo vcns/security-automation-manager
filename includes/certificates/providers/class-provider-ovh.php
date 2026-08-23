@@ -31,18 +31,18 @@ class Provider_Ovh extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'endpoint'           => array(
-				'label'       => __( 'Endpoint (ovh-eu, ovh-ca, or ovh-us)', 'security-automation-manager' ),
+				'label'       => __( 'Endpoint (ovh-eu, ovh-ca, or ovh-us)', 'vcns-security-automation-manager' ),
 				'secret'      => false,
 				'placeholder' => 'ovh-eu',
 			),
 			'application_key'    => array(
-				'label' => __( 'Application key', 'security-automation-manager' ),
+				'label' => __( 'Application key', 'vcns-security-automation-manager' ),
 			),
 			'application_secret' => array(
-				'label' => __( 'Application secret', 'security-automation-manager' ),
+				'label' => __( 'Application secret', 'vcns-security-automation-manager' ),
 			),
 			'consumer_key'       => array(
-				'label' => __( 'Consumer key', 'security-automation-manager' ),
+				'label' => __( 'Consumer key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

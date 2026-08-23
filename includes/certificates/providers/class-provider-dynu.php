@@ -25,7 +25,7 @@ class Provider_Dynu extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
-				'label' => __( 'API key', 'security-automation-manager' ),
+				'label' => __( 'API key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

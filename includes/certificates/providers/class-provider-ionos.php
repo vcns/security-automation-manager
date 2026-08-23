@@ -24,7 +24,7 @@ class Provider_Ionos extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
-				'label'       => __( 'API key (publicprefix.secret from the developer portal)', 'security-automation-manager' ),
+				'label'       => __( 'API key (publicprefix.secret from the developer portal)', 'vcns-security-automation-manager' ),
 				'placeholder' => 'prefix.secret',
 			),
 		);

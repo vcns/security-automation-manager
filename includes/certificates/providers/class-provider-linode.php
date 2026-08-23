@@ -24,7 +24,7 @@ class Provider_Linode extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
-				'label' => __( 'Personal Access Token (Domains read/write)', 'security-automation-manager' ),
+				'label' => __( 'Personal Access Token (Domains read/write)', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

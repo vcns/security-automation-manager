@@ -24,10 +24,10 @@ class Provider_Dnsmadeeasy extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_key'    => array(
-				'label' => __( 'API Key', 'security-automation-manager' ),
+				'label' => __( 'API Key', 'vcns-security-automation-manager' ),
 			),
 			'secret_key' => array(
-				'label' => __( 'Secret Key', 'security-automation-manager' ),
+				'label' => __( 'Secret Key', 'vcns-security-automation-manager' ),
 			),
 		);
 	}

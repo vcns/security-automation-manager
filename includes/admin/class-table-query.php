@@ -265,19 +265,19 @@ final class Table_Query {
 
 		if ( $page_num > 1 ) {
 			$prev_url = add_query_arg( array_merge( $state_args, array( $paged_key => $page_num - 1 ) ), $base_url );
-			$out     .= '<a class="button" href="' . esc_url( $prev_url ) . '">&laquo; ' . esc_html__( 'Previous', 'security-automation-manager' ) . '</a>';
+			$out     .= '<a class="button" href="' . esc_url( $prev_url ) . '">&laquo; ' . esc_html__( 'Previous', 'vcns-security-automation-manager' ) . '</a>';
 		}
 
 		$out .= '<span style="margin:0 8px">' . sprintf(
 			/* translators: 1: current page number, 2: total pages */
-			esc_html__( 'Page %1$d of %2$d', 'security-automation-manager' ),
+			esc_html__( 'Page %1$d of %2$d', 'vcns-security-automation-manager' ),
 			$page_num,
 			$total_pages
 		) . '</span>';
 
 		if ( $page_num < $total_pages ) {
 			$next_url = add_query_arg( array_merge( $state_args, array( $paged_key => $page_num + 1 ) ), $base_url );
-			$out     .= '<a class="button" href="' . esc_url( $next_url ) . '">' . esc_html__( 'Next', 'security-automation-manager' ) . ' &raquo;</a>';
+			$out     .= '<a class="button" href="' . esc_url( $next_url ) . '">' . esc_html__( 'Next', 'vcns-security-automation-manager' ) . ' &raquo;</a>';
 		}
 
 		$out .= '</div></div>';

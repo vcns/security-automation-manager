@@ -26,7 +26,7 @@ class Provider_Dreamhost extends Dns_Provider {
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
-				'label' => __( 'API key (with dns-* function access)', 'security-automation-manager' ),
+				'label' => __( 'API key (with dns-* function access)', 'vcns-security-automation-manager' ),
 			),
 		);
 	}
