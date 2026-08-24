@@ -13,6 +13,7 @@ use WP_SAM\Admin\Csp_Header_Formatter;
 use WP_SAM\Admin\Table_Query;
 use WP_SAM\Admin\Policy_Events_Builder;
 use WP_SAM\Admin\Risk_Badge;
+use WP_SAM\Admin\Known_Source_Badge;
 
 global $wpdb;
 
@@ -600,7 +601,10 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			<td><?php echo esc_html( $src['id'] ); ?></td>
 			<td><?php echo esc_html( $src['surface'] ); ?></td>
 			<td><code><?php echo esc_html( $src['directive'] ); ?></code></td>
-			<td><code><?php echo esc_html( $src['source_host'] ); ?></code></td>
+			<td>
+				<code><?php echo esc_html( $src['source_host'] ); ?></code>
+				<?php echo Known_Source_Badge::render( (string) $src['source_host'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
+			</td>
 			<td>
 				<?php echo Risk_Badge::render( (string) ( $src['risk_level'] ?? 'low' ), (string) ( $src['risk_reason'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
 			</td>
