@@ -305,9 +305,9 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		);
 
 		$evid_count_sql = "SELECT COUNT(*) FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE {$evid_where_sql}";
-	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_count_sql = $wpdb->prepare( $evid_count_sql, ...$evid_args );
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_total = (int) $wpdb->get_var( $evid_count_sql );
 
 		$evid_pages    = max( 1, (int) ceil( $evid_total / $per_page ) );
@@ -316,15 +316,15 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 
 		$evid_data_args = array_merge( $evid_args, array( $per_page, $evid_offset ) );
 		$evid_data_sql  = "SELECT * FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE {$evid_where_sql} " . Table_Query::order_by_sql( $evid_sort ) . ' LIMIT %d OFFSET %d';
-	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_data_sql = $wpdb->prepare( $evid_data_sql, ...$evid_data_args );
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evidence_raw = $wpdb->get_results( $evid_data_sql, ARRAY_A );
 		$evidence     = ! empty( $evidence_raw ) ? $evidence_raw : array();
 
 		// Simple at-a-glance signal, same spirit as CSP's promotion gate -- purely
 		// informational, never blocking or auto-triggering a mode change.
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_recent_count = (int) $wpdb->get_var(
 			$wpdb->prepare(
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

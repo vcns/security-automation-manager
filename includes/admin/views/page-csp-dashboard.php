@@ -105,7 +105,7 @@ $conflict_dismissed_at = (string) get_option( 'wp_sam_conflict_dismissed_at', ''
 if ( $conflict_dismissed_at > $conflict_cutoff ) { // Lexicographic compare is chronological for this fixed datetime format.
 	$conflict_cutoff = $conflict_dismissed_at;
 }
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $conflict_notices_raw = $wpdb->get_results(
 	$wpdb->prepare(
 		"SELECT detail, created_at FROM {$wpdb->prefix}sam_audit_log
@@ -502,10 +502,10 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 
 		$count_sql = "SELECT COUNT(*) FROM {$wpdb->prefix}csp_source_inventory WHERE {$src_where_sql}";
 		if ( ! empty( $src_args ) ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$count_sql = $wpdb->prepare( $count_sql, ...$src_args );
 		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$src_total = (int) $wpdb->get_var( $count_sql );
 
 		$src_pages = max( 1, (int) ceil( $src_total / $per_page ) );
@@ -514,9 +514,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 
 		$query_args = array_merge( $src_args, array( $per_page, $offset ) );
 		$data_sql   = "SELECT * FROM {$wpdb->prefix}csp_source_inventory WHERE {$src_where_sql} " . Table_Query::order_by_sql( $src_sort ) . ' LIMIT %d OFFSET %d';
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$data_sql = $wpdb->prepare( $data_sql, ...$query_args );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$sources_raw = $wpdb->get_results( $data_sql, ARRAY_A );
 		$sources     = ! empty( $sources_raw ) ? $sources_raw : array();
 		?>
@@ -1094,10 +1094,10 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 
 		$viol_count_sql = "SELECT COUNT(*) FROM {$wpdb->prefix}csp_violation_reports WHERE {$viol_where_sql}";
 		if ( ! empty( $viol_args ) ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$viol_count_sql = $wpdb->prepare( $viol_count_sql, ...$viol_args );
 		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$viol_total = (int) $wpdb->get_var( $viol_count_sql );
 
 		$viol_pages    = max( 1, (int) ceil( $viol_total / $per_page ) );
@@ -1106,9 +1106,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 
 		$viol_data_args = array_merge( $viol_args, array( $per_page, $viol_offset ) );
 		$viol_data_sql  = "SELECT * FROM {$wpdb->prefix}csp_violation_reports WHERE {$viol_where_sql} " . Table_Query::order_by_sql( $viol_sort ) . ' LIMIT %d OFFSET %d';
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$viol_data_sql = $wpdb->prepare( $viol_data_sql, ...$viol_data_args );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$violations_raw = $wpdb->get_results( $viol_data_sql, ARRAY_A );
 		$violations     = ! empty( $violations_raw ) ? $violations_raw : array();
 

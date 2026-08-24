@@ -24,7 +24,7 @@ foreach ( false !== $wp_sam_extension_files ? $wp_sam_extension_files : array() 
 unset( $wp_sam_extension_files, $wp_sam_extension_file );
 
 // ── Drop custom tables ────────────────────────────────────────────────────────
-$tables = array(
+$wp_sam_tables = array(
 	'csp_policy_profiles',
 	'csp_source_inventory',
 	'csp_hash_inventory',
@@ -46,15 +46,15 @@ $tables = array(
 // require loop above, which gives an extension the chance to register its
 // own suffixes via this same filter Activator::get_all_table_suffixes()
 // uses elsewhere.
-$tables = apply_filters( 'wp_sam_table_suffixes', $tables );
+$wp_sam_tables = apply_filters( 'wp_sam_table_suffixes', $wp_sam_tables );
 
-foreach ( $tables as $table ) {
+foreach ( $wp_sam_tables as $wp_sam_table ) {
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}{$table}" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}{$wp_sam_table}" );
 }
 
 // ── Delete options ────────────────────────────────────────────────────────────
-$options = array(
+$wp_sam_options = array(
 	'wp_sam_db_version',
 	'wp_sam_enforce_gate_violation_window',
 	'wp_sam_cron_hour',
@@ -77,10 +77,10 @@ $options = array(
 // Extension-owned option names (e.g. a paid automation mode's own
 // payment-provider settings) are added here, not named in this file --
 // see the require loop above.
-$options = apply_filters( 'wp_sam_option_names', $options );
+$wp_sam_options = apply_filters( 'wp_sam_option_names', $wp_sam_options );
 
-foreach ( $options as $option ) {
-	delete_option( $option );
+foreach ( $wp_sam_options as $wp_sam_option ) {
+	delete_option( $wp_sam_option );
 }
 
 // ── Remove transients ─────────────────────────────────────────────────────────

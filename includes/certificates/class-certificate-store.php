@@ -220,7 +220,7 @@ class Certificate_Store {
 		}
 		$sql .= ' ORDER BY id DESC LIMIT 1';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- interpolation is the table prefix; placeholders prepared below; key material must never enter the object cache.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- interpolation is the table prefix; placeholders prepared below; key material must never enter the object cache.
 		$row = $wpdb->get_row( empty( $args ) ? $sql : $wpdb->prepare( $sql, ...$args ), ARRAY_A );
 		if ( ! is_array( $row ) ) {
 			return null;

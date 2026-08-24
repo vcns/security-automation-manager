@@ -187,7 +187,7 @@ final class Policy_Events_Builder {
 
 		$sql    = "SELECT * FROM {$wpdb->prefix}sam_policy_change_decisions WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC LIMIT %d';
 		$args[] = self::SOURCE_CAP;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results( $wpdb->prepare( $sql, ...$args ), ARRAY_A );
 		$rows = ! empty( $rows ) ? $rows : array();
 		if ( count( $rows ) === self::SOURCE_CAP ) {
@@ -225,7 +225,7 @@ final class Policy_Events_Builder {
 
 		$sql    = "SELECT id, surface, version_number, mode, trigger_type, trigger_id, software_version, created_at FROM {$wpdb->prefix}sam_policy_versions WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC LIMIT %d';
 		$args[] = self::SOURCE_CAP;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results( $wpdb->prepare( $sql, ...$args ), ARRAY_A );
 		$rows = ! empty( $rows ) ? $rows : array();
 		if ( count( $rows ) === self::SOURCE_CAP ) {
@@ -286,7 +286,7 @@ final class Policy_Events_Builder {
 
 		$sql    = "SELECT id, component, event, detail, severity, user_id, created_at FROM {$wpdb->prefix}sam_audit_log WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC LIMIT %d';
 		$args[] = self::SOURCE_CAP;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results( $wpdb->prepare( $sql, ...$args ), ARRAY_A );
 		$rows = ! empty( $rows ) ? $rows : array();
 		if ( count( $rows ) === self::SOURCE_CAP ) {
