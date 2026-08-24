@@ -45,7 +45,54 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
-The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. This contacts the Let's Encrypt API (acme-v02.api.letsencrypt.org, or the staging equivalent) and, when a DNS provider is selected for DNS-01 validation, that provider's API (for example api.cloudflare.com) using credentials the administrator supplies. Credentials and private keys are encrypted at rest. Nothing is contacted until certificates are explicitly configured. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
+The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. Nothing is contacted until certificates are explicitly configured. Credentials and private keys are encrypted at rest. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and the bundled docs/certificates.md explains the basic steps for other platforms.
+
+Every certificate request contacts the certificate authority:
+
+* Let's Encrypt (acme-v02.api.letsencrypt.org, or the staging equivalent), operated by the Internet Security Research Group (ISRG). Subscriber Agreement: https://letsencrypt.org/repository/ -- Privacy Policy: https://letsencrypt.org/privacy/
+
+When a DNS provider is selected for DNS-01 domain validation, that provider's API is also contacted, using credentials the administrator supplies. This plugin includes 41 built-in DNS provider drivers; below is each one's operating company and legal links, where the provider is a third-party service:
+
+* Akamai (Edge DNS) -- Akamai Technologies, Inc. -- Terms: https://www.akamai.com/legal/portal-terms -- Privacy: https://www.akamai.com/legal/privacy-statement
+* Alibaba Cloud DNS -- Alibaba Cloud -- Terms: https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-product-terms-of-service -- Privacy: https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-privacy-policy
+* Microsoft Azure DNS -- Microsoft Corporation -- Terms and Privacy (agreement depends on purchase channel): https://azure.microsoft.com/en-us/support/legal/
+* Bunny.net DNS -- BunnyWay d.o.o. -- Terms: https://bunny.net/tos/ -- Privacy: https://bunny.net/privacy/
+* Cloudflare DNS -- Cloudflare, Inc. -- Terms: https://www.cloudflare.com/terms/ -- Privacy: https://www.cloudflare.com/privacypolicy/
+* ClouDNS -- Cloud DNS Ltd -- Terms: https://www.cloudns.net/tos/ -- Privacy: https://www.cloudns.net/privacy-policy/
+* deSEC -- deSEC e.V. -- Terms: https://desec.io/terms/ -- Privacy: https://desec.io/privacy-policy/
+* DigitalOcean DNS -- DigitalOcean, LLC -- Terms: https://www.digitalocean.com/legal/tos -- Privacy: https://www.digitalocean.com/legal/privacy-policy
+* DNSimple -- DNSimple Corporation -- Terms: https://dnsimple.com/terms -- Privacy: https://dnsimple.com/privacy
+* DNS Made Easy -- DigiCert, Inc. -- Terms: https://www.digicert.com/legal-repository -- Privacy: https://privacy.digicert.com/policies/en/?name=dns-network-security-products-privacy-notice
+* DNSPod -- Tencent Cloud -- Terms: https://docs.dnspod.cn/account/terms-of-service/ -- Privacy: https://docs.dnspod.cn/account/privacy-policy/ (Chinese-language)
+* Domeneshop -- Domeneshop AS -- Terms and Privacy (single combined document, Norwegian-language): https://domene.shop/terms
+* DreamHost DNS -- DreamHost, LLC -- Terms: https://www.dreamhost.com/legal/terms-of-service/ -- Privacy: https://www.dreamhost.com/legal/privacy-policy/
+* Dynu -- Dynu Systems, Inc. -- Terms: https://www.dynu.com/en-US/Legal/TermsOfUse -- Privacy: https://www.dynu.com/en-US/Legal/PrivacyPolicy
+* easyDNS -- easyDNS Technologies Inc. -- Terms: https://easydns.com/legal/terms-of-service/ -- Privacy: https://easydns.com/legal/privacy-policy/
+* Gandi DNS -- Gandi SAS -- Terms: https://www.gandi.net/en/contracts/terms-of-service -- Privacy: https://www.gandi.net/en/contracts/privacy-policy
+* GleSYS -- Glesys AB -- Terms: https://glesys.com/legal/general-terms-and-conditions/ -- Privacy: https://glesys.com/legal/privacy-policy/
+* GoDaddy DNS -- GoDaddy.com, LLC -- Terms: https://www.godaddy.com/legal/agreements/universal-terms-of-service-agreement -- Privacy: https://www.godaddy.com/agreements/privacy
+* Google Cloud DNS -- Google LLC -- Terms: https://cloud.google.com/terms -- Privacy: https://cloud.google.com/terms/cloud-privacy-notice
+* Hetzner DNS -- Hetzner Online GmbH -- Terms: https://www.hetzner.com/legal/terms-and-conditions/ -- Privacy: https://www.hetzner.com/legal/privacy-policy/
+* INWX -- INWX GmbH -- Terms: https://www.inwx.com/en/aboutus/terms -- Privacy: https://www.inwx.com/en/aboutus/dataprotection
+* IONOS DNS -- IONOS Inc. -- Terms: https://www.ionos.com/terms-gtc/general-terms-and-conditions/ -- Privacy: https://www.ionos.com/terms-gtc/privacy-policy/
+* Joker.com DNS -- CSL Computer Service Langenbach GmbH -- Terms: https://joker.com/terms/general -- Privacy: https://joker.com/index.joker?mode=page&page=impressum
+* Linode DNS -- operated by Akamai Technologies since Linode's acquisition -- Terms: https://www.akamai.com/legal/msa -- Privacy: https://www.akamai.com/legal/privacy-statement
+* Mythic Beasts -- Mythic Beasts Ltd -- Terms: https://www.mythic-beasts.com/terms/overview -- Privacy: https://www.mythic-beasts.com/terms/privacy
+* Namecheap DNS -- Namecheap, Inc. -- Terms: https://www.namecheap.com/legal/universal/universal-tos/ -- Privacy: https://www.namecheap.com/legal/general/privacy-policy/
+* Name.com DNS -- Name.com, Inc. -- Terms: https://www.name.com/policies/registration-agreement -- Privacy: https://www.name.com/privacy-policy
+* NameSilo DNS -- NameSilo, LLC -- Terms: https://www.namesilo.com/support/v2/articles/general-terms/terms-and-conditions -- Privacy: https://www.namesilo.com/support/v2/articles/general-terms/privacy-policy
+* netcup DNS -- netcup GmbH -- Terms: https://www.netcup.com/en/terms-and-conditions -- Privacy: https://www.netcup.com/en/contact/data-privacy
+* Netlify DNS -- Netlify, Inc. -- Terms: https://www.netlify.com/legal/terms-of-use/ -- Privacy: https://www.netlify.com/privacy/
+* Njalla -- operating entity not published -- Terms (also covers data collection; no separate privacy policy is published): https://njal.la/tos/
+* NS1 -- operated by IBM since NS1's acquisition -- Terms: https://www.ibm.com/legal/terms -- Privacy: https://www.ibm.com/us-en/privacy
+* OVH DNS -- OVH Groupe SA (OVHcloud) -- Terms: https://www.ovhcloud.com/en/terms-and-conditions/ -- Privacy: https://www.ovhcloud.com/en/terms-and-conditions/privacy-policy/
+* Porkbun DNS -- Porkbun LLC -- Terms: https://porkbun.com/legal/agreement/product_terms_of_service -- Privacy: https://porkbun.com/legal/agreement/privacy_policy
+* AWS Route 53 -- Amazon Web Services, Inc. -- Terms: https://aws.amazon.com/agreement/ -- Privacy: https://aws.amazon.com/privacy/
+* Scaleway DNS -- Scaleway S.A.S. -- Terms: https://www.scaleway.com/en/contracts/ -- Privacy: https://www.scaleway.com/en/privacy-policy/
+* Vercel DNS -- Vercel Inc. -- Terms: https://vercel.com/legal/terms -- Privacy: https://vercel.com/legal/privacy-policy
+* Vultr DNS -- The Constant Company, LLC -- Terms: https://www.vultr.com/legal/tos/ -- Privacy: https://www.vultr.com/legal/privacy/
+
+The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS updates) are not third-party services: they contact infrastructure the administrator operates or points at themselves (a self-hosted acme-dns instance, a self-hosted PowerDNS Authoritative Server, or any DNS server speaking the RFC 2136 standard), so no external terms or privacy policy apply.
 
 == Changelog ==
 

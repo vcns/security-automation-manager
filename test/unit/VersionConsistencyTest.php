@@ -78,7 +78,8 @@ class VersionConsistencyTest extends TestCase {
 
 		$this->assertStringContainsString( 'security-automation-manager-${TAG}.zip', $workflow );
 		$this->assertStringContainsString( 'security-automation-manager-github-${TAG}.zip', $workflow );
-		$this->assertStringContainsString( 'rm -f dist/wporg/security-automation-manager/includes/modules/class-github-update-checker.php', $workflow );
+		$this->assertStringContainsString( 'vcns-security-automation-manager-${TAG}.zip', $workflow );
+		$this->assertStringContainsString( 'rm -f dist/wporg/vcns-security-automation-manager/includes/modules/class-github-update-checker.php', $workflow );
 		$this->assertStringContainsString( 'WP_SAM_DISTRIBUTION_CHANNEL\', \'github', $workflow );
 		// The GitHub repo path and the update-feed publish path must match the
 		// live repository name and Github_Update_Checker::SLUG.
