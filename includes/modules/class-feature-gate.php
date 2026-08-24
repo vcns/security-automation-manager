@@ -35,8 +35,11 @@ class Feature_Gate {
 	private const PRODUCT_KEY = 'csp-automation-manager';
 
 	/**
-	 * Legacy Entitlement_Store instance, or null when no compatibility module is present.
-	 * Typed as object to avoid autoloading optional classes at parse time.
+	 * A legacy entitlement-compatibility object, populated only by a
+	 * loaded commercial-services extension (see includes/extensions/,
+	 * physically absent from the WordPress.org build), or null otherwise.
+	 * Typed as object, not a specific class, so this file never needs to
+	 * know or reference that extension's implementing class name.
 	 */
 	private ?object $entitlements;
 
@@ -54,9 +57,11 @@ class Feature_Gate {
 	 * Returns true if the current site may use the given feature.
 	 *
 	 * Features not in FREE_FEATURES require a paid entitlement -- this falls
-	 * through to is_pro(), which is always false when no Entitlement_Store
-	 * is present (the WordPress.org and GitHub-channel builds), and only
-	 * ever true for a site with a currently active paid entitlement.
+	 * through to is_pro(), which is always false when no entitlement source
+	 * is present (every build unless a commercial-services extension has
+	 * populated one -- see includes/extensions/, physically absent from
+	 * the WordPress.org build), and only ever true for a site with a
+	 * currently active paid entitlement.
 	 */
 	public function is_allowed( string $feature ): bool {
 		if ( in_array( $feature, self::FREE_FEATURES, true ) ) {

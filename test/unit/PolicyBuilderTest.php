@@ -203,8 +203,9 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'javascript:', $policy );
 	}
 
-	public function test_build_uses_home_url_report_endpoint_before_init(): void {
-		$GLOBALS['_wp_rest_url_should_throw'] = true;
+	public function test_build_report_endpoint_is_identical_before_init(): void {
+		// Reporting_Endpoint::url() delegates unconditionally to rest_url();
+		// did_action('init') deliberately left unset here.
 		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
 
 		$policy = $this->builder->build_policy_string( $profile, 'frontend' );
@@ -212,7 +213,7 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringContainsString( 'report-uri https://example.com/wp-json/sam/v1/report', $policy );
 	}
 
-	public function test_build_uses_rest_url_report_endpoint_after_init(): void {
+	public function test_build_report_endpoint_is_identical_after_init(): void {
 		$GLOBALS['_wp_did_actions']['init'] = 1;
 		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
 

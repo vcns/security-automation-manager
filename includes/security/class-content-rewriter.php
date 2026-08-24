@@ -8,10 +8,13 @@
  * enough that headers (sent earlier, from WP::send_headers()) are already
  * queued and cannot be affected, and nested inside any buffer a page-cache
  * plugin opened earlier in the request, so the transformed HTML is what
- * gets cached. Each subclass gets its own independent buffer; PHP nests
- * output buffers correctly (LIFO), and none of this plugin's own rewriters
- * touch the same element types, so buffer ordering between them never
- * matters.
+ * gets cached. Each subclass gets its own independent buffer; none of this
+ * plugin's own rewriters touch the same element types, so which one
+ * rewrites first never matters -- but PHP's buffer stack is strictly LIFO,
+ * so CLOSING them still has to happen in the exact reverse of open order.
+ * self::$open_stack (below) is what makes that safe when more than one of
+ * this plugin's own rewriters is active on the same request, without ever
+ * forcing closed a buffer this plugin doesn't own.
  *
  * The request/response eligibility rules mirror what Conflict_Detector and
  * every header pillar already assume is safe to skip -- admin, login,
@@ -33,13 +36,56 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Content_Rewriter extends Request_Surface {
 
 	private bool $buffer_started = false;
+	private ?int $buffer_level   = null;
 	private bool $streamed       = false;
 	private string $surface      = 'frontend';
+
+	/**
+	 * Every Content_Rewriter instance with a currently open buffer, in the
+	 * exact order they opened -- shared across every instance (there are two
+	 * concrete subclasses today, Reverse_Tabnabbing_Builder and
+	 * Dependency_Governance_Builder, both unconditionally instantiated and
+	 * both able to be active on the same request) rather than each
+	 * instance's own shutdown callback acting independently. PHP's output
+	 * buffer stack is strictly LIFO, but WordPress fires same-priority
+	 * 'shutdown' callbacks in registration order -- the OPPOSITE of the
+	 * order correct LIFO closure needs. Routing every instance's close
+	 * through this shared stack means whichever instance's callback
+	 * actually fires first does all of the closing that is currently safe
+	 * (see unwind_open_stack()); every other instance's callback then finds
+	 * its own buffer_started already false and no-ops.
+	 *
+	 * @var Content_Rewriter[]
+	 */
+	private static array $open_stack = array();
+
+	/** Test-only: clears the shared open-buffer stack between test cases. */
+	public static function reset_open_stack_for_tests(): void {
+		self::$open_stack = array();
+	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
 	public function register(): void {
 		add_action( 'template_redirect', array( $this, 'maybe_start_buffer' ) );
+		// shutdown is the ONLY closure point -- not a fallback alongside an
+		// earlier hook. A theme commonly echoes a small amount of markup
+		// (at minimum closing </body></html> tags) after its wp_footer()
+		// call returns, which is still part of the same template's normal
+		// output; closing at wp_footer itself would hand rewrite() an
+		// incomplete document and let that trailing markup bypass
+		// rewriting entirely. By the time WordPress's 'shutdown' action
+		// fires, every line of the template that echoes anything has
+		// already executed -- PHP runs the request script to completion
+		// (queuing shutdown functions, but not invoking them) before any
+		// shutdown callback runs, so this buffer has already captured the
+		// complete response by then. This is WP-controlled dispatch
+		// (do_action('shutdown')), not PHP's own implicit end-of-script
+		// buffer flush, which happens only after every registered shutdown
+		// callback (including this one) has already run. Priority
+		// PHP_INT_MAX so this runs after every other plugin's own
+		// shutdown-time output (if any) has already happened.
+		add_action( 'shutdown', array( $this, 'maybe_end_buffer' ), PHP_INT_MAX );
 	}
 
 	/**
@@ -74,7 +120,81 @@ abstract class Content_Rewriter extends Request_Surface {
 			return;
 		}
 
-		$this->buffer_started = ob_start( array( $this, 'filter_output' ), 0 );
+		if ( ob_start( array( $this, 'filter_output' ), 0 ) ) {
+			$this->buffer_started = true;
+			$this->buffer_level   = ob_get_level();
+			self::$open_stack[]   = $this;
+		}
+	}
+
+	/**
+	 * Entry point registered on `shutdown` (see register()). Never acts on
+	 * this instance alone -- delegates to the shared unwind so multiple
+	 * Content_Rewriter buffers close in true LIFO order regardless of which
+	 * instance's callback WordPress happens to fire first.
+	 */
+	public function maybe_end_buffer(): void {
+		if ( ! $this->buffer_started ) {
+			return;
+		}
+
+		self::unwind_open_stack();
+	}
+
+	/**
+	 * Closes every Content_Rewriter buffer reachable from the current top of
+	 * the real PHP output buffer stack, in strict LIFO order via
+	 * self::$open_stack, using ob_end_flush() (never ob_end_clean()) so
+	 * content is always preserved. Stops the instant the next entry's
+	 * recorded level no longer matches the real stack -- meaning something
+	 * this class does not own (a theme, a page-cache plugin, another
+	 * component entirely) is nested above it. That buffer, and every entry
+	 * still below it in self::$open_stack, is left completely untouched:
+	 * neither closed nor forced, and nothing above it is discarded.
+	 *
+	 * If an unidentified buffer remains above this plugin's buffer at
+	 * shutdown, this method leaves both buffers untouched. PHP will
+	 * subsequently finalise the remaining output-buffer stack. This
+	 * exceptional path does not provide the plugin's normal
+	 * explicit-closure guarantee -- filter_output() is still registered as
+	 * this buffer's handler, so PHP's later implicit closure may still
+	 * invoke it and rewrite the content, but this method makes no claim
+	 * either way about whether that happens; only that nothing this class
+	 * does not own is ever force-closed here (see class docblock's
+	 * fail-open philosophy).
+	 */
+	private static function unwind_open_stack(): void {
+		while ( array() !== self::$open_stack ) {
+			$top = end( self::$open_stack );
+
+			if ( ! $top->buffer_started || null === $top->buffer_level ) {
+				// Already closed by an earlier iteration of this same
+				// unwind, or never actually opened -- drop the stale
+				// entry and keep going.
+				array_pop( self::$open_stack );
+				continue;
+			}
+
+			if ( ob_get_level() < $top->buffer_level ) {
+				// Something else (e.g. an aggressive page-cache plugin)
+				// already closed this buffer for us. Nothing to flush;
+				// just stop tracking it.
+				$top->buffer_started = false;
+				array_pop( self::$open_stack );
+				continue;
+			}
+
+			if ( ob_get_level() > $top->buffer_level ) {
+				// A buffer this class does not own is nested above the
+				// next one it would close. Stop entirely -- forcing it
+				// closed here would act on content that isn't ours.
+				return;
+			}
+
+			ob_end_flush();
+			$top->buffer_started = false;
+			array_pop( self::$open_stack );
+		}
 	}
 
 	/**

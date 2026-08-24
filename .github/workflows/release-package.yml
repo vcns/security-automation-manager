@@ -171,6 +171,13 @@ jobs:
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
           echo "is_prerelease=${IS_PRERELEASE}" >> "${GITHUB_OUTPUT}"
 
+      # Proves the checker itself actually rejects a violation (not just
+      # that it passes already-clean input, which a checker that always
+      # exits 0 would also do) before the build below ever relies on it.
+      - name: Self-test the WordPress.org package verifier
+        shell: bash
+        run: bash .github/scripts/test-verify-wporg-package.sh
+
       - name: Build release ZIP
         id: build
         shell: bash
@@ -189,6 +196,7 @@ jobs:
           rsync -a --delete --exclude-from='.distignore' ./ dist/github/security-automation-manager/
 
           rm -f dist/wporg/security-automation-manager/includes/modules/class-github-update-checker.php
+          rm -rf dist/wporg/security-automation-manager/includes/extensions
 
           cat > dist/github/security-automation-manager/includes/build-channel.php <<'PHP'
           <?php
@@ -252,6 +260,24 @@ jobs:
           unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/includes/modules/class-github-update-checker.php'
           unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/includes/build-channel.php'
           unzip -p "${GITHUB_ZIP}" security-automation-manager/security-automation-manager.php | grep -q 'Update URI:'
+
+          if unzip -l "${WPORG_ZIP}" | grep -q 'security-automation-manager/includes/extensions/'; then
+            echo "WordPress.org ZIP contains includes/extensions/ -- must be physically absent, not merely unloaded." >&2
+            exit 1
+          fi
+
+      - name: Verify WordPress.org package contains no paid-mode identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          WPORG_ZIP="dist/${{ steps.build.outputs.zip_filename }}"
+          GITHUB_ZIP="dist/${{ steps.build.outputs.github_zip_filename }}"
+
+          rm -rf /tmp/wporg-package-check
+          mkdir -p /tmp/wporg-package-check
+          unzip -q "${WPORG_ZIP}" -d /tmp/wporg-package-check
+          bash .github/scripts/verify-wporg-package.sh /tmp/wporg-package-check/security-automation-manager
 
           for ZIP in "${WPORG_ZIP}" "${GITHUB_ZIP}"; do
             if unzip -l "${ZIP}" | grep -E 'security-automation-manager/(\.git|\.github|\.private_key|\.public_key|\.phpunit\.cache|cloudflare|docs|node_modules|offline|test|tools|vendor)/|security-automation-manager/(\.distignore|\.git|code-review-findings\.json|COMMERCIAL_TERMS\.md|README\.md|RESEARCH\.md|SPECIFICATION\.md|TRADEMARK_POLICY\.md)$'; then

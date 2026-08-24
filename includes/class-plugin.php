@@ -144,18 +144,29 @@ final class Plugin {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
 
-		// Entitlement modules are only present in a private/commercial build
-		// (see offline/modules/ -- gitignored and excluded from every release
-		// ZIP this repo's CI produces). The WordPress.org and GitHub-channel
-		// builds never find these classes, so $entitlements stays null and
-		// Feature_Gate runs in its free-tier posture, exactly as it does today.
-		if ( class_exists( \WP_SAM\Modules\Entitlement_Store::class ) ) {
-			$this->entitlements = new \WP_SAM\Modules\Entitlement_Store( $this->audit );
-		}
-		if ( class_exists( \WP_SAM\Modules\Checkout_Service::class ) && null !== $this->entitlements ) {
-			$this->checkout = new \WP_SAM\Modules\Checkout_Service( $this->entitlements );
-		}
-		$this->gate                                      = new Feature_Gate( $this->entitlements );
+		// Commercial service wiring (entitlements, checkout) is entirely
+		// extension-owned -- see includes/extensions/, physically absent
+		// from the WordPress.org build. This file has no knowledge of
+		// either service's implementing class by name; a listening
+		// extension populates $this->entitlements/$this->checkout itself
+		// (both remain public, nullable, generic properties for exactly
+		// this purpose). Neither is ever populated when no such extension
+		// is loaded, so Feature_Gate runs in its free-tier posture exactly
+		// as it did before this existed.
+		do_action( 'wp_sam_register_commercial_services', $this );
+
+		$this->gate = new Feature_Gate( $this->entitlements );
+
+		// Automation mode registry: the three free modes are registered
+		// here; any paid mode is registered only by a loaded extension
+		// (see includes/extensions/, physically absent from the
+		// WordPress.org build) hooking wp_sam_register_automation_modes --
+		// this file has no knowledge of what, if anything, does. See
+		// Automation_Mode_Registry's own docblock for why this is the
+		// actual compliance boundary, not a channel or entitlement check.
+		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
+		do_action( 'wp_sam_register_automation_modes', $this->gate );
+
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
 		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
@@ -236,7 +247,7 @@ final class Plugin {
 
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers.
-		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window, gate: $this->gate );
+		$violation_reporter = new Violation_Reporter( $this->audit, $this->learning_window );
 		$report_route_args  = array(
 			'methods'             => \WP_REST_Server::CREATABLE,
 			'callback'            => array( $violation_reporter, 'handle' ),
@@ -255,12 +266,16 @@ final class Plugin {
 		// its own transition window closed long ago.
 		register_rest_route( 'security-manager/v1', '/report', $report_route_args );
 
-		( new Admin_Controller( $this->audit, gate: $this->gate ) )->register_routes();
+		( new Admin_Controller( $this->audit ) )->register_routes();
 
-		// Stripe webhook -- only registered in a private/commercial build
-		// where offline/modules/class-webhook-controller.php is present.
-		if ( class_exists( \WP_SAM\Modules\Webhook_Controller::class ) && null !== $this->entitlements && null !== $this->checkout ) {
-			( new \WP_SAM\Modules\Webhook_Controller( $this->entitlements, $this->audit, $this->checkout ) )->register_routes();
-		}
+		// A commercial webhook route (e.g. a payment provider's) is
+		// entirely extension-owned -- see includes/extensions/, physically
+		// absent from the WordPress.org build. This file has no knowledge
+		// of its implementing class by name; a listening extension
+		// registers its own route here, using
+		// $this->entitlements/$this->checkout (already populated by
+		// wp_sam_register_commercial_services during bootstrap(), which
+		// always runs before rest_api_init).
+		do_action( 'wp_sam_register_commercial_routes', $this );
 	}
 }

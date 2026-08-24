@@ -51,13 +51,13 @@ class Rollback_Guard {
 	/**
 	 * Config-state tables a snapshot captures and a restore overwrites.
 	 * Deliberately excludes every log/ledger-shaped table (violation
-	 * reports, scan logs, sam_audit_log itself, sam_policy_change_decisions,
-	 * sam_decision_rule_evaluations, sam_processed_events) and
-	 * sam_internal_asset_inventory (recomputed automatically from files,
-	 * never admin-decided) -- those are preserved simply by never being
-	 * part of a restore, which is the correct behaviour for an append-only
-	 * or automatically-derived table, not something to snapshot and
-	 * overwrite.
+	 * reports, scan logs, the audit log itself, the policy-change-decision
+	 * and decision-rule-evaluation ledgers, and any extension-owned
+	 * event-idempotency log) and the internal-asset-inventory table
+	 * (recomputed automatically from files, never admin-decided) -- those
+	 * are preserved simply by never being part of a restore, which is the
+	 * correct behaviour for an append-only or automatically-derived table,
+	 * not something to snapshot and overwrite.
 	 */
 	public const SNAPSHOT_TABLE_SUFFIXES = array(
 		'csp_policy_profiles',

@@ -7,8 +7,6 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
-use WP_SAM\Modules\Feature_Gate;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -18,8 +16,6 @@ class Automation_Config {
 	public const MODE_MANUAL                         = 'manual';
 	public const MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL = 'automatic_medium_high_approval';
 	public const MODE_AUTOMATIC_HIGH_APPROVAL        = 'automatic_high_approval';
-	public const MODE_FULLY_AUTOMATIC                = 'fully_automatic';
-	public const MODES                               = array( self::MODE_MANUAL, self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL, self::MODE_AUTOMATIC_HIGH_APPROVAL, self::MODE_FULLY_AUTOMATIC );
 	public const SURFACES                            = array( 'frontend', 'admin', 'login', 'api' );
 
 	/**
@@ -56,30 +52,19 @@ class Automation_Config {
 		'change_rate_guardrail'          => 0,
 	);
 
-	private const LEGACY_MODE_MAP = array(
-		'conservative' => self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL,
-		'balanced'     => self::MODE_AUTOMATIC_HIGH_APPROVAL,
-		'expert'       => self::MODE_FULLY_AUTOMATIC,
-	);
-
-	private Feature_Gate $gate;
-
 	/**
-	 * Defaults to a bare Feature_Gate (no entitlements), matching the
-	 * WordPress.org/GitHub-channel free-tier posture: fully_automatic
-	 * requires an explicitly injected, entitlement-aware gate to unlock.
+	 * No Feature_Gate dependency here any more: mode availability (paid or
+	 * otherwise) is entirely Automation_Mode_Registry's concern -- each
+	 * registered mode carries its own availability check (see
+	 * Automation_Mode_Registry::register()'s docblock). This class has no
+	 * knowledge of entitlements, a payment provider, or any specific mode
+	 * beyond the three free ones it defines as constants above.
 	 */
-	public function __construct( ?Feature_Gate $gate = null ) {
-		$this->gate = $gate ?? new Feature_Gate();
-	}
+	public function __construct() {}
 
+	/** @return array<string,string> every registered mode's key => label (available or not, for "requires upgrade" presentation). */
 	public static function mode_labels(): array {
-		return array(
-			self::MODE_MANUAL                         => __( 'Manual', 'vcns-security-automation-manager' ),
-			self::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL => __( 'Automatic (with medium+high approvals)', 'vcns-security-automation-manager' ),
-			self::MODE_AUTOMATIC_HIGH_APPROVAL        => __( 'Automatic (with high approvals only)', 'vcns-security-automation-manager' ),
-			self::MODE_FULLY_AUTOMATIC                => __( 'Fully Automatic', 'vcns-security-automation-manager' ),
-		);
+		return Automation_Mode_Registry::labels();
 	}
 
 	public static function mode_label( string $mode ): string {
@@ -167,16 +152,32 @@ class Automation_Config {
 		return $merged;
 	}
 
+	/**
+	 * Generic against whatever Automation_Mode_Registry currently has
+	 * registered -- no mode identifier beyond the three free constants
+	 * above is referenced anywhere in this method. A mode string that:
+	 * - resolves (via a registered legacy alias) to something never
+	 *   registered at all, downgrades to MODE_MANUAL (genuinely unknown
+	 *   input);
+	 * - IS a registered mode but currently unavailable (a paid mode with
+	 *   no active entitlement, or simply not registered in this build --
+	 *   see Automation_Mode_Registry::is_available()) downgrades to
+	 *   MODE_AUTOMATIC_HIGH_APPROVAL instead of manual, preserving
+	 *   automation intent rather than silently disabling it -- this is the
+	 *   single funnel every read/write of this option passes through, so a
+	 *   lapsed entitlement or a stale option value from a build that once
+	 *   had a since-removed mode registered can never leave a change
+	 *   auto-applying with no review.
+	 */
 	private function normalise_mode( string $mode ): string {
 		$mode = strtolower( trim( sanitize_text_field( $mode ) ) );
-		$mode = self::LEGACY_MODE_MAP[ $mode ] ?? $mode;
-		$mode = in_array( $mode, self::MODES, true ) ? $mode : self::MODE_MANUAL;
+		$mode = Automation_Mode_Registry::resolve_legacy_alias( $mode );
 
-		// Fully Automatic (zero human review) is a paid feature. Downgrade
-		// here -- the single funnel every read/write of this option passes
-		// through -- so a lapsed entitlement can't leave a stale option
-		// value still auto-applying changes with no review.
-		if ( self::MODE_FULLY_AUTOMATIC === $mode && ! $this->gate->is_allowed( 'fully_automatic' ) ) {
+		if ( ! Automation_Mode_Registry::is_valid_mode( $mode ) ) {
+			return self::MODE_MANUAL;
+		}
+
+		if ( ! Automation_Mode_Registry::is_available( $mode ) ) {
 			return self::MODE_AUTOMATIC_HIGH_APPROVAL;
 		}
 
