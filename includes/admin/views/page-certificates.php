@@ -396,4 +396,4 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 
 	</div>
 </div>
-<?php // Behaviour lives in assets/js/certificates.js, enqueued by Admin_UI::enqueue_assets() for this page's hook suffix only -- see the "properly enqueued assets" requirement this replaces a literal <script> tag to satisfy. ?>
+<?php // Behaviour lives in assets/js/certificates.js, enqueued by Admin_UI::enqueue_assets() for this page's hook suffix only -- see the "properly enqueued assets" requirement this replaces an inline script element to satisfy. ?>
