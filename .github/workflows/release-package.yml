@@ -270,9 +270,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          WPORG_ZIP="dist/${{ steps.build.outputs.zip_filename }}"
+          GITHUB_ZIP="dist/${{ steps.build.outputs.github_zip_filename }}"
+
           rm -rf /tmp/wporg-package-check
           mkdir -p /tmp/wporg-package-check
-          unzip -q "dist/${{ steps.build.outputs.zip_filename }}" -d /tmp/wporg-package-check
+          unzip -q "${WPORG_ZIP}" -d /tmp/wporg-package-check
           bash .github/scripts/verify-wporg-package.sh /tmp/wporg-package-check/security-automation-manager
 
           for ZIP in "${WPORG_ZIP}" "${GITHUB_ZIP}"; do
