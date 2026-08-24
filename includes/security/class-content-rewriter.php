@@ -152,11 +152,16 @@ abstract class Content_Rewriter extends Request_Surface {
 	 * still below it in self::$open_stack, is left completely untouched:
 	 * neither closed nor forced, and nothing above it is discarded.
 	 *
-	 * An instance left unclosed here is swept up unrewritten by PHP's own
-	 * implicit end-of-script buffer flush -- its content is never lost, it
-	 * simply isn't passed through rewrite() for that one instance on that
-	 * one request, matching the class's own fail-open philosophy (see class
-	 * docblock).
+	 * If an unidentified buffer remains above this plugin's buffer at
+	 * shutdown, this method leaves both buffers untouched. PHP will
+	 * subsequently finalise the remaining output-buffer stack. This
+	 * exceptional path does not provide the plugin's normal
+	 * explicit-closure guarantee -- filter_output() is still registered as
+	 * this buffer's handler, so PHP's later implicit closure may still
+	 * invoke it and rewrite the content, but this method makes no claim
+	 * either way about whether that happens; only that nothing this class
+	 * does not own is ever force-closed here (see class docblock's
+	 * fail-open philosophy).
 	 */
 	private static function unwind_open_stack(): void {
 		while ( array() !== self::$open_stack ) {

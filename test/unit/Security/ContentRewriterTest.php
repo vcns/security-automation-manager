@@ -157,9 +157,8 @@ class ContentRewriterTest extends TestCase {
 		$this->assertSame( '<!-- nested third-party buffer -->', $third_party_output, 'the third-party buffer must be left completely untouched.' );
 
 		// Cleanup: discard the rewriter's own buffer, left open by design
-		// (it fails open -- unrewritten, but never lost -- rather than
-		// forcing a buffer it doesn't own), then this test's own outer
-		// capture buffer.
+		// rather than forcing closed a buffer it doesn't own, then this
+		// test's own outer capture buffer.
 		ob_end_clean();
 		ob_end_clean();
 		$this->assertSame( $baseline, ob_get_level() );
