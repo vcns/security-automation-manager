@@ -287,7 +287,7 @@ class Violation_Reporter {
 		$user_agent_sanitized          = sanitize_text_field( substr( (string) $user_agent_raw, 0, 512 ) );
 		$sample_sanitized              = sanitize_text_field( substr( isset( $r['sample'] ) ? $r['sample'] : '', 0, 256 ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -402,7 +402,7 @@ class Violation_Reporter {
 		}
 
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$mode = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT mode FROM {$wpdb->prefix}csp_policy_profiles WHERE surface = %s LIMIT 1",

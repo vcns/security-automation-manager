@@ -87,18 +87,18 @@ $ext_where_sql = implode( ' AND ', $ext_where );
 
 $ext_count_sql = "SELECT COUNT(*) FROM {$ext_table} WHERE {$ext_where_sql}";
 if ( ! empty( $ext_args ) ) {
-	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	$ext_count_sql = $wpdb->prepare( $ext_count_sql, ...$ext_args );
 }
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $ext_total = (int) $wpdb->get_var( $ext_count_sql );
 $ext_pages = max( 1, (int) ceil( $ext_total / $ext_per_page ) );
 
 $ext_data_args = array_merge( $ext_args, array( $ext_per_page, $ext_offset ) );
 $ext_data_sql  = "SELECT * FROM {$ext_table} WHERE {$ext_where_sql} " . Table_Query::order_by_sql( $ext_sort ) . ' LIMIT %d OFFSET %d';
-// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $ext_data_sql = $wpdb->prepare( $ext_data_sql, ...$ext_data_args );
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $inventory_raw = $wpdb->get_results( $ext_data_sql, ARRAY_A );
 $inventory     = ! empty( $inventory_raw ) ? $inventory_raw : array();
 

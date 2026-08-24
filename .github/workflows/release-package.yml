@@ -186,17 +186,28 @@ jobs:
 
           VERSION="${{ steps.release_meta.outputs.version }}"
           TAG="${{ steps.release_meta.outputs.tag }}"
+          # ZIP_FILENAME is the eventual public GitHub Release asset name
+          # only (see the release job below, which copies GITHUB_ZIP's
+          # content to this name) -- it has never described the WordPress.org
+          # review ZIP's own folder/file name, so it is untouched by the
+          # slug rename below and stays what GitHub-channel installs/update
+          # feeds already expect.
           ZIP_FILENAME="security-automation-manager-${TAG}.zip"
+          # WordPress.org requires the plugin's root folder name to match
+          # its registered slug (vcns-security-automation-manager, pending
+          # approval) -- WordPress uses that folder name to identify the
+          # installed plugin, so this must not stay the pre-rename name.
+          WPORG_ZIP_FILENAME="vcns-security-automation-manager-${TAG}.zip"
           GITHUB_ZIP_FILENAME="security-automation-manager-github-${TAG}.zip"
 
           rm -rf dist
-          mkdir -p dist/wporg/security-automation-manager dist/github/security-automation-manager
+          mkdir -p dist/wporg/vcns-security-automation-manager dist/github/security-automation-manager
 
-          rsync -a --delete --exclude-from='.distignore' ./ dist/wporg/security-automation-manager/
+          rsync -a --delete --exclude-from='.distignore' ./ dist/wporg/vcns-security-automation-manager/
           rsync -a --delete --exclude-from='.distignore' ./ dist/github/security-automation-manager/
 
-          rm -f dist/wporg/security-automation-manager/includes/modules/class-github-update-checker.php
-          rm -rf dist/wporg/security-automation-manager/includes/extensions
+          rm -f dist/wporg/vcns-security-automation-manager/includes/modules/class-github-update-checker.php
+          rm -rf dist/wporg/vcns-security-automation-manager/includes/extensions
 
           cat > dist/github/security-automation-manager/includes/build-channel.php <<'PHP'
           <?php
@@ -227,12 +238,13 @@ jobs:
           PY
 
           COMMIT_TIMESTAMP="$(git log -1 --format=%ct)"
-          find dist/wporg/security-automation-manager dist/github/security-automation-manager -exec touch -h -d "@${COMMIT_TIMESTAMP}" {} +
+          find dist/wporg/vcns-security-automation-manager dist/github/security-automation-manager -exec touch -h -d "@${COMMIT_TIMESTAMP}" {} +
 
-          ( cd dist/wporg && find security-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${ZIP_FILENAME}" -@ )
+          ( cd dist/wporg && find vcns-security-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${WPORG_ZIP_FILENAME}" -@ )
           ( cd dist/github && find security-automation-manager -type f -print | LC_ALL=C sort | zip -q -X "../${GITHUB_ZIP_FILENAME}" -@ )
 
           echo "zip_filename=${ZIP_FILENAME}" >> "${GITHUB_OUTPUT}"
+          echo "wporg_zip_filename=${WPORG_ZIP_FILENAME}" >> "${GITHUB_OUTPUT}"
           echo "github_zip_filename=${GITHUB_ZIP_FILENAME}" >> "${GITHUB_OUTPUT}"
 
       - name: Verify ZIP structure
@@ -240,20 +252,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          WPORG_ZIP="dist/${{ steps.build.outputs.zip_filename }}"
+          WPORG_ZIP="dist/${{ steps.build.outputs.wporg_zip_filename }}"
           GITHUB_ZIP="dist/${{ steps.build.outputs.github_zip_filename }}"
 
-          for ZIP in "${WPORG_ZIP}" "${GITHUB_ZIP}"; do
-            unzip -l "${ZIP}" | grep -q 'security-automation-manager/security-automation-manager.php'
-            unzip -l "${ZIP}" | grep -q 'security-automation-manager/uninstall.php'
-            unzip -l "${ZIP}" | grep -q 'security-automation-manager/languages/index.php'
-          done
+          unzip -l "${WPORG_ZIP}" | grep -q 'vcns-security-automation-manager/security-automation-manager.php'
+          unzip -l "${WPORG_ZIP}" | grep -q 'vcns-security-automation-manager/uninstall.php'
+          unzip -l "${WPORG_ZIP}" | grep -q 'vcns-security-automation-manager/languages/index.php'
+
+          unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/security-automation-manager.php'
+          unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/uninstall.php'
+          unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/languages/index.php'
 
           if unzip -l "${WPORG_ZIP}" | grep -E 'class-github-update-checker\.php|includes/build-channel\.php'; then
             echo "WordPress.org ZIP contains GitHub-channel updater files." >&2
             exit 1
           fi
-          if unzip -p "${WPORG_ZIP}" security-automation-manager/security-automation-manager.php | grep -q 'Update URI:'; then
+          if unzip -p "${WPORG_ZIP}" vcns-security-automation-manager/security-automation-manager.php | grep -q 'Update URI:'; then
             echo "WordPress.org ZIP must not include the GitHub Update URI header." >&2
             exit 1
           fi
@@ -261,7 +275,7 @@ jobs:
           unzip -l "${GITHUB_ZIP}" | grep -q 'security-automation-manager/includes/build-channel.php'
           unzip -p "${GITHUB_ZIP}" security-automation-manager/security-automation-manager.php | grep -q 'Update URI:'
 
-          if unzip -l "${WPORG_ZIP}" | grep -q 'security-automation-manager/includes/extensions/'; then
+          if unzip -l "${WPORG_ZIP}" | grep -q 'vcns-security-automation-manager/includes/extensions/'; then
             echo "WordPress.org ZIP contains includes/extensions/ -- must be physically absent, not merely unloaded." >&2
             exit 1
           fi
@@ -271,20 +285,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          WPORG_ZIP="dist/${{ steps.build.outputs.zip_filename }}"
+          WPORG_ZIP="dist/${{ steps.build.outputs.wporg_zip_filename }}"
           GITHUB_ZIP="dist/${{ steps.build.outputs.github_zip_filename }}"
 
           rm -rf /tmp/wporg-package-check
           mkdir -p /tmp/wporg-package-check
           unzip -q "${WPORG_ZIP}" -d /tmp/wporg-package-check
-          bash .github/scripts/verify-wporg-package.sh /tmp/wporg-package-check/security-automation-manager
+          bash .github/scripts/verify-wporg-package.sh /tmp/wporg-package-check/vcns-security-automation-manager
 
-          for ZIP in "${WPORG_ZIP}" "${GITHUB_ZIP}"; do
-            if unzip -l "${ZIP}" | grep -E 'security-automation-manager/(\.git|\.github|\.private_key|\.public_key|\.phpunit\.cache|cloudflare|docs|node_modules|offline|test|tools|vendor)/|security-automation-manager/(\.distignore|\.git|code-review-findings\.json|COMMERCIAL_TERMS\.md|README\.md|RESEARCH\.md|SPECIFICATION\.md|TRADEMARK_POLICY\.md)$'; then
-              echo "Release ZIP contains development, private, documentation, or generated-only paths. Check .distignore." >&2
-              exit 1
-            fi
-          done
+          if unzip -l "${WPORG_ZIP}" | grep -E 'vcns-security-automation-manager/(\.git|\.github|\.private_key|\.public_key|\.phpunit\.cache|cloudflare|docs|node_modules|offline|test|tools|vendor)/|vcns-security-automation-manager/(\.distignore|\.git|code-review-findings\.json|COMMERCIAL_TERMS\.md|README\.md|RESEARCH\.md|SPECIFICATION\.md|TRADEMARK_POLICY\.md)$'; then
+            echo "WordPress.org ZIP contains development, private, documentation, or generated-only paths. Check .distignore." >&2
+            exit 1
+          fi
+          if unzip -l "${GITHUB_ZIP}" | grep -E 'security-automation-manager/(\.git|\.github|\.private_key|\.public_key|\.phpunit\.cache|cloudflare|docs|node_modules|offline|test|tools|vendor)/|security-automation-manager/(\.distignore|\.git|code-review-findings\.json|COMMERCIAL_TERMS\.md|README\.md|RESEARCH\.md|SPECIFICATION\.md|TRADEMARK_POLICY\.md)$'; then
+            echo "GitHub-channel ZIP contains development, private, documentation, or generated-only paths. Check .distignore." >&2
+            exit 1
+          fi
 
       - name: Upload ZIP artifact
         uses: actions/upload-artifact@v7

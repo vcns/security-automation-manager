@@ -74,7 +74,7 @@ $tabs = array(
 		'label'         => __( 'Cross-Origin-Resource-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'    => Cross_Origin_Resource_Policy_Builder::PILLAR_KEY,
 		'header_name'   => 'Cross-Origin-Resource-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via <img>, <script>, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'vcns-security-automation-manager' ) . '</p>',
+		'intro_html'    => '<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via image tags, script tags, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'vcns-security-automation-manager' ) . '</p>',
 		'value_options' => array(
 			'same-site'    => __( 'same-site -- allow same-site origins only', 'vcns-security-automation-manager' ),
 			'same-origin'  => __( 'same-origin -- allow only this exact origin', 'vcns-security-automation-manager' ),
@@ -305,9 +305,9 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		);
 
 		$evid_count_sql = "SELECT COUNT(*) FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE {$evid_where_sql}";
-	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_count_sql = $wpdb->prepare( $evid_count_sql, ...$evid_args );
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_total = (int) $wpdb->get_var( $evid_count_sql );
 
 		$evid_pages    = max( 1, (int) ceil( $evid_total / $per_page ) );
@@ -316,15 +316,15 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 
 		$evid_data_args = array_merge( $evid_args, array( $per_page, $evid_offset ) );
 		$evid_data_sql  = "SELECT * FROM {$wpdb->prefix}sam_pillar_violation_reports WHERE {$evid_where_sql} " . Table_Query::order_by_sql( $evid_sort ) . ' LIMIT %d OFFSET %d';
-	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_data_sql = $wpdb->prepare( $evid_data_sql, ...$evid_data_args );
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evidence_raw = $wpdb->get_results( $evid_data_sql, ARRAY_A );
 		$evidence     = ! empty( $evidence_raw ) ? $evidence_raw : array();
 
 		// Simple at-a-glance signal, same spirit as CSP's promotion gate -- purely
 		// informational, never blocking or auto-triggering a mode change.
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$evid_recent_count = (int) $wpdb->get_var(
 			$wpdb->prepare(
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

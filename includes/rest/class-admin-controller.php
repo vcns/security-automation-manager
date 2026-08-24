@@ -211,10 +211,10 @@ class Admin_Controller {
 
 		$sql = "SELECT id, change_type, source_inventory_id, surface, directive, source_host, source_uri, decision_fingerprint, action, state, risk_level, risk_reason, reason, user_id, actor_type, actor_id, previous_policy_version_id, policy_version_id, decision_engine_version, reverted_decision_id, software_version, suppression_active, created_at FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC LIMIT 100';
 		if ( ! empty( $args ) ) {
-			$sql = $wpdb->prepare( $sql, ...$args ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$sql = $wpdb->prepare( $sql, ...$args ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 
-		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return new \WP_REST_Response( array( 'decisions' => is_array( $rows ) ? $rows : array() ) );
 	}
 
