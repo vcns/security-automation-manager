@@ -124,3 +124,65 @@ disclosed per category, rather than add ~789 new individual
 `phpcs:ignore` annotations -- that would be exactly the "hundreds of blanket
 suppressions" this investigation was asked to avoid, for findings that are
 demonstrated tool limitations, not code that needs to change.
+
+## Round 2 WordPress.org review follow-up (2026-08-24)
+
+A second batch of reviewer/tool findings arrived after the v2.9.20 tag was
+cut. Confirmed with Simon: the reviewed package is
+`security-automation-manager-v2.9.20.zip` -- the **GitHub Release asset**
+filename, not the WordPress.org-specific package
+(`vcns-security-automation-manager-v2.9.20.zip`, built and verified
+separately by `release-package.yml` and saved to
+`.wordpress-org/vcns-security-automation-manager-v2.9.20.zip`). That
+explains the majority of this round's findings directly: the `Update URI`
+header, the active `class-github-update-checker.php`, and the GitHub-manifest
+service appearing "actively used" are all correct, by-design behaviour for
+the GitHub-channel build -- and physically absent from the actual
+WordPress.org package. No code fix addresses these; re-uploading the correct
+file does.
+
+Findings that were genuinely new and independent of which ZIP was reviewed:
+
+- **DigitalOcean Terms of Service URL had gone stale**: `/legal/tos` now
+  404s (it resolved when originally researched). Corrected to
+  `/legal/terms-of-service-agreement`, confirmed live via direct fetch
+  before publishing. Prompted a full re-verification pass of every other
+  provider's links in this same round (see below).
+- **DNS provider credential fields**: `class-admin-ui.php`'s save handler
+  read every field a provider's `fields()` declares with the same
+  `wp_unslash()`-only treatment, regardless of whether that specific field
+  is secret. Each field already carries a `'secret' => false` flag for
+  plain values (account/zone name, endpoint host) versus the default-secret
+  treatment for actual API keys/tokens -- the handler just wasn't reading
+  it. Now applies `sanitize_text_field()` to fields explicitly marked
+  non-secret; fields that default to secret are unchanged (sanitizing an
+  API token before it's used for authentication would corrupt it).
+- **Three `$_SERVER` reads** (`class-violation-reporter.php`,
+  `class-challenge-http.php`, `class-request-surface.php`) were already
+  individually verified safe in the Plugin Check investigation above
+  (strict regex-validated before use, or used only for routing/
+  classification, never echoed or persisted raw) -- added
+  `sanitize_text_field()` anyway as defense-in-depth, since it costs
+  nothing behaviourally for well-formed values and closes the finding
+  outright rather than relying on a written justification a future
+  automated pass won't read.
+- **`class-hash-manager.php:252`'s `echo $html`**: a genuine false
+  positive, same class as others already documented -- `$html` is this
+  request's own captured output buffer (the complete page WordPress core,
+  the theme, and every other plugin already rendered), re-emitted after
+  nonce injection. `esc_html()` would HTML-entity-encode the entire
+  document instead of rendering it. Existing `phpcs:ignore` lacked the
+  explanatory comment its sibling citations already had; added one.
+- **`Table_Query::sort_header()` / `Risk_Badge::render()` escaping
+  citations** (45 incidences cited): Plugin Check's sniff flags every
+  location carrying an existing `phpcs:ignore
+  WordPress.Security.EscapeOutput.OutputNotEscaped` annotation for
+  re-verification, not necessarily a confirmed defect. Both helpers were
+  already read in full during the Plugin Check investigation above and
+  confirmed to escape internally (`esc_url()`/`esc_html()` inside
+  `sort_header()`; `esc_attr()`/`esc_html()` inside `Risk_Badge::render()`).
+  No change made.
+- **`class-admin-ui.php:816`'s `$domains_raw` array-sanitization
+  citation**: already covered above -- the CSR domain-list validator uses a
+  stricter custom regex allowlist than `sanitize_text_field()` would
+  provide, with an inline comment explaining why. No change made.

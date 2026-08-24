@@ -835,11 +835,21 @@ class Admin_UI {
 
 			// Only the selected provider's credential fields are read; an empty
 			// submitted value keeps the stored secret (a non-empty one replaces
-			// it), so redisplayed forms never round-trip plaintext.
+			// it), so redisplayed forms never round-trip plaintext. Fields the
+			// provider marks 'secret' => false (plain values such as an
+			// account/zone name or endpoint host, never an API key or token)
+			// get real sanitization; fields without that flag default to
+			// secret and are only unslashed, never run through
+			// sanitize_text_field(), which would alter characters that can
+			// legitimately appear in a credential before it's used for
+			// authentication.
 			$credentials = (array) $config['dns_credentials'];
 			if ( '' !== $provider ) {
-				foreach ( array_keys( $providers[ $provider ]::fields() ) as $field_key ) {
+				foreach ( $providers[ $provider ]::fields() as $field_key => $field_meta ) {
 					$submitted = (string) wp_unslash( $_POST[ 'wp_sam_cert_cred_' . $field_key ] ?? '' );
+					if ( false === ( $field_meta['secret'] ?? true ) ) {
+						$submitted = sanitize_text_field( $submitted );
+					}
 					if ( '' !== $submitted ) {
 						$credentials[ $field_key ] = $submitted;
 					}

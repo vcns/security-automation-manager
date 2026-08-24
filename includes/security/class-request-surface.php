@@ -70,7 +70,7 @@ abstract class Request_Surface {
 	}
 
 	protected function get_request_path(): string {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 		if ( '' === $uri ) {
 			return '';
 		}
