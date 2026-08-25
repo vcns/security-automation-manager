@@ -248,8 +248,12 @@ class Hash_Manager {
 
 		$this->process_inline_blocks( $html, $surface );
 
-		// Re-emit content so the page renders normally.
-		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		// Re-emit content so the page renders normally. $html is this
+		// request's own captured output buffer -- the complete page WordPress
+		// core, the theme, and every other plugin already rendered -- with
+		// only the nonce injection above applied; escaping it here would
+		// HTML-entity-encode the entire document instead of rendering it.
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- re-emitting this request's own captured buffer, not new output; see comment above.
 	}
 
 	/**

@@ -50,7 +50,7 @@ class Challenge_Http {
 	 * Fired on parse_request. Serves the key authorization for known tokens.
 	 */
 	public function maybe_serve_token(): void {
-		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
 
 		$result = $this->resolve( $path );

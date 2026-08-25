@@ -594,7 +594,7 @@ class Violation_Reporter {
 				continue;
 			}
 
-			$host = strtok( (string) wp_unslash( $_SERVER[ $server_key ] ), ',' );
+			$host = strtok( sanitize_text_field( wp_unslash( $_SERVER[ $server_key ] ) ), ',' );
 			$host = strtolower( trim( false === $host ? '' : $host ) );
 			$host = preg_replace( '/:\d+$/', '', $host );
 			if ( is_string( $host ) && preg_match( '/^[a-z0-9.-]+$/', $host ) ) {

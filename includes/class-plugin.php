@@ -164,8 +164,15 @@ final class Plugin {
 		// this file has no knowledge of what, if anything, does. See
 		// Automation_Mode_Registry's own docblock for why this is the
 		// actual compliance boundary, not a channel or entitlement check.
-		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
-		do_action( 'wp_sam_register_automation_modes', $this->gate );
+		// Deferred to `init`: bootstrap() itself runs on `plugins_loaded`,
+		// which fires before `init`, and register_defaults() translates
+		// each mode's label immediately on registration -- calling __()
+		// that early trips WordPress's "_load_textdomain_just_in_time
+		// called incorrectly" notice on every single request. Every actual
+		// consumer of this registry (admin pages, admin-post handlers,
+		// AJAX handlers, REST routes) already runs well after `init`, so
+		// registering there instead changes no behaviour.
+		add_action( 'init', array( $this, 'register_automation_modes' ) );
 
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
 		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
@@ -241,6 +248,14 @@ final class Plugin {
 		if ( is_admin() ) {
 			( new Admin_UI( $this ) )->register();
 		}
+	}
+
+	// ── Automation mode registry ──────────────────────────────────────────────
+
+	/** @see bootstrap()'s call to add_action( 'init', ... ) for why this isn't called directly from bootstrap(). */
+	public function register_automation_modes(): void {
+		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
+		do_action( 'wp_sam_register_automation_modes', $this->gate );
 	}
 
 	// ── REST routes ───────────────────────────────────────────────────────────
