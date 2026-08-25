@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.21] - 2026-08-25
+
+### Fixed
+
+- `_load_textdomain_just_in_time` "called incorrectly" notice (WordPress 6.7+) firing on every request. `Automation_Mode_Registry::register_defaults()` translates each automation mode's label immediately on registration, and `Plugin::bootstrap()` called it directly on `plugins_loaded` -- before `init`, which is what the check flags. Registration (and the `wp_sam_register_automation_modes` extension hook) now runs on `init` instead; every actual consumer of the registry (admin pages, admin-post/AJAX handlers, REST routes) already ran after `init`, so this changes no observable behaviour.
+- A stale DigitalOcean Terms of Service URL (`/legal/tos` had gone 404) in the external-service disclosures in `readme.txt`, corrected to `/legal/terms-of-service-agreement`.
+
+### Security
+
+- DNS provider credential fields now sanitize non-secret values (account/zone name, endpoint host) via `sanitize_text_field()`, honoring each field's existing `'secret' => false` metadata, instead of leaving every field unslash-only regardless of whether it actually holds a credential.
+- Three `$_SERVER` reads (`class-violation-reporter.php`, `class-challenge-http.php`, `class-request-surface.php`), already individually verified safe (strictly validated before use, never echoed or persisted raw), now also sanitize as defense-in-depth.
+
 ## [2.9.20] - 2026-08-21
 
 ### Fixed
