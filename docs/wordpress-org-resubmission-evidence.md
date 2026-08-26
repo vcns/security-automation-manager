@@ -1,4 +1,4 @@
-# WordPress.org resubmission evidence (PR C)
+# WordPress.org resubmission evidence (PR C onward)
 
 Internal reference backing the readme.txt "External services" disclosure and
 the resubmission reply to the WordPress.org review thread. Not shipped in any
@@ -186,3 +186,93 @@ Findings that were genuinely new and independent of which ZIP was reviewed:
   citation**: already covered above -- the CSR domain-list validator uses a
   stricter custom regex allowlist than `sanitize_text_field()` would
   provide, with an inline comment explaining why. No change made.
+
+## v2.9.21: premature textdomain-loading notice (2026-08-25)
+
+Independent of the review thread: production debug logs (staging and live)
+showed `_load_textdomain_just_in_time called incorrectly` firing on every
+request. Root cause: `Automation_Mode_Registry::register_defaults()`
+translates each mode's label with `__()` at registration time, and
+`Plugin::bootstrap()` called it directly from the `plugins_loaded` callback
+-- before `init`, which is exactly what the check requires. Fixed by
+deferring registration (and the `wp_sam_register_automation_modes` extension
+hook) to `init` via `Plugin::register_automation_modes()`; every actual
+consumer of the registry already runs after `init`, so no behaviour changed.
+Shipped as v2.9.21.
+
+## Round 3: same file, never actually replaced (2026-08-25)
+
+A further round of reviewer feedback arrived, identical in substance to
+Round 2 (same DigitalOcean URL, Update URI, update-checker, and
+sanitization/escaping citations). Pulled the actual Gmail thread
+(`1a02eff8ea3237da`) rather than assume staleness: the message's own header
+read "review of the file `security-automation-manager-v2.9.20.zip`
+submitted 1 day and 5 hours ago" -- the same GitHub-channel filename and
+submission window as Round 2, not a fresh upload. Simon's own reply in
+between said "I've now attached the correct... package," but that message
+carries no attachment at all (confirmed via the Gmail API's own
+`attachments`/`attachmentIds` fields), and its body text linked to the
+GitHub Release asset, not the WordPress.org-specific file. Simon
+subsequently confirmed the correct file *was* uploaded via "Add your
+plugin" (not email, which the platform doesn't allow attachments for) --
+the discrepancy was not resolved in this session; the working assumption
+going forward is that whichever file WordPress.org's reviewer is looking at
+next will settle it, since v2.9.22 (below) is unambiguous either way.
+
+## v2.9.22: self-discovered Plugin Check false positives (2026-08-26)
+
+Simon ran the official Plugin Check tool independently, via WordPress
+Playground, against the plugin under test. Two genuinely new categories
+(not present in the 2026-08-24 investigation) surfaced:
+
+- **`WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet`**
+  (`page-scripts.php:76`): a help paragraph's prose literally contained the
+  substring `<link rel="stylesheet">`, describing what the plugin
+  inventories -- misread as a real, unregistered tag. Reworded to avoid the
+  literal tag-shaped substring, same fix class as the CORP page's `<script>`
+  wording from Round 2.
+- **`missing_direct_file_access_protection` / `PluginCheck.CodeAnalysis.Offloading.OffloadedContent`**: reconfirmed exactly as already documented above (the ABSPATH guard exists at `class-policy-builder.php:53`; the Route 53 hostname is a DNS API endpoint, not offloaded content) -- no new finding, no code change.
+
+Everything else in that scan (`plugin_updater_detected`, the active
+`class-github-update-checker.php`, hundreds of `DirectDB`/
+`UnescapedDBParameter` and `PrefixAllGlobals` findings) matched the
+already-documented dispositions above almost exactly -- this Playground
+test was against an unstripped/GitHub-channel build (the updater code was
+present), the same root cause as every prior review round.
+
+**Policy change for `WordPress.Security.EscapeOutput.ExceptionNotEscaped`
+specifically**: the 2026-08-24 decision (above) was to document this
+category rather than add ~94 individual `phpcs:ignore` annotations, to
+avoid "hundreds of blanket suppressions" for a demonstrated tool
+limitation. That decision is superseded for this one category only: it
+kept resurfacing, identically, on every subsequent Plugin Check run
+(reviewer rounds and this independent one), which meant "document once" was
+not actually preventing re-litigation. The underlying analysis is
+unchanged (verified representative call sites: messages are only ever
+passed to `Audit_Log::log()` or `Certificate_Manager::record_run()`, never
+echoed) -- but since the fix is mechanical and carries zero behavioural
+risk, ~83 call sites across `includes/certificates/` (ACME client/crypto,
+`Certificate_Manager`, `Deployer`, `Dns_Provider`, all 40 DNS provider
+drivers) now carry an explicit `phpcs:ignore
+WordPress.Security.EscapeOutput.ExceptionNotEscaped` with the same
+justification inline, rather than relying on this document alone. All
+other high-volume categories (`DirectDB`/`UnescapedDBParameter`,
+`PrefixAllGlobals`) remain under the original "document, don't suppress"
+policy -- unchanged, since they haven't shown the same "keeps resurfacing
+in reviewer-visible scans" pattern.
+
+Shipped as v2.9.22, verified against the actual built package (extracted
+and re-run through `verify-wporg-package.sh`; confirmed the fix and the
+version string are both present in the shipped `.php` files).
+
+## Confirmation scan against the real v2.9.22 package (2026-08-26)
+
+A follow-up Plugin Check run (Playground, filtered to the "Security"
+category) against the corrected build showed: no `plugin_updater_detected`/
+Update URI findings (first scan in this whole saga against a correctly-
+stripped wp.org package), no `ExceptionNotEscaped` findings (v2.9.22's fix
+held), and every remaining line was either the already-documented
+`DirectDB`/`UnescapedDBParameter` pattern (spot-checked one representative
+line against current source -- unchanged, still hardcoded table names plus
+`$wpdb->prepare()` on every bound value) or the same `class-policy-builder.php`
+ABSPATH-guard false positive. No new findings, no further code changes.
