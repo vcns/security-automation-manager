@@ -218,7 +218,7 @@ class Certificate_Manager {
 		}
 
 		if ( null === $challenge ) {
-			throw new \RuntimeException( "No usable challenge offered for {$domain}. Wildcards require a DNS provider (dns-01)." );
+			throw new \RuntimeException( "No usable challenge offered for {$domain}. Wildcards require a DNS provider (dns-01)." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$token    = (string) $challenge['token'];
@@ -227,7 +227,7 @@ class Certificate_Manager {
 		if ( 'dns-01' === $challenge['type'] ) {
 			$provider = $this->resolve_dns_provider( (string) $config['provider'], (array) $config['dns_credentials'] );
 			if ( null === $provider ) {
-				throw new \RuntimeException( 'Configured DNS provider is not available: ' . (string) $config['provider'] );
+				throw new \RuntimeException( 'Configured DNS provider is not available: ' . (string) $config['provider'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 
 			$record_fqdn  = '_acme-challenge.' . ltrim( $domain, '*.' );
@@ -265,7 +265,7 @@ class Certificate_Manager {
 				$status = (string) ( $body['status'] ?? '' );
 				if ( 'invalid' === $status ) {
 					$error = (string) ( $body['challenges'][0]['error']['detail'] ?? 'challenge became invalid' );
-					throw new \RuntimeException( $error );
+					throw new \RuntimeException( $error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 				}
 				return 'valid' === $status;
 			},
@@ -286,7 +286,7 @@ class Certificate_Manager {
 			$this->wait_between_polls();
 		}
 
-		throw new \RuntimeException( 'ACME polling timed out: ' . $timeout_message );
+		throw new \RuntimeException( 'ACME polling timed out: ' . $timeout_message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function record_run( string $status, string $detail ): void {

@@ -78,7 +78,7 @@ class Provider_Inwx extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "INWX: no zone found for {$fqdn}." );
+		throw new \RuntimeException( "INWX: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function rpc( string $method, array $params, bool $allow_failure = false ): array {
@@ -105,7 +105,7 @@ class Provider_Inwx extends Dns_Provider {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( 'INWX transport error: ' . $response->get_error_message() );
+			throw new \RuntimeException( 'INWX transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$set_cookie = wp_remote_retrieve_header( $response, 'set-cookie' );
@@ -119,7 +119,7 @@ class Provider_Inwx extends Dns_Provider {
 		$code = (int) ( $body['code'] ?? 0 );
 
 		if ( ! $allow_failure && ( $code < 1000 || $code >= 2000 ) ) {
-			throw new \RuntimeException( "INWX {$method} failed (code {$code}): " . (string) ( $body['msg'] ?? 'unknown' ) );
+			throw new \RuntimeException( "INWX {$method} failed (code {$code}): " . (string) ( $body['msg'] ?? 'unknown' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $body;

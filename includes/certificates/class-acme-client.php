@@ -56,7 +56,7 @@ class Acme_Client {
 		$response = $this->signed_request( $this->dir( 'newAccount' ), $payload, false );
 		$status   = (int) wp_remote_retrieve_response_code( $response );
 		if ( ! in_array( $status, array( 200, 201 ), true ) ) {
-			throw new \RuntimeException( 'ACME account registration failed: ' . $this->error_detail( $response ) );
+			throw new \RuntimeException( 'ACME account registration failed: ' . $this->error_detail( $response ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$this->kid = (string) wp_remote_retrieve_header( $response, 'location' );
@@ -94,7 +94,7 @@ class Acme_Client {
 		$response = $this->signed_request( $this->dir( 'newOrder' ), array( 'identifiers' => $identifiers ) );
 		$status   = (int) wp_remote_retrieve_response_code( $response );
 		if ( 201 !== $status ) {
-			throw new \RuntimeException( 'ACME newOrder failed: ' . $this->error_detail( $response ) );
+			throw new \RuntimeException( 'ACME newOrder failed: ' . $this->error_detail( $response ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return array(
@@ -110,7 +110,7 @@ class Acme_Client {
 		$response = $this->signed_request( $url, null );
 		$status   = (int) wp_remote_retrieve_response_code( $response );
 		if ( $status >= 400 ) {
-			throw new \RuntimeException( 'ACME fetch failed for ' . $url . ': ' . $this->error_detail( $response ) );
+			throw new \RuntimeException( 'ACME fetch failed for ' . $url . ': ' . $this->error_detail( $response ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $this->json( $response );
@@ -123,7 +123,7 @@ class Acme_Client {
 		$response = $this->signed_request( $challenge_url, new \stdClass() );
 		$status   = (int) wp_remote_retrieve_response_code( $response );
 		if ( $status >= 400 ) {
-			throw new \RuntimeException( 'ACME challenge response failed: ' . $this->error_detail( $response ) );
+			throw new \RuntimeException( 'ACME challenge response failed: ' . $this->error_detail( $response ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $this->json( $response );
@@ -139,7 +139,7 @@ class Acme_Client {
 		);
 		$status   = (int) wp_remote_retrieve_response_code( $response );
 		if ( $status >= 400 ) {
-			throw new \RuntimeException( 'ACME finalize failed: ' . $this->error_detail( $response ) );
+			throw new \RuntimeException( 'ACME finalize failed: ' . $this->error_detail( $response ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $this->json( $response );
@@ -152,7 +152,7 @@ class Acme_Client {
 		$response = $this->signed_request( $certificate_url, null );
 		$status   = (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $status ) {
-			throw new \RuntimeException( 'ACME certificate download failed: ' . $this->error_detail( $response ) );
+			throw new \RuntimeException( 'ACME certificate download failed: ' . $this->error_detail( $response ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return (string) wp_remote_retrieve_body( $response );
@@ -202,7 +202,7 @@ class Acme_Client {
 			);
 
 			if ( is_wp_error( $response ) ) {
-				throw new \RuntimeException( 'ACME request transport error: ' . $response->get_error_message() );
+				throw new \RuntimeException( 'ACME request transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 
 			$this->store_nonce( $response );
@@ -224,13 +224,13 @@ class Acme_Client {
 		if ( null === $this->directory ) {
 			$response = wp_remote_get( $this->directory_url, array( 'timeout' => 30 ) );
 			if ( is_wp_error( $response ) ) {
-				throw new \RuntimeException( 'Unable to fetch ACME directory: ' . $response->get_error_message() );
+				throw new \RuntimeException( 'Unable to fetch ACME directory: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 			$this->directory = $this->json( $response );
 		}
 
 		if ( empty( $this->directory[ $key ] ) ) {
-			throw new \RuntimeException( "ACME directory is missing '{$key}'." );
+			throw new \RuntimeException( "ACME directory is missing '{$key}'." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return (string) $this->directory[ $key ];
@@ -245,7 +245,7 @@ class Acme_Client {
 
 		$response = wp_remote_head( $this->dir( 'newNonce' ), array( 'timeout' => 30 ) );
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( 'Unable to fetch ACME nonce: ' . $response->get_error_message() );
+			throw new \RuntimeException( 'Unable to fetch ACME nonce: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$nonce = (string) wp_remote_retrieve_header( $response, 'replay-nonce' );

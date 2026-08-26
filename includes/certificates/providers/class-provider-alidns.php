@@ -72,7 +72,7 @@ class Provider_Alidns extends Dns_Provider {
 		$zone = (string) ( $info['DomainName'] ?? '' );
 
 		if ( '' === $zone ) {
-			throw new \RuntimeException( "Alibaba Cloud DNS: unable to resolve the zone for {$fqdn}." );
+			throw new \RuntimeException( "Alibaba Cloud DNS: unable to resolve the zone for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $zone;

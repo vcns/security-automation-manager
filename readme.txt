@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.21
+Stable tag: 2.9.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -101,6 +101,11 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.22 =
+
+* Fixed: reworded a help paragraph on the Scripts page that literally contained the text `<link rel="stylesheet">` as prose, which an automated scanner misread as an actual unregistered stylesheet tag.
+* Hardening: added explicit `phpcs:ignore` annotations to ~80 ACME/DNS-provider exception messages built from interpolated values (domain names, API response bodies) that an automated scanner flags as unescaped output. These messages are never echoed -- only logged via the audit log or stored on the certificate record -- so this is a documented false positive, not a behavior change.
 
 = 2.9.21 =
 

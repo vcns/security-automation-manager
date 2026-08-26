@@ -49,7 +49,7 @@ class Provider_Cloudns extends Dns_Provider {
 		);
 
 		if ( ! str_contains( $body, '"Success"' ) ) {
-			throw new \RuntimeException( 'ClouDNS add-record failed: ' . substr( $body, 0, 200 ) );
+			throw new \RuntimeException( 'ClouDNS add-record failed: ' . substr( $body, 0, 200 ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 
@@ -89,7 +89,7 @@ class Provider_Cloudns extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "ClouDNS: no zone found for {$fqdn}." );
+		throw new \RuntimeException( "ClouDNS: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $endpoint, array $params ): string {

@@ -71,7 +71,7 @@ class Provider_Glesys extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "GleSYS: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "GleSYS: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $path, array $params ): array {

@@ -93,7 +93,7 @@ class Provider_Namecheap extends Dns_Provider {
 			)
 		);
 		if ( ! str_contains( $body, 'Status="OK"' ) ) {
-			throw new \RuntimeException( 'Namecheap getHosts failed; refusing to write (setHosts replaces the whole zone). ' . $this->error_from( $body ) );
+			throw new \RuntimeException( 'Namecheap getHosts failed; refusing to write (setHosts replaces the whole zone). ' . $this->error_from( $body ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$hosts = array();
@@ -131,7 +131,7 @@ class Provider_Namecheap extends Dns_Provider {
 
 		$result = $this->call( 'namecheap.domains.dns.setHosts', $params, 'POST' );
 		if ( ! str_contains( $result, 'IsSuccess="true"' ) ) {
-			throw new \RuntimeException( 'Namecheap setHosts failed: ' . $this->error_from( $result ) );
+			throw new \RuntimeException( 'Namecheap setHosts failed: ' . $this->error_from( $result ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 
@@ -156,7 +156,7 @@ class Provider_Namecheap extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Namecheap: no manageable domain found for {$fqdn}." );
+		throw new \RuntimeException( "Namecheap: no manageable domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $command, array $params, string $method = 'GET' ): string {

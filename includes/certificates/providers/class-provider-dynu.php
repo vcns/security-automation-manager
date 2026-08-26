@@ -66,7 +66,7 @@ class Provider_Dynu extends Dns_Provider {
 
 		$id = (int) ( $root['body']['id'] ?? 0 );
 		if ( 0 === $id ) {
-			throw new \RuntimeException( "Dynu: no root domain found for {$fqdn}." );
+			throw new \RuntimeException( "Dynu: no root domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return array(

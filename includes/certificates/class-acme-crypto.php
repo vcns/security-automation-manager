@@ -58,13 +58,13 @@ class Acme_Crypto {
 			$key              = openssl_pkey_new( $config );
 		}
 		if ( false === $key ) {
-			throw new \RuntimeException( 'openssl_pkey_new failed: ' . (string) openssl_error_string() );
+			throw new \RuntimeException( 'openssl_pkey_new failed: ' . (string) openssl_error_string() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$pem = '';
 		if ( ! openssl_pkey_export( $key, $pem )
 			&& ! openssl_pkey_export( $key, $pem, null, array( 'config' => self::openssl_conf() ) ) ) {
-			throw new \RuntimeException( 'openssl_pkey_export failed: ' . (string) openssl_error_string() );
+			throw new \RuntimeException( 'openssl_pkey_export failed: ' . (string) openssl_error_string() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $pem;
@@ -218,7 +218,7 @@ class Acme_Crypto {
 
 		$signature = '';
 		if ( ! openssl_sign( $data, $signature, $key, OPENSSL_ALGO_SHA256 ) ) {
-			throw new \RuntimeException( 'openssl_sign failed: ' . (string) openssl_error_string() );
+			throw new \RuntimeException( 'openssl_sign failed: ' . (string) openssl_error_string() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$details = openssl_pkey_get_details( $key );

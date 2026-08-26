@@ -76,7 +76,7 @@ class Provider_Namesilo extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "NameSilo: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "NameSilo: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $operation, array $params ): string {
@@ -97,7 +97,7 @@ class Provider_Namesilo extends Dns_Provider {
 	private function assert_success( string $body, string $operation ): void {
 		if ( ! str_contains( $body, '<code>300</code>' ) ) {
 			preg_match( '#<detail>([^<]*)</detail>#', $body, $detail );
-			throw new \RuntimeException( "NameSilo {$operation} failed: " . ( $detail[1] ?? 'unknown error' ) );
+			throw new \RuntimeException( "NameSilo {$operation} failed: " . ( $detail[1] ?? 'unknown error' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 }

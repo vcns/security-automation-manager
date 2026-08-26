@@ -98,7 +98,7 @@ class Provider_Netcup extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "netcup: no DNS zone found for {$fqdn}." );
+		throw new \RuntimeException( "netcup: no DNS zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $action, array $params ): array {
@@ -142,7 +142,7 @@ class Provider_Netcup extends Dns_Provider {
 		$decoded = is_array( $decoded ) ? $decoded : array();
 
 		if ( 'success' !== strtolower( (string) ( $decoded['status'] ?? '' ) ) ) {
-			throw new \RuntimeException( "netcup {$action} failed: " . (string) ( $decoded['longmessage'] ?? $decoded['shortmessage'] ?? 'unknown' ) );
+			throw new \RuntimeException( "netcup {$action} failed: " . (string) ( $decoded['longmessage'] ?? $decoded['shortmessage'] ?? 'unknown' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return $decoded;

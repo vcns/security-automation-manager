@@ -99,7 +99,7 @@ class Provider_Azure extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Azure DNS: no zone found for {$fqdn} in the configured resource group." );
+		throw new \RuntimeException( "Azure DNS: no zone found for {$fqdn} in the configured resource group." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function headers(): array {
@@ -117,12 +117,12 @@ class Provider_Azure extends Dns_Provider {
 				)
 			);
 			if ( is_wp_error( $response ) ) {
-				throw new \RuntimeException( 'Azure token transport error: ' . $response->get_error_message() );
+				throw new \RuntimeException( 'Azure token transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 			$body        = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 			$this->token = (string) ( $body['access_token'] ?? '' );
 			if ( '' === $this->token ) {
-				throw new \RuntimeException( 'Azure token request failed: ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ) );
+				throw new \RuntimeException( 'Azure token request failed: ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 		}
 

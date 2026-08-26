@@ -182,7 +182,7 @@ abstract class Dns_Provider {
 
 		$response = wp_remote_request( $url, $args );
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( static::label() . ' API transport error: ' . $response->get_error_message() );
+			throw new \RuntimeException( static::label() . ' API transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$status  = (int) wp_remote_retrieve_response_code( $response );
@@ -190,7 +190,7 @@ abstract class Dns_Provider {
 
 		if ( $status >= 400 ) {
 			throw new \RuntimeException(
-				static::label() . " API error (HTTP {$status}): " . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 )
+				static::label() . " API error (HTTP {$status}): " . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			);
 		}
 
@@ -225,13 +225,13 @@ abstract class Dns_Provider {
 
 		$response = wp_remote_request( $url, $args );
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( static::label() . ' API transport error: ' . $response->get_error_message() );
+			throw new \RuntimeException( static::label() . ' API transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		if ( $status >= 400 ) {
 			throw new \RuntimeException(
-				static::label() . " API error (HTTP {$status}): " . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 )
+				static::label() . " API error (HTTP {$status}): " . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			);
 		}
 

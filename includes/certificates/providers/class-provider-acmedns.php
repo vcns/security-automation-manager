@@ -69,7 +69,7 @@ class Provider_Acmedns extends Dns_Provider {
 
 		$decoded = json_decode( $body, true );
 		if ( ! is_array( $decoded ) || ( $decoded['txt'] ?? '' ) !== $value ) {
-			throw new \RuntimeException( 'acme-dns update failed: ' . substr( $body, 0, 200 ) );
+			throw new \RuntimeException( 'acme-dns update failed: ' . substr( $body, 0, 200 ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 
