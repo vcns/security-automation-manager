@@ -72,7 +72,7 @@ class Provider_Cloudflare extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Cloudflare: no zone found for {$fqdn}. Check the token's zone scope." );
+		throw new \RuntimeException( "Cloudflare: no zone found for {$fqdn}. Check the token's zone scope." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function headers(): array {

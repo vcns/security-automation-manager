@@ -118,7 +118,7 @@ class Provider_Rfc2136 extends Dns_Provider {
 				17 => 'BADKEY',
 				18 => 'BADTIME',
 			);
-			throw new \RuntimeException( 'RFC 2136 update rejected: ' . ( $names[ $rcode ] ?? "RCODE {$rcode}" ) . ' (check the TSIG key and update-policy).' );
+			throw new \RuntimeException( 'RFC 2136 update rejected: ' . ( $names[ $rcode ] ?? "RCODE {$rcode}" ) . ' (check the TSIG key and update-policy).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 
@@ -180,7 +180,7 @@ class Provider_Rfc2136 extends Dns_Provider {
 		$errstr = '';
 		$socket = @stream_socket_client( "tcp://{$server}:{$port}", $errno, $errstr, 15 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- failure surfaced below with context.
 		if ( false === $socket ) {
-			throw new \RuntimeException( "RFC 2136: cannot reach {$server}:{$port} over TCP: {$errstr}" );
+			throw new \RuntimeException( "RFC 2136: cannot reach {$server}:{$port} over TCP: {$errstr}" ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		try {

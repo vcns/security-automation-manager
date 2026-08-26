@@ -60,7 +60,7 @@ class Provider_Dreamhost extends Dns_Provider {
 			if ( 'dns-remove_record' === $cmd && str_contains( $reason, 'no_such_record' ) ) {
 				return;
 			}
-			throw new \RuntimeException( "DreamHost {$cmd} failed: {$reason}" );
+			throw new \RuntimeException( "DreamHost {$cmd} failed: {$reason}" ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 }

@@ -78,7 +78,7 @@ class Provider_Mythicbeasts extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Mythic Beasts: no zone found for {$fqdn}." );
+		throw new \RuntimeException( "Mythic Beasts: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function headers(): array {
@@ -92,7 +92,7 @@ class Provider_Mythicbeasts extends Dns_Provider {
 				)
 			);
 			if ( is_wp_error( $response ) ) {
-				throw new \RuntimeException( 'Mythic Beasts auth transport error: ' . $response->get_error_message() );
+				throw new \RuntimeException( 'Mythic Beasts auth transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 			$body        = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 			$this->token = (string) ( $body['access_token'] ?? '' );

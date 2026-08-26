@@ -71,7 +71,7 @@ class Provider_Joker extends Dns_Provider {
 		);
 
 		if ( ! str_contains( $body, 'good' ) && ! str_contains( $body, 'OK' ) ) {
-			throw new \RuntimeException( 'Joker.com TXT replace failed: ' . substr( trim( $body ), 0, 200 ) );
+			throw new \RuntimeException( 'Joker.com TXT replace failed: ' . substr( trim( $body ), 0, 200 ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 }

@@ -74,7 +74,7 @@ class Provider_Linode extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Linode: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "Linode: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function headers(): array {

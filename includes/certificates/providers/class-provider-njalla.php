@@ -72,7 +72,7 @@ class Provider_Njalla extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Njalla: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "Njalla: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $method, array $params ): array {
@@ -95,7 +95,7 @@ class Provider_Njalla extends Dns_Provider {
 		$decoded = is_array( $decoded ) ? $decoded : array();
 
 		if ( isset( $decoded['error'] ) ) {
-			throw new \RuntimeException( "Njalla {$method} failed: " . (string) wp_json_encode( $decoded['error'] ) );
+			throw new \RuntimeException( "Njalla {$method} failed: " . (string) wp_json_encode( $decoded['error'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		return (array) ( $decoded['result'] ?? array() );

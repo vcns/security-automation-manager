@@ -71,7 +71,7 @@ class Provider_Route53 extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Route 53: no hosted zone found for {$fqdn}." );
+		throw new \RuntimeException( "Route 53: no hosted zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	/**

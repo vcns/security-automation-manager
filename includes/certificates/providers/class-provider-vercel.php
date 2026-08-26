@@ -72,7 +72,7 @@ class Provider_Vercel extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Vercel: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "Vercel: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function team_query( string $sep = '?' ): string {

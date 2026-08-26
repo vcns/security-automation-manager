@@ -50,7 +50,7 @@ class Provider_Dnspod extends Dns_Provider {
 		);
 
 		if ( '1' !== (string) ( $body['status']['code'] ?? '' ) ) {
-			throw new \RuntimeException( 'DNSPod Record.Create failed: ' . (string) ( $body['status']['message'] ?? 'unknown' ) );
+			throw new \RuntimeException( 'DNSPod Record.Create failed: ' . (string) ( $body['status']['message'] ?? 'unknown' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 	}
 
@@ -87,7 +87,7 @@ class Provider_Dnspod extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "DNSPod: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "DNSPod: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function call( string $action, array $params ): array {

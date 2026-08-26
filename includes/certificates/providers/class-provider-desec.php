@@ -68,7 +68,7 @@ class Provider_Desec extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "deSEC: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "deSEC: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function headers(): array {

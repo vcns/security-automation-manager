@@ -90,7 +90,7 @@ class Provider_Google_Cloud extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Google Cloud DNS: no managed zone found for {$fqdn}." );
+		throw new \RuntimeException( "Google Cloud DNS: no managed zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function key(): array {
@@ -143,12 +143,12 @@ class Provider_Google_Cloud extends Dns_Provider {
 				)
 			);
 			if ( is_wp_error( $response ) ) {
-				throw new \RuntimeException( 'Google token transport error: ' . $response->get_error_message() );
+				throw new \RuntimeException( 'Google token transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 			$body        = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 			$this->token = (string) ( $body['access_token'] ?? '' );
 			if ( '' === $this->token ) {
-				throw new \RuntimeException( 'Google token request failed: ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ) );
+				throw new \RuntimeException( 'Google token request failed: ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 			}
 		}
 

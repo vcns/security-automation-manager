@@ -98,13 +98,13 @@ class Deployer {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( 'cPanel install_ssl transport error: ' . $response->get_error_message() );
+			throw new \RuntimeException( 'cPanel install_ssl transport error: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		if ( empty( $body['status'] ) ) {
 			$errors = isset( $body['errors'] ) ? implode( '; ', (array) $body['errors'] ) : ( 'HTTP ' . wp_remote_retrieve_response_code( $response ) );
-			throw new \RuntimeException( 'cPanel install_ssl failed: ' . $errors );
+			throw new \RuntimeException( 'cPanel install_ssl failed: ' . $errors ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		$this->audit->log( 'certificates', 'cert_deployed', "Certificate for {$domain} installed via cPanel UAPI install_ssl.", 'info' );
@@ -118,7 +118,7 @@ class Deployer {
 			throw new \RuntimeException( 'Export deployment selected but no export path is configured.' );
 		}
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
-			throw new \RuntimeException( "Export path {$dir} does not exist and could not be created." );
+			throw new \RuntimeException( "Export path {$dir} does not exist and could not be created." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		// Never export beneath the public webroot: a fullchain leak is
@@ -127,16 +127,16 @@ class Deployer {
 		$webroot = rtrim( str_replace( '\\', '/', ABSPATH ), '/' );
 		$target  = rtrim( str_replace( '\\', '/', (string) realpath( $dir ) ), '/' );
 		if ( '' !== $target && str_starts_with( $target . '/', $webroot . '/' ) ) {
-			throw new \RuntimeException( 'Export path must be OUTSIDE the web root (e.g. a sibling directory of ' . $webroot . ').' );
+			throw new \RuntimeException( 'Export path must be OUTSIDE the web root (e.g. a sibling directory of ' . $webroot . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 
 		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- local key material; WP_Filesystem's indirection adds failure modes without adding safety here.
 		if ( false === file_put_contents( $dir . '/privkey.pem', $key_pem ) ) {
-			throw new \RuntimeException( "Unable to write privkey.pem to {$dir}." );
+			throw new \RuntimeException( "Unable to write privkey.pem to {$dir}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 		@chmod( $dir . '/privkey.pem', 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- best-effort tightening; not all hosts allow chmod.
 		if ( false === file_put_contents( $dir . '/fullchain.pem', $fullchain_pem ) ) {
-			throw new \RuntimeException( "Unable to write fullchain.pem to {$dir}." );
+			throw new \RuntimeException( "Unable to write fullchain.pem to {$dir}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 		}
 		// phpcs:enable
 

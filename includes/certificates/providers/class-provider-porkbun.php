@@ -74,7 +74,7 @@ class Provider_Porkbun extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Porkbun: no zone found for {$fqdn}." );
+		throw new \RuntimeException( "Porkbun: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function auth( array $body ): array {

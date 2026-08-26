@@ -67,7 +67,7 @@ class Provider_Vultr extends Dns_Provider {
 			}
 		}
 
-		throw new \RuntimeException( "Vultr: no domain found for {$fqdn}." );
+		throw new \RuntimeException( "Vultr: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
 	private function headers(): array {

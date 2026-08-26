@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.22] - 2026-08-26
+
+### Fixed
+
+- A help paragraph on the Scripts page (`page-scripts.php`) literally contained the text `<link rel="stylesheet">` as prose describing what the plugin inventories -- an automated scanner (Plugin Check's `NonEnqueuedStylesheet` sniff) read it as an actual unregistered stylesheet tag. Reworded to describe the same thing without a literal tag-shaped substring, matching the fix already applied to the CORP page's `<script>` mention.
+
+### Changed
+
+- Added `phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped` annotations to ~80 `throw new \RuntimeException(...)`/`\Exception(...)` call sites across `includes/certificates/` (ACME client/crypto, `Certificate_Manager`, `Deployer`, `Dns_Provider`, and all 40 DNS provider drivers), each built from an interpolated domain name or raw API response body. Verified representative call sites: these messages are never echoed to a browser -- they're only passed to `Audit_Log::log()` or stored via `Certificate_Manager::record_run()`, both of which escape at actual display time, matching this codebase's established "escape late" convention. Purely a documented false-positive suppression; no behavioural change.
+
 ## [2.9.21] - 2026-08-25
 
 ### Fixed

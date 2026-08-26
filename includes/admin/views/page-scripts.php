@@ -73,7 +73,7 @@ $base_url = admin_url( 'admin.php?page=security-automation-manager-scripts' );
 
 	<h2><?php esc_html_e( 'External scripts and stylesheets', 'vcns-security-automation-manager' ); ?></h2>
 	<p>
-		<?php esc_html_e( 'Every third-party <script> and <link rel="stylesheet"> origin this site loads -- analytics, marketing pixels, embedded widgets, CDN-hosted libraries -- is passively inventoried the moment a real visitor\'s page load includes it. Only the origin (scheme and host) is ever recorded, never a path or query string, and never from a dedicated crawl.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Every third-party script tag and stylesheet link origin this site loads -- analytics, marketing pixels, embedded widgets, CDN-hosted libraries -- is passively inventoried the moment a real visitor\'s page load includes it. Only the origin (scheme and host) is ever recorded, never a path or query string, and never from a dedicated crawl.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<p>
 		<?php esc_html_e( 'A freshly discovered origin is always Unclassified: neither trusted nor blocked until an administrator decides. You can pin a Subresource Integrity hash for a version-locked script you\'ve reviewed ("Approved -- immutable"), mark a script whose content legitimately changes over time as trusted without SRI ("Approved -- mutable provider"), grant a one-off exception, or block it outright. Report mode (the default) never removes anything; enforce mode removes only what you\'ve explicitly blocked, or an "immutable" origin whose SRI hash no longer matches.', 'vcns-security-automation-manager' ); ?>
