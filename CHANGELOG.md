@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.23] - 2026-08-27
+
+### Fixed
+
+- Added literal API hostnames (`api.dnsmadeeasy.com` for DNS Made Easy, `api.domrobot.com` for INWX) to `readme.txt`'s external-service disclosures, alongside the legal entities that already govern them. Both providers' actual API endpoints run under a different domain than the one already disclosed (DNS Made Easy's legal terms are DigiCert's; INWX's API is branded DomRobot), which an automated domain-disclosure scanner couldn't match without the literal hostname present.
+- Added GitHub's Terms of Service and Privacy Statement links to the GitHub-channel update-manifest disclosure, covering GitHub Pages (the hosting infrastructure serving the manifest) itself, distinct from the manifest content being VCNS's own.
+
+### Changed
+
+- Documented `Content_Rewriter::maybe_start_buffer()`'s intentional cross-hook `ob_start()`/close pairing (opened on `template_redirect`, closed on `shutdown` via the shared LIFO stack) with an inline comment pointing to the closing call site and its test coverage, for static analysis that can't trace a buffer closed on a different hook than it was opened on.
+
 ## [2.9.22] - 2026-08-26
 
 ### Fixed
