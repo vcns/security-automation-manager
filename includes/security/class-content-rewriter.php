@@ -120,6 +120,17 @@ abstract class Content_Rewriter extends Request_Surface {
 			return;
 		}
 
+		// This buffer is always closed -- by unwind_open_stack(), called from
+		// maybe_end_buffer(), registered on `shutdown` at PHP_INT_MAX priority
+		// (see register()). It's intentionally opened on `template_redirect`
+		// and closed on a later, separate hook rather than in this same
+		// method, because that's what lets multiple Content_Rewriter
+		// instances close in true LIFO order regardless of which instance's
+		// hook callback WordPress happens to fire first -- see
+		// unwind_open_stack()'s own docblock. Exercised directly by
+		// test/unit/Security/ContentRewriterTest.php, including the case
+		// where something else already closed it and the case where a
+		// third-party buffer is nested above and must never be force-closed.
 		if ( ob_start( array( $this, 'filter_output' ), 0 ) ) {
 			$this->buffer_started = true;
 			$this->buffer_level   = ob_get_level();
