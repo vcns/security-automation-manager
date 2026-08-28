@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.24] - 2026-08-28
+
+### Fixed
+
+- Made the DNS Made Easy, INWX, and GitHub Pages external-service disclosures in `readme.txt` explicit about why their linked Terms of Service/Privacy Policy documents live on a different domain than the API/service hostname itself: `dnsmadeeasy.com` has no legal pages of its own (its own site defers to DigiCert's, confirmed by direct fetch), `domrobot.com` doesn't resolve to a website at all (confirmed via DNS lookup -- it's an API-only hostname), and GitHub Pages (`*.github.io`) has no separate terms from `github.com`. v2.9.23 added the literal hostnames but an automated domain-matching check still couldn't associate them with their (necessarily different-domain) legal documents without this stated directly.
+
 ## [2.9.23] - 2026-08-27
 
 ### Fixed

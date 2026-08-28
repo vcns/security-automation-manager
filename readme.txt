@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.23
+Stable tag: 2.9.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,7 +24,7 @@ The WordPress.org edition is a complete free plugin with no subscription-locked 
 
 This WordPress.org build does not contact third-party services for plugin updates, licensing, checkout, telemetry, or remote product configuration.
 
-GitHub release builds are published separately for administrators who install from GitHub rather than WordPress.org; this update check is never present in the WordPress.org-channel package (this code is physically absent from it, not merely inactive). The GitHub-channel ZIP checks https://vcns.github.io/wp-updates/security-automation-manager/update.json from administrator update contexts only, validates the advertised package host and SHA-256 checksum, and then lets WordPress perform the update. This manifest is VCNS's own infrastructure, not a third party; the request sends no personal or site-identifying data, only a plain HTTPS GET for a static, publicly-readable JSON file. The file is served by GitHub Pages (github.com), whose own Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) and Privacy Statement (https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement) govern the hosting infrastructure itself. Define WP_SAM_DISABLE_AUTO_UPDATE as true in wp-config.php to prevent background auto-updates for the GitHub-channel package.
+GitHub release builds are published separately for administrators who install from GitHub rather than WordPress.org; this update check is never present in the WordPress.org-channel package (this code is physically absent from it, not merely inactive). The GitHub-channel ZIP checks https://vcns.github.io/wp-updates/security-automation-manager/update.json from administrator update contexts only, validates the advertised package host and SHA-256 checksum, and then lets WordPress perform the update. This manifest is VCNS's own infrastructure, not a third party; the request sends no personal or site-identifying data, only a plain HTTPS GET for a static, publicly-readable JSON file. The file is served from vcns.github.io, a GitHub Pages subdomain -- GitHub Pages has no separate terms or privacy documents of its own; the whole *.github.io domain is governed entirely by GitHub's own Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) and Privacy Statement (https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement), the same as github.com itself. Define WP_SAM_DISABLE_AUTO_UPDATE as true in wp-config.php to prevent background auto-updates for the GitHub-channel package.
 
 By default, the plugin emits CSP reporting headers that point browsers back to this WordPress site's own REST endpoint:
 
@@ -66,7 +66,7 @@ When a DNS provider is selected for DNS-01 domain validation, that provider's AP
 * deSEC -- deSEC e.V. -- Terms: https://desec.io/terms/ -- Privacy: https://desec.io/privacy-policy/
 * DigitalOcean DNS -- DigitalOcean, LLC -- Terms: https://www.digitalocean.com/legal/terms-of-service-agreement -- Privacy: https://www.digitalocean.com/legal/privacy-policy
 * DNSimple -- DNSimple Corporation -- Terms: https://dnsimple.com/terms -- Privacy: https://dnsimple.com/privacy
-* DNS Made Easy (API: api.dnsmadeeasy.com) -- DigiCert, Inc. -- Terms: https://www.digicert.com/legal-repository -- Privacy: https://privacy.digicert.com/policies/en/?name=dns-network-security-products-privacy-notice
+* DNS Made Easy (API: api.dnsmadeeasy.com -- dnsmadeeasy.com itself has no separate legal pages of its own; its own site directs to DigiCert's) -- DigiCert, Inc. -- Terms: https://www.digicert.com/legal-repository -- Privacy: https://privacy.digicert.com/policies/en/?name=dns-network-security-products-privacy-notice
 * DNSPod -- Tencent Cloud -- Terms: https://docs.dnspod.cn/account/terms-of-service/ -- Privacy: https://docs.dnspod.cn/account/privacy-policy/ (Chinese-language)
 * Domeneshop -- Domeneshop AS -- Terms and Privacy (single combined document, Norwegian-language): https://domene.shop/terms
 * DreamHost DNS -- DreamHost, LLC -- Terms: https://www.dreamhost.com/legal/terms-of-service/ -- Privacy: https://www.dreamhost.com/legal/privacy-policy/
@@ -77,7 +77,7 @@ When a DNS provider is selected for DNS-01 domain validation, that provider's AP
 * GoDaddy DNS -- GoDaddy.com, LLC -- Terms: https://www.godaddy.com/legal/agreements/universal-terms-of-service-agreement -- Privacy: https://www.godaddy.com/agreements/privacy
 * Google Cloud DNS -- Google LLC -- Terms: https://cloud.google.com/terms -- Privacy: https://cloud.google.com/terms/cloud-privacy-notice
 * Hetzner DNS -- Hetzner Online GmbH -- Terms: https://www.hetzner.com/legal/terms-and-conditions/ -- Privacy: https://www.hetzner.com/legal/privacy-policy/
-* INWX (API: api.domrobot.com, INWX's own API product name) -- INWX GmbH -- Terms: https://www.inwx.com/en/aboutus/terms -- Privacy: https://www.inwx.com/en/aboutus/dataprotection
+* INWX (API: api.domrobot.com, DomRobot, INWX's own API product -- domrobot.com is an API-only hostname and does not resolve to a website of its own) -- INWX GmbH -- Terms: https://www.inwx.com/en/aboutus/terms -- Privacy: https://www.inwx.com/en/aboutus/dataprotection
 * IONOS DNS -- IONOS Inc. -- Terms: https://www.ionos.com/terms-gtc/general-terms-and-conditions/ -- Privacy: https://www.ionos.com/terms-gtc/privacy-policy/
 * Joker.com DNS -- CSL Computer Service Langenbach GmbH -- Terms: https://joker.com/terms/general -- Privacy: https://joker.com/index.joker?mode=page&page=impressum
 * Linode DNS -- operated by Akamai Technologies since Linode's acquisition -- Terms: https://www.akamai.com/legal/msa -- Privacy: https://www.akamai.com/legal/privacy-statement
@@ -101,6 +101,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.24 =
+
+* Fixed: made the DNS Made Easy, INWX, and GitHub Pages external-service disclosures below explicit about why their linked Terms/Privacy documents are hosted on a different domain than the API/service hostname itself (dnsmadeeasy.com and domrobot.com have no legal pages of their own; github.io has none separate from github.com) -- an automated domain-matching check couldn't associate the two without this stated directly.
 
 = 2.9.23 =
 
