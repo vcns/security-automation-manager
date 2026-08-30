@@ -106,7 +106,7 @@
   <g class="type" fill="#4a4a4a">
     <text x="500" y="612" class="eyebrow">PROTECTED CORE</text>
     <text x="500" y="655" class="core-title">WordPress site &amp; security policy</text>
-    <text x="500" y="687" class="core-subtitle" fill="#636363">Persistent protection remains in place while SAM observes, decides, enforces and verifies.</text>
+    <text x="500" y="687" class="core-subtitle" fill="#636363">Persistent protection remains in place while SAM observes, decides, controls and verifies.</text>
   </g>
 
   <!-- Operating cycle -->
@@ -122,7 +122,7 @@
       <path d="M254 17h20" stroke="#e5e7eb" stroke-width="1.5"/>
       <path d="m270 12 6 5-6 5" fill="none" stroke="#e5e7eb" stroke-width="1.5"/>
       <rect x="284" width="104" height="34" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.7"/>
-      <text x="336" y="22" text-anchor="middle" class="pill" fill="#ffffff">Enforce</text>
+      <text x="336" y="22" text-anchor="middle" class="pill" fill="#ffffff">Control</text>
       <path d="M396 17h20" stroke="#e5e7eb" stroke-width="1.5"/>
       <path d="m412 12 6 5-6 5" fill="none" stroke="#e5e7eb" stroke-width="1.5"/>
       <rect x="426" width="104" height="34" rx="17" fill="#ffffff"/>
