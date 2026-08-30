@@ -97,6 +97,6 @@ jobs:
         with:
           generate-zip: true
         env:
-          SVN_USERNAME: ${{ vars.SVC_USERNAME }}
+          SVN_USERNAME: ${{ vars.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: vcns-security-automation-manager
