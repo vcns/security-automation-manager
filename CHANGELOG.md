@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.26] - 2026-08-31
+
+### Fixed
+
+- No plugin functionality change. Release/CI pipeline fix only: `wporg-deploy.yml`'s SVN-repository-existence check assumed the `svn` CLI was preinstalled on `ubuntu-latest` runners; it isn't, so `svn info` failed instantly with "command not found," silently swallowed by `> /dev/null 2>&1`, and every run (including the one right after WordPress.org approved the plugin and provisioned its SVN repo) misreported "repository doesn't exist yet." Added an explicit `apt-get install subversion` step. This version exists solely to produce a properly `vX.Y.Z`-tagged commit for that now-working pipeline to deploy from -- `workflow_dispatch`/tag-triggered runs use the workflow file as committed on that exact ref, so the fix needed a new tag to take effect for a real deploy.
+
 ## [2.9.25] - 2026-08-31
 
 ### Added
