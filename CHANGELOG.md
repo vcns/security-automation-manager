@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.25] - 2026-08-31
+
+### Added
+
+- `Known_Source_Badge`: a display-only "Known" badge on the CSP Sources table for commonly-recognised third-party domains (Google Analytics, Google Tag Manager, Google Fonts, YouTube, Gravatar, jQuery/jsDelivr/cdnjs CDNs, and others), naming the recognised service on hover/focus. Purely informational -- never touches `risk_level`, the Decision Engine, or auto-approval. Extensible via the `wp_sam_known_source_labels` filter.
+
 ## [2.9.24] - 2026-08-28
 
 ### Fixed
