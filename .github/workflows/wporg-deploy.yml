@@ -31,6 +31,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # ubuntu-latest runners don't ship the svn CLI by default (unlike git).
+      # Without this, `svn info` below fails instantly with "command not
+      # found", which the `> /dev/null 2>&1` guard silently swallows -- every
+      # run then misreports "repository doesn't exist yet" regardless of
+      # actual approval/provisioning status, which is exactly what happened
+      # here after the plugin was genuinely approved and provisioned.
+      - name: Install Subversion
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq subversion
+          svn --version --quiet
+
       # The SVN repository only exists once WordPress.org approves the plugin
       # submission. Until then every tag push would fail red (E170000) and
       # bury real failures in noise -- so check first and skip gracefully,
