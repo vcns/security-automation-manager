@@ -579,7 +579,7 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		</form>
 	</details>
 
-	<table class="widefat fixed striped" style="margin-top:1em">
+	<table class="widefat fixed striped wp-sam-sources-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php

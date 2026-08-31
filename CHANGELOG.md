@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.27] - 2026-09-01
+
+### Added
+
+- Plugin icon (`icon-256x256.png`, `icon-128x128.png`) and header banner (`banner-1544x500.png`, `banner-772x250.png`) for the WordPress.org listing, in `.wordpress-org/assets/`.
+
+### Changed
+
+- Rewrote `readme.txt`'s Description section (and the matching plugin-header tagline) to lead with the actual value proposition -- report-only learning before enforcement -- instead of opening with a dense feature inventory. Full technical detail preserved, moved to a "For the technically curious" subsection.
+
+### Fixed
+
+- `page-csp-dashboard.php`'s For Review (Sources) table used `.widefat.fixed`, which sizes every column evenly from the header row regardless of actual content -- Host (a full domain plus the Known-source badge) was starved down to the same width as ID or State, forcing ugly mid-word wraps. Added explicit `nth-child` column-width percentages via a new `wp-sam-sources-table` class.
+- `page-permissions-policy.php`'s per-directive `<select>` dropdowns were stretched wide because the "All" option's label included a full descriptive sentence ("-- any origin, including third-party iframes and embeds (not recommended)"). Shortened every option to a plain label and moved the fuller explanation into the page's existing description paragraph below the table, plus a `max-width` on the select itself.
+
 ## [2.9.26] - 2026-08-31
 
 ### Fixed

@@ -4,21 +4,34 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.26
+Stable tag: 2.9.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Roll out and enforce CSP, HSTS, X-Frame-Options headers with violation reports; free ACME/Let's Encrypt SSL/TLS certificate automation.
+Security headers that learn your site before they enforce -- plus free, automatic SSL/TLS certificate management.
 
 == Description ==
 
-Security Automation Manager helps site owners roll out strict HTTP security headers safely and incrementally, instead of flipping them on and risking a broken, unusable site. Content Security Policy (CSP) is its most capable pillar: it discovers the scripts, styles, fonts, and other sources your site actually uses, proposes a policy from what it observes, runs that policy in report-only mode so violations surface without blocking anything, and only enforces once an administrator reviews and approves it. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security (HSTS), Cross-Origin-Resource-Policy (CORP), Cross-Origin-Opener-Policy (COOP), Cross-Origin-Embedder-Policy (COEP), and X-Permitted-Cross-Domain-Policies are simpler per-surface pillars alongside it. Reverse Tabnabbing Protection, External Scripts, and Internal Script Integrity (Subresource Integrity / SRI hashing) round it out as further protections that rewrite the rendered page itself rather than emit a header. Certificates is a separate, self-contained ACME v2 (Let's Encrypt) SSL/TLS certificate manager, unrelated to the header pillars beyond sharing the same admin and audit plumbing -- it issues and renews certificates automatically via HTTP-01 or DNS-01 domain validation (41 built-in DNS provider integrations, including Cloudflare, AWS Route 53, and Google Cloud DNS) and deploys them for you.
+Turning on strict security headers usually means picking between two bad options: leave Content-Security-Policy off and stay exposed, or turn it on and watch it silently break your checkout page, your embedded videos, or your analytics -- with no warning before it happens.
 
-The CSP pillar provides per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, reason-required append-only audit records, policy history, readiness checks, and conflict detection for existing CSP emitters. Seven of the other pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies) are simple per-surface toggles/value pickers with no report-only mode, discovery workflow, or automation. The remaining two, Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy, have a narrower report-only learning workflow of their own: a per-surface Disabled / Report-Only / Enforce mode and a Report-Only Evidence table populated by the browser Reporting API (Chromium-based browsers only, as of this writing). External Scripts follows the same report-first philosophy as CSP: a freshly discovered third-party origin is always unclassified, never blocked, until an administrator decides. Internal Script Integrity is unconditional once enabled for a surface -- there is nothing to classify, since the hash is always freshly computed from the exact file being served. Certificates issues and renews TLS certificates via ACME DNS-01 (41 built-in DNS-provider drivers) or HTTP-01 validation, with encrypted-at-rest credentials and private keys, and deploys them via cPanel, filesystem export, or manual download.
+Security Automation Manager takes a third option. It watches your site quietly first, in report-only mode, learning exactly which scripts, styles, and fonts your site actually loads -- nothing gets blocked while it learns. Once you can see the whole picture, you approve a policy built from your real site, not a guess. Only then does it start enforcing.
 
-Every pillar, all rewrite protections, certificate management, and all CSP automation modes included in this package are free.
+= Everything below is free, with nothing held back =
+
+* **Content Security Policy** that proposes itself from real traffic, runs report-only until you approve it, and keeps learning as your site changes.
+* **HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy**, and five more security headers, each shipped with sane, hardened defaults.
+* **Reverse tabnabbing protection, a third-party script inventory, and Subresource Integrity (SRI) hashing** for everything your site pulls in from elsewhere.
+* **Free SSL/TLS certificates** via Let's Encrypt, issued and renewed automatically, with 41 built-in DNS providers for wildcard domains -- Cloudflare, AWS Route 53, and Google Cloud DNS among them.
 
 The WordPress.org edition is a complete free plugin with no subscription-locked functionality. VCNS also distributes a separate commercial edition that includes Fully Automatic mode and associated commercial services.
+
+= Built for the moment things go wrong, not just the moment you install it =
+
+Every policy change is written to an append-only audit log, with a reason recorded. Conflict detection catches another plugin or your host quietly emitting a competing security header before it confuses you. Nothing enforces without a report-only learning period first, on every pillar that supports one.
+
+= For the technically curious =
+
+CSP ships per-surface profiles, nonce injection, source discovery, violation reporting, policy-change review, and readiness checks, alongside conflict detection for any CSP header already being emitted elsewhere. Seven more pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies) are straightforward per-surface toggles. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy get their own lighter report-only workflow via the browser Reporting API (Chromium-based browsers only, as of this writing). Certificates issues and renews via ACME DNS-01 or HTTP-01 domain validation, with credentials and private keys encrypted at rest, deploying via cPanel, filesystem export, or manual download.
 
 == External services ==
 
@@ -101,6 +114,13 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.27 =
+
+* Added: a plugin icon and header banner for the WordPress.org listing.
+* Changed: rewrote the plugin description to lead with what the plugin actually does for you, instead of a feature inventory -- the full technical detail is still there, just further down.
+* Fixed: the For Review table's columns were sized evenly regardless of content, forcing long hostnames to wrap mid-word; Host now gets proportionally more room.
+* Fixed: Permissions-Policy directive dropdowns were stretched wide by one long option's description text ("All -- any origin, including third-party iframes and embeds (not recommended)"). Options are now short labels; the fuller explanation moved to the page's existing description text below the table.
 
 = 2.9.26 =
 
