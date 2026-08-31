@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
- * Description:       Roll out and enforce CSP, HSTS, X-Frame-Options headers with violation reports; free ACME/Let's Encrypt SSL/TLS certificate automation.
- * Version:           2.9.26
+ * Description:       Security headers that learn your site before they enforce -- plus free, automatic SSL/TLS certificate management.
+ * Version:           2.9.27
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.26' );
+define( 'WP_SAM_VERSION', '2.9.27' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.

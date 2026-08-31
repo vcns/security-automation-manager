@@ -36,7 +36,7 @@ $token_labels = array(
 	''     => __( '(browser default)', 'vcns-security-automation-manager' ),
 	'none' => __( 'None', 'vcns-security-automation-manager' ),
 	'self' => __( 'Self', 'vcns-security-automation-manager' ),
-	'all'  => __( 'All -- any origin, including third-party iframes and embeds (not recommended)', 'vcns-security-automation-manager' ),
+	'all'  => __( 'All', 'vcns-security-automation-manager' ),
 );
 ?>
 <div class="wrap wp-sam-wrap">
@@ -96,6 +96,6 @@ $token_labels = array(
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Changes apply immediately. "None" blocks the feature entirely, "Self" allows it for this origin only, "All" allows any origin. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Changes apply immediately. "(browser default)" emits nothing for that surface, leaving the browser\'s own default policy in place. "None" blocks the feature entirely. "Self" allows it for this origin only. "All" allows any origin, including third-party iframes and embeds -- not recommended unless a specific integration needs it. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>

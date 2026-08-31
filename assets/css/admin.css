@@ -224,6 +224,37 @@
 	vertical-align: top;
 }
 
+.wp-sam-permissions-policy-directive {
+	width: 100%;
+	max-width: 150px;
+}
+
+/* Column widths for the For Review (Sources) table -- table-layout:fixed
+ * (from .widefat.fixed) sizes every column from the header row alone, so
+ * without this every column ends up roughly equal width regardless of
+ * actual content: Host (a full domain name plus the Known badge) was
+ * starved down to the same width as ID or State, forcing ugly mid-word
+ * wraps. Percentages sum to 100.
+ */
+.wp-sam-sources-table th:nth-child(1),
+.wp-sam-sources-table td:nth-child(1) { width: 4%; }
+.wp-sam-sources-table th:nth-child(2),
+.wp-sam-sources-table td:nth-child(2) { width: 7%; }
+.wp-sam-sources-table th:nth-child(3),
+.wp-sam-sources-table td:nth-child(3) { width: 13%; }
+.wp-sam-sources-table th:nth-child(4),
+.wp-sam-sources-table td:nth-child(4) { width: 26%; word-break: break-word; }
+.wp-sam-sources-table th:nth-child(5),
+.wp-sam-sources-table td:nth-child(5) { width: 8%; }
+.wp-sam-sources-table th:nth-child(6),
+.wp-sam-sources-table td:nth-child(6) { width: 9%; }
+.wp-sam-sources-table th:nth-child(7),
+.wp-sam-sources-table td:nth-child(7) { width: 7%; }
+.wp-sam-sources-table th:nth-child(8),
+.wp-sam-sources-table td:nth-child(8) { width: 12%; }
+.wp-sam-sources-table th:nth-child(9),
+.wp-sam-sources-table td:nth-child(9) { width: 14%; }
+
 .wp-sam-readiness-badge {
 	display: inline-block;
 	padding: 2px 8px;
