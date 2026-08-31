@@ -130,6 +130,33 @@
 	border: 1px solid #dcdcde;
 }
 
+/* Known-source label. Rendered by WP_SAM\Admin\Known_Source_Badge::render()
+   next to a discovered source's host on the Sources table -- purely
+   informational context for manual review (what a recognised domain
+   commonly is), never a risk signal, so deliberately styled distinct from
+   the .risk-* palette above rather than reusing e.g. risk-low's colours. */
+.wp-sam-known-source-badge {
+	display: inline-block;
+	margin-left: 4px;
+	padding: 1px 6px;
+	border-radius: 3px;
+	font-size: 0.78em;
+	font-weight: 600;
+	background: #f3f1f8;
+	color: #4a3b78;
+	border: 1px solid #ddd6ee;
+	position: relative;
+	cursor: help;
+}
+.wp-sam-known-source-badge:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+.wp-sam-known-source-badge:hover .wp-sam-meta-popover,
+.wp-sam-known-source-badge:focus .wp-sam-meta-popover {
+	display: block;
+}
+
 /* ── Product cards ───────────────────────────────────────────────────────── */
 .wp-sam-product-cards {
 	display: flex;
