@@ -229,6 +229,11 @@
 	max-width: 150px;
 }
 
+.wp-sam-pillar-value {
+	width: 100%;
+	max-width: 320px;
+}
+
 /* Column widths for the For Review (Sources) table -- table-layout:fixed
  * (from .widefat.fixed) sizes every column from the header row alone, so
  * without this every column ends up roughly equal width regardless of
@@ -254,6 +259,25 @@
 .wp-sam-sources-table td:nth-child(8) { width: 12%; }
 .wp-sam-sources-table th:nth-child(9),
 .wp-sam-sources-table td:nth-child(9) { width: 14%; }
+
+/* Same table-layout:fixed problem as the Sources table above, on the
+ * Scripts > Internal Hash Inventory table: URL and Hash need most of the
+ * room (full URLs, base64 SHA-384 hashes), everything else is short.
+ */
+.wp-sam-hash-inventory-table th:nth-child(1),
+.wp-sam-hash-inventory-table td:nth-child(1) { width: 7%; }
+.wp-sam-hash-inventory-table th:nth-child(2),
+.wp-sam-hash-inventory-table td:nth-child(2) { width: 7%; }
+.wp-sam-hash-inventory-table th:nth-child(3),
+.wp-sam-hash-inventory-table td:nth-child(3) { width: 14%; }
+.wp-sam-hash-inventory-table th:nth-child(4),
+.wp-sam-hash-inventory-table td:nth-child(4) { width: 30%; }
+.wp-sam-hash-inventory-table th:nth-child(5),
+.wp-sam-hash-inventory-table td:nth-child(5) { width: 26%; }
+.wp-sam-hash-inventory-table th:nth-child(6),
+.wp-sam-hash-inventory-table td:nth-child(6) { width: 7%; }
+.wp-sam-hash-inventory-table th:nth-child(7),
+.wp-sam-hash-inventory-table td:nth-child(7) { width: 9%; }
 
 .wp-sam-readiness-badge {
 	display: inline-block;

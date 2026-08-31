@@ -543,14 +543,16 @@ class Admin_UI {
 	}
 
 	public function render_referrer_policy(): void {
-		// Values the spec itself singles out as risky get an explicit warning
-		// suffix rather than appearing as a bare token indistinguishable from
-		// the safe options around it -- unsafe-url always sends the full URL,
-		// including path and query string, even cross-origin and even on a
-		// downgrade from HTTPS to plain HTTP.
+		// Values the spec itself singles out as risky get a short warning
+		// suffix rather than appearing as a bare token indistinguishable
+		// from the safe options around it -- unsafe-url always sends the
+		// full URL, including path and query string, even cross-origin and
+		// even on a downgrade from HTTPS to plain HTTP. The full
+		// explanation lives in the intro copy below, not the option label
+		// itself, so the dropdown stays a sensible width.
 		$risky_value_labels = array(
 			/* translators: %s: policy value token */
-			'unsafe-url' => __( '%s (not recommended -- always sends the full URL, including query string, even cross-origin and over plain HTTP)', 'vcns-security-automation-manager' ),
+			'unsafe-url' => __( '%s (not recommended)', 'vcns-security-automation-manager' ),
 		);
 
 		$options = array();
@@ -572,7 +574,8 @@ class Admin_UI {
 			Referrer_Policy_Builder::PILLAR_KEY,
 			__( 'Referrer-Policy', 'vcns-security-automation-manager' ),
 			'Referrer-Policy',
-			'<p>' . esc_html__( 'Controls how much of this site\'s URL is sent as the Referer header when a user follows a link away from it. Sent as an HTTP header only -- this plugin does not inject a <meta name="referrer"> tag into page content.', 'vcns-security-automation-manager' ) . '</p>',
+			'<p>' . esc_html__( 'Controls how much of this site\'s URL is sent as the Referer header when a user follows a link away from it. Sent as an HTTP header only -- this plugin does not inject a <meta name="referrer"> tag into page content.', 'vcns-security-automation-manager' ) . '</p>'
+			. '<p class="description">' . esc_html__( '"unsafe-url" is marked not recommended because it always sends the full URL -- including the query string -- to every destination, even a different origin, even one reached over plain HTTP after a downgrade from HTTPS.', 'vcns-security-automation-manager' ) . '</p>',
 			$options
 		);
 	}

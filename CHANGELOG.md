@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.28] - 2026-09-01
+
+### Fixed
+
+- The listing icon/banner added in 2.9.27 deployed to `assets/assets/*` instead of `assets/*` -- the deploy's `ASSETS_DIR` is `.wordpress-org` itself, not a subfolder of it. Moved the four PNGs to the top level of `.wordpress-org/`, updated its README, and added `.gitignore` rules (`.wordpress-org/*.zip`, `wporg-resubmission-reply-draft.md`) after finding both had been accidentally committed in an unrelated commit and were live on the public SVN listing since before approval. `wporg-deploy.yml` now also removes that stale content from the live listing (existence-checked per path, safe to run on every future deploy once nothing's left to remove).
+- Referrer-Policy's "unsafe-url" dropdown option carried a full explanatory sentence, stretching the select. Shortened to "unsafe-url (not recommended)"; the full explanation moved to the page's own intro text.
+- `scripts-internal.php`'s Hash Inventory table had the same `.widefat.fixed` even-column-width problem as the For Review table (documented in 2.9.27) -- URL and Hash (full URLs, base64 SHA-384 hashes) now get proportionally more room via a new `wp-sam-hash-inventory-table` class.
+
 ## [2.9.27] - 2026-09-01
 
 ### Added
