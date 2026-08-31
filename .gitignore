@@ -8,3 +8,11 @@ node_modules/
 code-review-findings.json
 .phpunit.cache/
 tests/coverage/
+
+# Built release packages and the WordPress.org reviewer-reply draft --
+# working files for local review only, never meant to reach git (an
+# earlier unrelated commit accidentally picked these up once already,
+# and the deploy pipeline's ASSETS_DIR is .wordpress-org itself, so
+# anything tracked here reaches the live public SVN listing).
+.wordpress-org/*.zip
+.wordpress-org/wporg-resubmission-reply-draft.md

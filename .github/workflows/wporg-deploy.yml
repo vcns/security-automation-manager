@@ -103,6 +103,41 @@ jobs:
           rsync -a --exclude-from='.distignore' ./ /tmp/wporg-deploy-check/
           bash .github/scripts/verify-wporg-package.sh /tmp/wporg-deploy-check
 
+      # One-time cleanup, safe to leave in permanently: a since-fixed
+      # ASSETS_DIR path mistake put a build zip and an internal draft file
+      # (accidentally committed to git in an unrelated commit, since
+      # untracked and .gitignore'd) live and public on the real SVN
+      # listing, at assets/assets/, assets/<zip>, and assets/<draft>.md.
+      # Existence-checked per path so this becomes a no-op forever once
+      # they're actually gone, rather than failing every future deploy.
+      - name: Remove stray pre-fix files from the live SVN listing
+        if: steps.svn_check.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://plugins.svn.wordpress.org/vcns-security-automation-manager/assets"
+          STALE_PATHS=(
+            "${BASE}/assets"
+            "${BASE}/vcns-security-automation-manager-v2.9.24.zip"
+            "${BASE}/wporg-resubmission-reply-draft.md"
+          )
+          TO_DELETE=()
+          for p in "${STALE_PATHS[@]}"; do
+            if svn info "$p" --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive --no-auth-cache > /dev/null 2>&1; then
+              TO_DELETE+=("$p")
+            fi
+          done
+          if [ "${#TO_DELETE[@]}" -eq 0 ]; then
+            echo "Nothing stale to remove."
+          else
+            svn delete "${TO_DELETE[@]}" \
+              -m "Remove files accidentally committed to git and deployed pre-fix (build zip, internal draft, and a wrongly-nested assets/assets/ path)" \
+              --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive --no-auth-cache
+          fi
+        env:
+          SVN_USERNAME: ${{ vars.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+
       - name: Deploy to WordPress.org SVN
         if: steps.svn_check.outputs.exists == 'true'
         uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # stable, 2025-01-21

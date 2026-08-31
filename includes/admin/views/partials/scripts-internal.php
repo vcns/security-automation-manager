@@ -71,7 +71,7 @@ $int_inventory     = ! empty( $int_inventory_raw ) ? $int_inventory_raw : array(
 	<?php esc_html_e( 'Read-only: every first-party script/stylesheet currently getting an integrity attribute, on a surface where this is enabled. Recalculated automatically whenever a file\'s size or modified time changes -- nothing to approve or classify.', 'vcns-security-automation-manager' ); ?>
 </p>
 
-<table class="widefat fixed striped" style="margin-top:1em">
+<table class="widefat fixed striped wp-sam-hash-inventory-table" style="margin-top:1em">
 	<thead>
 		<tr>
 			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
