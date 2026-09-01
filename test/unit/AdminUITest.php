@@ -89,8 +89,12 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Content Security Policy', $view );
 		$this->assertStringContainsString( 'security-automation-manager-dashboard', $view );
 		$this->assertStringContainsString( 'tab=policy-audit', $view );
+		$this->assertStringContainsString( 'Layer 1: Governance and Operations', $view );
+		$this->assertStringContainsString( 'Layer 2: Controlled Automation', $view );
+		$this->assertStringContainsString( 'Layer 3: Continuous Intelligence', $view );
 		$this->assertStringContainsString( 'Layer 4: Browser Security Policies', $view );
 		$this->assertStringContainsString( 'Layer 5: Transport & Certificate Trust', $view );
+		$this->assertStringContainsString( 'tab=settings', $view );
 		$this->assertStringContainsString( 'security-automation-manager-certificates', $view );
 		$this->assertStringContainsString( 'Pillar_Registry::pillars()', $view );
 		$this->assertStringContainsString( "'readiness'", $view );
