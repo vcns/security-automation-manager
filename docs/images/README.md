@@ -27,20 +27,26 @@ broken images on the live site until this was fixed.
 | `sam-reverse-tabnabbing.png` | user-guide.html (Content rewrite protections) |
 | `sam-scripts-external.png` | user-guide.html (Content rewrite protections) |
 | `sam-scripts-internal.png` | user-guide.html (Content rewrite protections) |
+| `sam-certificates-method.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-providers.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-key-types.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-csr.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-staging.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-issuance.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-install.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-install-pem.png` | user-guide.html (TLS certificates) |
+| `sam-certificates-install-cpanel.png` | user-guide.html (TLS certificates) |
 
-Note: `sam-permissions-policy.png` predates the v2.9.x change that shortened
-the "All" dropdown option's label and moved its explanation to a description
-line below the table -- recapture it next time a fresh set of screenshots is
-taken so it matches the current UI text exactly.
+`sam-certificates-providers-1.png` was deliberately left out of the TLS
+certificates section -- it's the same DNS provider dropdown as
+`sam-certificates-providers.png`, scrolled to a different position, and adds
+no information the other doesn't already show.
 
 ## Not yet used
 
-Captured but not currently embedded anywhere. Certificates (ACME/TLS) has no
-dedicated section in the help site at all yet -- that's a documentation gap,
-not just a missing-image one, so its ten screenshots are listed but not
-placed.
+Captured but not currently embedded anywhere.
 
-- `sam-certificates-csr.png`, `sam-certificates-install-cpanel.png`, `sam-certificates-install-pem.png`, `sam-certificates-install.png`, `sam-certificates-issuance.png`, `sam-certificates-key-types.png`, `sam-certificates-method.png`, `sam-certificates-providers-1.png`, `sam-certificates-providers.png`, `sam-certificates-staging.png`
+- `sam-certificates-providers-1.png` (redundant duplicate, see above)
 - `sam-cross-origin-corp.png`, `sam-cross-origin-xpcd.png`, `sam-cross-origin-policies.png` (tab bar only), `sam-cross-origin-coop-violations.png`, `sam-cross-origin-coep-violations.png`
 - `sam-csp-manual-scan.png`, `sam-csp-policy-audit.png`, `sam-csp-scan-log.png`, `sam-csp-start-here.png`, `sam-csp-violations.png`
 - `sam-csp-settings-promotion-gates.png`, `sam-csp-settings-proxy-header.png`, `sam-csp-settings-report-endpoint-learning.png`, `sam-csp-settings-scheduled-scan.png`
