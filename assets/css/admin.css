@@ -130,6 +130,57 @@
 	border: 1px solid #dcdcde;
 }
 
+/* Settings/Overview status badges. Rendered by WP_SAM\Admin\Status_Badge --
+   the Layer 4/Layer 5 pillar tables' cross-pillar status vocabulary.
+   Colour values mirror .mode-report-only/.mode-enforce/.wp-sam-readiness-badge
+   above for visual consistency, but this is a deliberately separate class
+   family: CSP's own .mode-enforce etc. stay untouched on CSP's dedicated
+   pages, where "Enforce" remains precise, pillar-specific terminology. */
+.wp-sam-status-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 0.85em;
+	font-weight: 600;
+}
+.wp-sam-status-badge--has-note {
+	position: relative;
+	cursor: help;
+}
+.wp-sam-status-badge--has-note:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+.wp-sam-status-badge--has-note:hover .wp-sam-meta-popover,
+.wp-sam-status-badge--has-note:focus .wp-sam-meta-popover {
+	display: block;
+}
+.status-not-configured {
+	background: #f6f7f7;
+	color: #787c82;
+	border: 1px dashed #dcdcde;
+}
+.status-disabled {
+	background: #f0f0f1;
+	color: #50575e;
+	border: 1px solid #c3c4c7;
+}
+.status-report-only {
+	background: #fff8c5;
+	color: #735c0f;
+	border: 1px solid #e0c04c;
+}
+.status-active {
+	background: #dafbe1;
+	color: #1a7f37;
+	border: 1px solid #a8d9b4;
+}
+.wp-sam-status-badge--automation {
+	background: #eef7ff;
+	color: #0a4b78;
+	border: 1px solid #b8d9f3;
+}
+
 /* Known-source label. Rendered by WP_SAM\Admin\Known_Source_Badge::render()
    next to a discovered source's host on the Sources table -- purely
    informational context for manual review (what a recognised domain

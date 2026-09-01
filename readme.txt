@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.30
+Stable tag: 2.9.31
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,11 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.31 =
+
+* Added: the Overview tab's pillar status table is now grouped by protection layer -- "Layer 4: Browser Security Policies" (CSP and the other twelve header/content-rewrite pillars) and "Layer 5: Transport & Certificate Trust" (Certificates, which previously had no row in this table at all). Each pillar now shows one of four consistent states per surface -- Not configured, Disabled, Report-only, or Active -- instead of a plain On/Off that couldn't tell "never touched" apart from "deliberately turned off". CSP's own automation posture (Manual / Automatic...) is now shown alongside its status.
+* Changed: internal only -- the pillar list this table renders from is now a single registry class (`Pillar_Registry`) instead of a hand-maintained array that had already drifted out of sync with the plugin's actual install-time defaults.
 
 = 2.9.30 =
 
