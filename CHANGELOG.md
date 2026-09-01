@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.37] - 2026-09-01
+
+### Added
+
+- Phase 3A of `.roadmap/phase3_early_plan.md` (§6.1 Primary Navigation): four new lifecycle landing pages -- Observe (`includes/admin/views/page-observe.php`), Decide (`page-decide.php`), Control (`page-control.php`), Verify (`page-verify.php`) -- each a curated set of links into existing pages/tabs with plain-language explanations of that lifecycle stage (§3), honest about what isn't built yet (Control explicitly disclaims real-time traffic blocking, still a future phase; Verify explicitly disclaims external verification, still a future phase). Rendered by four new `Admin_UI::render_observe()`/`render_decide()`/`render_control()`/`render_verify()` methods.
+
+### Changed
+
+- `includes/admin/class-admin-ui.php`: `add_menu_pages()` now registers Settings first (was "Overview", same slug/callback, still the default landing page -- deliberately registered first, not last, to avoid a real WordPress quirk where `add_submenu_page()` auto-inserts an extra "link back to parent" item the first time a differently-slugged page registers before the parent's own slug has been registered at all), then the four roadmap-ordered primary navigation entries (Observe, Decide, Control, Verify). The eleven existing technology-standard pages (Certificates, Continuous Intelligence, Cross-Origin Policies, CSP, HSTS, Permissions-Policy, Referrer-Policy, Reverse Tabnabbing, Scripts, X-Content-Type-Options, X-Frame-Options) are still registered exactly as before and stay fully reachable at their existing URLs, but a new `print_hidden_menu_css()` (hooked to `admin_head`, every wp-admin screen) visually hides their left-nav rows via CSS. This is deliberately not done with `remove_submenu_page()`: that call removes an entry from the `$submenu` global, but WordPress's own `user_can_access_admin_page()` walks that same array to authorize a requested page, so removing the entry 403s the page even by direct URL -- confirmed against a real running instance during this change. A CSS-only hide leaves every WordPress registry untouched. `plugin_page_hooks()` gains the four new pages' hook suffixes so they share the existing admin CSS/JS bundle and footer-text suppression.
+- `test/bootstrap.php`: added stubs for `add_menu_page()` and `add_submenu_page()` (previously entirely unstubbed) so the new navigation structure is directly testable.
+
 ## [2.9.36] - 2026-09-01
 
 ### Added
