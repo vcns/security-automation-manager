@@ -168,9 +168,108 @@ $status_badge       = static function ( string $status ): void {
 
 	<?php if ( 'overview' === $tab ) : ?>
 
-	<p class="description">
-		<?php esc_html_e( 'This table covers Layer 4 (Browser Security Policies) and Layer 5 (Transport & Certificate Trust). Layer 1 (governance and operations) is covered by the Readiness, Recovery, and Updates tabs above. Layer 3 (continuous intelligence) is planned for a future phase and is not yet available.', 'vcns-security-automation-manager' ); ?>
-	</p>
+	<h2><?php esc_html_e( 'Layer 1: Governance and Operations', 'vcns-security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong><?php esc_html_e( 'Readiness', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td>
+					<?php
+					$layer1_readiness_items  = array_merge( $readiness['plugin'], $readiness['schema'], $readiness['health'] );
+					$layer1_readiness_status = 'pass';
+					foreach ( $layer1_readiness_items as $layer1_item ) {
+						if ( 'fail' === $layer1_item['status'] ) {
+							$layer1_readiness_status = 'fail';
+							break;
+						}
+						if ( 'warning' === $layer1_item['status'] ) {
+							$layer1_readiness_status = 'warning';
+						}
+					}
+					$status_badge( $layer1_readiness_status );
+					?>
+				</td>
+				<td>
+					<a href="<?php echo esc_url( add_query_arg( 'tab', 'readiness', $base_url ) ); ?>">
+						<?php esc_html_e( 'View Readiness', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+			<tr>
+				<td><strong><?php esc_html_e( 'Recovery', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td><?php $status_badge( empty( $downgrade_flag ) ? 'pass' : 'fail' ); ?></td>
+				<td>
+					<a href="<?php echo esc_url( add_query_arg( 'tab', 'recovery', $base_url ) ); ?>">
+						<?php esc_html_e( 'View Recovery', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+			<tr>
+				<td><strong><?php esc_html_e( 'Updates', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td>
+					<?php
+					echo esc_html(
+						'github' === WP_SAM_DISTRIBUTION_CHANNEL
+							? __( 'GitHub channel', 'vcns-security-automation-manager' )
+							: __( 'WordPress.org channel', 'vcns-security-automation-manager' )
+					);
+					?>
+				</td>
+				<td>
+					<a href="<?php echo esc_url( add_query_arg( 'tab', 'updates', $base_url ) ); ?>">
+						<?php esc_html_e( 'View Updates', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2><?php esc_html_e( 'Layer 2: Controlled Automation', 'vcns-security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong><?php esc_html_e( 'CSP Deterministic Automation', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td><?php esc_html_e( 'Per-surface automation mode -- see the Automation column on the Content Security Policy row below.', 'vcns-security-automation-manager' ); ?></td>
+				<td>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings' ) ); ?>">
+						<?php esc_html_e( 'Manage Automation Settings', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2><?php esc_html_e( 'Layer 3: Continuous Intelligence', 'vcns-security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong><?php esc_html_e( 'Request observation, detectors, and traffic intelligence', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td><em><?php esc_html_e( 'Planned for a future phase.', 'vcns-security-automation-manager' ); ?></em></td>
+				<td>&mdash;</td>
+			</tr>
+		</tbody>
+	</table>
 
 	<h2><?php esc_html_e( 'Layer 4: Browser Security Policies', 'vcns-security-automation-manager' ); ?></h2>
 	<table class="widefat striped wp-sam-readiness-table">

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.34] - 2026-09-01
+
+### Changed
+
+- `includes/admin/views/page-overview.php`: the Overview tab's status table now renders all five protection layers as consistent `<h2>` + table sections, in roadmap order (1 -> 5), instead of Layer 4/5 getting real tables while Layers 1-3 were reduced to a single sentence (and Layer 2 wasn't mentioned at all). Layer 1 (Governance and Operations) gets a real per-row status: a computed pass/warning/fail rollup for Readiness (reusing the same `$readiness` data and `$status_badge` closure the Readiness tab itself uses), pass/fail for Recovery (from the existing `$downgrade_flag`), and the active distribution channel for Updates -- all three link to their respective tab on this same page. Layer 2 (Controlled Automation) links to CSP's Settings tab where automation mode is actually configured, rather than just being implied by the Automation column on the Layer 4 CSP row. Layer 3 (Continuous Intelligence) gets an honest placeholder row ("Planned for a future phase") in its correct structural position, ready for Phase 3B to fill in later instead of requiring new page structure at that point.
+
 ## [2.9.33] - 2026-09-01
 
 ### Changed
