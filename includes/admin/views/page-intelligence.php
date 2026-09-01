@@ -6,11 +6,12 @@
  * pagination conventions as the CSP Violations and Cross-Origin Report-Only
  * Evidence tabs.
  *
- * Phase 3B ships the observation/classification skeleton only -- no
- * detector is registered in this build (see Detector_Registry's own
- * docblock), so this page's table is empty on every fresh install and stays
- * that way until Phase 3C (or an extension) registers a real detector. The
- * empty state says so plainly rather than implying something is broken.
+ * Phase 3C registers the ten core deterministic detector families (see
+ * Detector_Registry::register_defaults()); this table populates from real
+ * traffic once one of them matches. A build with an empty registry (see
+ * Detector_Registry's own docblock) still renders this page correctly --
+ * the empty state says so plainly rather than implying something is
+ * broken.
  *
  * Rendered by Admin_UI::render_intelligence().
  */

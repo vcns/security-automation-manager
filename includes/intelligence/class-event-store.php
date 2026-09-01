@@ -16,6 +16,18 @@
  * Audit_Log is shaped for low-frequency discrete lifecycle events (it
  * double-writes an admin-notices option and error_log() on every call),
  * wrong for something that can fire on every request.
+ *
+ * The fingerprint is detector_id+surface+ip only, not the specific rule
+ * that matched -- a single detector can carry several rules of differing
+ * severity (see Detectors\Pattern_Detector), so a second, later request
+ * from the same source matching a DIFFERENT rule under the same detector
+ * upserts into the same row rather than creating a new one. The upsert
+ * therefore refreshes severity/confidence together with detail/
+ * last_seen_at on every occurrence, not just detail -- otherwise a row's
+ * own detail (naming the latest matched rule) could disagree with its
+ * severity/confidence columns (still reflecting whichever rule matched
+ * first). occurrence_count and first_seen_at are the only fields that
+ * stay anchored to history; everything else reflects the most recent hit.
  */
 
 declare( strict_types=1 );
@@ -84,6 +96,8 @@ final class Event_Store {
 				) ON DUPLICATE KEY UPDATE
 					occurrence_count = occurrence_count + 1,
 					last_seen_at = VALUES(last_seen_at),
+					severity = VALUES(severity),
+					confidence = VALUES(confidence),
 					detail = VALUES(detail)",
 				$surface,
 				$detector_id,

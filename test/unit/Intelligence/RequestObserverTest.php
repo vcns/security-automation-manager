@@ -19,7 +19,7 @@ class RequestObserverTest extends TestCase {
 	protected function setUp(): void {
 		wp_test_reset_globals();
 		Detector_Registry::reset();
-		unset( $_SERVER['REQUEST_URI'], $GLOBALS['pagenow'] );
+		unset( $_SERVER['REQUEST_URI'], $_SERVER['QUERY_STRING'], $GLOBALS['pagenow'] );
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
 
 		$this->observer = new Request_Observer( new Detector_Engine(), new Event_Store() );
@@ -69,6 +69,18 @@ class RequestObserverTest extends TestCase {
 
 		$this->assertSame( 'https://example.com/wp-admin/', $result );
 		$this->assertCount( 1, $GLOBALS['_wpdb_queries'] );
+	}
+
+	public function test_observe_records_the_query_string_in_detail(): void {
+		Detector_Registry::register( new Observer_Fixture_Detector() );
+		$_SERVER['QUERY_STRING'] = 'id=1%27';
+
+		$this->observer->observe();
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_queries'] );
+		$this->assertStringContainsString( 'id=1%27', $GLOBALS['_wpdb_queries'][0] );
+
+		unset( $_SERVER['QUERY_STRING'] );
 	}
 
 	public function test_observe_skips_the_plugins_own_conflict_probe_request(): void {

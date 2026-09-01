@@ -15,9 +15,10 @@
  * Skips Conflict_Detector's own internal probe request, or this class would
  * misclassify the plugin's own diagnostic traffic as an observed event.
  *
- * On an empty Detector_Registry (every build until Phase 3C registers a
- * real detector), observe() always runs but Detector_Engine::evaluate()
- * returns no Findings, so nothing is ever written to Event_Store.
+ * observe() always runs regardless of what's registered; if a build's
+ * Detector_Registry is empty (e.g. no core detector loaded), Detector_Engine
+ * ::evaluate() simply returns no Findings and nothing is written to
+ * Event_Store.
  */
 
 declare( strict_types=1 );
@@ -75,10 +76,11 @@ final class Request_Observer {
 				(string) $context['ip'],
 				array_merge(
 					array(
-						'ip'         => $context['ip'],
-						'path'       => $context['path'],
-						'method'     => $context['method'],
-						'user_agent' => $context['user_agent'],
+						'ip'           => $context['ip'],
+						'path'         => $context['path'],
+						'query_string' => $context['query_string'],
+						'method'       => $context['method'],
+						'user_agent'   => $context['user_agent'],
 					),
 					is_array( $finding['detail'] ?? null ) ? $finding['detail'] : array()
 				)
@@ -89,11 +91,12 @@ final class Request_Observer {
 	/** @return array<string, mixed> */
 	private function build_context(): array {
 		return array(
-			'surface'    => Surface_Classifier::detect(),
-			'path'       => Surface_Classifier::request_path(),
-			'ip'         => Ip_Resolver::resolve(),
-			'method'     => isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_METHOD'] ) ) : '',
-			'user_agent' => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+			'surface'      => Surface_Classifier::detect(),
+			'path'         => Surface_Classifier::request_path(),
+			'query_string' => Surface_Classifier::query_string(),
+			'ip'           => Ip_Resolver::resolve(),
+			'method'       => isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_METHOD'] ) ) : '',
+			'user_agent'   => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '',
 		);
 	}
 }

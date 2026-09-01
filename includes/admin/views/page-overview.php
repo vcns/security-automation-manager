@@ -122,9 +122,9 @@ if ( 'overview' === $tab ) {
 	// Continuous Intelligence (Layer 3) -- the Request Observation Framework
 	// observes every request regardless of whether any detector is
 	// registered; the count here only reflects whether anything is actually
-	// evaluated against what it observes. See Detector_Registry's own
-	// docblock for why this ships empty until Phase 3C or an extension
-	// registers a detector.
+	// evaluated against what it observes. Phase 3C registers ten core
+	// detector families by default (see Detector_Registry::
+	// register_defaults()); this is 0 only on a build that skips that call.
 	$intelligence_detector_count = count( Detector_Registry::keys() );
 }
 

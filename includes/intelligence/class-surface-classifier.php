@@ -61,12 +61,38 @@ final class Surface_Classifier {
 	}
 
 	public static function request_path(): string {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$uri = self::raw_server_value( 'REQUEST_URI' );
 		if ( '' === $uri ) {
 			return '';
 		}
 
 		$path = wp_parse_url( $uri, PHP_URL_PATH );
 		return is_string( $path ) ? rtrim( $path, '/' ) : '';
+	}
+
+	public static function query_string(): string {
+		return self::raw_server_value( 'QUERY_STRING' );
+	}
+
+	/**
+	 * Reads a raw $_SERVER value with WordPress's own magic-quotes
+	 * unslashing and a defensive strip of raw control characters, but
+	 * deliberately WITHOUT sanitize_text_field() -- that function's own
+	 * documented behaviour ("Remove percent-encoded characters", see
+	 * _sanitize_text_fields() in wp-includes/formatting.php) strips every
+	 * %XX sequence outright, which would silently defeat exactly the
+	 * encoded-evasion detection (e.g. %2e%2e%2f traversal, %27 in a query
+	 * value) this class exists to preserve for. sanitize_text_field() is
+	 * built for sanitizing text meant for display, not for preserving a
+	 * raw request component for security analysis.
+	 */
+	private static function raw_server_value( string $key ): string {
+		if ( ! isset( $_SERVER[ $key ] ) ) {
+			return '';
+		}
+
+		$value    = wp_unslash( (string) $_SERVER[ $key ] );
+		$filtered = preg_replace( '/[\x00-\x1F\x7F]/', '', $value );
+		return null !== $filtered ? $filtered : '';
 	}
 }

@@ -13,7 +13,7 @@ class SurfaceClassifierTest extends TestCase {
 
 	protected function setUp(): void {
 		wp_test_reset_globals();
-		unset( $_SERVER['REQUEST_URI'], $GLOBALS['pagenow'] );
+		unset( $_SERVER['REQUEST_URI'], $_SERVER['QUERY_STRING'], $GLOBALS['pagenow'] );
 	}
 
 	// ── detect() ─────────────────────────────────────────────────────────────
@@ -66,6 +66,20 @@ class SurfaceClassifierTest extends TestCase {
 		unset( $_SERVER['REQUEST_URI'] );
 
 		$this->assertSame( '', Surface_Classifier::request_path() );
+	}
+
+	// ── query_string() ───────────────────────────────────────────────────────
+
+	public function test_query_string_returns_the_raw_query_string(): void {
+		$_SERVER['QUERY_STRING'] = 'id=1&s=hello';
+
+		$this->assertSame( 'id=1&s=hello', Surface_Classifier::query_string() );
+	}
+
+	public function test_query_string_returns_empty_string_when_absent(): void {
+		unset( $_SERVER['QUERY_STRING'] );
+
+		$this->assertSame( '', Surface_Classifier::query_string() );
 	}
 
 	// ── is_conflict_probe_request() ─────────────────────────────────────────
