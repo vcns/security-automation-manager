@@ -178,13 +178,14 @@ final class Plugin {
 		// registering there instead changes no behaviour.
 		add_action( 'init', array( $this, 'register_automation_modes' ) );
 
-		// Detector registry: ships empty in every build (see Detector_Registry's
-		// own docblock); a loaded extension hooks wp_sam_register_detectors to
-		// add its own. Deferred to `init` for the same reason as
-		// register_automation_modes above -- register_detectors() itself does
-		// no translation, but the deferral keeps both registries on the same,
-		// well-understood lifecycle rather than one running earlier than the
-		// other for no functional reason.
+		// Detector registry: the ten core detector families (see
+		// Detector_Registry::register_defaults()) plus whatever a loaded
+		// extension adds via wp_sam_register_detectors. Deferred to `init`
+		// for the same reason as register_automation_modes above --
+		// register_detectors() itself does no translation, but the deferral
+		// keeps both registries on the same, well-understood lifecycle
+		// rather than one running earlier than the other for no functional
+		// reason.
 		add_action( 'init', array( $this, 'register_detectors' ) );
 
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
@@ -283,12 +284,13 @@ final class Plugin {
 	// ── Detector registry ──────────────────────────────────────────────────────
 
 	/**
-	 * Fires the extension point for registering request detectors. Nothing in
-	 * this build registers one -- see Detector_Registry's own docblock.
+	 * Registers the ten core detector families, then fires the extension
+	 * point for anything else -- see Detector_Registry's own docblock.
 	 *
 	 * @see bootstrap()'s call to add_action( 'init', ... ) for why this isn't called directly from bootstrap().
 	 */
 	public function register_detectors(): void {
+		\WP_SAM\Intelligence\Detector_Registry::register_defaults();
 		do_action( 'wp_sam_register_detectors' );
 	}
 

@@ -61,6 +61,44 @@ class DetectorRegistryTest extends TestCase {
 		$this->assertSame( array(), Detector_Registry::keys() );
 		$this->assertFalse( Detector_Registry::is_registered( 'fixture' ) );
 	}
+
+	public function test_register_defaults_registers_the_ten_core_detectors(): void {
+		Detector_Registry::register_defaults();
+
+		$this->assertSame(
+			array(
+				'technology-mismatch',
+				'command-injection',
+				'sql-injection',
+				'sensitive-directories',
+				'sensitive-files',
+				'setup-install-probes',
+				'script-webshell-probes',
+				'protocol-injection',
+				'version-control-artefacts',
+				'vulnerability-probes',
+			),
+			Detector_Registry::keys()
+		);
+	}
+
+	public function test_register_defaults_is_idempotent(): void {
+		Detector_Registry::register_defaults();
+		Detector_Registry::register_defaults();
+
+		$this->assertCount( 10, Detector_Registry::keys() );
+	}
+
+	public function test_reset_allows_register_defaults_to_repopulate(): void {
+		Detector_Registry::register_defaults();
+		Detector_Registry::reset();
+
+		$this->assertSame( array(), Detector_Registry::keys() );
+
+		Detector_Registry::register_defaults();
+
+		$this->assertCount( 10, Detector_Registry::keys() );
+	}
 }
 
 /**

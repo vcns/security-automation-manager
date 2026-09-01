@@ -131,4 +131,19 @@ class EventStoreTest extends TestCase {
 		$this->assertNotEmpty( $second_match );
 		$this->assertNotSame( $first_match[1], $second_match[1] );
 	}
+
+	/**
+	 * A single detector can carry several rules of differing severity (see
+	 * Detectors\Pattern_Detector) -- a repeat hit from the same source that
+	 * matches a DIFFERENT rule than the first hit must refresh severity/
+	 * confidence together with detail, not leave them stale from whichever
+	 * rule matched first. Otherwise a row's own detail (naming the latest
+	 * matched rule) could disagree with its severity/confidence columns.
+	 */
+	public function test_record_upsert_refreshes_severity_and_confidence_not_just_detail(): void {
+		$this->store->record( 'sql-injection', 'sql-injection', 'frontend', 'medium', 0.5, '203.0.113.42', array( 'rule_id' => 'SQLI-003' ) );
+
+		$this->assertStringContainsString( 'severity = VALUES(severity)', $GLOBALS['_wpdb_last_query'] );
+		$this->assertStringContainsString( 'confidence = VALUES(confidence)', $GLOBALS['_wpdb_last_query'] );
+	}
 }
