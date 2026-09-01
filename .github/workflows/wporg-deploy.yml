@@ -1,9 +1,15 @@
 name: Deploy to WordPress.org
 
 on:
+  # Deliberately separate from release-package.yml's v*.*.* trigger: pushing
+  # a plain version tag (v2.9.33) builds and publishes a GitHub release only
+  # -- it never touches WordPress.org. Publishing to WordPress.org's
+  # human-reviewed, once-a-day queue is a second, explicit decision: push a
+  # wporg-vX.Y.Z tag at the SAME commit once you've decided that specific
+  # version is ready (e.g. `git tag wporg-v2.9.33 v2.9.33`).
   push:
     tags:
-      - 'v*.*.*'
+      - 'wporg-v*.*.*'
   workflow_dispatch:
     inputs:
       target_environment:
@@ -33,28 +39,33 @@ jobs:
           fetch-depth: 0
 
       # WordPress.org human-reviews every SVN submission -- this must never
-      # fire from an untracked commit. Requires the tagged commit to be the
+      # fire from an untracked commit. Requires the wporg-vX.Y.Z tag's
+      # underlying version (vX.Y.Z, stripping the wporg- prefix) to be the
       # merge commit of an actual pull request from release/v<version> into
-      # main (not a direct push to main, and not any other branch name).
-      # Deliberately a hard failure (not a graceful skip like the two checks
-      # below) -- an untracked-provenance deploy attempt is a policy
+      # main (not a direct push to main, and not any other branch name) --
+      # the SAME commit the plain vX.Y.Z tag would have pointed at, since
+      # both are always tagged against the identical release/v<version>
+      # merge. Deliberately a hard failure (not a graceful skip like the two
+      # checks below) -- an untracked-provenance deploy attempt is a policy
       # violation worth a loud red X, not a quiet no-op. Applies to
       # workflow_dispatch too: dispatching against a plain branch (default
       # 'main') computes an expected branch of "release/main", which will
       # never exist, so it fails the same way a bad manual dispatch should.
       - name: Verify release came from an approved release branch
+        id: provenance
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          RAW_TAG="${GITHUB_REF_NAME}"
 
-          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::'${TAG}' is not a plugin version tag (expected vX.Y.Z). The WordPress.org SVN deploy only runs for a proper version tag."
+          if [[ ! "${RAW_TAG}" =~ ^wporg-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'${RAW_TAG}' is not a WordPress.org deploy tag (expected wporg-vX.Y.Z). Push this tag at the same commit as the plugin's own vX.Y.Z tag once that version is ready for WordPress.org."
             exit 1
           fi
 
+          TAG="${RAW_TAG#wporg-}"
           EXPECTED_BRANCH="release/${TAG}"
           MATCH_COUNT="$(
             gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
@@ -68,6 +79,15 @@ jobs:
           fi
 
           echo "Verified: ${TAG} was merged into main via a pull request from ${EXPECTED_BRANCH}."
+
+          # 10up/action-wordpress-plugin-deploy's own deploy.sh derives its
+          # SVN tags/<VERSION> path from $VERSION if set, else falls back to
+          # stripping only "refs/tags/" and a leading "v" off $GITHUB_REF --
+          # left alone, that would publish an SVN tag literally named
+          # "wporg-v2.9.33" instead of "2.9.33". Explicitly resolving and
+          # passing VERSION (below, via this step's output) keeps the SVN
+          # tag correct regardless of what the triggering git tag is named.
+          echo "version=${TAG#v}" >> "${GITHUB_OUTPUT}"
 
       # ubuntu-latest runners don't ship the svn CLI by default (unlike git).
       # Without this, `svn info` below fails instantly with "command not
@@ -220,3 +240,7 @@ jobs:
           SVN_USERNAME: ${{ vars.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: vcns-security-automation-manager
+          # See the provenance step above -- without this, deploy.sh derives
+          # the SVN tags/<VERSION> path from the triggering git ref itself,
+          # which would be "wporg-v2.9.33" rather than "2.9.33".
+          VERSION: ${{ steps.provenance.outputs.version }}

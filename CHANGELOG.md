@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.33] - 2026-09-01
+
+### Changed
+
+- `.github/workflows/wporg-deploy.yml`: decoupled the WordPress.org SVN deploy from `release-package.yml`'s `v*.*.*` trigger entirely. A plain version tag (`v2.9.33`) now only ever produces a GitHub release -- it was previously also the sole trigger for the WordPress.org deploy job, which meant every routine version bump had to be deliberately held back (no tag at all) to avoid an unwanted WordPress.org submission, which in turn also blocked the GitHub release. WordPress.org submission is now a second, explicit action: push a `wporg-vX.Y.Z` tag at the same commit once that version is confirmed ready (`git tag wporg-v2.9.33 v2.9.33`), which the deploy job's existing provenance and 24h rate-limit checks (added in 2.9.32) still gate as before.
+- Fixed a real bug this surfaced: `10up/action-wordpress-plugin-deploy`'s `deploy.sh` derives its `tags/<VERSION>` SVN path from the triggering git ref itself when no `VERSION` env var is supplied (`${GITHUB_REF#refs/tags/}` with a leading `v` stripped) -- left alone, a `wporg-v2.9.33` tag would have published an SVN tag literally named `wporg-v2.9.33` instead of `2.9.33`. The provenance-check step now resolves and passes `VERSION` explicitly.
+
 ## [2.9.32] - 2026-09-01
 
 ### Changed
