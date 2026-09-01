@@ -2,32 +2,47 @@
 /**
  * WordPress Admin UI: menus, settings API, AJAX handlers.
  *
- * Registers a top-level "Security Automation Manager" menu. Submenu items are
- * ordered alphabetically by their left-nav label (not the list order below):
- *   - security-automation-manager                  – Overview: per-pillar status summary, plus
- *      Readiness (plugin-specific schema/runtime checks), Recovery (schema-downgrade status,
- *      snapshot restore, configuration export/import, and full data reset), Updates (installed
- *      version, active build channel, manifest/checksum/applied-update status), and About tabs
- *   - security-automation-manager-dashboard         – CSP: surface profiles, source inventory,
- *      violations, scan history, and settings (promotion gates, learning window, cron schedule,
- *      notify email), all as tabs on one page
- *   - security-automation-manager-xfo               – X-Frame-Options: per-surface DENY/SAMEORIGIN
- *   - security-automation-manager-xcto              – X-Content-Type-Options: per-surface on/off
- *   - security-automation-manager-referrer-policy   – Referrer-Policy: per-surface value picker
- *   - security-automation-manager-permissions-policy – Permissions-Policy: per-surface, per-directive picker
- *   - security-automation-manager-hsts              – Strict-Transport-Security: per-surface max-age/includeSubDomains/preload
- *   - security-automation-manager-reverse-tabnabbing – Reverse Tabnabbing: per-surface on/off, rel=noopener injection
- *   - security-automation-manager-scripts           – Scripts: Start Here, External (third-party script/stylesheet
- *      inventory, admin-supplied SRI, report/enforce), and Internal (first-party SRI, per-surface on/off,
- *      read-only hash inventory) tabs
- *   - security-automation-manager-cross-origin      – Cross-Origin Policies: Cross-Origin-Resource-Policy,
- *      X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy,
- *      each a tab on one page (they previously each had their own separate submenu page)
+ * Registers a top-level "Security Automation Manager" menu. Per
+ * .roadmap/phase3_early_plan.md §6.1, the visible left-nav leads with five
+ * entries matching the product's operational lifecycle:
+ *   - security-automation-manager          – Settings (§6.2 -- was "Overview"): per-pillar status
+ *      summary, plus Readiness, Recovery, Updates, and About tabs. Registered FIRST (not last,
+ *      despite the roadmap listing it last in prose) -- WordPress's own add_submenu_page() auto-
+ *      inserts an extra "link back to parent" item, labelled with the top-level menu's own
+ *      title, the first time a DIFFERENT slug is registered while $submenu[parent] is still
+ *      empty (confirmed against a real running instance); registering the same-slug-as-parent
+ *      entry first avoids that path entirely, exactly why the original "Overview" entry was
+ *      pinned first too. It's still the default landing page purely because its slug matches
+ *      the top-level menu's own slug -- unrelated to registration order.
+ *   - security-automation-manager-observe  – Observe: evidence, no enforcement decision
+ *   - security-automation-manager-decide   – Decide: evaluate evidence against policy
+ *   - security-automation-manager-control  – Control: apply a configured response
+ *   - security-automation-manager-verify   – Verify: confirm a control had the intended effect
+ *
+ * The eleven existing technology-standard pages (Certificates, Continuous
+ * Intelligence, Cross-Origin Policies, CSP, HSTS, Permissions-Policy,
+ * Referrer-Policy, Reverse Tabnabbing, Scripts, X-Content-Type-Options,
+ * X-Frame-Options) are still registered exactly as before -- same slugs,
+ * callbacks, and capability checks -- then visually hidden from the
+ * rendered left-nav by print_hidden_menu_css() (hooked to admin_head,
+ * unconditionally on every wp-admin screen). This is deliberately NOT done
+ * via remove_submenu_page(): that call only removes an entry from the
+ * $submenu global, but WordPress's own user_can_access_admin_page()
+ * (wp-admin/includes/plugin.php) walks that SAME array to find a requested
+ * page's required capability -- removing the entry makes the page 403 even
+ * by direct URL (confirmed against a real running instance, not assumed),
+ * defeating "technical users retain direct access." A CSS-only hide leaves
+ * every WordPress registry untouched -- only the page's visibility in the
+ * rendered menu changes, so every existing hardcoded link to one of these
+ * pages (elsewhere in this codebase, always by slug) keeps working
+ * unchanged. This satisfies both halves of the roadmap's exit criterion: a
+ * non-technical administrator sees five plain-language entries, and
+ * technical users retain direct access to individual pillars.
  *
  * Policy Audit (effective policy, decisions, provenance) is a tab on the CSP
  * page, not a separate top-level page -- it's CSP-specific content. Updates
  * (installed version, active build channel, manifest/checksum/applied-update
- * status) is a tab on the Overview page, not a separate submenu -- GitHub-channel
+ * status) is a tab on the Settings page, not a separate submenu -- GitHub-channel
  * diagnostics only ever render when WP_SAM_DISTRIBUTION_CHANNEL is 'github', a
  * WordPress.org build shows its own simpler version/channel summary and never
  * references the GitHub update service.
@@ -100,6 +115,7 @@ class Admin_UI {
 
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_menu_pages' ) );
+		add_action( 'admin_head', array( $this, 'print_hidden_menu_css' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_notices', array( $this, 'display_admin_notices' ) );
@@ -152,17 +168,62 @@ class Admin_UI {
 			80
 		);
 
-		// Overview is pinned first (the landing page); every other submenu is
-		// alphabetical by the label shown in the left nav (not
-		// registration/logical order) -- Readiness is a tab on the Overview
-		// page (see page-overview.php), not a separate menu entry.
+		// Settings is registered FIRST and deliberately so: WordPress's own
+		// add_submenu_page() auto-inserts an extra "link back to parent" item
+		// (labelled with the top-level menu's own title, not this one's) the
+		// very first time a slug DIFFERENT from the parent's is registered
+		// while $submenu[parent] is still empty -- confirmed against a real
+		// running instance, not assumed. Registering the same-slug-as-parent
+		// entry first avoids ever triggering that path, exactly why the
+		// original "Overview" entry was pinned first too. It's still the
+		// default landing page purely because its slug matches the
+		// top-level menu's own slug (verified against WordPress core) --
+		// this is unrelated to registration order.
 		add_submenu_page(
 			'security-automation-manager',
-			__( 'Overview', 'vcns-security-automation-manager' ),
-			__( 'Overview', 'vcns-security-automation-manager' ),
+			__( 'Settings', 'vcns-security-automation-manager' ),
+			__( 'Settings', 'vcns-security-automation-manager' ),
 			'manage_options',
 			'security-automation-manager',
 			array( $this, 'render_overview' )
+		);
+
+		// The remaining four primary lifecycle entries (§6.1), in the
+		// roadmap's own stated order.
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Observe', 'vcns-security-automation-manager' ),
+			__( 'Observe', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-observe',
+			array( $this, 'render_observe' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Decide', 'vcns-security-automation-manager' ),
+			__( 'Decide', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-decide',
+			array( $this, 'render_decide' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Control', 'vcns-security-automation-manager' ),
+			__( 'Control', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-control',
+			array( $this, 'render_control' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Verify', 'vcns-security-automation-manager' ),
+			__( 'Verify', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-verify',
+			array( $this, 'render_verify' )
 		);
 
 		add_submenu_page(
@@ -263,6 +324,53 @@ class Admin_UI {
 			'security-automation-manager-xfo',
 			array( $this, 'render_x_frame_options' )
 		);
+
+		// The eleven technology-standard pages above are visually hidden from
+		// the left-nav by print_hidden_menu_css() (hooked to admin_head,
+		// unconditionally, in register()) -- NOT by remove_submenu_page().
+		// remove_submenu_page() only removes an entry from the $submenu
+		// global, but WordPress's own user_can_access_admin_page()
+		// (wp-admin/includes/plugin.php) walks that SAME $submenu array to
+		// find a requested page's capability -- confirmed directly against a
+		// real running instance, not assumed -- so removing an entry there
+		// makes the page 403 even by direct URL, breaking the "technical
+		// users retain direct access" half of this class's own requirement.
+		// A CSS-only hide leaves every WordPress registry untouched, so nothing
+		// about capability checks, hook suffixes, or the page's own callback
+		// is affected -- only its visibility in the rendered menu changes.
+	}
+
+	/**
+	 * Hides the eleven technology-standard pages' entries from the rendered
+	 * left-nav, without touching their menu/capability registration -- see
+	 * add_menu_pages()'s own comment for why remove_submenu_page() (which
+	 * DOES touch that registration) is not used here. Hooked to admin_head
+	 * unconditionally (every wp-admin screen, not just this plugin's own
+	 * pages) because the left-nav itself renders on every wp-admin screen;
+	 * printed in <head> so the CSS applies before the sidebar paints, with
+	 * no visible flash of the un-hidden items.
+	 */
+	public function print_hidden_menu_css(): void {
+		$hidden_slugs = array(
+			'security-automation-manager-certificates',
+			'security-automation-manager-intelligence',
+			'security-automation-manager-cross-origin',
+			'security-automation-manager-dashboard',
+			'security-automation-manager-hsts',
+			'security-automation-manager-permissions-policy',
+			'security-automation-manager-referrer-policy',
+			'security-automation-manager-reverse-tabnabbing',
+			'security-automation-manager-scripts',
+			'security-automation-manager-xcto',
+			'security-automation-manager-xfo',
+		);
+
+		$rules = '';
+		foreach ( $hidden_slugs as $slug ) {
+			$rules .= '#adminmenu .wp-submenu li:has(> a[href$="page=' . esc_attr( $slug ) . '"]){display:none}';
+		}
+
+		echo '<style>' . $rules . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $rules is built entirely from a hardcoded slug list above, no user input.
 	}
 
 	// ── Settings API ──────────────────────────────────────────────────────────
@@ -431,6 +539,10 @@ class Admin_UI {
 	private function plugin_page_hooks(): array {
 		return array(
 			'toplevel_page_security-automation-manager',
+			'security-automation-manager_page_security-automation-manager-observe',
+			'security-automation-manager_page_security-automation-manager-decide',
+			'security-automation-manager_page_security-automation-manager-control',
+			'security-automation-manager_page_security-automation-manager-verify',
 			'security-automation-manager_page_security-automation-manager-dashboard',
 			'security-automation-manager_page_security-automation-manager-xfo',
 			'security-automation-manager_page_security-automation-manager-xcto',
@@ -557,6 +669,34 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+	}
+
+	public function render_observe(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-observe.php';
+	}
+
+	public function render_decide(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-decide.php';
+	}
+
+	public function render_control(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-control.php';
+	}
+
+	public function render_verify(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-verify.php';
 	}
 
 	public function render_referrer_policy(): void {

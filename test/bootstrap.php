@@ -626,6 +626,20 @@ if ( ! function_exists( 'add_filter' ) ) {
 	}
 }
 
+if ( ! function_exists( 'add_menu_page' ) ) {
+	function add_menu_page( string $page_title, string $menu_title, string $capability, string $menu_slug, callable|string $callback = '', string $icon_url = '', int|float|null $position = null ): string {
+		$GLOBALS['_wp_menu_pages'][] = compact( 'page_title', 'menu_title', 'capability', 'menu_slug', 'callback', 'icon_url', 'position' );
+		return 'toplevel_page_' . $menu_slug;
+	}
+}
+
+if ( ! function_exists( 'add_submenu_page' ) ) {
+	function add_submenu_page( string $parent_slug, string $page_title, string $menu_title, string $capability, string $menu_slug, callable|string $callback = '', ?int $position = null ): string|false {
+		$GLOBALS['_wp_submenu_pages'][ $parent_slug ][] = compact( 'page_title', 'menu_title', 'capability', 'menu_slug', 'callback' );
+		return $parent_slug . '_page_' . $menu_slug;
+	}
+}
+
 if ( ! function_exists( 'did_action' ) ) {
 	function did_action( string $hook ): int {
 		return (int) ( $GLOBALS['_wp_did_actions'][ $hook ] ?? 0 );
@@ -917,6 +931,8 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_transients']           = [];
 	$GLOBALS['_wp_actions']              = [];
 	$GLOBALS['_wp_did_actions']          = [];
+	$GLOBALS['_wp_menu_pages']           = [];
+	$GLOBALS['_wp_submenu_pages']        = [];
 	$GLOBALS['_wp_rest_url_prefix']            = 'wp-json';
 	$GLOBALS['_wp_rest_url_plain_permalinks']  = false;
 	$GLOBALS['_wp_multisite_subsite_path']     = '';

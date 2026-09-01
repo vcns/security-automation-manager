@@ -164,6 +164,132 @@ class AdminUITest extends TestCase {
 		}
 	}
 
+	public function test_plugin_page_hooks_includes_lifecycle_pages(): void {
+		$ui     = $this->make_admin_ui();
+		$method = new ReflectionMethod( Admin_UI::class, 'plugin_page_hooks' );
+		$method->setAccessible( true );
+
+		$hooks = $method->invoke( $ui );
+
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-observe', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-decide', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-control', $hooks );
+		$this->assertContains( 'security-automation-manager_page_security-automation-manager-verify', $hooks );
+	}
+
+	public function test_add_menu_pages_registers_settings_first_then_lifecycle_pages_in_roadmap_order(): void {
+		wp_test_reset_globals();
+		$ui = $this->make_admin_ui();
+
+		$ui->add_menu_pages();
+
+		$titles = array_column( $GLOBALS['_wp_submenu_pages']['security-automation-manager'], 'menu_title' );
+
+		// Settings registers first deliberately (see add_menu_pages()'s own
+		// comment -- avoids a real WordPress auto-inserted duplicate parent
+		// link), then the four lifecycle pages in the roadmap's own order.
+		$this->assertSame( array( 'Settings', 'Observe', 'Decide', 'Control', 'Verify' ), array_slice( $titles, 0, 5 ) );
+	}
+
+	/**
+	 * All eleven technology-standard pages must still be REGISTERED (same as
+	 * before this change) -- they're hidden from the rendered menu via CSS
+	 * (print_hidden_menu_css()), not via removal, specifically because
+	 * removal breaks direct URL access in real WordPress (see
+	 * add_menu_pages()'s own comment). This test guards the "still
+	 * registered" half; test_print_hidden_menu_css_* guards the "actually
+	 * hidden" half.
+	 */
+	public function test_add_menu_pages_keeps_pillar_pages_registered(): void {
+		wp_test_reset_globals();
+		$ui = $this->make_admin_ui();
+
+		$ui->add_menu_pages();
+
+		$registered_slugs = array_column( $GLOBALS['_wp_submenu_pages']['security-automation-manager'], 'menu_slug' );
+
+		foreach (
+			array(
+				'security-automation-manager-certificates',
+				'security-automation-manager-intelligence',
+				'security-automation-manager-cross-origin',
+				'security-automation-manager-dashboard',
+				'security-automation-manager-hsts',
+				'security-automation-manager-permissions-policy',
+				'security-automation-manager-referrer-policy',
+				'security-automation-manager-reverse-tabnabbing',
+				'security-automation-manager-scripts',
+				'security-automation-manager-xcto',
+				'security-automation-manager-xfo',
+			) as $pillar_slug
+		) {
+			$this->assertContains( $pillar_slug, $registered_slugs, "{$pillar_slug} should still be registered (reachable at its URL)" );
+		}
+	}
+
+	public function test_add_menu_pages_renames_overview_entry_to_settings(): void {
+		wp_test_reset_globals();
+		$ui = $this->make_admin_ui();
+
+		$ui->add_menu_pages();
+
+		$settings_entries = array_values(
+			array_filter(
+				$GLOBALS['_wp_submenu_pages']['security-automation-manager'],
+				static fn( array $item ): bool => 'security-automation-manager' === $item['menu_slug']
+			)
+		);
+
+		$this->assertCount( 1, $settings_entries );
+		$this->assertSame( 'Settings', $settings_entries[0]['menu_title'] );
+		$this->assertSame( 'Settings', $settings_entries[0]['page_title'] );
+	}
+
+	public function test_print_hidden_menu_css_hides_every_pillar_page(): void {
+		$ui = $this->make_admin_ui();
+
+		ob_start();
+		$ui->print_hidden_menu_css();
+		$css = (string) ob_get_clean();
+
+		foreach (
+			array(
+				'security-automation-manager-certificates',
+				'security-automation-manager-intelligence',
+				'security-automation-manager-cross-origin',
+				'security-automation-manager-dashboard',
+				'security-automation-manager-hsts',
+				'security-automation-manager-permissions-policy',
+				'security-automation-manager-referrer-policy',
+				'security-automation-manager-reverse-tabnabbing',
+				'security-automation-manager-scripts',
+				'security-automation-manager-xcto',
+				'security-automation-manager-xfo',
+			) as $pillar_slug
+		) {
+			$this->assertStringContainsString( 'page=' . $pillar_slug, $css );
+		}
+	}
+
+	public function test_print_hidden_menu_css_does_not_hide_lifecycle_or_settings_pages(): void {
+		$ui = $this->make_admin_ui();
+
+		ob_start();
+		$ui->print_hidden_menu_css();
+		$css = (string) ob_get_clean();
+
+		foreach (
+			array(
+				'security-automation-manager-observe',
+				'security-automation-manager-decide',
+				'security-automation-manager-control',
+				'security-automation-manager-verify',
+			) as $visible_slug
+		) {
+			$this->assertStringNotContainsString( 'page=' . $visible_slug, $css );
+		}
+	}
+
 	// ── filter_admin_footer_text() ──────────────────────────────────────────
 
 	public function test_filter_admin_footer_text_returns_the_string_unchanged(): void {
@@ -251,6 +377,46 @@ class AdminUITest extends TestCase {
 		unset( $_GET['tab'] );
 
 		$this->assertStringContainsString( 'Hash inventory', $output );
+	}
+
+	public function test_observe_view_renders_without_fatal(): void {
+		wp_test_reset_globals();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-observe.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Observe', $output );
+		$this->assertStringContainsString( 'security-automation-manager-intelligence', $output );
+	}
+
+	public function test_decide_view_renders_without_fatal(): void {
+		wp_test_reset_globals();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-decide.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Decide', $output );
+		$this->assertStringContainsString( 'tab=sources', $output );
+	}
+
+	public function test_control_view_renders_without_fatal(): void {
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-control.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Control', $output );
+		$this->assertStringContainsString( 'not blocking traffic', $output );
+	}
+
+	public function test_verify_view_renders_without_fatal(): void {
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-verify.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Verify', $output );
+		$this->assertStringContainsString( 'planned for a future phase', $output );
 	}
 
 	/**
