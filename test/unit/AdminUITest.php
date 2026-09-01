@@ -7,6 +7,7 @@ declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Admin\Admin_UI;
+use WP_SAM\Admin\Pillar_Registry;
 use WP_SAM\Plugin;
 
 class AdminUITest extends TestCase {
@@ -88,48 +89,36 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Content Security Policy', $view );
 		$this->assertStringContainsString( 'security-automation-manager-dashboard', $view );
 		$this->assertStringContainsString( 'tab=policy-audit', $view );
-		$this->assertStringContainsString( 'security-automation-manager-hsts', $view );
-		$this->assertStringContainsString( 'security-automation-manager-reverse-tabnabbing', $view );
-		$this->assertStringContainsString( 'security-automation-manager-scripts', $view );
+		$this->assertStringContainsString( 'Layer 4: Browser Security Policies', $view );
+		$this->assertStringContainsString( 'Layer 5: Transport & Certificate Trust', $view );
+		$this->assertStringContainsString( 'security-automation-manager-certificates', $view );
+		$this->assertStringContainsString( 'Pillar_Registry::pillars()', $view );
 		$this->assertStringContainsString( "'readiness'", $view );
 		$this->assertStringContainsString( "'about'", $view );
 		$this->assertStringContainsString( 'wp-sam-reset', $view );
 	}
 
 	/**
-	 * Regression test for the underlying $simple_pillars array, extracted and
-	 * sorted the same way page-overview.php sorts it at render time -- the
-	 * view itself isn't executed here (it needs a live WP_SAM\Security\*
-	 * builder set and $wpdb), so this proves the alphabetical-by-label
-	 * ordering the view relies on actually produces the expected row order,
-	 * with "Content Security Policy" (rendered as a separate hardcoded row
-	 * before this array) sorting first on its own merit.
+	 * Regression test for Pillar_Registry::pillars() -- the single source of
+	 * truth the Overview view now sorts and renders directly (replacing a
+	 * view-local $simple_pillars array that had already drifted from reality
+	 * once: it disagreed with Activator::seed_default_pillar_profiles() about
+	 * which pillars exist, and separately omitted Internal Script Integrity
+	 * from this exact regression test's own hand-maintained label list).
 	 */
 	public function test_overview_pillar_rows_sort_alphabetically_by_label(): void {
-		$labels = array(
-			'Content Security Policy',
-			'X-Frame-Options',
-			'X-Content-Type-Options',
-			'Referrer-Policy',
-			'Permissions-Policy',
-			'Strict-Transport-Security',
-			'Reverse Tabnabbing Protection',
-			'External Scripts',
-			'Cross-Origin-Resource-Policy',
-			'X-Permitted-Cross-Domain-Policies',
-			'Cross-Origin-Opener-Policy',
-			'Cross-Origin-Embedder-Policy',
+		$labels = array_map(
+			static fn( array $pillar ): string => $pillar['label'],
+			Pillar_Registry::pillars()
 		);
-
-		usort( $labels, static fn( string $a, string $b ): int => strcasecmp( $a, $b ) );
 
 		$this->assertSame(
 			array(
-				'Content Security Policy',
 				'Cross-Origin-Embedder-Policy',
 				'Cross-Origin-Opener-Policy',
 				'Cross-Origin-Resource-Policy',
 				'External Scripts',
+				'Internal Script Integrity',
 				'Permissions-Policy',
 				'Referrer-Policy',
 				'Reverse Tabnabbing Protection',
@@ -138,7 +127,7 @@ class AdminUITest extends TestCase {
 				'X-Frame-Options',
 				'X-Permitted-Cross-Domain-Policies',
 			),
-			$labels
+			array_values( $labels )
 		);
 	}
 

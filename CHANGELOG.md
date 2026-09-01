@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.31] - 2026-09-01
+
+### Added
+
+- Phase 3A of `.roadmap/phase3_early_plan.md` ("Settings-first" scope): the Overview tab's pillar table is now grouped into "Layer 4: Browser Security Policies" and "Layer 5: Transport & Certificate Trust", matching the plugin's own defence-in-depth model (already public on the docs site's `sam-security-layers.svg`, but never reflected in the admin UI itself until now). Closes a real gap where Certificates had no row in this table at all.
+- `WP_SAM\Admin\Pillar_Registry`: single source of truth for the 12 pillars backed by `sam_pillar_profiles` (label, target admin page/tab, and a `resolve_status()` that distinguishes "no row exists yet" from "explicitly disabled" -- previously indistinguishable, both rendered as a plain "Off"). Replaces a view-local array in `page-overview.php` that had already drifted from `Activator::seed_default_pillar_profiles()`'s own pillar list once.
+- `WP_SAM\Admin\Status_Badge`: shared status-badge component for the new table (`Not configured` / `Disabled` / `Report-only` / `Active`, plus a distinct style for CSP's per-surface automation posture), modeled on the existing `Risk_Badge` component. Does not touch CSP's own `enforce`/`report-only`/`disabled` mode values, CSS, or JS on its own dedicated pages -- this is a cross-pillar display-layer vocabulary only.
+
+### Fixed
+
+- `test_overview_pillar_rows_sort_alphabetically_by_label` was itself out of sync with the pillar list it was meant to guard -- it was missing "Internal Script Integrity". Now asserts against `Pillar_Registry::pillars()` directly instead of a second hand-maintained label list.
+
 ## [2.9.30] - 2026-09-01
 
 ### Changed

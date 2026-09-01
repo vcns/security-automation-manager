@@ -18,6 +18,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Admin\Pillar_Registry;
+use WP_SAM\Admin\Status_Badge;
+use WP_SAM\Certificates\Certificate_Store;
+use WP_SAM\CSP\Automation_Config;
 use WP_SAM\Rollback_Guard;
 
 global $wpdb;
@@ -53,86 +57,67 @@ $tab_help = array(
 	),
 );
 
-$surfaces = array( 'frontend', 'admin', 'login', 'api' );
+// ── Overview tab data ────────────────────────────────────────────────────────
+// Scoped to the Overview tab only -- Pillar_Registry::fetch_rows() and the
+// Certificate_Store/Certificate_Manager calls below have no reason to run
+// when e.g. the Updates or Recovery tab is what's actually being rendered.
+if ( 'overview' === $tab ) {
+	$surfaces = Automation_Config::SURFACES;
 
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-$profiles_raw     = $wpdb->get_results( "SELECT surface, mode FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
-$modes_by_surface = array();
-foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
-	$modes_by_surface[ $row['surface'] ] = $row['mode'];
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$profiles_raw     = $wpdb->get_results( "SELECT surface, mode FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
+	$modes_by_surface = array();
+	foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
+		$modes_by_surface[ $row['surface'] ] = $row['mode'];
+	}
+	// CSP mode => cross-pillar Status_Badge state, for the Layer 4 table
+	// only. csp_policy_profiles.mode itself, and CSP's own dedicated-page
+	// CSS/JS, are untouched -- this is a display-layer mapping.
+	$csp_status_by_mode = array(
+		'disabled'    => Status_Badge::STATE_DISABLED,
+		'report-only' => Status_Badge::STATE_REPORT_ONLY,
+		'enforce'     => Status_Badge::STATE_ACTIVE,
+	);
+	$csp_status_labels  = array(
+		Status_Badge::STATE_DISABLED    => __( 'Disabled', 'vcns-security-automation-manager' ),
+		Status_Badge::STATE_REPORT_ONLY => __( 'Report-only', 'vcns-security-automation-manager' ),
+		Status_Badge::STATE_ACTIVE      => __( 'Active', 'vcns-security-automation-manager' ),
+	);
+
+	$automation_config = new Automation_Config();
+
+	$pillars     = Pillar_Registry::pillars();
+	$pillar_rows = Pillar_Registry::fetch_rows();
+
+	// Certificates (Layer 5) -- reuses the same data sources already used by
+	// page-certificates.php and Admin_UI::maybe_show_cert_failure_warning(),
+	// no status computation duplicated here.
+	$cert_store  = new Certificate_Store();
+	$cert_config = $cert_store->get_config();
+	$cert_latest = $cert_store->latest_certificate();
+	$cert_run    = $this->plugin->cert_manager->last_run();
+
+	$cert_domains_configured = ! empty( array_filter( (array) $cert_config['domains'] ) );
+	if ( ! $cert_domains_configured ) {
+		$cert_status_text  = __( 'Not configured', 'vcns-security-automation-manager' );
+		$cert_status_color = 'inherit';
+	} elseif ( 'failed' === $cert_run['status'] ) {
+		/* translators: %s: failure detail message */
+		$cert_status_text  = sprintf( __( 'Failed -- %s', 'vcns-security-automation-manager' ), $cert_run['detail'] );
+		$cert_status_color = '#d63638';
+	} elseif ( 'running' === $cert_run['status'] ) {
+		$cert_status_text  = __( 'Issuing…', 'vcns-security-automation-manager' );
+		$cert_status_color = 'inherit';
+	} elseif ( null !== $cert_latest ) {
+		/* translators: %s: certificate expiry date/time (UTC) */
+		$cert_status_text  = sprintf( __( 'Active -- expires %s UTC', 'vcns-security-automation-manager' ), $cert_latest['not_after'] );
+		$cert_status_color = '#00a32a';
+	} else {
+		$cert_status_text  = __( 'Configured -- issuance not yet attempted', 'vcns-security-automation-manager' );
+		$cert_status_color = 'inherit';
+	}
+	$cert_manage_url = admin_url( 'admin.php?page=security-automation-manager-certificates' . ( 'never' !== $cert_run['status'] ? '&tab=renew' : '' ) );
 }
-
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-$pillar_profiles_raw = $wpdb->get_results( "SELECT pillar, surface, enabled FROM {$wpdb->prefix}sam_pillar_profiles", ARRAY_A );
-$enabled_by_pillar   = array();
-foreach ( ! empty( $pillar_profiles_raw ) ? $pillar_profiles_raw : array() as $row ) {
-	$enabled_by_pillar[ $row['pillar'] ][ $row['surface'] ] = ! empty( $row['enabled'] );
-}
-
-$simple_pillars = array(
-	\WP_SAM\Security\X_Frame_Options_Builder::PILLAR_KEY => array(
-		'label' => __( 'X-Frame-Options', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-xfo',
-	),
-	\WP_SAM\Security\X_Content_Type_Options_Builder::PILLAR_KEY => array(
-		'label' => __( 'X-Content-Type-Options', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-xcto',
-	),
-	\WP_SAM\Security\Referrer_Policy_Builder::PILLAR_KEY => array(
-		'label' => __( 'Referrer-Policy', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-referrer-policy',
-	),
-	\WP_SAM\Security\Permissions_Policy_Builder::PILLAR_KEY => array(
-		'label' => __( 'Permissions-Policy', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-permissions-policy',
-	),
-	\WP_SAM\Security\Strict_Transport_Security_Builder::PILLAR_KEY => array(
-		'label' => __( 'Strict-Transport-Security', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-hsts',
-	),
-	\WP_SAM\Security\Reverse_Tabnabbing_Builder::PILLAR_KEY => array(
-		'label' => __( 'Reverse Tabnabbing Protection', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-reverse-tabnabbing',
-	),
-	\WP_SAM\Security\Dependency_Governance_Builder::PILLAR_KEY => array(
-		'label' => __( 'External Scripts', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-scripts',
-		'tab'   => 'external',
-	),
-	\WP_SAM\Security\Internal_Script_Integrity_Builder::PILLAR_KEY => array(
-		'label' => __( 'Internal Script Integrity', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-scripts',
-		'tab'   => 'internal',
-	),
-	\WP_SAM\Security\Cross_Origin_Resource_Policy_Builder::PILLAR_KEY => array(
-		'label' => __( 'Cross-Origin-Resource-Policy', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-cross-origin',
-		'tab'   => 'corp',
-	),
-	\WP_SAM\Security\X_Permitted_Cross_Domain_Policies_Builder::PILLAR_KEY => array(
-		'label' => __( 'X-Permitted-Cross-Domain-Policies', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-cross-origin',
-		'tab'   => 'xpcdp',
-	),
-	\WP_SAM\Security\Cross_Origin_Opener_Policy_Builder::PILLAR_KEY => array(
-		'label' => __( 'Cross-Origin-Opener-Policy', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-cross-origin',
-		'tab'   => 'coop',
-	),
-	\WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY => array(
-		'label' => __( 'Cross-Origin-Embedder-Policy', 'vcns-security-automation-manager' ),
-		'page'  => 'security-automation-manager-cross-origin',
-		'tab'   => 'coep',
-	),
-);
-
-// Sorted alphabetically by label to match the left-nav ordering. "Content
-// Security Policy" (the hardcoded row above this loop) already sorts first
-// on its own -- "Content" < "Cross-..." -- so it needs no special handling.
-uasort(
-	$simple_pillars,
-	static fn( array $a, array $b ): int => strcasecmp( $a['label'], $b['label'] )
-);
 
 // ── Recovery tab data ────────────────────────────────────────────────────────
 $reset_result       = sanitize_text_field( wp_unslash( $_GET['wp_sam_reset'] ?? '' ) );
@@ -183,12 +168,18 @@ $status_badge       = static function ( string $status ): void {
 
 	<?php if ( 'overview' === $tab ) : ?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<p class="description">
+		<?php esc_html_e( 'This table covers Layer 4 (Browser Security Policies) and Layer 5 (Transport & Certificate Trust). Layer 1 (governance and operations) is covered by the Readiness, Recovery, and Updates tabs above. Layer 3 (continuous intelligence) is planned for a future phase and is not yet available.', 'vcns-security-automation-manager' ); ?>
+	</p>
+
+	<h2><?php esc_html_e( 'Layer 4: Browser Security Policies', 'vcns-security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
 				<th><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Automation', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -199,9 +190,14 @@ $status_badge       = static function ( string $status ): void {
 				<td>
 					<?php foreach ( $surfaces as $surface ) : ?>
 						<?php $mode = $modes_by_surface[ $surface ] ?? 'disabled'; ?>
-						<span class="wp-sam-mode-badge mode-<?php echo esc_attr( $mode ); ?>">
-							<?php echo esc_html( ucfirst( $surface ) . ': ' . str_replace( '-', ' ', $mode ) ); ?>
-						</span>
+						<?php $state = $csp_status_by_mode[ $mode ] ?? Status_Badge::STATE_DISABLED; ?>
+						<?php echo Status_Badge::render( $state, ucfirst( $surface ) . ': ' . ( $csp_status_labels[ $state ] ?? $mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
+					<?php endforeach; ?>
+				</td>
+				<td>
+					<?php foreach ( $surfaces as $surface ) : ?>
+						<?php $automation_mode = $automation_config->for_surface( $surface )['mode']; ?>
+						<?php echo Status_Badge::render_automation( ucfirst( $surface ) . ': ' . Automation_Config::mode_label( $automation_mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_automation() returns pre-escaped HTML. ?>
 					<?php endforeach; ?>
 				</td>
 				<td>
@@ -210,19 +206,18 @@ $status_badge       = static function ( string $status ): void {
 					</a>
 				</td>
 			</tr>
-			<?php foreach ( $simple_pillars as $pillar_key => $pillar ) : ?>
+			<?php foreach ( $pillars as $pillar_key => $pillar ) : ?>
 				<tr>
 					<td>
 						<strong><?php echo esc_html( $pillar['label'] ); ?></strong>
 					</td>
 					<td>
 						<?php foreach ( $surfaces as $surface ) : ?>
-							<?php $on = $enabled_by_pillar[ $pillar_key ][ $surface ] ?? false; ?>
-							<span class="wp-sam-mode-badge mode-<?php echo esc_attr( $on ? 'enforce' : 'disabled' ); ?>">
-								<?php echo esc_html( ucfirst( $surface ) . ': ' . ( $on ? __( 'On', 'vcns-security-automation-manager' ) : __( 'Off', 'vcns-security-automation-manager' ) ) ); ?>
-							</span>
+							<?php $status = Pillar_Registry::resolve_status( $pillar_key, $pillar_rows[ $pillar_key ][ $surface ] ?? null ); ?>
+							<?php echo Status_Badge::render( $status['state'], ucfirst( $surface ) . ': ' . $status['label'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 						<?php endforeach; ?>
 					</td>
+					<td>&mdash;</td>
 					<td>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $pillar['page'] . ( isset( $pillar['tab'] ) ? '&tab=' . $pillar['tab'] : '' ) ) ); ?>">
 							<?php
@@ -246,6 +241,32 @@ $status_badge       = static function ( string $status ): void {
 			<?php esc_html_e( 'Policy Audit', 'vcns-security-automation-manager' ); ?>
 		</a>
 	</p>
+
+	<h2><?php esc_html_e( 'Layer 5: Transport & Certificate Trust', 'vcns-security-automation-manager' ); ?></h2>
+	<table class="widefat striped wp-sam-readiness-table">
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>
+					<strong><?php esc_html_e( 'Certificates', 'vcns-security-automation-manager' ); ?></strong>
+				</td>
+				<td>
+					<strong style="color:<?php echo esc_attr( $cert_status_color ); ?>"><?php echo esc_html( $cert_status_text ); ?></strong>
+				</td>
+				<td>
+					<a href="<?php echo esc_url( $cert_manage_url ); ?>">
+						<?php esc_html_e( 'Manage Certificates', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+		</tbody>
+	</table>
 
 	<?php elseif ( 'readiness' === $tab ) : ?>
 
