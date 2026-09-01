@@ -4,7 +4,7 @@
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1.0'>
   <title>User Guide | Security Automation Manager</title>
-  <meta name='description' content='Complete administrator guide to Security Automation Manager: CSP rollout, the nine simpler header pillars, automation tiers, installation, and troubleshooting.'>
+  <meta name='description' content='Complete administrator guide to Security Automation Manager: CSP rollout, the nine simpler header pillars, automatic TLS certificates via ACME, automation tiers, installation, and troubleshooting.'>
   <link rel='preconnect' href='https://fonts.googleapis.com'>
   <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
   <link href='https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&display=swap' rel='stylesheet'>
@@ -16,7 +16,7 @@
       <div class='hero-copy'>
         <p class='eyebrow'>User guide</p>
         <h1>The complete administrator's guide to Security Automation Manager.</h1>
-        <p class='lede'>Roll out Content Security Policy as a controlled workflow, configure the nine simpler header pillars alongside it, and understand which automation is free and which requires a subscription.</p>
+        <p class='lede'>Roll out Content Security Policy as a controlled workflow, configure the nine simpler header pillars alongside it, automate TLS certificates via ACME, and understand which automation is free and which requires a subscription.</p>
         <div class='hero-actions'>
           <a class='button primary' href='index.html'>Back to help home</a>
           <a class='button secondary' href='faq.html'>Open the FAQ</a>
@@ -69,6 +69,12 @@
           <ul>
             <li><a href='#other-pillars'>X-Frame-Options and more</a></li>
             <li><a href='#content-rewrites'>Content rewrite protections</a></li>
+          </ul>
+        </div>
+        <div class='sidebar-group'>
+          <h3>TLS certificates</h3>
+          <ul>
+            <li><a href='#certificates'>ACME / Let's Encrypt</a></li>
           </ul>
         </div>
         <div class='sidebar-group'>
@@ -513,6 +519,113 @@ flowchart TD
           <img src='images/sam-scripts-internal.png' alt='WordPress admin screenshot of the Scripts Internal tab, showing a simple per-surface enabled checkbox for automatic first-party Subresource Integrity.' loading='lazy'>
           <figcaption>The Internal tab (<strong>Security Automation Manager -> Scripts -> Internal</strong>) -- nothing to classify, just an on/off toggle per surface.</figcaption>
         </figure>
+      </section>
+
+      <section id='certificates' class='section'>
+        <p class='section-label'>TLS certificates</p>
+        <h2>Automatic certificates via ACME (Let's Encrypt).</h2>
+        <p>Security Automation Manager can request, validate, and renew TLS certificates from Let's Encrypt -- or any RFC 8555 ACME v2 directory -- entirely from inside WordPress: no shell access, no certbot, no separate daemon. This is a distinct feature from the ten header pillars above; it's the "transport and certificate trust" layer of the plugin's own defence-in-depth model, sitting underneath everything else. It's free in every build, with no automation tier or subscription involved anywhere in it.</p>
+        <div class='card-grid'>
+          <article class='card'>
+            <h3>1. Account &amp; order</h3>
+            <p>An ACME account key is generated on first use and registered with the CA. One order covers every domain listed; the first becomes the certificate's Common Name, the rest are Subject Alternative Names.</p>
+          </article>
+          <article class='card'>
+            <h3>2. Prove control</h3>
+            <p>The CA demands proof you control each domain, satisfied via a DNS-01 or HTTP-01 challenge -- see below.</p>
+          </article>
+          <article class='card'>
+            <h3>3. Generate or supply a key</h3>
+            <p>Automatic on capable hosts (ECDSA P-256 recommended, RSA 2048 for legacy compatibility). If a server genuinely can't generate one, paste your own PEM key instead.</p>
+          </article>
+          <article class='card'>
+            <h3>4. Issue &amp; store</h3>
+            <p>The finalised certificate and private key are stored encrypted at rest (sodium secretbox), ready for the Install step.</p>
+          </article>
+          <article class='card'>
+            <h3>5. Renew automatically</h3>
+            <p>Checked daily via WP-Cron; production certificates re-issue inside the 30-day window before expiry. Staging certificates are never auto-renewed.</p>
+          </article>
+        </div>
+
+        <h3>DNS-01 or HTTP-01</h3>
+        <div class='table-wrap'>
+          <table>
+            <thead>
+              <tr><th>Challenge</th><th>Proves control via</th><th>Wildcards</th><th>Needs</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>DNS-01 (preferred)</td><td>A short-lived <code>_acme-challenge</code> TXT record, created and removed automatically through your DNS provider's API.</td><td>Yes</td><td>A supported DNS provider, or a generic mechanism (see below).</td></tr>
+              <tr><td>HTTP-01 (automatic fallback)</td><td>A file this site serves itself over plain HTTP on port 80.</td><td>No</td><td>Nothing extra -- but the CA must be able to reach this site on port 80. HSTS doesn't interfere: Let's Encrypt starts at <code>http://</code> and follows the redirect to HTTPS, the same as any browser.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-method.png' alt='WordPress admin screenshot of the Validation method radio buttons (DNS-01 / HTTP-01) and the DNS provider dropdown on the Certificates Configuration tab.' loading='lazy'>
+          <figcaption>Validation method, on the Configuration tab (<strong>Security Automation Manager -> Certificates</strong>).</figcaption>
+        </figure>
+        <p>41 DNS providers ship built in -- AWS Route 53, Cloudflare, Google Cloud DNS, Azure DNS, DigitalOcean, GoDaddy, Namecheap, OVH, and many more -- plus two provider-agnostic mechanisms: <strong>acme-dns</strong> (a one-time CNAME delegation that works with literally any DNS provider, including ones with no API at all) and <strong>RFC 2136 dynamic updates</strong> (TSIG-signed, for self-hosted authoritative servers like BIND, Knot, or Windows Server DNS). Additional providers can be registered by other plugins via the <code>wp_sam_dns_providers</code> filter.</p>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-providers.png' alt='WordPress admin screenshot of the DNS provider dropdown, expanded, listing dozens of built-in providers alphabetically.' loading='lazy'>
+          <figcaption>The DNS provider dropdown -- every built-in provider in one alphabetical list.</figcaption>
+        </figure>
+        <div class='warning-callout'>
+          <h3>DNS API credentials are domain-takeover-grade secrets</h3>
+          <p>Use the narrowest token scope your provider offers (a zone-specific or DNS-only token, never a full account key) -- whoever holds it can redirect your domain's traffic anywhere. Credentials are stored encrypted at rest via sodium secretbox.</p>
+        </div>
+
+        <h3>Key type and certificate details</h3>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-key-types.png' alt='WordPress admin screenshot of the Key type radio buttons: ECDSA P-256 (recommended) and RSA 2048 (legacy compatibility), with a confirmation that this server can generate keys automatically.' loading='lazy'>
+          <figcaption>Key type, with a live capability check -- if a server genuinely can't generate keys, this section is replaced with a paste-your-own-key box instead.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-csr.png' alt='WordPress admin screenshot of the Configuration tab, showing the Domains textarea, Contact email field, and optional Organisation details (CSR subject) fields.' loading='lazy'>
+          <figcaption>The rest of the Configuration tab: domains (pre-filled from this site's own address), contact email, and optional CSR organisation details. Domain-validated CAs like Let's Encrypt validate and issue on the domain names only -- organisation details matter for CAs and internal workflows that consume the CSR itself, not for what Let's Encrypt actually issues.</figcaption>
+        </figure>
+        <div class='callout-stack'>
+          <div class='callout'>
+            <h3>Staging first</h3>
+            <p>Keep the Let's Encrypt STAGING directory on until an order succeeds end-to-end. Staging certificates aren't trusted by browsers, but the rate limits are generous -- production allows only 5 duplicate certificates per week.</p>
+          </div>
+        </div>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-staging.png' alt='WordPress admin screenshot of the Environment checkbox for using the Let&#39;s Encrypt STAGING directory, with a note about production rate limits.' loading='lazy'>
+          <figcaption>Environment, on the Configuration tab.</figcaption>
+        </figure>
+
+        <h3>Issue, renew, and install</h3>
+        <p>The Issue/Renew tab shows the latest certificate's domains, environment, and expiry, plus the most recent run's outcome, and has the manual "Issue / Renew Now" button. A failed run -- from either a manual click or the daily WP-Cron renewal check -- shows here immediately and also raises a site-wide admin notice until a later run succeeds, so a quietly failing renewal can't go unnoticed until the certificate actually expires.</p>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-issuance.png' alt='WordPress admin screenshot of the Issue/Renew tab, showing Latest certificate, Last run, and Automatic renewal rows, plus an Issue/Renew Now button.' loading='lazy'>
+          <figcaption>The Issue/Renew tab (<strong>Security Automation Manager -> Certificates -> Issue / Renew</strong>).</figcaption>
+        </figure>
+        <p>Issuing happens entirely inside WordPress; <strong>installing</strong> the result into the web server depends on the hosting platform, so the Install tab offers three deployment modes:</p>
+        <div class='table-wrap'>
+          <table>
+            <thead>
+              <tr><th>Deployment</th><th>What happens</th><th>Best for</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Manual download</td><td>No automatic installation. Download <code>fullchain.pem</code> and <code>privkey.pem</code> and install them yourself.</td><td>Any host, as a fallback that always works.</td></tr>
+              <tr><td>Export to a directory</td><td>Writes both PEM files to an absolute path outside the web root on every issue and renewal, for a host-side script to pick up.</td><td>Hosts without a control-panel API, where you (or your host) can run a small install script.</td></tr>
+              <tr><td>cPanel UAPI <code>install_ssl</code></td><td>Installs the certificate automatically via cPanel's API.</td><td>cPanel hosting with API token access.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-install.png' alt='WordPress admin screenshot of the Install tab, showing the Deployment dropdown with three options: Manual download, Export to a directory, and cPanel UAPI install_ssl.' loading='lazy'>
+          <figcaption>The Install tab (<strong>Security Automation Manager -> Certificates -> Install</strong>).</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-install-pem.png' alt='WordPress admin screenshot of the Export path field for the "Export PEMs to a directory" deployment option, with guidance on choosing a path outside the web root.' loading='lazy'>
+          <figcaption>Export to a directory -- the plugin refuses any path under the web root, since the private key must never be reachable over HTTP.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-certificates-install-cpanel.png' alt='WordPress admin screenshot of the cPanel host, username, and API token fields for the cPanel UAPI install_ssl deployment option.' loading='lazy'>
+          <figcaption>cPanel UAPI <code>install_ssl</code> -- host, username, and API token.</figcaption>
+        </figure>
+        <p class='section-note'>Automatic installation is necessarily platform-specific -- the full platform-by-platform guide ships with the plugin as <code>docs/certificates.md</code>. Once a certificate is actually installed and served, pair it with <a href='#other-pillars'>Strict-Transport-Security</a> to tell browsers to insist on HTTPS for this site going forward.</p>
       </section>
 
       <section id='automation-tiers' class='section'>

@@ -28,6 +28,7 @@
         <ul>
           <li>WordPress 6.4+ and PHP 8.1+</li>
           <li>Ten pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies</li>
+          <li>Automatic TLS certificate issuance and renewal via ACME (Let's Encrypt) -- free, no subscription</li>
           <li>Per-surface policies for frontend, admin, login, and API</li>
           <li>Report-only rollout before CSP enforcement</li>
           <li>Nonce injection for WordPress-managed scripts</li>
@@ -78,6 +79,7 @@
             <img src='images/sam-security-layers.svg' alt='Six nested layers of the Security Automation Manager control model: governance and operations, controlled automation, continuous intelligence, browser security policy, transport and certificate trust, wrapped around the protected WordPress site, alongside an observe, decide, enforce, verify operating cycle.' loading='lazy'>
             <figcaption>Defence in depth, outside in: governance sits above controlled automation, continuous intelligence, browser security policy, and transport/certificate trust, all wrapped around the protected WordPress site.</figcaption>
           </figure>
+          <p class='section-note'>The transport/certificate trust layer is TLS certificate automation via ACME (Let's Encrypt) -- request, validate, and renew entirely from inside WordPress, no shell access or certbot required. See <a href='user-guide.html#certificates'>TLS certificates</a> in the user guide.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
