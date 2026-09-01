@@ -143,8 +143,12 @@ define( 'WP_SAM_VERSION', '2.9.34' );
  *        via migrate_consolidate_bypass_flags_into_json() and left in
  *        place afterwards (dbDelta() cannot drop columns) but are no
  *        longer read by anything.
+ * v26 -- adds sam_request_events for the Request Observation Framework
+ *        (Layer 3: Continuous Intelligence) -- ships empty in this release;
+ *        no detector is registered yet, so nothing writes to it. See
+ *        Intelligence\Event_Store.
  */
-define( 'WP_SAM_DB_VERSION', '25' );
+define( 'WP_SAM_DB_VERSION', '26' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

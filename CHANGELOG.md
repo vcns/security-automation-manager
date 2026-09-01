@@ -264,7 +264,7 @@ No DB schema change; `WP_SAM_DB_VERSION` stays at 22.
 ### Changed
 
 - `Acme_Crypto::generation_capability()` no longer returns the raw OpenSSL exception message as the administrator-facing explanation for why automatic key generation failed. It now returns a fixed, stable message (`Acme_Crypto::GENERATION_FAILURE_MESSAGE`) plus a separate `detail` key carrying the original diagnostic; `page-certificates.php` shows the stable message as the primary explanation and the raw detail inside a collapsed "Technical detail" disclosure.
-- Normalizes stray em dashes (`—`) to plain hyphens in comments and translated admin-facing strings across `docs/`, `includes/`, and `test/`. Comment/string content only; no logic or identifiers touched.
+- Normalizes stray em dashes (`-`) to plain hyphens in comments and translated admin-facing strings across `docs/`, `includes/`, and `test/`. Comment/string content only; no logic or identifiers touched.
 
 ### Added
 

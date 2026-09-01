@@ -293,7 +293,7 @@ Ordered by what most directly stops a defensible public release:
    WordPress.org release, since commercial code is already excluded from both
    builds today.
 3. ~~**SPECIFICATION.md is 18 schema versions stale** while marked "Active"
-   (#161)~~ — **fixed in PR #236** (Phase 2), replaced with an authoritative
+   (#161)~~ - **fixed in PR #236** (Phase 2), replaced with an authoritative
    v1.0 covering all product domains, released as v2.9.4. #161 itself should
    still be formally closed with a reference to this document; not done
    automatically per the standing "don't close issues without authorisation"
