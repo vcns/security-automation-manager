@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.35] - 2026-09-01
+
+### Added
+
+- Phase 3B of `.roadmap/phase3_early_plan.md`: the Request Observation Framework (Layer 3: Continuous Intelligence), skeleton only -- no detector content, no blocking behaviour, matching the roadmap's own exit criteria ("detectors can be added without rewriting core request-flow architecture"). New `WP_SAM\Intelligence` namespace: `Surface_Classifier` (extracted from `Request_Surface`'s three surface-detection methods, which now delegate to it -- pure refactor, no behaviour change), `Ip_Resolver` (`REMOTE_ADDR` only, deliberately not `X-Forwarded-For`/`X-Real-IP`, which are spoofable without a trusted-proxy configuration this codebase doesn't have), `Detector` (abstract base for a future detector), `Detector_Registry` (ships genuinely empty in every build -- mirrors `Automation_Mode_Registry`'s extension-point pattern via a new `wp_sam_register_detectors` action), `Detector_Engine` (iterates registered detectors, fails open on a throwing detector), `Request_Observer` (hooks the same `send_headers` + `login_init` + `wp_redirect` combination `Header_Builder` already proves covers every surface, skips the plugin's own conflict-probe request), and `Event_Store` (new `sam_request_events` table, schema v26, modeled on `Pillar_Violation_Store`'s hourly rate-limited upsert pattern).
+- New "Continuous Intelligence" admin page (Overview menu, alphabetically between Certificates and Cross-Origin Policies), showing whatever `sam_request_events` holds via the same `Table_Query` sort/filter/pagination convention as the CSP Violations and Cross-Origin Report-Only Evidence tabs, with an honest empty state ("no detectors are registered yet") rather than implying something is broken. The Overview tab's previously-static Layer 3 placeholder row now shows a real "Observing" status and links here.
+
+### Changed
+
+- `WP_SAM_DB_VERSION` 25 -> 26: adds `sam_request_events` (see above). Ships empty; self-heals onto an existing install the same way every other schema bump does.
+
 ## [2.9.34] - 2026-09-01
 
 ### Changed
