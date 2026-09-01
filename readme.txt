@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.28
+Stable tag: 2.9.29
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,11 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.29 =
+
+* Added: a persistent admin notice on every wp-admin page (not just the Certificates page) when the most recent ACME certificate issuance or renewal failed -- a failed WP-Cron renewal could previously go unnoticed until the certificate actually expired. The existing "Last run" row on Certificates > Issue/Renew is now colour-coded (red for failed, green for success) so it's unmistakable when you're already looking at it.
+* Fixed: the public help site (docs/) referenced seven screenshot filenames that never existed, showing as broken images since the site first went live. Replaced them with the real screenshots, and added several more to sections that already describe a feature but never illustrated it (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Reverse Tabnabbing, and both Scripts tabs).
 
 = 2.9.28 =
 

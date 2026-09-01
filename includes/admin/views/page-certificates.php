@@ -298,7 +298,13 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Last run', 'vcns-security-automation-manager' ); ?></th>
 				<td>
-					<strong><?php echo esc_html( $wp_sam_cert_run['status'] ); ?></strong>
+					<?php
+					$wp_sam_cert_run_color = array(
+						'failed'  => '#d63638',
+						'success' => '#00a32a',
+					)[ $wp_sam_cert_run['status'] ] ?? 'inherit';
+					?>
+					<strong style="color:<?php echo esc_attr( $wp_sam_cert_run_color ); ?>"><?php echo esc_html( $wp_sam_cert_run['status'] ); ?></strong>
 					<?php if ( '' !== $wp_sam_cert_run['at'] ) : ?>
 						(<?php echo esc_html( $wp_sam_cert_run['at'] ); ?> UTC)
 					<?php endif; ?>

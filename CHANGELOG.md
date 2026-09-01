@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.29] - 2026-09-01
+
+### Added
+
+- A persistent `admin_notices` warning (site-wide, not just on the Certificates page) for as long as the most recent ACME run's status is `failed`, following the same recurring-until-resolved pattern already used for the schema-downgrade warning. `Certificate_Manager::last_run()` already tracked this; nothing previously surfaced it outside the Certificates > Issue/Renew tab, so a failed WP-Cron renewal could go unnoticed until the certificate expired.
+
+### Fixed
+
+- `docs/user-guide.html` and `docs/index.html` referenced seven screenshot filenames (`admin-overview-page.png`, `csp-profiles-tab.png`, `csp-for-review-tab.png`, `csp-policy-changes-tab.png`, `permissions-policy-page.png`, `csp-settings-automation-upgrade.png`, `admin-menu-structure.png`) that were never captured under those names -- the real screenshots that had since been added to `docs/images/` used a different (`sam-*.png`) naming convention, so those seven `<img>` tags rendered as broken images on the live GitHub Pages site since launch. Repointed all seven at the correct real files, and added screenshots to eight more sections that already had descriptive prose for a feature but no illustration of it (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Reverse Tabnabbing, Scripts External, Scripts Internal). Certificates (ACME/TLS) still has no dedicated section in the help site at all -- ten captured screenshots for it remain unused; see `docs/images/README.md`.
+- The "Last run" row on the Certificates page's Issue/Renew tab now colour-codes the status (red for `failed`, green for `success`) instead of plain text, so a failure is obvious even when an administrator is already looking directly at it.
+
 ## [2.9.28] - 2026-09-01
 
 ### Fixed

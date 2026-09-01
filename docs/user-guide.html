@@ -114,7 +114,7 @@
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/admin-overview-page.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for all ten pillars.' loading='lazy'>
+          <img src='images/sam-overview.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for every pillar and content-rewrite protection, with a Manage link to each one.' loading='lazy'>
           <figcaption>The Overview page (<strong>Security Automation Manager -> Overview</strong>) -- the front door after activation, showing every pillar's per-surface status at a glance.</figcaption>
         </figure>
       </section>
@@ -189,7 +189,7 @@ flowchart TD
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/csp-profiles-tab.png' alt='WordPress admin screenshot of the CSP Profiles tab, showing per-surface mode selectors and status.' loading='lazy'>
+          <img src='images/sam-csp-profile.png' alt='WordPress admin screenshot of the CSP Profiles tab, showing per-surface mode, automation setting, experimental and bypass toggles, and last-updated time.' loading='lazy'>
           <figcaption>The CSP Profiles tab (<strong>Security Automation Manager -> CSP -> Profiles</strong>), where each surface's mode is set.</figcaption>
         </figure>
       </section>
@@ -284,7 +284,7 @@ flowchart TD
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/csp-for-review-tab.png' alt='WordPress admin screenshot of the CSP For Review tab, listing pending discovered sources with risk, state, and evidence count.' loading='lazy'>
+          <img src='images/sam-csp-for-review.png' alt='WordPress admin screenshot of the CSP For Review tab, listing discovered sources with surface, directive, host, risk, state, evidence count, and last-seen time.' loading='lazy'>
           <figcaption>The For Review tab (<strong>Security Automation Manager -> CSP -> For Review</strong>), listing pending sources awaiting a decision.</figcaption>
         </figure>
       </section>
@@ -327,7 +327,7 @@ flowchart TD
           <p>Decision reasons are required for approvals, rejections, reversions, and undo actions. Use short reasons such as required for checkout, theme font CDN, unknown host, or legacy tag removed. Reasons make the policy change ledger useful during later reviews.</p>
         </div>
         <figure class='screenshot'>
-          <img src='images/csp-policy-changes-tab.png' alt='WordPress admin screenshot of the CSP Policy Changes tab, showing the decision ledger with actors, reasons, and timestamps.' loading='lazy'>
+          <img src='images/sam-csp-policy-changes.png' alt='WordPress admin screenshot of the CSP Policy Changes tab, showing the decision ledger with event type, actor, surface, directive, host, risk, policy version, and detail.' loading='lazy'>
           <figcaption>The Policy Changes tab (<strong>Security Automation Manager -> CSP -> Policy Changes</strong>), the append-only decision ledger.</figcaption>
         </figure>
       </section>
@@ -440,8 +440,32 @@ flowchart TD
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/permissions-policy-page.png' alt='WordPress admin screenshot of the Permissions-Policy page, showing the per-surface, per-feature None/Self/All picker.' loading='lazy'>
+          <img src='images/sam-permissions-policy.png' alt='WordPress admin screenshot of the Permissions-Policy page, showing the per-surface, per-feature (browser default)/None/Self/All picker.' loading='lazy'>
           <figcaption>The Permissions-Policy page (<strong>Security Automation Manager -> Permissions-Policy</strong>), the most configurable of the nine simple pillars.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-x-frame-options.png' alt='WordPress admin screenshot of the X-Frame-Options page, showing per-surface enabled toggles and DENY/SAMEORIGIN value pickers.' loading='lazy'>
+          <figcaption>The X-Frame-Options page (<strong>Security Automation Manager -> X-Frame-Options</strong>).</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-x-content-type-options.png' alt='WordPress admin screenshot of the X-Content-Type-Options page, showing a simple per-surface enabled checkbox with no value to choose.' loading='lazy'>
+          <figcaption>The X-Content-Type-Options page (<strong>Security Automation Manager -> X-Content-Type-Options</strong>) -- the simplest pillar: on or off, per surface.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-referrer-policy.png' alt='WordPress admin screenshot of the Referrer-Policy page, showing per-surface value pickers defaulting to strict-origin-when-cross-origin.' loading='lazy'>
+          <figcaption>The Referrer-Policy page (<strong>Security Automation Manager -> Referrer-Policy</strong>), with <code>strict-origin-when-cross-origin</code> pre-selected as the recommended default.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-hsts.png' alt='WordPress admin screenshot of the Strict-Transport-Security page, showing per-surface Max-Age, Include Subdomains, and Preload controls, with a warning about the header being sticky.' loading='lazy'>
+          <figcaption>The Strict-Transport-Security page (<strong>Security Automation Manager -> Strict-Transport-Security</strong>), with the sticky-header warning shown above the controls.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-cross-origin-coop.png' alt='WordPress admin screenshot of the Cross-Origin-Opener-Policy tab, showing per-surface mode and value pickers plus guidance on testing popup-based login and payment flows before enforcing.' loading='lazy'>
+          <figcaption>The Cross-Origin-Opener-Policy tab (<strong>Security Automation Manager -> Cross-Origin Policies</strong>), one of four tabs on that page alongside Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-cross-origin-coep.png' alt='WordPress admin screenshot of the Cross-Origin-Embedder-Policy tab, showing per-surface mode and value pickers plus a warning that this is the highest-risk header the plugin manages.' loading='lazy'>
+          <figcaption>The Cross-Origin-Embedder-Policy tab, flagged in-admin as the highest-risk header this plugin manages.</figcaption>
         </figure>
         <p class='section-note'>All nine pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
       </section>
@@ -477,6 +501,18 @@ flowchart TD
             <p>Because the hash comes from a local file read rather than a remote fetch, there's no third-party origin to trust and nothing to classify or approve -- turn it on for a surface and every first-party script/stylesheet tag on that surface gets a correct, always-current <code>integrity</code> attribute.</p>
           </div>
         </div>
+        <figure class='screenshot'>
+          <img src='images/sam-reverse-tabnabbing.png' alt='WordPress admin screenshot of the Reverse Tabnabbing Protection page, showing a simple per-surface enabled checkbox.' loading='lazy'>
+          <figcaption>The Reverse Tabnabbing Protection page (<strong>Security Automation Manager -> Reverse Tabnabbing</strong>).</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-scripts-external.png' alt='WordPress admin screenshot of the Scripts External tab, showing per-surface enabled toggles and Report-only/Enforce mode selectors.' loading='lazy'>
+          <figcaption>The External tab (<strong>Security Automation Manager -> Scripts -> External</strong>), where third-party script/stylesheet origins are classified.</figcaption>
+        </figure>
+        <figure class='screenshot'>
+          <img src='images/sam-scripts-internal.png' alt='WordPress admin screenshot of the Scripts Internal tab, showing a simple per-surface enabled checkbox for automatic first-party Subresource Integrity.' loading='lazy'>
+          <figcaption>The Internal tab (<strong>Security Automation Manager -> Scripts -> Internal</strong>) -- nothing to classify, just an on/off toggle per surface.</figcaption>
+        </figure>
       </section>
 
       <section id='automation-tiers' class='section'>
@@ -520,8 +556,8 @@ flowchart TD
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/csp-settings-automation-upgrade.png' alt='WordPress admin screenshot of the CSP Settings tab, Deterministic Automation table, showing the Fully Automatic option marked (requires upgrade) next to an Upgrade button.' loading='lazy'>
-          <figcaption>The Deterministic Automation table on the Settings tab, with Fully Automatic marked "(requires upgrade)" and the Upgrade button that starts checkout where available.</figcaption>
+          <img src='images/sam-csp-settings-deterministic-automation.png' alt='WordPress admin screenshot of the CSP Settings tab, Deterministic Automation table, showing per-surface mode, per-run limit, directive scope, and allowed schemes.' loading='lazy'>
+          <figcaption>The Deterministic Automation table on the Settings tab. This WordPress.org build has no active entitlement, so Fully Automatic shows "Upgrading is not available in this build of the plugin" instead of an Upgrade button.</figcaption>
         </figure>
         <div class='callout-stack'>
           <div class='callout'>
