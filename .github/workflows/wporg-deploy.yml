@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   deploy:
@@ -30,6 +31,43 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+
+      # WordPress.org human-reviews every SVN submission -- this must never
+      # fire from an untracked commit. Requires the tagged commit to be the
+      # merge commit of an actual pull request from release/v<version> into
+      # main (not a direct push to main, and not any other branch name).
+      # Deliberately a hard failure (not a graceful skip like the two checks
+      # below) -- an untracked-provenance deploy attempt is a policy
+      # violation worth a loud red X, not a quiet no-op. Applies to
+      # workflow_dispatch too: dispatching against a plain branch (default
+      # 'main') computes an expected branch of "release/main", which will
+      # never exist, so it fails the same way a bad manual dispatch should.
+      - name: Verify release came from an approved release branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'${TAG}' is not a plugin version tag (expected vX.Y.Z). The WordPress.org SVN deploy only runs for a proper version tag."
+            exit 1
+          fi
+
+          EXPECTED_BRANCH="release/${TAG}"
+          MATCH_COUNT="$(
+            gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+              | jq --arg branch "${EXPECTED_BRANCH}" \
+                '[.[] | select(.merged_at != null and .base.ref == "main" and .head.ref == $branch)] | length'
+          )"
+
+          if [ "${MATCH_COUNT}" -lt 1 ]; then
+            echo "::error::No merged pull request from '${EXPECTED_BRANCH}' into 'main' was found for commit ${GITHUB_SHA}. The WordPress.org SVN deploy only runs for a release merged through that exact branch via a pull request -- re-tag after merging ${EXPECTED_BRANCH} into main, not after a direct push."
+            exit 1
+          fi
+
+          echo "Verified: ${TAG} was merged into main via a pull request from ${EXPECTED_BRANCH}."
 
       # ubuntu-latest runners don't ship the svn CLI by default (unlike git).
       # Without this, `svn info` below fails instantly with "command not
@@ -57,6 +95,41 @@ jobs:
           else
             echo "exists=false" >> "${GITHUB_OUTPUT}"
             echo "::warning::WordPress.org SVN repository for 'vcns-security-automation-manager' does not exist yet (plugin review pending?). Skipping SVN deploy; GitHub Release and update feed are unaffected."
+          fi
+
+      # WordPress.org reviews every submission by hand and does not allow
+      # more than one per day. The live SVN log is the authoritative record
+      # of when a deploy last actually happened -- no separate state file to
+      # keep in sync. A graceful skip (like the repo-existence check above),
+      # not a hard failure: tagging twice in a day isn't a mistake worth a
+      # red X, it just means this one waits.
+      - name: Enforce WordPress.org's one-submission-per-day limit
+        id: rate_limit
+        if: steps.svn_check.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          LAST_COMMIT_DATE="$(
+            svn log -l 1 "https://plugins.svn.wordpress.org/vcns-security-automation-manager" --non-interactive 2>/dev/null \
+              | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -1 || true
+          )"
+
+          if [ -z "${LAST_COMMIT_DATE}" ]; then
+            echo "Could not determine the last SVN commit date -- nothing to rate-limit against yet."
+            echo "ok=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          LAST_EPOCH="$(date -u -d "${LAST_COMMIT_DATE}" +%s)"
+          NOW_EPOCH="$(date -u +%s)"
+          ELAPSED_HOURS=$(( (NOW_EPOCH - LAST_EPOCH) / 3600 ))
+
+          if [ "${ELAPSED_HOURS}" -lt 24 ]; then
+            echo "ok=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning::Skipping WordPress.org SVN deploy: the last submission was ${ELAPSED_HOURS}h ago (${LAST_COMMIT_DATE} UTC). WordPress.org reviews submissions by hand and does not allow more than one per day. GitHub Release and update feed are unaffected -- re-run this workflow (workflow_dispatch) once 24 hours have passed."
+          else
+            echo "ok=true" >> "${GITHUB_OUTPUT}"
+            echo "Last SVN submission was ${ELAPSED_HOURS}h ago -- clear to deploy."
           fi
 
       # Proves the checker used below actually rejects a forbidden
@@ -111,7 +184,7 @@ jobs:
       # Existence-checked per path so this becomes a no-op forever once
       # they're actually gone, rather than failing every future deploy.
       - name: Remove stray pre-fix files from the live SVN listing
-        if: steps.svn_check.outputs.exists == 'true'
+        if: steps.svn_check.outputs.exists == 'true' && steps.rate_limit.outputs.ok == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -139,7 +212,7 @@ jobs:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
 
       - name: Deploy to WordPress.org SVN
-        if: steps.svn_check.outputs.exists == 'true'
+        if: steps.svn_check.outputs.exists == 'true' && steps.rate_limit.outputs.ok == 'true'
         uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # stable, 2025-01-21
         with:
           generate-zip: true

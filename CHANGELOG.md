@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.32] - 2026-09-01
+
+### Changed
+
+- Rewrote the plugin's one-line description (plugin header `Description:` and readme.txt's short description) -- the previous line ("Security headers that learn your site before they enforce -- plus free, automatic SSL/TLS certificate management.") mentioned only CSP and TLS certificates, leaving out the other eight header pillars and script integrity entirely. New line stays within WordPress.org's 150-character short-description limit (148 chars) while covering breadth (ten headers, TLS certificates, script integrity) and the free/no-paywall promise.
+- `.github/workflows/wporg-deploy.yml`: the actual SVN publish step (and its stray-file-cleanup step) now only runs when both are true: (1) the tagged commit is the merge commit of a pull request from a `release/v<version>` branch into `main` (not a direct push, and not any other branch name) -- verified via `gh api repos/{owner}/{repo}/commits/{sha}/pulls`; (2) at least 24 hours have passed since the live SVN repository's last commit, read directly from `svn log` (WordPress.org human-reviews every submission and does not allow more than one per day). Neither gate affects `release-package.yml` (GitHub Release ZIP + update feed), which continues to run unrestricted on every version tag as before. The provenance check is a hard failure (an untracked-provenance deploy attempt is a policy violation); the rate-limit check is a graceful skip (tagging twice in a day just means the second one waits, re-runnable via `workflow_dispatch`). Approval semantics: this enforces "merged via PR from the correctly-named branch," not a literal GitHub review-approval, since GitHub does not allow a PR author to approve their own PR and this repo has no second collaborator account today.
+
 ## [2.9.31] - 2026-09-01
 
 ### Added
