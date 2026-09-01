@@ -176,6 +176,15 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
+			__( 'Continuous Intelligence', 'vcns-security-automation-manager' ),
+			__( 'Continuous Intelligence', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-intelligence',
+			array( $this, 'render_intelligence' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
 			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			'manage_options',
@@ -431,6 +440,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-reverse-tabnabbing',
 			'security-automation-manager_page_security-automation-manager-scripts',
 			'security-automation-manager_page_security-automation-manager-cross-origin',
+			'security-automation-manager_page_security-automation-manager-intelligence',
 		);
 	}
 
@@ -540,6 +550,13 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+	}
+
+	public function render_intelligence(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
 	}
 
 	public function render_referrer_policy(): void {

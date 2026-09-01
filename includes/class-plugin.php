@@ -19,6 +19,10 @@ use WP_SAM\CSP\Nonce_Manager;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Scheduler;
 use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Intelligence\Detector_Engine;
+use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Request_Observer;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
@@ -174,6 +178,15 @@ final class Plugin {
 		// registering there instead changes no behaviour.
 		add_action( 'init', array( $this, 'register_automation_modes' ) );
 
+		// Detector registry: ships empty in every build (see Detector_Registry's
+		// own docblock); a loaded extension hooks wp_sam_register_detectors to
+		// add its own. Deferred to `init` for the same reason as
+		// register_automation_modes above -- register_detectors() itself does
+		// no translation, but the deferral keeps both registries on the same,
+		// well-understood lifecycle rather than one running earlier than the
+		// other for no functional reason.
+		add_action( 'init', array( $this, 'register_detectors' ) );
+
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
 		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
@@ -210,6 +223,15 @@ final class Plugin {
 		$this->cross_origin_opener_policy_builder->register();
 		$this->cross_origin_embedder_policy_builder->register();
 		$this->internal_script_integrity_builder->register();
+
+		// Request Observation Framework (Layer 3: Continuous Intelligence).
+		// Runs on every request, all four surfaces, same as the header
+		// pillars above -- see Request_Observer's own docblock for the hook
+		// combination. On the empty Detector_Registry every build ships with
+		// until an extension (or a future in-core Phase 3C detector family)
+		// registers something, this observes every request but records
+		// nothing.
+		( new Request_Observer( new Detector_Engine(), new Event_Store() ) )->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already
@@ -256,6 +278,18 @@ final class Plugin {
 	public function register_automation_modes(): void {
 		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
 		do_action( 'wp_sam_register_automation_modes', $this->gate );
+	}
+
+	// ── Detector registry ──────────────────────────────────────────────────────
+
+	/**
+	 * Fires the extension point for registering request detectors. Nothing in
+	 * this build registers one -- see Detector_Registry's own docblock.
+	 *
+	 * @see bootstrap()'s call to add_action( 'init', ... ) for why this isn't called directly from bootstrap().
+	 */
+	public function register_detectors(): void {
+		do_action( 'wp_sam_register_detectors' );
 	}
 
 	// ── REST routes ───────────────────────────────────────────────────────────

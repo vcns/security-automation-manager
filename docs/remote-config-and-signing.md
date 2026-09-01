@@ -28,8 +28,8 @@ Expected TXT record format:
 
 Field meanings:
 
-- `v=1` — config-discovery format version
-- `cfg=` — HTTPS URL to the signed JSON document
+- `v=1` - config-discovery format version
+- `cfg=` - HTTPS URL to the signed JSON document
 
 ## JSON payload contract
 

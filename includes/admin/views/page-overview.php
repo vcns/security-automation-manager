@@ -22,6 +22,7 @@ use WP_SAM\Admin\Pillar_Registry;
 use WP_SAM\Admin\Status_Badge;
 use WP_SAM\Certificates\Certificate_Store;
 use WP_SAM\CSP\Automation_Config;
+use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Rollback_Guard;
 
 global $wpdb;
@@ -117,6 +118,14 @@ if ( 'overview' === $tab ) {
 		$cert_status_color = 'inherit';
 	}
 	$cert_manage_url = admin_url( 'admin.php?page=security-automation-manager-certificates' . ( 'never' !== $cert_run['status'] ? '&tab=renew' : '' ) );
+
+	// Continuous Intelligence (Layer 3) -- the Request Observation Framework
+	// observes every request regardless of whether any detector is
+	// registered; the count here only reflects whether anything is actually
+	// evaluated against what it observes. See Detector_Registry's own
+	// docblock for why this ships empty until Phase 3C or an extension
+	// registers a detector.
+	$intelligence_detector_count = count( Detector_Registry::keys() );
 }
 
 // ── Recovery tab data ────────────────────────────────────────────────────────
@@ -265,8 +274,34 @@ $status_badge       = static function ( string $status ): void {
 		<tbody>
 			<tr>
 				<td><strong><?php esc_html_e( 'Request observation, detectors, and traffic intelligence', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td><em><?php esc_html_e( 'Planned for a future phase.', 'vcns-security-automation-manager' ); ?></em></td>
-				<td>&mdash;</td>
+				<td>
+					<?php if ( $intelligence_detector_count > 0 ) : ?>
+						<?php
+						echo Status_Badge::render( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+							Status_Badge::STATE_ACTIVE,
+							__( 'Observing', 'vcns-security-automation-manager' ),
+							sprintf(
+								/* translators: %d: number of registered detectors */
+								_n( '%d detector registered.', '%d detectors registered.', $intelligence_detector_count, 'vcns-security-automation-manager' ),
+								$intelligence_detector_count
+							)
+						);
+						?>
+					<?php else : ?>
+						<?php
+						echo Status_Badge::render( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+							Status_Badge::STATE_ACTIVE,
+							__( 'Observing', 'vcns-security-automation-manager' ),
+							__( 'Every request is observed and classified; no detectors are registered yet, so nothing is currently evaluated against them.', 'vcns-security-automation-manager' )
+						);
+						?>
+					<?php endif; ?>
+				</td>
+				<td>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-intelligence' ) ); ?>">
+						<?php esc_html_e( 'View Continuous Intelligence', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
 			</tr>
 		</tbody>
 	</table>

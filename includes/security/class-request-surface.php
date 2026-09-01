@@ -14,6 +14,8 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Security;
 
+use WP_SAM\Intelligence\Surface_Classifier;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -39,43 +41,16 @@ abstract class Request_Surface {
 	 * sending, without this plugin's own header masking the result.
 	 */
 	protected function is_conflict_probe_request(): bool {
-		$server_key = 'HTTP_' . strtoupper( str_replace( '-', '_', self::CONFLICT_PROBE_HEADER ) );
-
-		return isset( $_SERVER[ $server_key ] ) && '1' === (string) $_SERVER[ $server_key ];
+		return Surface_Classifier::is_conflict_probe_request();
 	}
 
 	// ── Surface detection ─────────────────────────────────────────────────────
 
 	protected function detect_surface(): string {
-		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-			return 'api';
-		}
-
-		if ( isset( $GLOBALS['pagenow'] ) && 'wp-login.php' === $GLOBALS['pagenow'] ) {
-			return 'login';
-		}
-
-		$request_path = $this->get_request_path();
-		if ( preg_match( '#(?:^|/)wp-admin(?:/|$)#', $request_path ) ) {
-			return 'admin';
-		}
-		if ( preg_match( '#(?:^|/)wp-login\.php$#', $request_path ) ) {
-			return 'login';
-		}
-
-		if ( is_admin() ) {
-			return 'admin';
-		}
-		return 'frontend';
+		return Surface_Classifier::detect();
 	}
 
 	protected function get_request_path(): string {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-		if ( '' === $uri ) {
-			return '';
-		}
-
-		$path = wp_parse_url( $uri, PHP_URL_PATH );
-		return is_string( $path ) ? rtrim( $path, '/' ) : '';
+		return Surface_Classifier::request_path();
 	}
 }

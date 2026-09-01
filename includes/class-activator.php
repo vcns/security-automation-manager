@@ -278,6 +278,7 @@ class Activator {
 			'sam_internal_asset_inventory',
 			'sam_certificates',
 			'sam_migration_snapshots',
+			'sam_request_events',
 		);
 	}
 
@@ -779,6 +780,37 @@ class Activator {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY to_version (to_version)
+) {$cc};"
+		);
+
+		// Schema v26: request-observation events (Request Observation
+		// Framework, Layer 3: Continuous Intelligence). Modeled on
+		// sam_pillar_violation_reports: named columns for what's genuinely
+		// filterable/sortable, an opaque `detail` JSON blob for everything
+		// else (evidence, IP, user agent, method, path), since no detector
+		// family exists yet to fix its evidence shape. confidence is
+		// nullable -- reserved for a future confidence-scoring engine, not
+		// populated by anything in this schema version. See
+		// Intelligence\Event_Store.
+		dbDelta(
+			"CREATE TABLE {$p}sam_request_events (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  surface varchar(32) NOT NULL,
+  detector_id varchar(64) NOT NULL,
+  detector_family varchar(64) NOT NULL,
+  severity varchar(16) NOT NULL DEFAULT 'unknown',
+  confidence float DEFAULT NULL,
+  detail longtext NOT NULL,
+  fingerprint varchar(64) NOT NULL,
+  occurrence_count int(11) NOT NULL DEFAULT 1,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY surface (surface),
+  KEY detector_id (detector_id),
+  KEY severity (severity),
+  KEY last_seen_at (last_seen_at),
+  UNIQUE KEY fingerprint (fingerprint)
 ) {$cc};"
 		);
 

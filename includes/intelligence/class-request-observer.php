@@ -1,0 +1,99 @@
+<?php
+/**
+ * Observes every request across all four surfaces (frontend/admin/login/
+ * api), runs Detector_Engine against it, and records any Findings via
+ * Event_Store.
+ *
+ * Hooks the exact same send_headers + login_init + wp_redirect combination
+ * Header_Builder already proves covers every surface: send_headers for the
+ * normal request lifecycle, login_init because wp-login.php is a standalone
+ * entry point that never fires send_headers, and the wp_redirect filter
+ * (priority 1) so a request that redirects before send_headers runs is
+ * still observed -- a scanner/probe hitting a redirecting URL is exactly
+ * the kind of thing worth observing, not something to silently skip.
+ *
+ * Skips Conflict_Detector's own internal probe request, or this class would
+ * misclassify the plugin's own diagnostic traffic as an observed event.
+ *
+ * On an empty Detector_Registry (every build until Phase 3C registers a
+ * real detector), observe() always runs but Detector_Engine::evaluate()
+ * returns no Findings, so nothing is ever written to Event_Store.
+ */
+
+declare( strict_types=1 );
+
+namespace WP_SAM\Intelligence;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+final class Request_Observer {
+
+	private bool $observed = false;
+
+	private Detector_Engine $engine;
+	private Event_Store $events;
+
+	public function __construct( Detector_Engine $engine, Event_Store $events ) {
+		$this->engine = $engine;
+		$this->events = $events;
+	}
+
+	public function register(): void {
+		add_action( 'send_headers', array( $this, 'observe' ) );
+		add_action( 'login_init', array( $this, 'observe' ) );
+		add_filter( 'wp_redirect', array( $this, 'observe_before_redirect' ), 1, 2 );
+	}
+
+	public function observe_before_redirect( string $location, int $status = 302 ): string {
+		unset( $status );
+		$this->observe();
+		return $location;
+	}
+
+	public function observe(): void {
+		if ( $this->observed ) {
+			return;
+		}
+		$this->observed = true;
+
+		if ( Surface_Classifier::is_conflict_probe_request() ) {
+			return;
+		}
+
+		$context  = $this->build_context();
+		$findings = $this->engine->evaluate( $context );
+
+		foreach ( $findings as $finding ) {
+			$this->events->record(
+				(string) ( $finding['detector_id'] ?? '' ),
+				(string) ( $finding['detector_family'] ?? '' ),
+				(string) ( $finding['surface'] ?? $context['surface'] ),
+				(string) ( $finding['severity'] ?? 'unknown' ),
+				isset( $finding['confidence'] ) && is_numeric( $finding['confidence'] ) ? (float) $finding['confidence'] : null,
+				(string) $context['ip'],
+				array_merge(
+					array(
+						'ip'         => $context['ip'],
+						'path'       => $context['path'],
+						'method'     => $context['method'],
+						'user_agent' => $context['user_agent'],
+					),
+					is_array( $finding['detail'] ?? null ) ? $finding['detail'] : array()
+				)
+			);
+		}
+	}
+
+	/** @return array<string, mixed> */
+	private function build_context(): array {
+		return array(
+			'surface'    => Surface_Classifier::detect(),
+			'path'       => Surface_Classifier::request_path(),
+			'ip'         => Ip_Resolver::resolve(),
+			'method'     => isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_METHOD'] ) ) : '',
+			'user_agent' => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+		);
+	}
+}

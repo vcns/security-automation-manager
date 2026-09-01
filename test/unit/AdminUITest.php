@@ -92,6 +92,8 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Layer 1: Governance and Operations', $view );
 		$this->assertStringContainsString( 'Layer 2: Controlled Automation', $view );
 		$this->assertStringContainsString( 'Layer 3: Continuous Intelligence', $view );
+		$this->assertStringContainsString( 'security-automation-manager-intelligence', $view );
+		$this->assertStringNotContainsString( 'Planned for a future phase.', $view );
 		$this->assertStringContainsString( 'Layer 4: Browser Security Policies', $view );
 		$this->assertStringContainsString( 'Layer 5: Transport & Certificate Trust', $view );
 		$this->assertStringContainsString( 'tab=settings', $view );

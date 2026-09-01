@@ -4,7 +4,7 @@
 
 **Version:** 1.0
 **Date:** 2026-08-19
-**DB schema alignment:** v25
+**DB schema alignment:** v26
 **Status:** Active
 
 **Supersedes:** v0.3 (2026-06-07), which described a CSP-only product aligned to
@@ -647,6 +647,13 @@ specific domain:
 - No rollback mechanism for plugin releases.
 - No release-verification test suite runs against a real WordPress
   instance.
+- Every request is observed and classified by surface (frontend/admin/
+  login/api) as a framework-level foundation for future traffic
+  intelligence, but no detector is registered against it yet -- the
+  Continuous Intelligence admin page and its underlying event table are
+  present and empty in every build. Nothing is written to that table, and
+  no request metadata (IP, user agent, path) is retained anywhere, until a
+  detector exists to evaluate it.
 
 This list is deliberately conservative - a capability not listed as a
 limitation elsewhere in this document and not listed here should be assumed
