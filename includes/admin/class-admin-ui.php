@@ -1018,6 +1018,14 @@ class Admin_UI {
 		// long as Rollback_Guard::DOWNGRADE_OPTION stays set, not just once.
 		$this->maybe_show_schema_downgrade_warning();
 
+		// Certificate failure warning: deliberately NOT routed through the FIFO
+		// wp_sam_admin_notices queue either -- same reasoning as the
+		// schema-downgrade warning above. A failed ACME run (manual or via the
+		// daily WP-Cron renewal check) can otherwise go completely unnoticed
+		// until the certificate actually expires, since nothing else prompts
+		// an admin to visit the Certificates page.
+		$this->maybe_show_cert_failure_warning();
+
 		$notices = get_option( 'wp_sam_admin_notices', array() );
 		if ( ! is_array( $notices ) || empty( $notices ) ) {
 			return;
@@ -1076,6 +1084,40 @@ class Admin_UI {
 			),
 			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=recovery' ) ),
 			esc_html__( 'View recovery guidance', 'vcns-security-automation-manager' )
+		);
+	}
+
+	/**
+	 * Shows a persistent (not one-shot) notice for as long as the most recent
+	 * ACME certificate run ended in failure -- like the schema-downgrade
+	 * warning above, this condition doesn't resolve itself on its own, so it
+	 * has to keep reappearing on every admin page load (not just on the
+	 * Certificates page) until an administrator fixes it or a later run
+	 * succeeds.
+	 */
+	private function maybe_show_cert_failure_warning(): void {
+		if ( ! isset( $this->plugin->cert_manager ) ) {
+			return; // Not yet bootstrapped (e.g. a test double built without going through Plugin::init()).
+		}
+
+		$run = $this->plugin->cert_manager->last_run();
+		if ( 'failed' !== $run['status'] ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-error"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a></p></div>',
+			esc_html__( 'Security Automation Manager: the last TLS certificate run failed.', 'vcns-security-automation-manager' ),
+			esc_html(
+				sprintf(
+					/* translators: 1: failure detail/exception message, 2: UTC timestamp of the failed run */
+					__( '%1$s (%2$s UTC)', 'vcns-security-automation-manager' ),
+					$run['detail'],
+					$run['at']
+				)
+			),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager-certificates&tab=renew' ) ),
+			esc_html__( 'View details and retry', 'vcns-security-automation-manager' )
 		);
 	}
 
