@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.30] - 2026-09-01
+
+### Changed
+
+- Replaced `.wordpress-org/icon-{128,256}x{128,256}.png` and `banner-{772x250,1544x500}.png`. The 2.9.27 originals used a shield mark and amber accent invented without reference to VCNS's actual brand (the real mark -- a cloud-and-circuit icon in a teal-to-cyan gradient, `#00DAB7` to `#00B4E7` -- lives in the company's BIMI record and was never consulted), and the copy only called out CSP, HSTS, and SSL/TLS, materially underselling the plugin now that it also covers ten header pillars total, ACME/TLS certificate automation, and script/content integrity protections. New artwork reuses the real brand mark and gradient, and the banner copy enumerates the actual current scope.
+
 ## [2.9.29] - 2026-09-01
 
 ### Added
