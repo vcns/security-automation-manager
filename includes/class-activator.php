@@ -289,6 +289,9 @@ class Activator {
 			'sam_security_baselines',
 			'sam_drift_records',
 			'sam_change_log',
+			'sam_campaigns',
+			'sam_honeypaths',
+			'sam_change_windows',
 		);
 	}
 
@@ -802,6 +805,13 @@ class Activator {
 		// nullable -- reserved for a future confidence-scoring engine, not
 		// populated by anything in this schema version. See
 		// Intelligence\Event_Store.
+		// v30: adds the `ip` column (Phase 3J, §14 Campaign Detection) as a
+		// real, indexed column instead of a value buried in the `detail`
+		// JSON blob -- campaign detection needs a cheap "how many distinct
+		// IPs hit this detector+surface recently" query, which a JSON scan
+		// can't support at any real scale. dbDelta() ADD-COLUMNs this in
+		// place on an upgrade; existing rows backfill '' (their IP is still
+		// recoverable from `detail` if ever needed, just not indexed).
 		dbDelta(
 			"CREATE TABLE {$p}sam_request_events (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -810,6 +820,7 @@ class Activator {
   detector_family varchar(64) NOT NULL,
   severity varchar(16) NOT NULL DEFAULT 'unknown',
   confidence float DEFAULT NULL,
+  ip varchar(64) NOT NULL DEFAULT '',
   detail longtext NOT NULL,
   fingerprint varchar(64) NOT NULL,
   occurrence_count int(11) NOT NULL DEFAULT 1,
@@ -820,6 +831,7 @@ class Activator {
   KEY detector_id (detector_id),
   KEY severity (severity),
   KEY last_seen_at (last_seen_at),
+  KEY detector_surface_ip (detector_id, surface, ip),
   UNIQUE KEY fingerprint (fingerprint)
 ) {$cc};"
 		);
@@ -1042,6 +1054,92 @@ class Activator {
   PRIMARY KEY  (id),
   KEY change_type (change_type),
   KEY occurred_at (occurred_at)
+) {$cc};"
+		);
+
+		// Schema v30: Phase 3J (Advanced Optional Intelligence). Built after
+		// real-world validation of Phases 3D-3I, at the user's explicit
+		// request to build the full optional set now rather than wait.
+		//
+		// sam_campaigns: Campaign Detection (§14). One row per (detector_id,
+		// surface) combination currently showing a distributed-source
+		// pattern -- see Intelligence\Campaign_Detector's own docblock for
+		// exactly which signal is implemented (distinct source IPs against
+		// the same detector+surface in a window) and which roadmap signals
+		// are NOT (payload-fingerprint clustering, ASN/provider diversity,
+		// path sequencing -- none of that infrastructure exists yet). status
+		// starts 'detected' (automatic) and can only move to 'acknowledged',
+		// 'dismissed', or 'blocked' via an explicit administrator decision
+		// with a required note -- same disposition shape as Drift_Store.
+		// Blocking a campaign's participants never happens automatically;
+		// see Campaign_Store::block_participants() and the roadmap's
+		// explicit "automatic blocking ... requires explicit opt-in".
+		dbDelta(
+			"CREATE TABLE {$p}sam_campaigns (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  detector_id varchar(64) NOT NULL,
+  detector_family varchar(64) NOT NULL,
+  surface varchar(32) NOT NULL,
+  participant_count int(11) NOT NULL DEFAULT 0,
+  event_count int(11) NOT NULL DEFAULT 0,
+  status varchar(16) NOT NULL DEFAULT 'detected',
+  disposition_note longtext NOT NULL,
+  disposition_by bigint(20) UNSIGNED DEFAULT NULL,
+  disposition_at datetime DEFAULT NULL,
+  fingerprint varchar(64) NOT NULL,
+  first_detected_at datetime NOT NULL,
+  last_detected_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY detector_id (detector_id),
+  KEY status (status),
+  UNIQUE KEY fingerprint (fingerprint)
+) {$cc};"
+		);
+
+		// sam_honeypaths: Deception and Honey Paths (§15). Purely an
+		// administrator-managed list of decoy paths -- disabled by default
+		// because a fresh install has none configured (see
+		// Detectors\Honeypath_Detector's own docblock for how an empty list
+		// naturally means the detector never matches anything). No hit
+		// counter lives on this table: a hit is just an ordinary Finding
+		// recorded through the same Event_Store every other detector uses,
+		// not a special-cased second bookkeeping path.
+		dbDelta(
+			"CREATE TABLE {$p}sam_honeypaths (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  path varchar(255) NOT NULL,
+  description varchar(255) NOT NULL DEFAULT '',
+  created_by bigint(20) UNSIGNED DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY path (path(191))
+) {$cc};"
+		);
+
+		// sam_change_windows: Security Change Window (§18). A thin,
+		// declared-intent wrapper around the existing baseline/drift
+		// machinery (Baseline_Store, Drift_Scanner) rather than a parallel
+		// mechanism -- see Intelligence\Change_Window_Store's own docblock
+		// for exactly which of the roadmap's eight workflow steps this
+		// implements and which (external verification; automatic file-level
+		// rollback) it deliberately does not, matching this build's existing
+		// External_Verification honesty pattern rather than faking a step
+		// with no real infrastructure behind it.
+		dbDelta(
+			"CREATE TABLE {$p}sam_change_windows (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  description varchar(255) NOT NULL DEFAULT '',
+  status varchar(16) NOT NULL DEFAULT 'open',
+  baseline_id_before bigint(20) UNSIGNED DEFAULT NULL,
+  baseline_id_after bigint(20) UNSIGNED DEFAULT NULL,
+  opened_by bigint(20) UNSIGNED DEFAULT NULL,
+  opened_at datetime NOT NULL,
+  closes_at datetime DEFAULT NULL,
+  closed_by bigint(20) UNSIGNED DEFAULT NULL,
+  closed_at datetime DEFAULT NULL,
+  resolution_note longtext NOT NULL,
+  PRIMARY KEY  (id),
+  KEY status (status)
 ) {$cc};"
 		);
 

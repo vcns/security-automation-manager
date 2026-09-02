@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.43
+Stable tag: 2.9.44
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,11 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.44 =
+
+* Added: Phase 3J of the roadmap -- Advanced Optional Intelligence, a new "Advanced Intelligence" page with four tabs. Campaigns correlates request-observation events into a possible coordinated campaign when many distinct source IPs trigger the same detector on the same surface -- observe/correlate/notify only; blocking every participant is a separate, explicit action requiring a reason. Honey Paths lets you configure decoy paths no legitimate visitor ever requests; disabled until you add one, and a hit is recorded exactly like any other detector finding, never served special content. Change Windows lets you declare an intentional change (an upgrade, a deployment) in progress, recording the current baseline as a rollback reference, then shows exactly what drifted while the window was open. Timeline merges site changes, security drift, and campaigns into one chronological, correlation-only view. Two new administrator-account signals (new admin account created, existing user granted the administrator role) now feed the same change history this correlates against.
+* Added: an indexed `ip` column on the request-observation events table, needed for Campaign correlation to count distinct sources cheaply.
 
 = 2.9.43 =
 

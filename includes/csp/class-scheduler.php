@@ -15,9 +15,12 @@ namespace WP_SAM\CSP;
 
 use WP_SAM\Intelligence\Baseline_State_Builder;
 use WP_SAM\Intelligence\Baseline_Store;
+use WP_SAM\Intelligence\Campaign_Detector;
+use WP_SAM\Intelligence\Campaign_Store;
 use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
+use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -80,6 +83,7 @@ class Scheduler {
 			$this->purge_stale_traffic_blocks();
 			$hash_mgr->prune_stale_by_age();
 			$this->run_drift_scan( $plugin );
+			$this->run_campaign_scan();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -274,6 +278,25 @@ class Scheduler {
 				'scheduler',
 				'drift_detected',
 				sprintf( 'Drift scan found %d difference(s) from the approved baseline.', $result['drift_count'] ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Correlates recent request-observation events for a possible
+	 * coordinated campaign (Phase 3J, §14). Observe-only: never blocks
+	 * anything -- see Campaign_Detector's own docblock.
+	 */
+	private function run_campaign_scan(): void {
+		$detector = new Campaign_Detector( new Event_Store(), new Campaign_Store() );
+		$result   = $detector->scan();
+
+		if ( $result['campaigns_detected'] > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'campaign_detected',
+				sprintf( 'Campaign scan found %d possible coordinated campaign(s).', $result['campaigns_detected'] ),
 				'info'
 			);
 		}

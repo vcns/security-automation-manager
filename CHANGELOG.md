@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.44] - 2026-09-02
+
+### Added
+
+- Phase 3J of `.roadmap/phase3_early_plan.md` (§14 Campaign Detection, §15 Deception and Honey Paths, §16 Integrity Monitoring, §17 Change Attribution extension, §18 Security Change Window) -- built at the user's explicit request ahead of real-world validation of Phases 3D-3I, since the roadmap frames this set as optional/exploratory. Schema v30 adds `sam_campaigns`, `sam_honeypaths`, `sam_change_windows`, and an indexed `ip` column on `sam_request_events`.
+- `includes/intelligence/class-campaign-detector.php` + `class-campaign-store.php` (§14): correlates distinct source IPs hitting the same detector+surface within a window into a possible-campaign record. Implements exactly one of the roadmap's listed signals (distributed source IPs) -- the others (payload-fingerprint clustering, ASN/provider diversity, path sequencing) would need infrastructure this build doesn't have and aren't faked. Runs as part of the existing daily cron scan; observe/correlate/notify only. `block_participants()` is the one action with a real side effect (adds every live participant IP to `sam_ip_rules` as an explicit block) and is only ever triggered by an explicit administrator action with a required reason, never automatically.
+- `includes/intelligence/class-honeypath-store.php` + `includes/intelligence/detectors/class-honeypath-detector.php` (§15): an administrator-managed list of decoy paths. With zero configured paths (every fresh install/upgrade), the detector's rule list is empty and it structurally never matches anything -- satisfying "disabled by default" without a separate flag. A hit is recorded through the same `Event_Store` path as every other detector, never a special-cased second bookkeeping mechanism, and the request's actual response is never altered.
+- `includes/intelligence/class-account-integrity-recorder.php` (§16): records new administrator accounts and role escalations to administrator into the existing `Change_Log_Store` (two new change types: `admin_account_created`, `admin_role_granted`), so they appear in both the existing Change Log tab and the new Timeline tab automatically. Other §16 candidate signals (unexpected files, cron entries, plugin/theme file changes) are not implemented -- explicit gap, not partial/faked coverage.
+- `includes/intelligence/class-change-window-store.php` (§18): a thin, declared-intent wrapper around the existing `Baseline_Store`/`Drift_Scanner` machinery rather than a parallel mechanism. Covers 5 of the roadmap's 8 workflow steps (snapshot reference, continuous change/behaviour recording via existing infrastructure, delta presentation on close, retained rollback reference via baseline history); "increase observation" and "run external verification" are not implemented (no lever for the former exists yet; the latter depends on the Phase 3G/3H infrastructure already deferred).
+- `includes/admin/class-change-timeline-builder.php` (§17 extension): merges `Change_Log_Store`, `Drift_Store`, and `Campaign_Store` into one chronological view, modeled on the existing `Policy_Events_Builder` pattern. Every row is worded as correlation only ("Correlates with...") per the roadmap's explicit "must not claim causation where only correlation exists."
+- `includes/admin/views/page-advanced.php` (new "Advanced Intelligence" page): Campaigns, Honey Paths, Change Windows, and Timeline tabs; `includes/admin/class-admin-ui.php` gains nine new `admin_post` handlers for these actions.
+
 ## [2.9.43] - 2026-09-02
 
 ### Added

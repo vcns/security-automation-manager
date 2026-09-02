@@ -19,11 +19,14 @@ use WP_SAM\CSP\Nonce_Manager;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Scheduler;
 use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Intelligence\Account_Integrity_Recorder;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
 use WP_SAM\Intelligence\Change_Log_Store;
+use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Rate_Limiter;
@@ -269,6 +272,13 @@ final class Plugin {
 		// behaviour. See Change_Attribution_Recorder's own docblock.
 		( new Change_Attribution_Recorder( new Change_Log_Store() ) )->register();
 
+		// Integrity Monitoring (Phase 3J, §16): new administrator accounts
+		// and role escalations to administrator, written into the same
+		// Change_Log_Store as the change-attribution recorder above -- see
+		// Account_Integrity_Recorder's own docblock for what §16 signals
+		// this covers and which it deliberately doesn't.
+		( new Account_Integrity_Recorder( new Change_Log_Store() ) )->register();
+
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already
 		// stamped before the buffer captures them (and can be skipped).
@@ -326,6 +336,14 @@ final class Plugin {
 	 */
 	public function register_detectors(): void {
 		\WP_SAM\Intelligence\Detector_Registry::register_defaults();
+
+		// Deception and Honey Paths (Phase 3J, §15): registered unconditionally,
+		// alongside but distinct from the ten free defaults above -- with zero
+		// administrator-configured decoy paths (every fresh install), its
+		// rules() is empty and it structurally never matches anything. See
+		// Honeypath_Detector's own docblock.
+		Detector_Registry::register( new Honeypath_Detector( new Honeypath_Store() ) );
+
 		do_action( 'wp_sam_register_detectors' );
 	}
 
