@@ -228,6 +228,13 @@ if ( ! function_exists( '_e' ) ) {
 	}
 }
 
+if ( ! function_exists( '_n' ) ) {
+	function _n( string $single, string $plural, int $number, string $domain = 'default' ): string {
+		unset( $domain );
+		return 1 === $number ? $single : $plural;
+	}
+}
+
 if ( ! function_exists( 'esc_html_e' ) ) {
 	function esc_html_e( string $text, string $domain = 'default' ): void {
 		echo esc_html__( $text, $domain );

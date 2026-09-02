@@ -356,6 +356,12 @@
 	color: #86181d;
 }
 
+.wp-sam-readiness-badge.status-info {
+	background: #eef3f9;
+	border: 1px solid #c3d4e8;
+	color: #2c4a6e;
+}
+
 .wp-sam-reset-form {
 	max-width: 760px;
 }

@@ -153,6 +153,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
+		add_action( 'admin_post_wp_sam_export_evidence', array( $this, 'handle_export_evidence' ) );
 		add_action( 'wp_ajax_wp_sam_manual_scan', array( $this, 'ajax_manual_scan' ) );
 		add_action( 'wp_ajax_wp_sam_approve_source', array( $this, 'ajax_approve_source' ) );
 		add_action( 'wp_ajax_wp_sam_deny_source', array( $this, 'ajax_deny_source' ) );
@@ -1383,6 +1384,25 @@ class Admin_UI {
 		header( 'Content-Type: application/x-pem-file' );
 		header( 'Content-Disposition: attachment; filename="' . $which . '.pem"' );
 		echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- PEM file download, not an HTML context.
+		exit;
+	}
+
+	/** Phase 3I: downloads a read-only evidence bundle -- see Intelligence\Evidence_Exporter's own docblock for why this is distinct from Config_Portability. */
+	public function handle_export_evidence(): void {
+		check_admin_referer( 'wp_sam_export_evidence' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to export evidence.', 'vcns-security-automation-manager' ) );
+		}
+
+		$bundle = ( new \WP_SAM\Intelligence\Evidence_Exporter() )->build();
+		$json   = wp_json_encode( $bundle, JSON_PRETTY_PRINT );
+
+		$this->plugin->audit->log( 'assurance', 'evidence_exported', 'An administrator downloaded an evidence export.', 'info' );
+
+		nocache_headers();
+		header( 'Content-Type: application/json' );
+		header( 'Content-Disposition: attachment; filename="security-evidence-export-' . gmdate( 'Y-m-d' ) . '.json"' );
+		echo false !== $json ? $json : '{}'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON file download, not an HTML context.
 		exit;
 	}
 
