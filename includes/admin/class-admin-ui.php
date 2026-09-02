@@ -68,8 +68,11 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
+use WP_SAM\Intelligence\Traffic_Block_Store;
+use WP_SAM\Intelligence\Traffic_Policy_Store;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
@@ -134,6 +137,11 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_scanner_identity_decide', array( $this, 'handle_scanner_identity_decide' ) );
 		add_action( 'admin_post_wp_sam_scanner_vendor_upsert', array( $this, 'handle_scanner_vendor_upsert' ) );
 		add_action( 'admin_post_wp_sam_scanner_vendor_delete', array( $this, 'handle_scanner_vendor_delete' ) );
+		add_action( 'admin_post_wp_sam_traffic_policy_update', array( $this, 'handle_traffic_policy_update' ) );
+		add_action( 'admin_post_wp_sam_ip_rule_add', array( $this, 'handle_ip_rule_add' ) );
+		add_action( 'admin_post_wp_sam_ip_rule_delete', array( $this, 'handle_ip_rule_delete' ) );
+		add_action( 'admin_post_wp_sam_traffic_block_release', array( $this, 'handle_traffic_block_release' ) );
+		add_action( 'admin_post_wp_sam_traffic_block_persist', array( $this, 'handle_traffic_block_persist' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -251,6 +259,15 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
+			__( 'Traffic Controls', 'vcns-security-automation-manager' ),
+			__( 'Traffic Controls', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-traffic',
+			array( $this, 'render_traffic' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
 			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			'manage_options',
@@ -359,6 +376,7 @@ class Admin_UI {
 		$hidden_slugs = array(
 			'security-automation-manager-certificates',
 			'security-automation-manager-intelligence',
+			'security-automation-manager-traffic',
 			'security-automation-manager-cross-origin',
 			'security-automation-manager-dashboard',
 			'security-automation-manager-hsts',
@@ -558,6 +576,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-scripts',
 			'security-automation-manager_page_security-automation-manager-cross-origin',
 			'security-automation-manager_page_security-automation-manager-intelligence',
+			'security-automation-manager_page_security-automation-manager-traffic',
 		);
 	}
 
@@ -674,6 +693,13 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+	}
+
+	public function render_traffic(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
 	}
 
 	public function render_observe(): void {
@@ -1010,6 +1036,85 @@ class Admin_UI {
 		$lines = preg_split( '/\r\n|\r|\n/', $raw );
 		$lines = false !== $lines ? $lines : array();
 		return array_values( array_filter( array_map( 'trim', $lines ) ) );
+	}
+
+	// ── Traffic Controls (Phase 3E) ───────────────────────────────────────────
+
+	public function handle_traffic_policy_update(): void {
+		check_admin_referer( 'wp_sam_traffic_policy_update' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		$surface = sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) );
+		( new Traffic_Policy_Store() )->update(
+			$surface,
+			sanitize_key( wp_unslash( $_POST['mode'] ?? 'observe' ) ),
+			(int) ( $_POST['rate_limit_max_requests'] ?? 0 ),
+			(int) ( $_POST['rate_limit_window_seconds'] ?? 0 ),
+			(int) ( $_POST['login_max_failed_attempts'] ?? 0 ),
+			(int) ( $_POST['login_lockout_seconds'] ?? 0 )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=policy' ) );
+		exit;
+	}
+
+	public function handle_ip_rule_add(): void {
+		check_admin_referer( 'wp_sam_ip_rule_add' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		$expires_in = isset( $_POST['expires_in_hours'] ) ? absint( $_POST['expires_in_hours'] ) : 0;
+
+		( new Ip_Rule_Store() )->add(
+			sanitize_key( wp_unslash( $_POST['list_type'] ?? 'block' ) ),
+			sanitize_text_field( wp_unslash( $_POST['cidr'] ?? '' ) ),
+			sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) ),
+			sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) ),
+			get_current_user_id(),
+			$expires_in > 0 ? $expires_in * HOUR_IN_SECONDS : null
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules' ) );
+		exit;
+	}
+
+	public function handle_ip_rule_delete(): void {
+		check_admin_referer( 'wp_sam_ip_rule_delete' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Ip_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules' ) );
+		exit;
+	}
+
+	public function handle_traffic_block_release(): void {
+		check_admin_referer( 'wp_sam_traffic_block_release' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Traffic_Block_Store() )->release( (int) ( $_POST['block_id'] ?? 0 ) );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=blocks' ) );
+		exit;
+	}
+
+	public function handle_traffic_block_persist(): void {
+		check_admin_referer( 'wp_sam_traffic_block_persist' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Traffic_Block_Store() )->set_persistent( (int) ( $_POST['block_id'] ?? 0 ), get_current_user_id() );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=blocks' ) );
+		exit;
 	}
 
 	// ── Certificates (ACME) ───────────────────────────────────────────────────

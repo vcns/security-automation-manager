@@ -407,7 +407,8 @@ class AdminUITest extends TestCase {
 		$output = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'Control', $output );
-		$this->assertStringContainsString( 'not blocking traffic', $output );
+		$this->assertStringContainsString( 'Manage Traffic Controls', $output );
+		$this->assertStringContainsString( 'security-automation-manager-traffic', $output );
 	}
 
 	public function test_verify_view_renders_without_fatal(): void {

@@ -23,9 +23,14 @@ use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
+use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Rate_Limiter;
 use WP_SAM\Intelligence\Request_Observer;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
+use WP_SAM\Intelligence\Traffic_Block_Store;
+use WP_SAM\Intelligence\Traffic_Guard;
+use WP_SAM\Intelligence\Traffic_Policy_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
@@ -241,6 +246,18 @@ final class Plugin {
 			new Event_Store(),
 			new Identity_Resolver( new Scanner_Vendor_Store() ),
 			new Scanner_Identity_Store()
+		) )->register();
+
+		// Traffic Controls (Phase 3E). Every surface seeds in 'observe'
+		// mode (Activator::seed_default_traffic_policies()), so this never
+		// blocks anything until an administrator explicitly promotes a
+		// surface to 'enforce' -- see Traffic_Guard's own docblock for the
+		// full default-safety design.
+		( new Traffic_Guard(
+			new Traffic_Policy_Store(),
+			new Ip_Rule_Store(),
+			new Traffic_Block_Store(),
+			new Rate_Limiter()
 		) )->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.

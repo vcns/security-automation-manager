@@ -72,6 +72,7 @@ class Scheduler {
 			$this->purge_old_violations();
 			$this->purge_old_pillar_violations();
 			$this->purge_old_request_events();
+			$this->purge_stale_traffic_blocks();
 			$hash_mgr->prune_stale_by_age();
 
 		} catch ( \Throwable $e ) {
@@ -212,6 +213,35 @@ class Scheduler {
 				'scheduler',
 				'request_events_purged',
 				sprintf( 'Purged %d request observation event(s) older than %d days.', $deleted, $days ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Deletes non-persistent Traffic_Block_Store rows (Phase 3E) not seen
+	 * again within 30 days -- a source that stopped offending shouldn't be
+	 * penalised forever. is_persistent = 1 rows are an explicit
+	 * administrator decision (Traffic_Block_Store::set_persistent()) and
+	 * are never touched here; only Traffic_Block_Store::release() or a
+	 * direct admin action can undo one.
+	 */
+	private function purge_stale_traffic_blocks(): void {
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_traffic_blocks';
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM {$table} WHERE is_persistent = 0 AND last_seen_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				30
+			)
+		);
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'traffic_blocks_purged',
+				sprintf( 'Purged %d stale traffic block record(s) not seen again within 30 days.', $deleted ),
 				'info'
 			);
 		}
