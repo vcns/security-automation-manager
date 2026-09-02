@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.45] - 2026-09-02
+
+### Added
+
+- Phase 4A of `.roadmap/phase4_plan.md` (Traffic Intelligence Data Sourcing -- Tor Awareness, `.roadmap/phase3_early_plan.md` §13.6): `includes/intelligence/class-tor-exit-list-store.php` fetches the Tor Project's own public bulk exit-node list (`https://check.torproject.org/torbulkexitlist` -- no account, API key, or licensing decision required, unlike Geo-IP/ASN) and replaces the stored set wholesale on a successful, plausibility-checked fetch; a failed or suspiciously small fetch leaves existing data untouched. Refreshed daily via the existing `wp_sam_daily_scan` cron, with a manual "Refresh Now" admin action.
+- `includes/intelligence/class-network-intelligence-resolver.php`: the `Network_Intelligence_Resolver` component named as missing in `.roadmap/phase3_early_plan.md` §31, built now as the umbrella ASN/Geo-IP will extend later. Resolves Tor exit status via a single indexed local lookup, never a network call on the request path.
+- `includes/intelligence/class-request-observer.php`: network intelligence is resolved only when a detector has already produced a Finding for the request (not on every request), and `is_tor_exit` is attached to that Finding's evidence -- Tor identity is recorded as context on evidence that already exists, never as its own noise-generating event, and never implies malicious intent on its own.
+- `includes/admin/views/page-traffic.php`: new "Network Intelligence" tab showing exit-list status (count, last refresh, last fetch outcome) and the manual refresh action; notes ASN and Geo-IP as planned next.
+
 ## [2.9.44] - 2026-09-02
 
 ### Added

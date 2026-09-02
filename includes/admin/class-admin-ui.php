@@ -79,6 +79,7 @@ use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
@@ -162,6 +163,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_honeypath_delete', array( $this, 'handle_honeypath_delete' ) );
 		add_action( 'admin_post_wp_sam_change_window_open', array( $this, 'handle_change_window_open' ) );
 		add_action( 'admin_post_wp_sam_change_window_close', array( $this, 'handle_change_window_close' ) );
+		add_action( 'admin_post_wp_sam_tor_list_refresh', array( $this, 'handle_tor_list_refresh' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -1367,6 +1369,24 @@ class Admin_UI {
 		);
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=change-windows' ) );
+		exit;
+	}
+
+	/**
+	 * Manual, on-demand equivalent of the daily Tor exit-list refresh cron
+	 * (Phase 4A). Same store, same failure handling -- a failed fetch
+	 * leaves existing data untouched and the admin sees the failure
+	 * message via the redirected notice.
+	 */
+	public function handle_tor_list_refresh(): void {
+		check_admin_referer( 'wp_sam_tor_list_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh the Tor exit list.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Tor_Exit_List_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
 		exit;
 	}
 

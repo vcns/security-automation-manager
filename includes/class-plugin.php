@@ -29,10 +29,12 @@ use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Network_Intelligence_Resolver;
 use WP_SAM\Intelligence\Rate_Limiter;
 use WP_SAM\Intelligence\Request_Observer;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
+use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Guard;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
@@ -250,7 +252,8 @@ final class Plugin {
 			new Detector_Engine(),
 			new Event_Store(),
 			new Identity_Resolver( new Scanner_Vendor_Store() ),
-			new Scanner_Identity_Store()
+			new Scanner_Identity_Store(),
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store() )
 		) )->register();
 
 		// Traffic Controls (Phase 3E). Every surface seeds in 'observe'

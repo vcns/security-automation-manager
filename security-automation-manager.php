@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.44
+ * Version:           2.9.45
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.44' );
+define( 'WP_SAM_VERSION', '2.9.45' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -177,8 +177,16 @@ define( 'WP_SAM_VERSION', '2.9.44' );
  *        an explicit administrator action. See Intelligence\Campaign_
  *        Detector, Intelligence\Detectors\Honeypath_Detector, and
  *        Intelligence\Change_Window_Store.
+ * v31 -- adds sam_tor_exit_nodes (Phase 4A: Traffic Intelligence Data
+ *        Sourcing -- Tor Awareness, .roadmap/phase4_plan.md). Holds the
+ *        Tor Project's own public bulk exit-node list, refreshed daily;
+ *        built first among Geo-IP/ASN/Tor because it needs no account or
+ *        licensing decision. Observation only -- Tor identity never
+ *        implies malicious intent and nothing blocks by default. See
+ *        Intelligence\Tor_Exit_List_Store and
+ *        Intelligence\Network_Intelligence_Resolver.
  */
-define( 'WP_SAM_DB_VERSION', '30' );
+define( 'WP_SAM_DB_VERSION', '31' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );
