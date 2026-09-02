@@ -293,6 +293,7 @@ class Activator {
 			'sam_honeypaths',
 			'sam_change_windows',
 			'sam_tor_exit_nodes',
+			'sam_asn_cache',
 		);
 	}
 
@@ -1162,6 +1163,30 @@ class Activator {
 			"CREATE TABLE {$p}sam_tor_exit_nodes (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   ip varchar(64) NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY ip (ip)
+) {$cc};"
+		);
+
+		// Schema v32: Phase 4A, second increment -- ASN Controls
+		// (.roadmap/phase4_plan.md Phase 4A, .roadmap/phase3_early_plan.md
+		// §13.5). Unlike Tor's bulk-downloaded list, an ASN lookup is a
+		// live, per-IP DNS query (Team Cymru's free, unauthenticated
+		// origin-ASN service -- no account or licensing decision needed,
+		// same reason Tor was built first among Geo-IP/ASN/Tor). sam_asn_
+		// cache exists purely so that cost is paid once per IP, not on
+		// every request that IP is involved in -- see Intelligence\Asn_
+		// Lookup_Store's own docblock for the cache-TTL and degrade-
+		// gracefully-on-failure behaviour, matching §33 Performance
+		// Requirements ("avoid repeated external lookups during requests",
+		// "cache network intelligence").
+		dbDelta(
+			"CREATE TABLE {$p}sam_asn_cache (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip varchar(64) NOT NULL,
+  asn int(11) DEFAULT NULL,
+  asn_org varchar(255) NOT NULL DEFAULT '',
+  resolved_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY ip (ip)
 ) {$cc};"

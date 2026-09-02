@@ -167,6 +167,7 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_honeypaths',
 			'wp_sam_change_windows',
 			'wp_sam_tor_exit_nodes',
+			'wp_sam_asn_cache',
 		);
 
 		$this->assertSame(

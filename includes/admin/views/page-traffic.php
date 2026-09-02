@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
@@ -44,7 +45,7 @@ $tab_help = array(
 	),
 	'network-intelligence' => array(
 		'label'       => __( 'Network Intelligence', 'vcns-security-automation-manager' ),
-		'description' => __( 'Observation-only network-level facts -- Tor exit status today, ASN and Geo-IP planned. Never implies malicious intent and never blocks on its own.', 'vcns-security-automation-manager' ),
+		'description' => __( 'Observation-only network-level facts -- Tor exit status and ASN today, Geo-IP planned. Never implies malicious intent and never blocks on its own.', 'vcns-security-automation-manager' ),
 	),
 );
 ?>
@@ -297,9 +298,45 @@ $tab_help = array(
 			<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
 		</form>
 
-		<h2 style="margin-top:2em"><?php esc_html_e( 'ASN and Geo-IP', 'vcns-security-automation-manager' ); ?></h2>
+		<h2 style="margin-top:2em"><?php esc_html_e( 'ASN Lookup', 'vcns-security-automation-manager' ); ?></h2>
 		<p class="description" style="max-width:600px">
-			<?php esc_html_e( 'Planned next -- ASN via a free lookup service, and Geo-IP as an opt-in feature using your own MaxMind or IPinfo account (never a shared VCNS credential). Not available yet.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'Free, unauthenticated lookup via Team Cymru -- no account needed. Results are cached for 30 days once looked up, so this only costs a real DNS query the first time a given IP is involved in a detector match.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<form method="get" style="margin-top:1em">
+			<input type="hidden" name="page" value="security-automation-manager-traffic" />
+			<input type="hidden" name="tab" value="network-intelligence" />
+			<label for="lookup_ip" class="screen-reader-text"><?php esc_html_e( 'IP address to look up', 'vcns-security-automation-manager' ); ?></label>
+			<input type="text" id="lookup_ip" name="lookup_ip" placeholder="203.0.113.42" value="<?php echo esc_attr( isset( $_GET['lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['lookup_ip'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>" style="width:220px" />
+			<?php submit_button( __( 'Look Up', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+		</form>
+
+		<?php
+		$lookup_ip = isset( $_GET['lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['lookup_ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( '' !== $lookup_ip ) :
+			$lookup_result = ( new Asn_Lookup_Store() )->resolve( $lookup_ip );
+			?>
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+			<tbody>
+				<tr>
+					<th style="width:200px"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
+					<td><code><?php echo esc_html( $lookup_ip ); ?></code></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( null !== $lookup_result['asn'] ? 'AS' . (string) $lookup_result['asn'] : __( 'Not found', 'vcns-security-automation-manager' ) ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Organisation', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $lookup_result['asn_org'] ?? '—' ); ?></td>
+				</tr>
+			</tbody>
+		</table>
+		<?php endif; ?>
+
+		<h2 style="margin-top:2em"><?php esc_html_e( 'Geo-IP', 'vcns-security-automation-manager' ); ?></h2>
+		<p class="description" style="max-width:600px">
+			<?php esc_html_e( 'Planned next -- an opt-in feature using your own MaxMind or IPinfo account (never a shared VCNS credential). Not available yet.', 'vcns-security-automation-manager' ); ?>
 		</p>
 
 	<?php endif; ?>
