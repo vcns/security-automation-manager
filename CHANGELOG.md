@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.49] - 2026-09-02
+
+### Added
+
+- Phase 4B of `.roadmap/phase4_plan.md`, second increment (HTML Injection, `.roadmap/phase3_early_plan.md` §11.4): `includes/intelligence/detectors/class-html-injection-detector.php`, the 11th core detector family, following the same `Pattern_Detector` convention as the other ten. Every rule requires actual tag-open syntax or a `javascript:` scheme -- a bare "<" or a word containing "on" never matches, per §11.4's explicit "must be treated carefully" guidance.
+- Per that same guidance ("default posture should therefore be observation unless the protected endpoint is known not to accept HTML"), this is the first detector to declare itself enforce-capable (`allowed_control_actions() = ['observe', 'enforce']`) under the control-action framework shipped in 2.9.48 -- still defaults to `observe`, opt-in only via the Detectors tab.
+- `includes/intelligence/class-detector-registry.php`: registered in `register_defaults()`.
+
 ## [2.9.48] - 2026-09-02
 
 ### Added

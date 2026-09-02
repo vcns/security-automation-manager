@@ -62,7 +62,7 @@ class DetectorRegistryTest extends TestCase {
 		$this->assertFalse( Detector_Registry::is_registered( 'fixture' ) );
 	}
 
-	public function test_register_defaults_registers_the_ten_core_detectors(): void {
+	public function test_register_defaults_registers_the_core_detectors(): void {
 		Detector_Registry::register_defaults();
 
 		$this->assertSame(
@@ -77,6 +77,7 @@ class DetectorRegistryTest extends TestCase {
 				'protocol-injection',
 				'version-control-artefacts',
 				'vulnerability-probes',
+				'html-injection',
 			),
 			Detector_Registry::keys()
 		);
@@ -86,7 +87,7 @@ class DetectorRegistryTest extends TestCase {
 		Detector_Registry::register_defaults();
 		Detector_Registry::register_defaults();
 
-		$this->assertCount( 10, Detector_Registry::keys() );
+		$this->assertCount( 11, Detector_Registry::keys() );
 	}
 
 	public function test_reset_allows_register_defaults_to_repopulate(): void {
@@ -97,7 +98,7 @@ class DetectorRegistryTest extends TestCase {
 
 		Detector_Registry::register_defaults();
 
-		$this->assertCount( 10, Detector_Registry::keys() );
+		$this->assertCount( 11, Detector_Registry::keys() );
 	}
 }
 
