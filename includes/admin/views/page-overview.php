@@ -252,7 +252,12 @@ $status_badge       = static function ( string $status ): void {
 		<tbody>
 			<tr>
 				<td><strong><?php esc_html_e( 'CSP Deterministic Automation', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td><?php esc_html_e( 'Per-surface automation mode -- see the Automation column on the Content Security Policy row below.', 'vcns-security-automation-manager' ); ?></td>
+				<td>
+					<?php foreach ( $surfaces as $surface ) : ?>
+						<?php $automation_mode = $automation_config->for_surface( $surface )['mode']; ?>
+						<?php echo Status_Badge::render_automation( ucfirst( $surface ) . ': ' . Automation_Config::mode_label( $automation_mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_automation() returns pre-escaped HTML. ?>
+					<?php endforeach; ?>
+				</td>
 				<td>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings' ) ); ?>">
 						<?php esc_html_e( 'Manage Automation Settings', 'vcns-security-automation-manager' ); ?>
@@ -312,7 +317,6 @@ $status_badge       = static function ( string $status ): void {
 			<tr>
 				<th><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Automation', 'vcns-security-automation-manager' ); ?></th>
 				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
@@ -326,12 +330,6 @@ $status_badge       = static function ( string $status ): void {
 						<?php $mode = $modes_by_surface[ $surface ] ?? 'disabled'; ?>
 						<?php $state = $csp_status_by_mode[ $mode ] ?? Status_Badge::STATE_DISABLED; ?>
 						<?php echo Status_Badge::render( $state, ucfirst( $surface ) . ': ' . ( $csp_status_labels[ $state ] ?? $mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
-					<?php endforeach; ?>
-				</td>
-				<td>
-					<?php foreach ( $surfaces as $surface ) : ?>
-						<?php $automation_mode = $automation_config->for_surface( $surface )['mode']; ?>
-						<?php echo Status_Badge::render_automation( ucfirst( $surface ) . ': ' . Automation_Config::mode_label( $automation_mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_automation() returns pre-escaped HTML. ?>
 					<?php endforeach; ?>
 				</td>
 				<td>
@@ -351,7 +349,6 @@ $status_badge       = static function ( string $status ): void {
 							<?php echo Status_Badge::render( $status['state'], ucfirst( $surface ) . ': ' . $status['label'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 						<?php endforeach; ?>
 					</td>
-					<td>&mdash;</td>
 					<td>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $pillar['page'] . ( isset( $pillar['tab'] ) ? '&tab=' . $pillar['tab'] : '' ) ) ); ?>">
 							<?php

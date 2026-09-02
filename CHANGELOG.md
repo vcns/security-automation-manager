@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.38] - 2026-09-02
+
+### Changed
+
+- `includes/admin/views/page-overview.php`: Layer 2's ("Controlled Automation") CSP row now shows the actual per-surface automation-mode badges in its Status cell (moved from Layer 4), replacing placeholder text that pointed down at Layer 4's Automation column. Layer 4's Automation column is removed entirely -- CSP was the only pillar row that ever populated it; every other pillar row hardcoded a bare `&mdash;` there.
+
 ## [2.9.37] - 2026-09-01
 
 ### Added
