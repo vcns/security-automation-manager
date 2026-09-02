@@ -37,6 +37,43 @@ class DetectorEngineTest extends TestCase {
 		$this->assertSame( array( 'matched' => true ), $findings[0]['detail'] );
 	}
 
+	// ── Control-action framework (Phase 4B) ─────────────────────────────────
+
+	public function test_evaluate_embeds_the_detectors_default_control_action_when_no_policy_row_exists(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+		Detector_Registry::register( new Engine_Always_Match_Detector() );
+
+		$findings = $this->engine->evaluate( array( 'surface' => 'frontend' ) );
+
+		$this->assertSame( 'observe', $findings[0]['control_action'] );
+	}
+
+	public function test_evaluate_embeds_an_admin_saved_enforce_override(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'detector_id'    => 'enforce-capable',
+			'is_enabled'     => 1,
+			'control_action' => 'enforce',
+		);
+		Detector_Registry::register( new Engine_Enforce_Capable_Detector() );
+
+		$findings = $this->engine->evaluate( array( 'surface' => 'frontend' ) );
+
+		$this->assertSame( 'enforce', $findings[0]['control_action'] );
+	}
+
+	public function test_evaluate_skips_a_detector_an_administrator_has_disabled(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'detector_id'    => 'always-match',
+			'is_enabled'     => 0,
+			'control_action' => 'observe',
+		);
+		Detector_Registry::register( new Engine_Always_Match_Detector() );
+
+		$findings = $this->engine->evaluate( array( 'surface' => 'frontend' ) );
+
+		$this->assertSame( array(), $findings );
+	}
+
 	public function test_evaluate_defaults_severity_confidence_and_detail_when_a_detector_omits_them(): void {
 		Detector_Registry::register( new Engine_Bare_Match_Detector() );
 
@@ -112,6 +149,24 @@ final class Engine_Always_Match_Detector extends \WP_SAM\Intelligence\Detector {
 			'confidence' => 0.9,
 			'detail'     => array( 'matched' => true ),
 		);
+	}
+}
+
+final class Engine_Enforce_Capable_Detector extends \WP_SAM\Intelligence\Detector {
+	public function id(): string {
+		return 'enforce-capable';
+	}
+	public function family(): string {
+		return 'fixture-family';
+	}
+	public function applicable_surfaces(): array {
+		return array();
+	}
+	public function evaluate( array $context ): ?array {
+		return array( 'severity' => 'high' );
+	}
+	public function allowed_control_actions(): array {
+		return array( 'observe', 'enforce' );
 	}
 }
 

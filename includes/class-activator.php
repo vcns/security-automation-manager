@@ -295,6 +295,7 @@ class Activator {
 			'sam_tor_exit_nodes',
 			'sam_asn_cache',
 			'sam_geoip_cache',
+			'sam_detector_policies',
 		);
 	}
 
@@ -1218,6 +1219,26 @@ class Activator {
   resolved_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY ip (ip)
+) {$cc};"
+		);
+
+		// Schema v34: Phase 4B, first increment -- the control-action
+		// framework (.roadmap/phase4_plan.md Phase 4B, .roadmap/phase3_
+		// early_plan.md §11's shared detector metadata contract). A missing
+		// row for a detector_id means "enabled, running that detector's own
+		// default_control_action()" -- this table only ever holds an
+		// explicit administrator override, the same "missing row is never
+		// treated as enforcing" rule sam_traffic_policies already follows.
+		// See Intelligence\Detector_Policy_Store's own docblock.
+		dbDelta(
+			"CREATE TABLE {$p}sam_detector_policies (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  detector_id varchar(191) NOT NULL,
+  is_enabled tinyint(1) NOT NULL DEFAULT 1,
+  control_action varchar(20) NOT NULL DEFAULT 'observe',
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY detector_id (detector_id)
 ) {$cc};"
 		);
 

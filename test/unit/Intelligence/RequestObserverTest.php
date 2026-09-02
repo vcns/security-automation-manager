@@ -17,6 +17,7 @@ use WP_SAM\Intelligence\Request_Observer;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
+use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Security\Request_Surface;
 
 class RequestObserverTest extends TestCase {
@@ -38,8 +39,24 @@ class RequestObserverTest extends TestCase {
 				new Tor_Exit_List_Store(),
 				new Asn_Lookup_Store( static fn( string $h ): array => array() ),
 				new Geo_Ip_Store()
-			)
+			),
+			new Traffic_Block_Store()
 		);
+	}
+
+	/**
+	 * Traffic_Block_Store::record_violation() writes via $wpdb->insert()/
+	 * update(), not query() -- those land in _wpdb_inserted_rows/
+	 * _wpdb_updated_rows, not _wpdb_queries (see Event_Store's own
+	 * record(), which uses a raw query() and so IS visible in
+	 * _wpdb_queries -- the two stores use different wpdb write paths).
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function block_writes(): array {
+		$inserts = array_filter( $GLOBALS['_wpdb_inserted_rows'], static fn( $row ) => str_contains( $row['table'], 'sam_traffic_blocks' ) );
+		$updates = array_filter( $GLOBALS['_wpdb_updated_rows'], static fn( $row ) => str_contains( $row['table'], 'sam_traffic_blocks' ) );
+		return array_values( array_merge( $inserts, $updates ) );
 	}
 
 	/**
@@ -211,6 +228,27 @@ class RequestObserverTest extends TestCase {
 		$tor_queries = array_values( array_filter( $GLOBALS['_wpdb_queries'], static fn( $q ) => str_contains( $q, 'sam_tor_exit_nodes' ) ) );
 		$this->assertSame( array(), $tor_queries );
 	}
+
+	// ── Detector-family-aware control actions (Phase 4B) ────────────────────
+
+	public function test_observe_records_a_traffic_block_violation_when_a_findings_control_action_is_enforce(): void {
+		Detector_Registry::register( new Observer_Enforce_Fixture_Detector() );
+
+		$this->observer->observe();
+
+		$writes = $this->block_writes();
+		$this->assertCount( 1, $writes );
+		$this->assertSame( '203.0.113.42', $writes[0]['data']['ip'] );
+		$this->assertSame( 'detector:fixture-enforce-family', $writes[0]['data']['reason'] );
+	}
+
+	public function test_observe_never_records_a_traffic_block_violation_for_an_observe_only_finding(): void {
+		Detector_Registry::register( new Observer_Fixture_Detector() );
+
+		$this->observer->observe();
+
+		$this->assertSame( array(), $this->block_writes() );
+	}
 }
 
 final class Observer_Fixture_Detector extends \WP_SAM\Intelligence\Detector {
@@ -225,5 +263,26 @@ final class Observer_Fixture_Detector extends \WP_SAM\Intelligence\Detector {
 	}
 	public function evaluate( array $context ): ?array {
 		return array( 'severity' => 'low' );
+	}
+}
+
+final class Observer_Enforce_Fixture_Detector extends \WP_SAM\Intelligence\Detector {
+	public function id(): string {
+		return 'observer-enforce-fixture';
+	}
+	public function family(): string {
+		return 'fixture-enforce-family';
+	}
+	public function applicable_surfaces(): array {
+		return array();
+	}
+	public function evaluate( array $context ): ?array {
+		return array( 'severity' => 'high' );
+	}
+	public function allowed_control_actions(): array {
+		return array( 'observe', 'enforce' );
+	}
+	public function default_control_action(): string {
+		return 'enforce';
 	}
 }

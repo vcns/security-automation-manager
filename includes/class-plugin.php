@@ -22,6 +22,7 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Intelligence\Account_Integrity_Recorder;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
+use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Event_Store;
@@ -250,12 +251,22 @@ final class Plugin {
 		// registers something, this observes every request but records
 		// nothing. Identity_Resolver/Scanner_Identity_Store (Phase 3D) run
 		// unconditionally alongside it -- see Request_Observer's docblock.
+		//
+		// Traffic_Block_Store is shared with Traffic_Guard below (Phase 4B):
+		// a detector match configured to 'enforce' and a rate-limit
+		// violation both write into the same table, so Traffic_Guard's
+		// existing progressive-response enforcement is automatically
+		// detector-family-aware with no separate blocking path -- see
+		// Request_Observer's own docblock.
+		$traffic_block_store = new Traffic_Block_Store();
+
 		( new Request_Observer(
-			new Detector_Engine(),
+			new Detector_Engine( new Detector_Policy_Store() ),
 			new Event_Store(),
 			new Identity_Resolver( new Scanner_Vendor_Store() ),
 			new Scanner_Identity_Store(),
-			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store(), new Geo_Ip_Store() )
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store(), new Geo_Ip_Store() ),
+			$traffic_block_store
 		) )->register();
 
 		// Traffic Controls (Phase 3E). Every surface seeds in 'observe'
@@ -266,7 +277,7 @@ final class Plugin {
 		( new Traffic_Guard(
 			new Traffic_Policy_Store(),
 			new Ip_Rule_Store(),
-			new Traffic_Block_Store(),
+			$traffic_block_store,
 			new Rate_Limiter()
 		) )->register();
 

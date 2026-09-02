@@ -8,6 +8,14 @@
  * the remaining detectors from running. On an empty Detector_Registry
  * (every build until Phase 3C registers a real detector), evaluate()
  * always returns an empty array.
+ *
+ * A detector an administrator has disabled via Detector_Policy_Store (Phase
+ * 4B) is skipped exactly like an unavailable one below -- disabled means
+ * "don't run this detector at all," not "run it but discard the Finding."
+ * Every Finding that IS produced carries the resolved 'control_action'
+ * (Detector_Policy_Store::control_action_for()) so Request_Observer can act
+ * on it without needing its own Detector_Registry/Detector_Policy_Store
+ * lookups.
  */
 
 declare( strict_types=1 );
@@ -19,6 +27,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Detector_Engine {
+
+	private Detector_Policy_Store $policies;
+
+	public function __construct( ?Detector_Policy_Store $policies = null ) {
+		$this->policies = $policies ?? new Detector_Policy_Store();
+	}
 
 	/**
 	 * @param array<string, mixed> $context Request context built by Request_Observer.
@@ -35,6 +49,10 @@ final class Detector_Engine {
 			}
 
 			if ( ! $detector->is_available() ) {
+				continue;
+			}
+
+			if ( ! $this->policies->is_enabled( $detector->id() ) ) {
 				continue;
 			}
 
@@ -59,6 +77,7 @@ final class Detector_Engine {
 					'detector_id'     => $detector->id(),
 					'detector_family' => $detector->family(),
 					'surface'         => $surface,
+					'control_action'  => $this->policies->control_action_for( $detector ),
 				)
 			);
 		}

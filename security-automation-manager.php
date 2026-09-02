@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.47
+ * Version:           2.9.48
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.47' );
+define( 'WP_SAM_VERSION', '2.9.48' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -200,8 +200,20 @@ define( 'WP_SAM_VERSION', '2.9.47' );
  *        binary database, not a live API -- see Intelligence\Geo_Ip_
  *        Store's own docblock). Observation only, and Geo-IP blocking is
  *        never enabled by default, per the roadmap's explicit requirement.
+ * v34 -- adds sam_detector_policies (Phase 4B, first increment -- the
+ *        control-action framework, .roadmap/phase4_plan.md, .roadmap/
+ *        phase3_early_plan.md §11's shared detector metadata contract).
+ *        Holds an optional per-detector admin override: enabled/disabled,
+ *        and which control action ('observe' or 'enforce') a match should
+ *        trigger. A missing row means "enabled, detector's own default" --
+ *        every detector shipped before this stays behaviourally identical
+ *        until an administrator explicitly changes something. 'enforce'
+ *        feeds the exact same Traffic_Block_Store progressive-response
+ *        ladder rate-limit and login-brute-force violations already use --
+ *        no new blocking path. See Intelligence\Detector_Policy_Store and
+ *        Intelligence\Detector_Engine.
  */
-define( 'WP_SAM_DB_VERSION', '33' );
+define( 'WP_SAM_DB_VERSION', '34' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );
