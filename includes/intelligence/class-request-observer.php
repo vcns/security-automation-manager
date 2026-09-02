@@ -4,13 +4,27 @@
  * api), runs Detector_Engine against it, and records any Findings via
  * Event_Store.
  *
- * Hooks the exact same send_headers + login_init + wp_redirect combination
+ * Hooks the same send_headers + login_init + wp_redirect combination
  * Header_Builder already proves covers every surface: send_headers for the
  * normal request lifecycle, login_init because wp-login.php is a standalone
  * entry point that never fires send_headers, and the wp_redirect filter
  * (priority 1) so a request that redirects before send_headers runs is
  * still observed -- a scanner/probe hitting a redirecting URL is exactly
  * the kind of thing worth observing, not something to silently skip.
+ *
+ * Also hooks `init` (priority 20, after Detector_Registry::register_
+ * defaults() -- itself on `init` at the default priority 10, per Plugin::
+ * bootstrap()): xmlrpc.php (and wp-cron.php) bootstrap WordPress via
+ * wp-load.php directly and never run the wp()/template-loader pipeline that
+ * fires send_headers, so without this they'd be structurally invisible to
+ * every detector -- discovered live in Docker while verifying Legacy_
+ * Endpoint_Detector (Phase 4B): a real request to xmlrpc.php produced no
+ * event at all despite matching LEGACY-001 when evaluate() was called
+ * directly. `init` is the earliest point common to literally every
+ * WordPress entry point (already proven safe to classify a request from
+ * this early by Traffic_Guard::enforce(), which runs on `init` priority 1).
+ * The existing $observed guard means this never double-records a request
+ * that also fires send_headers/login_init/wp_redirect later.
  *
  * Skips Conflict_Detector's own internal probe request, or this class would
  * misclassify the plugin's own diagnostic traffic as an observed event.
@@ -92,6 +106,7 @@ final class Request_Observer {
 		add_action( 'send_headers', array( $this, 'observe' ) );
 		add_action( 'login_init', array( $this, 'observe' ) );
 		add_filter( 'wp_redirect', array( $this, 'observe_before_redirect' ), 1, 2 );
+		add_action( 'init', array( $this, 'observe' ), 20 );
 	}
 
 	public function observe_before_redirect( string $location, int $status = 302 ): string {

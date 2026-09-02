@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.51] - 2026-09-02
+
+### Added
+
+- Phase 4B of `.roadmap/phase4_plan.md`, fourth and final increment (Legacy WordPress Endpoints, `.roadmap/phase3_early_plan.md` §11.13): `includes/intelligence/detectors/class-legacy-endpoint-detector.php`, the 13th and final core detector family. Recognises xmlrpc.php, wp-trackback.php, and the long-removed wp-app.php. Per the roadmap's explicit "RPC/XML-RPC controls must be configurable rather than assumed universally safe to block," `allowed_control_actions() = ['observe', 'enforce']` -- the second detector (after HTML Injection) to be enforce-capable, still defaulting to observe. **This completes Phase 4B**: all 13 detector families from §11 are registered, and the control-action framework (2.9.48) is fully wired end to end.
+- `Vulnerability_Probe_Detector`'s docblock (which already deliberately excluded xmlrpc.php, deferring to this family) updated to point at the now-shipped `Legacy_Endpoint_Detector`.
+
+### Fixed
+
+- `includes/intelligence/class-request-observer.php`: also hooks `init` (priority 20, after `Detector_Registry::register_defaults()`'s priority 10), discovered live in Docker while verifying the new detector -- xmlrpc.php and wp-cron.php bootstrap WordPress via `wp-load.php` directly and never run the `wp()`/template-loader pipeline that fires `send_headers`, so they were structurally invisible to every detector, not just this one. The existing `$observed` guard means a request that also fires `send_headers`/`login_init` later is never double-recorded.
+
 ## [2.9.50] - 2026-09-02
 
 ### Added

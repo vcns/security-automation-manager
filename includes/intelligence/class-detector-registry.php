@@ -33,6 +33,7 @@ namespace WP_SAM\Intelligence;
 
 use WP_SAM\Intelligence\Detectors\Command_Injection_Detector;
 use WP_SAM\Intelligence\Detectors\Html_Injection_Detector;
+use WP_SAM\Intelligence\Detectors\Legacy_Endpoint_Detector;
 use WP_SAM\Intelligence\Detectors\Php_Probe_Detector;
 use WP_SAM\Intelligence\Detectors\Protocol_Injection_Detector;
 use WP_SAM\Intelligence\Detectors\Script_Webshell_Probe_Detector;
@@ -81,6 +82,7 @@ final class Detector_Registry {
 		self::register( new Vulnerability_Probe_Detector() );
 		self::register( new Html_Injection_Detector() );
 		self::register( new Php_Probe_Detector() );
+		self::register( new Legacy_Endpoint_Detector() );
 	}
 
 	public static function is_registered( string $id ): bool {
