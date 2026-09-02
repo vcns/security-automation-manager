@@ -1665,16 +1665,31 @@ class Activator {
 	}
 
 	/**
-	 * Schema v27 seed: a small, deliberately conservative built-in scanner
-	 * vendor catalogue. See Scanner_Vendor_Store's own docblock for why
-	 * this does NOT include commercial scanner vendors (Qualys, Tenable,
-	 * etc.) with hardcoded IP ranges -- those change over time and this
-	 * plugin has no live source to verify or refresh them against yet
-	 * (that's Phase 3H, Federated Intelligence). What it does include are
-	 * two long-standing, publicly documented search crawlers verified by
-	 * forward-confirmed reverse DNS against a vendor-published hostname
-	 * suffix, which is genuinely stable and independently checkable by any
-	 * administrator, unlike a guessed IP range.
+	 * Schema v27 seed (extended Phase 4C, .roadmap/phase4_plan.md, .roadmap/
+	 * phase3_early_plan.md §10): a small, deliberately conservative built-in
+	 * scanner/crawler vendor catalogue. See Scanner_Vendor_Store's own
+	 * docblock for why this does NOT include commercial scanner vendors
+	 * (Qualys, Tenable, etc.) with hardcoded IP ranges -- those change over
+	 * time and this plugin has no live source to verify or refresh them
+	 * against yet (that's Phase 3H, Federated Intelligence).
+	 *
+	 * Two verification shapes, both deliberately never hardcoding a live-
+	 * changing IP range here:
+	 * - fcrdns (Googlebot, Bingbot, CCBot): forward-confirmed reverse DNS
+	 *   against a vendor-published hostname suffix, genuinely stable and
+	 *   independently checkable by any administrator.
+	 * - cidr (GPTBot, ClaudeBot, PerplexityBot): these AI crawlers document
+	 *   IP-range verification, not reverse DNS -- cidr_ranges ships empty
+	 *   (never a guessed/fabricated range) with source_url pointing at the
+	 *   vendor's own published JSON, so an administrator can paste in real
+	 *   current ranges via the existing Scanner Vendors admin form whenever
+	 *   they want live IP-match verification; verification_method is still
+	 *   set to 'cidr' so that's understood as the right mechanism to use.
+	 * All four AI/crawler additions confirmed against each vendor's current
+	 * published verification documentation, not from memory (2 September
+	 * 2026): OpenAI (developers.openai.com/api/docs/bots), Anthropic
+	 * (support.claude.com, article 8896518), Common Crawl (commoncrawl.org/
+	 * ccbot), Perplexity (docs.perplexity.ai/guides/bots).
 	 *
 	 * Idempotent like seed_default_pillar_profiles() above: only inserts a
 	 * vendor_key that doesn't already exist, so an administrator's own edit
@@ -1706,6 +1721,46 @@ class Activator {
 				'source_url'          => 'https://www.bing.com/webmasters/help/how-to-verify-bingbot-3905dc26',
 				'verification_method' => 'fcrdns',
 				'notes'               => 'Verify via forward-confirmed reverse DNS against *.search.msn.com, per Microsoft\'s own published verification method.',
+			),
+			array(
+				'vendor_key'          => 'ccbot',
+				'vendor_name'         => 'CCBot (Common Crawl)',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'CCBot',
+				'rdns_suffixes'       => array( 'crawl.commoncrawl.org' ),
+				'source_url'          => 'https://commoncrawl.org/ccbot',
+				'verification_method' => 'fcrdns',
+				'notes'               => 'Verify via forward-confirmed reverse DNS against *.crawl.commoncrawl.org, per Common Crawl\'s own published verification method (IPv4 only -- IPv6 reverse DNS isn\'t supported by their infrastructure).',
+			),
+			array(
+				'vendor_key'          => 'gptbot',
+				'vendor_name'         => 'GPTBot (OpenAI)',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'GPTBot',
+				'rdns_suffixes'       => array(),
+				'source_url'          => 'https://openai.com/gptbot.json',
+				'verification_method' => 'cidr',
+				'notes'               => 'OpenAI verifies GPTBot by published IP range, not reverse DNS -- no ranges are hardcoded here (they change over time and this plugin has no live fetch for them yet); add current ranges from the source URL above via this form if you want IP-match verification.',
+			),
+			array(
+				'vendor_key'          => 'claudebot',
+				'vendor_name'         => 'ClaudeBot (Anthropic)',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'ClaudeBot',
+				'rdns_suffixes'       => array(),
+				'source_url'          => 'https://claude.com/crawling/bots.json',
+				'verification_method' => 'cidr',
+				'notes'               => 'Anthropic verifies ClaudeBot by published IP range, not reverse DNS -- covers ClaudeBot, Claude-User, and Claude-SearchBot. No ranges are hardcoded here; add current ranges from the source URL above via this form if you want IP-match verification.',
+			),
+			array(
+				'vendor_key'          => 'perplexitybot',
+				'vendor_name'         => 'PerplexityBot',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'PerplexityBot',
+				'rdns_suffixes'       => array(),
+				'source_url'          => 'https://www.perplexity.com/perplexitybot.json',
+				'verification_method' => 'cidr',
+				'notes'               => 'Perplexity verifies PerplexityBot by published IP range, not reverse DNS. No ranges are hardcoded here; add current ranges from the source URL above via this form if you want IP-match verification.',
 			),
 		);
 

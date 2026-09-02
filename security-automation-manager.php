@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.51
+ * Version:           2.9.52
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.51' );
+define( 'WP_SAM_VERSION', '2.9.52' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -212,8 +212,17 @@ define( 'WP_SAM_VERSION', '2.9.51' );
  *        ladder rate-limit and login-brute-force violations already use --
  *        no new blocking path. See Intelligence\Detector_Policy_Store and
  *        Intelligence\Detector_Engine.
+ * v35 -- no new table -- bumped purely to re-run Activator::seed_default_
+ *        scanner_vendors() on every already-upgraded site (Phase 4C, first
+ *        increment -- AI-crawler identity seeding, .roadmap/phase4_plan.md,
+ *        .roadmap/phase3_early_plan.md §10). Adds GPTBot, ClaudeBot, CCBot,
+ *        and PerplexityBot to the built-in sam_scanner_vendors catalogue,
+ *        the same idempotent, missing-row-only seed Googlebot/Bingbot
+ *        already use. Without this bump, maybe_upgrade_db() would never
+ *        call Activator::activate() again on a site already at v34, and
+ *        the new vendor rows would only appear on a fresh install.
  */
-define( 'WP_SAM_DB_VERSION', '34' );
+define( 'WP_SAM_DB_VERSION', '35' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );
