@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.49
+Stable tag: 2.9.50
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.50 =
+
+* Added: Phase 4B of the roadmap, third increment -- a twelfth detector family, PHP and PHPUnit Probes. Recognises specific, well-known vulnerability signatures: the PHPUnit eval-stdin.php remote code execution path (CVE-2017-9841), an exposed phpinfo()-style diagnostic script, the Laravel Ignition debug RCE path (CVE-2021-3129), the old php-cgi argument-injection query string (CVE-2012-1823), and a Symfony profiler path -- none of which are ever legitimate on a WordPress install. Defaults to observation only, same as every detector not explicitly opted into blocking.
 
 = 2.9.49 =
 
