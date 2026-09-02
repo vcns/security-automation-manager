@@ -57,14 +57,22 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4B: Remaining Detector Families and Control-Action Wiring
 
+**Status: Detector families and control-action wiring delivered, v2.9.48-v2.9.51 (2 September 2026); §12 method classification carried forward (not yet built).**
+
 **Addresses:** `.roadmap/phase3_early_plan.md` §11.4 (HTML Injection), §11.6 (PHP/PHPUnit Probes), §11.13 (Legacy WordPress Endpoints/XML-RPC), the missing "allowed control actions / default action" field on the shared detector metadata contract, and §12 (HTTP Method Intelligence).
 
-**Confirmed status:** 10 of 13 detector families ship today with full test coverage (`test/unit/Intelligence/Detectors/`). The 3 missing families are individually small (each follows the same `Pattern_Detector` base class the other 10 already use -- see `includes/intelligence/detectors/class-pattern-detector.php`). The control-action wiring is a moderate architectural addition: today `Traffic_Guard` blocks generically by rate/IP, with no detector-family parameter anywhere in `class-traffic-guard.php` -- closing this is what actually enables `.roadmap/phase3_early_plan.md` §13.3's "firewalling by detector family."
+- `Detector::allowed_control_actions()` / `default_control_action()` (v2.9.48, PR #329) -- every detector declares which control actions it may trigger and a default, both defaulting to observation-only. `Detector_Policy_Store` (new `sam_detector_policies` table, schema v34) holds an optional per-detector admin override (enabled/disabled, chosen action, validated against that detector's own allowed set). `Detector_Engine` skips a disabled detector and embeds the resolved `control_action` on every Finding; `Request_Observer` calls the existing `Traffic_Block_Store::record_violation()` (the same call login-brute-force protection already uses) when that action is `enforce` -- no new blocking path, still gated behind each surface's existing Observe/Enforce mode. New "Detectors" tab on the Traffic Controls admin page.
+- §11.4 HTML Injection (v2.9.49, PR #330) -- `Html_Injection_Detector`, 11th core family. Requires actual tag-open syntax or a `javascript:` scheme, never a bare `<`. First detector to declare itself enforce-capable, per §11.4's own "unless the endpoint is known not to accept HTML" guidance.
+- §11.6 PHP/PHPUnit Probes (v2.9.50, PR #331) -- `Php_Probe_Detector`, 12th core family. Specific, versioned vulnerability signatures (PHPUnit `eval-stdin.php` RCE/CVE-2017-9841, Laravel Ignition RCE/CVE-2021-3129, php-cgi argument injection/CVE-2012-1823, exposed `phpinfo()`, Symfony profiler) -- kept non-overlapping with the existing `Script_Webshell_Probe_Detector` (§11.5) and `Vulnerability_Probe_Detector` (§11.12) rulesets.
+- §11.13 Legacy WordPress Endpoints (v2.9.51, PR #332) -- `Legacy_Endpoint_Detector`, 13th and final core family. `xmlrpc.php`, `wp-trackback.php`, `wp-app.php`. Per §11.13's own "must be configurable rather than assumed universally safe to block," the second detector (after HTML Injection) to be enforce-capable. **All 13 detector families from §11 are now registered.**
+- Also fixed alongside the Legacy Endpoints increment, found live in Docker rather than by the test suite: `Request_Observer` now also hooks `init` (priority 20) -- `xmlrpc.php`/`wp-cron.php` bootstrap WordPress directly via `wp-load.php` and never fire `send_headers`, so they were structurally invisible to every detector until this fix, not just the new one.
+
+**Not done, carried forward:** §12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance) is not yet built -- method is already captured as raw evidence on every Finding, but no classification logic exists on top of it yet.
 
 **Exit criteria:**
-- All 13 detector families from §11 are registered, each with the full test-fixture set §32 requires (positive/negative/encoded-variant/benign-lookalike/surface-applicability/action-eligibility/confidence/false-positive-regression).
-- A detector's Finding can carry a control-action recommendation that `Traffic_Guard` can act on, still gated behind the same observe-by-default posture every other control in this product uses.
-- §12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance, per §12's own worked example) is implemented on top of already-captured method data.
+- ~~All 13 detector families from §11 are registered, each with the full test-fixture set §32 requires (positive/negative/encoded-variant/benign-lookalike/surface-applicability/action-eligibility/confidence/false-positive-regression).~~ Done.
+- ~~A detector's Finding can carry a control-action recommendation that `Traffic_Guard` can act on, still gated behind the same observe-by-default posture every other control in this product uses.~~ Done.
+- **Not done, carried forward:** §12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance, per §12's own worked example) is not yet implemented on top of already-captured method data.
 
 ## Phase 4C: Bot, Crawler, and Scraper Classification
 
