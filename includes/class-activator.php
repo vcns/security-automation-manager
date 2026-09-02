@@ -42,6 +42,7 @@ class Activator {
 		self::seed_default_pillar_profiles();
 		self::seed_initial_policy_versions();
 		self::seed_default_scanner_vendors();
+		self::seed_default_traffic_policies();
 		self::schedule_events();
 		self::mark_schema_verified();
 	}
@@ -282,6 +283,9 @@ class Activator {
 			'sam_request_events',
 			'sam_scanner_vendors',
 			'sam_scanner_identities',
+			'sam_traffic_policies',
+			'sam_ip_rules',
+			'sam_traffic_blocks',
 		);
 	}
 
@@ -876,6 +880,86 @@ class Activator {
 ) {$cc};"
 		);
 
+		// Schema v28: Traffic Controls (Phase 3E, Layer 3: Continuous
+		// Intelligence -> Layer/lifecycle "Control"). This is the first
+		// schema version that supports actively rejecting a request --
+		// every prior pillar only ever adds response headers. See
+		// Intelligence\Traffic_Guard's own docblock for the default-safety
+		// design (every surface seeds in 'observe' mode; nothing blocks
+		// until an administrator explicitly promotes a surface to enforce).
+		//
+		// sam_traffic_policies: one row per surface, mirroring
+		// sam_pillar_profiles' (pillar, surface) shape but simpler --
+		// mode/thresholds only, no JSON payload, since every field here is
+		// a plain scalar.
+		dbDelta(
+			"CREATE TABLE {$p}sam_traffic_policies (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  surface varchar(32) NOT NULL,
+  mode varchar(16) NOT NULL DEFAULT 'observe',
+  rate_limit_max_requests int(11) NOT NULL DEFAULT 300,
+  rate_limit_window_seconds int(11) NOT NULL DEFAULT 60,
+  login_max_failed_attempts int(11) NOT NULL DEFAULT 10,
+  login_lockout_seconds int(11) NOT NULL DEFAULT 900,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY surface (surface)
+) {$cc};"
+		);
+
+		// sam_ip_rules: administrator-entered allow/block list (CIDR,
+		// IPv4 or IPv6 -- see Intelligence\Cidr_Matcher). Deliberate admin
+		// decisions, so unlike automatic traffic_blocks rows below, a rule
+		// here applies regardless of the surface's observe/enforce mode --
+		// the same reasoning Scanner_Identity_Store's docblock gives for
+		// why a decision, once made, is never silently overridden by
+		// automatic detection.
+		dbDelta(
+			"CREATE TABLE {$p}sam_ip_rules (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  list_type varchar(8) NOT NULL DEFAULT 'block',
+  cidr varchar(64) NOT NULL,
+  surface varchar(32) NOT NULL DEFAULT '',
+  reason longtext NOT NULL,
+  created_by bigint(20) UNSIGNED DEFAULT NULL,
+  created_at datetime NOT NULL,
+  expires_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY list_type (list_type),
+  KEY surface (surface)
+) {$cc};"
+		);
+
+		// sam_traffic_blocks: automatic progressive-response state per
+		// (ip, surface) -- see Traffic_Block_Store's docblock for the
+		// stage model (observe -> warn -> throttle -> temporary_block ->
+		// extended_block -> persistent_block, .roadmap/phase3_early_
+		// plan.md §13.7). is_persistent can only ever be set by an
+		// explicit administrator action, never by automatic escalation --
+		// the roadmap is explicit that the final stage is
+		// "administrator-reviewed".
+		dbDelta(
+			"CREATE TABLE {$p}sam_traffic_blocks (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip varchar(64) NOT NULL,
+  surface varchar(32) NOT NULL,
+  stage varchar(24) NOT NULL DEFAULT 'observe',
+  reason varchar(64) NOT NULL DEFAULT '',
+  occurrence_count int(11) NOT NULL DEFAULT 1,
+  blocked_until datetime DEFAULT NULL,
+  is_persistent tinyint(1) NOT NULL DEFAULT 0,
+  fingerprint varchar(64) NOT NULL,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY ip (ip),
+  KEY surface (surface),
+  KEY blocked_until (blocked_until),
+  UNIQUE KEY fingerprint (fingerprint)
+) {$cc};"
+		);
+
 		update_option( 'wp_sam_db_version', WP_SAM_DB_VERSION );
 	}
 
@@ -1366,6 +1450,66 @@ class Activator {
 					'is_builtin'          => 1,
 					'created_at'          => $now,
 					'updated_at'          => $now,
+				)
+			);
+		}
+	}
+
+	/**
+	 * Schema v28 seed: one sam_traffic_policies row per surface, every
+	 * surface seeded in 'observe' mode -- see Traffic_Guard's own
+	 * docblock for why nothing blocks until an administrator explicitly
+	 * promotes a surface to 'enforce'. Thresholds are deliberately looser
+	 * on frontend/api (real traffic and legitimate crawlers can burst) and
+	 * tighter on login (a genuine user rarely needs more than a handful of
+	 * attempts per minute).
+	 *
+	 * Idempotent like the other seed_default_*() methods: only inserts a
+	 * surface that doesn't already have a row.
+	 */
+	private static function seed_default_traffic_policies(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_traffic_policies';
+		$now   = current_time( 'mysql', true );
+
+		$defaults = array(
+			'frontend' => array(
+				'rate_limit_max_requests'   => 300,
+				'rate_limit_window_seconds' => 60,
+			),
+			'admin'    => array(
+				'rate_limit_max_requests'   => 180,
+				'rate_limit_window_seconds' => 60,
+			),
+			'login'    => array(
+				'rate_limit_max_requests'   => 20,
+				'rate_limit_window_seconds' => 60,
+			),
+			'api'      => array(
+				'rate_limit_max_requests'   => 300,
+				'rate_limit_window_seconds' => 60,
+			),
+		);
+
+		foreach ( $defaults as $surface => $thresholds ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE surface = %s", $surface ) );
+			if ( $exists ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->insert(
+				$table,
+				array(
+					'surface'                   => $surface,
+					'mode'                      => 'observe',
+					'rate_limit_max_requests'   => $thresholds['rate_limit_max_requests'],
+					'rate_limit_window_seconds' => $thresholds['rate_limit_window_seconds'],
+					'login_max_failed_attempts' => 10,
+					'login_lockout_seconds'     => 900,
+					'created_at'                => $now,
+					'updated_at'                => $now,
 				)
 			);
 		}

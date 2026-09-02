@@ -303,6 +303,42 @@ class ActivatorTest extends TestCase {
 		$this->assertSame( array(), $GLOBALS['_wpdb_inserted_rows'] );
 	}
 
+	// ── Traffic policy seed (Phase 3E) ────────────────────────────────────────
+
+	public function test_seed_default_traffic_policies_inserts_a_row_per_surface_when_missing(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 4, null );
+
+		$this->invoke_seed_default_traffic_policies();
+
+		$this->assertCount( 4, $GLOBALS['_wpdb_inserted_rows'] );
+		foreach ( $GLOBALS['_wpdb_inserted_rows'] as $row ) {
+			$this->assertSame( 'observe', $row['data']['mode'] );
+		}
+	}
+
+	public function test_seed_default_traffic_policies_skips_rows_that_already_exist(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 4, 1 );
+
+		$this->invoke_seed_default_traffic_policies();
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
+	public function test_seed_default_traffic_policies_login_surface_has_a_tighter_rate_limit(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 4, null );
+
+		$this->invoke_seed_default_traffic_policies();
+
+		$login_row = null;
+		foreach ( $GLOBALS['_wpdb_inserted_rows'] as $row ) {
+			if ( 'login' === $row['data']['surface'] ) {
+				$login_row = $row['data'];
+			}
+		}
+		$this->assertNotNull( $login_row );
+		$this->assertSame( 20, $login_row['rate_limit_max_requests'] );
+	}
+
 	public function test_default_automation_config_is_automatic_high_approval_with_a_positive_change_cap(): void {
 		Activator::activate();
 
@@ -332,6 +368,12 @@ class ActivatorTest extends TestCase {
 
 	private function invoke_seed_default_scanner_vendors(): void {
 		$method = new ReflectionMethod( Activator::class, 'seed_default_scanner_vendors' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+	}
+
+	private function invoke_seed_default_traffic_policies(): void {
+		$method = new ReflectionMethod( Activator::class, 'seed_default_traffic_policies' );
 		$method->setAccessible( true );
 		$method->invoke( null );
 	}

@@ -2,11 +2,12 @@
 /**
  * Admin view: Control -- the third stage of this plugin's operational
  * lifecycle (.roadmap/phase3_early_plan.md §3.3, §6.1): apply an explicitly
- * permitted response. In this build that means configuring a header policy
- * or a certificate action -- not blocking traffic. Real-time traffic
- * controls (rate-limiting, temporary blocking, challenge) are a future
- * phase and do not exist yet; nothing in this build blocks a visitor's
- * request (§30 Default-Safety).
+ * permitted response. Since Phase 3E (Traffic Controls) that includes
+ * real-time rate limiting and progressive blocking, alongside the existing
+ * header-policy and certificate actions -- see Intelligence\Traffic_Guard's
+ * docblock for the default-safety design every surface still starts under
+ * (§30): nothing blocks until an administrator explicitly promotes a
+ * surface from Observe to Enforce.
  *
  * A curated set of links into existing configuration views, not a
  * re-implementation of any of them.
@@ -22,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<h1><?php esc_html_e( 'Control', 'vcns-security-automation-manager' ); ?></h1>
 
 	<p>
-		<?php esc_html_e( '"Control" here means configuring a header policy or a certificate action, not blocking traffic. This build has no real-time traffic controls (rate-limiting, temporary blocking, challenge) yet -- nothing on this site is ever blocked by this plugin today.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( '"Control" here means applying an explicitly permitted response: a header policy, a certificate action, or -- since Traffic Controls -- rate limiting and blocking. Every traffic-control surface starts in Observe mode and stays there until you explicitly switch it to Enforce.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<table class="widefat striped wp-sam-readiness-table">
@@ -33,6 +34,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</tr>
 		</thead>
 		<tbody>
+			<tr>
+				<td>
+					<strong><?php esc_html_e( 'Traffic Controls', 'vcns-security-automation-manager' ); ?></strong>
+					<p class="description"><?php esc_html_e( 'Per-surface rate limiting, an IP allow/block list, and progressive-response blocks.', 'vcns-security-automation-manager' ); ?></p>
+				</td>
+				<td>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-traffic' ) ); ?>">
+						<?php esc_html_e( 'Manage Traffic Controls', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
 			<tr>
 				<td>
 					<strong><?php esc_html_e( 'CSP Profiles', 'vcns-security-automation-manager' ); ?></strong>

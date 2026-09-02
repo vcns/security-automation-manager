@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.41] - 2026-09-02
+
+### Added
+
+- Phase 3E of `.roadmap/phase3_early_plan.md` (§13 Traffic Protection Controls): this plugin's first schema and code path that can actively reject a request -- every prior pillar only ever adds response headers. `includes/intelligence/class-traffic-guard.php` is the enforcement engine, hooked on `init` (priority 1, ahead of routing) and `wp_login_failed`.
+- `includes/intelligence/class-traffic-policy-store.php`: CRUD for the new `sam_traffic_policies` table (schema v28), one row per surface (`mode`: `observe`/`enforce`, rate-limit thresholds, login lockout thresholds). Every surface seeds in `observe` mode -- default-safety is structural, not a setting an installer could miss.
+- `includes/intelligence/class-ip-rule-store.php`: CRUD and CIDR lookup (reusing Phase 3D's `Cidr_Matcher`) for the new `sam_ip_rules` table -- a manual admin allow/block list that applies regardless of a surface's mode, since it's a deliberate decision rather than automatic detection.
+- `includes/intelligence/class-traffic-block-store.php`: automatic progressive-response state (`sam_traffic_blocks`) per (ip, surface) -- `observe -> warn -> throttle -> temporary_block -> extended_block -> persistent_block` (§13.7). Automatic escalation never reaches `persistent_block` on its own; only an explicit administrator action can.
+- `includes/intelligence/class-rate-limiter.php`: fixed-window request counter, the same transient-based pattern `Event_Store`/`Hash_Manager` already use.
+- `includes/admin/views/page-traffic.php` + three `admin_post_wp_sam_traffic_*`/`wp_sam_ip_rule_*` handlers in `includes/admin/class-admin-ui.php`: the new Traffic Controls page (Policy / IP Rules / Blocks tabs).
+- `includes/csp/class-scheduler.php`: `purge_stale_traffic_blocks()` deletes non-persistent block rows not seen again within 30 days, run from the existing daily scan -- a source that stopped offending isn't penalised forever.
+- Safety, verified live against a real WordPress instance, not just unit tests: an already-authenticated administrator (`is_user_logged_in()` + `manage_options`) is never blocked by automatic escalation, confirmed by hammering a tightly rate-limited, enforce-mode surface as both an anonymous visitor (blocked with `403` once over the limit) and the logged-in admin (unaffected, `200`) at the same time.
+- ASN observation/control and Geo-IP controls (roadmap §13.4/§13.5) are deliberately deferred, not implemented as stubs: this plugin has no verified ASN/GeoIP data source yet, and fabricating one would be worse than omitting it (same reasoning as Phase 3D's scanner-vendor CIDR data).
+- `includes/admin/views/page-control.php`: updated to reflect that this plugin can now block traffic (in Enforce mode only) -- the page previously stated flatly that nothing on the site is ever blocked, which Phase 3E makes no longer true.
+
 ## [2.9.40] - 2026-09-02
 
 ### Added
