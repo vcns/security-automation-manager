@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.46
+Stable tag: 2.9.47
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.47 =
+
+* Added: Phase 4A of the roadmap, third and final increment (Geo-IP Controls) -- an opt-in feature using your own IPinfo (ipinfo.io) account, never a shared VCNS credential. Disabled until you add a token on the Network Intelligence tab; the token is encrypted at rest using the same mechanism already protecting certificate and DNS-provider credentials. Once enabled, evidence a detector already produced now also notes the source's country, region, and city. A "Look Up" tool lets you check any IP directly. MaxMind support was deliberately not built in this pass -- its free tier is a downloaded database, not a live lookup service, and adding it would mean this plugin's first external code dependency; that stays a separate future decision. This completes Phase 4A (Tor Awareness, ASN Controls, Geo-IP Controls).
 
 = 2.9.46 =
 

@@ -122,6 +122,9 @@ final class Request_Observer {
 						'is_tor_exit'  => $context['network']['is_tor_exit'] ?? false,
 						'asn'          => $context['network']['asn'] ?? null,
 						'asn_org'      => $context['network']['asn_org'] ?? null,
+						'geo_country'  => $context['network']['country'] ?? null,
+						'geo_region'   => $context['network']['region'] ?? null,
+						'geo_city'     => $context['network']['city'] ?? null,
 					),
 					is_array( $finding['detail'] ?? null ) ? $finding['detail'] : array()
 				)

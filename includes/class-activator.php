@@ -294,6 +294,7 @@ class Activator {
 			'sam_change_windows',
 			'sam_tor_exit_nodes',
 			'sam_asn_cache',
+			'sam_geoip_cache',
 		);
 	}
 
@@ -331,6 +332,8 @@ class Activator {
 			'wp_sam_cert_last_run',
 			'wp_sam_tor_list_refreshed_at',
 			'wp_sam_tor_list_last_fetch_status',
+			'wp_sam_geoip_provider',
+			'wp_sam_geoip_ipinfo_token',
 		);
 	}
 
@@ -1186,6 +1189,32 @@ class Activator {
   ip varchar(64) NOT NULL,
   asn int(11) DEFAULT NULL,
   asn_org varchar(255) NOT NULL DEFAULT '',
+  resolved_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY ip (ip)
+) {$cc};"
+		);
+
+		// Schema v33: Phase 4A, third increment -- Geo-IP Controls
+		// (.roadmap/phase4_plan.md Phase 4A, .roadmap/phase3_early_plan.md
+		// §13.4). Unlike Tor/ASN, Geo-IP has no free-without-an-account
+		// option -- this is entirely opt-in and BYO-credentials: disabled
+		// until an administrator enters their own IPinfo API token
+		// (Credential_Vault-sealed, never plaintext, never a shared VCNS
+		// credential -- see docs/checkout-proxy-design.md's "customers
+		// must never hold a shared credential" principle applied here too).
+		// sam_geoip_cache mirrors sam_asn_cache's role: cache the live
+		// lookup result so its cost (and IPinfo's free-tier request quota)
+		// is paid once per IP, not per request. MaxMind support was
+		// explicitly deferred -- see Intelligence\Geo_Ip_Store's own
+		// docblock for why.
+		dbDelta(
+			"CREATE TABLE {$p}sam_geoip_cache (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip varchar(64) NOT NULL,
+  country varchar(2) NOT NULL DEFAULT '',
+  region varchar(255) NOT NULL DEFAULT '',
+  city varchar(255) NOT NULL DEFAULT '',
   resolved_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY ip (ip)

@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.46
+ * Version:           2.9.47
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.46' );
+define( 'WP_SAM_VERSION', '2.9.47' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -191,8 +191,17 @@ define( 'WP_SAM_VERSION', '2.9.46' );
  *        (no account or licensing decision needed) so its cost is paid
  *        once per IP, not on every request. Observation only. See
  *        Intelligence\Asn_Lookup_Store.
+ * v33 -- adds sam_geoip_cache (Phase 4A, third increment -- Geo-IP
+ *        Controls, .roadmap/phase3_early_plan.md §13.4). Entirely opt-in
+ *        and bring-your-own-credentials -- disabled until an
+ *        administrator enters their own IPinfo API token, sealed via
+ *        Credential_Vault, never a shared VCNS credential. MaxMind
+ *        support deliberately deferred (its free tier is a downloaded
+ *        binary database, not a live API -- see Intelligence\Geo_Ip_
+ *        Store's own docblock). Observation only, and Geo-IP blocking is
+ *        never enabled by default, per the roadmap's explicit requirement.
  */
-define( 'WP_SAM_DB_VERSION', '32' );
+define( 'WP_SAM_DB_VERSION', '33' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

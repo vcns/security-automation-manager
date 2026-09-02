@@ -77,6 +77,7 @@ use WP_SAM\Intelligence\Change_Window_Store;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -164,6 +165,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_change_window_open', array( $this, 'handle_change_window_open' ) );
 		add_action( 'admin_post_wp_sam_change_window_close', array( $this, 'handle_change_window_close' ) );
 		add_action( 'admin_post_wp_sam_tor_list_refresh', array( $this, 'handle_tor_list_refresh' ) );
+		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -1385,6 +1387,31 @@ class Admin_UI {
 		}
 
 		( new Tor_Exit_List_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		exit;
+	}
+
+	/**
+	 * Saves (or clears) the administrator's own IPinfo API token for
+	 * Geo-IP (Phase 4A, third increment). Sealed via Credential_Vault --
+	 * see Geo_Ip_Store's own docblock for why this is never a shared VCNS
+	 * credential. An empty submission clears the token and disables
+	 * Geo-IP again, same "blank = keep/clear" convention as the
+	 * certificate settings form.
+	 */
+	public function handle_geoip_save_token(): void {
+		check_admin_referer( 'wp_sam_geoip_save_token' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to change Geo-IP settings.', 'vcns-security-automation-manager' ) );
+		}
+
+		$token = isset( $_POST['ipinfo_token'] ) ? (string) wp_unslash( $_POST['ipinfo_token'] ) : '';
+		if ( '' !== trim( $token ) ) {
+			( new Geo_Ip_Store() )->save_token( $token );
+		} elseif ( isset( $_POST['clear_token'] ) ) {
+			( new Geo_Ip_Store() )->save_token( '' );
+		}
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
 		exit;

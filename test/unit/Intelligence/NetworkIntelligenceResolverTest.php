@@ -7,6 +7,7 @@ declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
+use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Network_Intelligence_Resolver;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 
@@ -19,7 +20,8 @@ class NetworkIntelligenceResolverTest extends TestCase {
 	private function resolver(): Network_Intelligence_Resolver {
 		return new Network_Intelligence_Resolver(
 			new Tor_Exit_List_Store(),
-			new Asn_Lookup_Store( static fn( string $h ): array => array() )
+			new Asn_Lookup_Store( static fn( string $h ): array => array() ),
+			new Geo_Ip_Store()
 		);
 	}
 
@@ -33,6 +35,9 @@ class NetworkIntelligenceResolverTest extends TestCase {
 				'is_tor_exit' => false,
 				'asn'         => null,
 				'asn_org'     => null,
+				'country'     => null,
+				'region'      => null,
+				'city'        => null,
 			),
 			$result
 		);
@@ -62,15 +67,24 @@ class NetworkIntelligenceResolverTest extends TestCase {
 			'asn_org' => 'GOOGLE, US',
 		);
 
-		$resolver = new Network_Intelligence_Resolver(
-			new Tor_Exit_List_Store(),
-			new Asn_Lookup_Store( static fn( string $h ): array => array() )
-		);
-
-		$result = $resolver->resolve( '8.8.8.8' );
+		$result = $this->resolver()->resolve( '8.8.8.8' );
 
 		$this->assertFalse( $result['is_tor_exit'] );
 		$this->assertSame( 15169, $result['asn'] );
 		$this->assertSame( 'GOOGLE, US', $result['asn_org'] );
+	}
+
+	public function test_resolve_leaves_geo_fields_null_when_geoip_is_not_configured(): void {
+		$GLOBALS['_wpdb_get_var'] = null;
+		$GLOBALS['_wpdb_get_row'] = array(
+			'asn'     => 15169,
+			'asn_org' => 'GOOGLE, US',
+		);
+
+		$result = $this->resolver()->resolve( '8.8.8.8' );
+
+		$this->assertNull( $result['country'] );
+		$this->assertNull( $result['region'] );
+		$this->assertNull( $result['city'] );
 	}
 }

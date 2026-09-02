@@ -18,6 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use WP_SAM\Intelligence\Asn_Lookup_Store;
+use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
@@ -45,7 +46,7 @@ $tab_help = array(
 	),
 	'network-intelligence' => array(
 		'label'       => __( 'Network Intelligence', 'vcns-security-automation-manager' ),
-		'description' => __( 'Observation-only network-level facts -- Tor exit status and ASN today, Geo-IP planned. Never implies malicious intent and never blocks on its own.', 'vcns-security-automation-manager' ),
+		'description' => __( 'Observation-only network-level facts -- Tor exit status, ASN, and (opt-in) Geo-IP. Never implies malicious intent and never blocks on its own.', 'vcns-security-automation-manager' ),
 	),
 );
 ?>
@@ -334,10 +335,78 @@ $tab_help = array(
 		</table>
 		<?php endif; ?>
 
+		<?php $geo_store = new Geo_Ip_Store(); ?>
+
 		<h2 style="margin-top:2em"><?php esc_html_e( 'Geo-IP', 'vcns-security-automation-manager' ); ?></h2>
 		<p class="description" style="max-width:600px">
-			<?php esc_html_e( 'Planned next -- an opt-in feature using your own MaxMind or IPinfo account (never a shared VCNS credential). Not available yet.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'Opt-in, using your own IPinfo (ipinfo.io) account -- never a shared VCNS credential. Disabled until you add a token below. MaxMind support is a deliberate later decision, not built yet -- its free tier is a downloaded database, not a live lookup service.', 'vcns-security-automation-manager' ); ?>
 		</p>
+
+		<?php if ( $geo_store->token_undecryptable() ) : ?>
+		<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;max-width:600px">
+			<p style="margin-top:0;"><?php esc_html_e( 'A saved IPinfo token could not be decrypted (likely because the site\'s secret keys changed since it was saved). Geo-IP is currently disabled -- re-enter the token below to restore it.', 'vcns-security-automation-manager' ); ?></p>
+		</div>
+		<?php endif; ?>
+
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+			<tbody>
+				<tr>
+					<th style="width:200px"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $geo_store->is_configured() ? __( 'Enabled', 'vcns-security-automation-manager' ) : __( 'Disabled -- no token configured', 'vcns-security-automation-manager' ) ); ?></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+			<?php wp_nonce_field( 'wp_sam_geoip_save_token' ); ?>
+			<input type="hidden" name="action" value="wp_sam_geoip_save_token" />
+			<label for="ipinfo_token"><?php esc_html_e( 'IPinfo API token', 'vcns-security-automation-manager' ); ?></label><br />
+			<input type="password" id="ipinfo_token" name="ipinfo_token" autocomplete="off" placeholder="<?php echo $geo_store->is_configured() ? esc_attr__( 'Saved -- leave blank to keep', 'vcns-security-automation-manager' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr__() already escapes. ?>" style="width:100%;max-width:400px" />
+			<p>
+				<?php submit_button( __( 'Save Token', 'vcns-security-automation-manager' ), 'primary', '', false ); ?>
+				<?php if ( $geo_store->is_configured() ) : ?>
+				<button type="submit" name="clear_token" value="1" class="button"><?php esc_html_e( 'Clear and Disable', 'vcns-security-automation-manager' ); ?></button>
+				<?php endif; ?>
+			</p>
+		</form>
+
+		<?php if ( $geo_store->is_configured() ) : ?>
+		<h3 style="margin-top:1.5em"><?php esc_html_e( 'Geo-IP Lookup', 'vcns-security-automation-manager' ); ?></h3>
+		<form method="get" style="margin-top:0.5em">
+			<input type="hidden" name="page" value="security-automation-manager-traffic" />
+			<input type="hidden" name="tab" value="network-intelligence" />
+			<label for="geo_lookup_ip" class="screen-reader-text"><?php esc_html_e( 'IP address to look up', 'vcns-security-automation-manager' ); ?></label>
+			<input type="text" id="geo_lookup_ip" name="geo_lookup_ip" placeholder="203.0.113.42" value="<?php echo esc_attr( isset( $_GET['geo_lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['geo_lookup_ip'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>" style="width:220px" />
+			<?php submit_button( __( 'Look Up', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+		</form>
+
+			<?php
+			$geo_lookup_ip = isset( $_GET['geo_lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['geo_lookup_ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			if ( '' !== $geo_lookup_ip ) :
+				$geo_result = $geo_store->resolve( $geo_lookup_ip );
+				?>
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+			<tbody>
+				<tr>
+					<th style="width:200px"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
+					<td><code><?php echo esc_html( $geo_lookup_ip ); ?></code></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $geo_result['country'] ?? __( 'Not found', 'vcns-security-automation-manager' ) ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Region', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $geo_result['region'] ?? '—' ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'City', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $geo_result['city'] ?? '—' ); ?></td>
+				</tr>
+			</tbody>
+		</table>
+			<?php endif; ?>
+		<?php endif; ?>
 
 	<?php endif; ?>
 </div>

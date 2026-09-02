@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.47] - 2026-09-02
+
+### Added
+
+- Phase 4A of `.roadmap/phase4_plan.md`, third and final increment (Geo-IP Controls, `.roadmap/phase3_early_plan.md` §13.4): `includes/intelligence/class-geo-ip-store.php` resolves a source IP's country/region/city via IPinfo's API, entirely opt-in and bring-your-own-credentials -- disabled until an administrator enters their own IPinfo token, sealed with `Certificates\Credential_Vault` (the existing encryption-at-rest mechanism already protecting certificate and DNS-provider secrets), never a shared VCNS credential. Results cached in the new `sam_geoip_cache` table (30-day TTL, including a cached negative result on failure).
+- MaxMind support explicitly deferred: its free GeoLite2 tier is a downloaded binary database, not a live API, and reading it correctly needs either a hand-rolled MMDB parser or this plugin's first-ever production Composer dependency (`geoip2/geoip2`) -- a real architectural decision, confirmed deferred rather than built silently either way.
+- `includes/intelligence/class-network-intelligence-resolver.php`: extended with the new collaborator; `geo_country`/`geo_region`/`geo_city` now attached alongside `is_tor_exit`/`asn`/`asn_org` on any Finding's evidence, same lazy-resolution pattern. `Geo_Ip_Store::resolve()` is a complete no-op (no DB query, no network call) until Geo-IP is configured.
+- `includes/admin/views/page-traffic.php`: Network Intelligence tab gains a Geo-IP settings section (token entry/clear, decrypt-failure warning) and its own "Look Up" tool.
+- Schema v33. This completes Phase 4A (Tor Awareness, ASN Controls, Geo-IP Controls).
+
 ## [2.9.46] - 2026-09-02
 
 ### Added
