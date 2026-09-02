@@ -176,9 +176,13 @@ The repository also publishes a public help site from the `docs/` directory:
 
 ## Development And Release Flow
 
-- `codex/*`, `feature/*`, `fix/*`, and `hotfix/*` branches target `development`; enforced by CI (`.github/workflows/pr-branch-policy.yml`)
-- `release/*` branches (cut from `main`) are the only branches CI allows to open a pull request directly into `main`, alongside `development` itself
-- `main` is the release and publishing branch; every release is a merged `release/*` PR, tagged `vX.Y.Z`
+Two-stage flow, formalised as the product moves from MVP into a real commercial release cadence -- see `.github/workflows/pr-branch-policy.yml` for the enforced rules:
+
+- `chore/*`, `docs/*`, `feature/*`, `fix/*`, and `hotfix/*` branches target `development`
+- `release/*` branches (cut from `development` once it holds what you want to ship) are the normal path into `main`; `development` itself may also open a PR directly into `main`
+- `hotfix/*` may additionally go straight into `main`, bypassing `development`, for a genuine emergency fix that can't wait for the normal cycle -- back-merge it into `development` afterwards so the fix isn't lost on the next release cut
+- `codex/*` is not an allowed source branch for either target
+- `main` is the release and publishing branch; every release is a merged `release/*` (or emergency `hotfix/*`) PR, tagged `vX.Y.Z`
 - Pushing a `vX.Y.Z` tag on `main` triggers the release pipeline: it builds and publishes the single GitHub Release asset (the GitHub-channel ZIP) and separately deploys the WordPress.org-safe package to the WordPress.org SVN repository -- both from the same tagged commit, in the same run
 
 ## Notes For Maintainers
