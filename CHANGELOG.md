@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.50] - 2026-09-02
+
+### Added
+
+- Phase 4B of `.roadmap/phase4_plan.md`, third increment (PHP and PHPUnit Probes, `.roadmap/phase3_early_plan.md` §11.6): `includes/intelligence/detectors/class-php-probe-detector.php`, the 12th core detector family. Distinct from §11.5's `Script_Webshell_Probe_Detector` (well-known malicious filenames) and §11.12's `Vulnerability_Probe_Detector` (general admin-tool paths) -- this family matches specific, versioned vulnerability signatures instead: the PHPUnit `eval-stdin.php` RCE (CVE-2017-9841), an exposed `phpinfo()`-style script, Laravel Ignition's debug RCE path (CVE-2021-3129), the php-cgi argument-injection query string (CVE-2012-1823), and a Symfony profiler path.
+- `includes/intelligence/class-detector-registry.php`: registered in `register_defaults()`. Defaults to observation only (no roadmap guidance calling for enforce-capability on this family, unlike HTML Injection and the upcoming Legacy WordPress Endpoints family).
+
 ## [2.9.49] - 2026-09-02
 
 ### Added

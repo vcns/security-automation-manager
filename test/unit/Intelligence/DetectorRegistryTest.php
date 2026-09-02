@@ -78,6 +78,7 @@ class DetectorRegistryTest extends TestCase {
 				'version-control-artefacts',
 				'vulnerability-probes',
 				'html-injection',
+				'php-probes',
 			),
 			Detector_Registry::keys()
 		);
@@ -87,7 +88,7 @@ class DetectorRegistryTest extends TestCase {
 		Detector_Registry::register_defaults();
 		Detector_Registry::register_defaults();
 
-		$this->assertCount( 11, Detector_Registry::keys() );
+		$this->assertCount( 12, Detector_Registry::keys() );
 	}
 
 	public function test_reset_allows_register_defaults_to_repopulate(): void {
@@ -98,7 +99,7 @@ class DetectorRegistryTest extends TestCase {
 
 		Detector_Registry::register_defaults();
 
-		$this->assertCount( 11, Detector_Registry::keys() );
+		$this->assertCount( 12, Detector_Registry::keys() );
 	}
 }
 
