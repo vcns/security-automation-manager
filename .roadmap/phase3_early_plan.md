@@ -5,8 +5,47 @@
 **Repository:** `vcns/security-automation-manager`  
 **Phase:** 3  
 **Baseline:** v2.9.24  
-**Status:** Draft for development planning  
-**Date:** 29 August 2026
+**Status:** Substantially delivered as of v2.9.44 (2 September 2026) -- pruned to reflect that; see the delivery-status table below before reading any individual section  
+**Date:** 29 August 2026 (original); pruned 2 September 2026
+
+---
+
+## Delivery status (added 2 September 2026)
+
+This document was written as a forward-looking spec. Most of it has since shipped. Rather than delete what's done, every section below now carries a one-line status: **Delivered** sections are trimmed to a pointer at what implements them (full requirement text was carried into the code's own docblocks and `SPECIFICATION.md`, so keeping a second full copy here just invited drift -- exactly the failure mode `docs/consolidation-ledger.md` and this session's GitHub issue audit both found in other documents). Sections with **real remaining work** keep their full original text unchanged -- that text is the active specification for whoever picks it up. Sections marked **Deferred** were explicitly, deliberately not built by product decision, not oversight.
+
+| § | Title | Status |
+|---|---|---|
+| 1-3 | Purpose, Product Model, Operational Lifecycle | Living architecture principles -- kept in full, not a delivery target |
+| 4 | WordPress Surfaces | Delivered |
+| 5 | Technology Pillars | Delivered (definitional, kept in full) |
+| 6 | Administration IA | Delivered, one stale line to fix |
+| 7 | Visitor and Request Intelligence | Delivered |
+| 8 | Identity Verification | Delivered, one field (ASN) blocked on §13.5 |
+| 9 | Commercial Scanner Intelligence | Delivered (mechanism); vendor data is a sourcing decision, not a code gap |
+| 10 | Bot, Crawler and Scraper Detection | **Real remaining work** -- kept in full |
+| 11 | Pattern Recognition and Detector Families | **Real remaining work** (3 of 13 families) -- kept in full |
+| 12 | HTTP Method Intelligence | **Real remaining work** -- kept in full |
+| 13 | Traffic Protection Controls | **Real remaining work** (13.4-13.6 zero) -- kept in full |
+| 14 | Campaign Detection | Delivered |
+| 15 | Deception and Honey Paths | Delivered |
+| 16 | Integrity Monitoring | Delivered, partial (2 of 9 signals) -- kept in full |
+| 17 | Change Attribution | Delivered |
+| 18 | Security Change Window | Delivered |
+| 19 | Baseline and Drift | Delivered |
+| 20 | External Verification | **Deferred by explicit decision**, 2 September 2026 -- kept in full |
+| 21 | Site Security Health | Delivered |
+| 22 | Recommendations | **Real remaining work**, not started -- kept in full |
+| 23 | Federated Intelligence Service | **Deferred by explicit decision**, 2 September 2026 -- kept in full |
+| 24 | Managed Intelligence Updates | **Deferred by explicit decision**, 2 September 2026 -- kept in full |
+| 25 | Commercial Product Boundary | **Real remaining work** (packaging design undone) -- kept in full |
+| 26 | Evidence and Assurance | Delivered |
+| 27 | Fleet Management | **Deferred by explicit decision** (unchanged since original write) -- kept in full |
+| 28-34 | UX, Explainability, Default-Safety, Architecture, Testing, Performance, Privacy | Living cross-cutting requirements -- kept in full |
+| 35 | Development Roadmap (3A-3J) | Updated inline with delivery status per sub-phase |
+| 36-38 | Non-Goals, Definition of Done, Strategic Outcome | Living principles / status-checked -- kept in full |
+
+Everything marked "real remaining work" or "deferred" above is the raw material for the next phase plan -- see `.roadmap/phase4_plan.md`.
 
 ---
 
@@ -287,206 +326,39 @@ Phase 3 must preserve direct access to them while introducing a simpler lifecycl
 
 # 6. Administration Information Architecture
 
-## 6.1 Primary Navigation
+**Status: Delivered.** Primary navigation (§6.1) is Observe/Decide/Control/Verify/Settings, live in `includes/admin/views/page-observe.php`, `page-decide.php`, `page-control.php`, `page-verify.php`, `page-overview.php` -- the original technology-standard pages remain as CSS-hidden-but-reachable drill-downs (`class-admin-ui.php`'s `print_hidden_menu_css()`), exactly per §6.1's intent. Settings is the default landing page (§6.2), grouped by protection layer (§6.3, `page-overview.php`). Status vocabulary (§6.4) shipped as a narrower 4-state set (`not-configured`/`disabled`/`report-only`/`active` -- `class-status-badge.php:25-28`) than the ~15 candidates originally listed; the roadmap itself said labels should be "normalised during implementation," so this is an accepted narrowing, not a gap.
 
-The WordPress administration navigation under VCNS Security Automation Manager should be redesigned around the operational lifecycle.
-
-The intended primary navigation is:
-
-- Observe
-- Decide
-- Control
-- Verify
-- Settings
-
-The current technology-standard pages remain available as drill-down destinations rather than acting as the primary mental model for non-technical administrators.
-
-## 6.2 Default Landing Page
-
-The current Overview experience should remain conceptually present, but the product-level navigation entry should become **Settings**.
-
-The existing Overview tab may remain named **Overview** within Settings.
-
-Settings should become the default product workspace.
-
-## 6.3 Settings / Overview Table
-
-The existing Overview table should be reorganised by **Protection Layer**.
-
-Each layer should contain its related technology pillars and controls.
-
-The table should preserve:
-
-- status;
-- current configuration state;
-- enabled/disabled state;
-- automation state;
-- surface coverage;
-- direct Manage links;
-- drill-down links.
-
-The user should be able to see, without opening each individual technology page:
-
-- whether a control is configured;
-- whether it is active;
-- whether it is report-only;
-- whether it is automated;
-- whether action is required;
-- which surfaces are covered.
-
-## 6.4 Status Vocabulary
-
-Phase 3 should introduce consistent status terms.
-
-Candidate states include:
-
-- Not configured
-- Disabled
-- Observe only
-- Learning
-- Manual
-- Assisted
-- Controlled automatic
-- Fully automatic
-- Report-only
-- Active
-- Degraded
-- Action required
-- Verification pending
-- Verified
-- Drift detected
-
-Exact labels should be normalised during implementation.
+**One stale line to fix:** `page-observe.php:101-103` still says an ongoing baseline/drift feed is "not yet available... planned for a future phase" -- it shipped in Phase 3F. Small copy fix, tracked in `.roadmap/phase4_plan.md`.
 
 ---
 
 # 7. Visitor and Request Intelligence
 
-Phase 3 introduces a new request-intelligence capability within Layer 3.
-
-The objective is not merely to count requests.
-
-The system should determine, where evidence permits:
-
-- who is making the request;
-- what the requester claims to be;
-- what behaviour is being exhibited;
-- what the requester appears to be attempting;
-- how confident the classification is;
-- what local policy permits the system to do about it.
+**Status: Delivered.** `includes/intelligence/class-request-observer.php` builds per-request context (IP, method, path, surface, user-agent) on every request across all four surfaces, consumed by `Detector_Engine` and `Identity_Resolver`. Predates this document (Phase 3B) but intact and unchanged.
 
 ---
 
 # 8. Identity Verification
 
-User-agent strings alone must never establish trusted identity.
+**Status: Delivered**, one field short. `includes/intelligence/class-identity-resolver.php` (`resolve()`, `verify_fcrdns()`) implements the full identity-record model this section specifies: claimed identity, user-agent match, published-network match, rDNS/forward-confirmed-rDNS, verification result, confidence -- see `class-scanner-identity-store.php` for the persisted state shape ("verified / probable / claimed only / false claim / unknown", matching this section's example almost verbatim). Architecture is generic across identity types, not scanner-specific.
 
-The product should support an identity-verification model.
-
-A candidate identity record should include:
-
-- claimed identity;
-- observed user-agent;
-- source IP;
-- source ASN where available;
-- source network;
-- authoritative vendor;
-- authoritative documentation URL;
-- vendor-published IP ranges where available;
-- reverse-DNS verification method where applicable;
-- forward-confirmed reverse-DNS where applicable;
-- verification result;
-- confidence level;
-- last intelligence update;
-- source evidence.
-
-Example result:
-
-- Claimed identity: Googlebot
-- User-Agent match: yes
-- Published network match: yes/no/not applicable
-- rDNS match: yes/no/not checked
-- forward verification: yes/no/not checked
-- Identity state: verified / probable / claimed only / false claim / unknown
-
-The same architecture should support:
-
-- search engines;
-- AI crawlers;
-- vulnerability scanners;
-- attack-surface-management services;
-- uptime monitoring;
-- CDN services;
-- security researchers;
-- known hosted services.
+**Missing:** the "source ASN" field from the candidate record list above -- no ASN resolver exists anywhere in the codebase. Blocked on the same missing verified data source as §13.5; not a separate piece of work.
 
 ---
 
 # 9. Commercial Scanner Intelligence
 
-Phase 3 should import the existing concept of a reference list of public commercial vulnerability-scanner and attack-surface-management network ranges.
+**Status: Delivered (mechanism).** `includes/intelligence/class-scanner-vendor-store.php` implements the exact §9.2 authoritative-source schema (vendor, category, CIDR ranges, rDNS suffixes, source URL, verification method), and `class-scanner-identity-store.php` implements all seven §9.1 trust states verbatim (unknown, known commercial scanner, known research scanner, customer-authorised, explicitly denied, previously-authorised-expired, identity conflict). The load-bearing rule, unchanged and enforced throughout:
 
-The initial known categories discussed include:
+> **Recognition is not authorisation.** A source IP matching a published vendor range only identifies likely ownership or service association -- it does not by itself authorise, allowlist, or bypass anything. Customer-specific authorisation is a separate, explicit administrator decision.
 
-- Qualys
-- Tenable Vulnerability Management
-- Tenable Web App Scanning
-- Rapid7 InsightAppSec
-- Detectify
-- Intruder
-- StackHawk
-- Burp Suite DAST
-- Acunetix
-- ImmuniWeb
-- BitSight
-- Censys
-
-The intelligence model must preserve the following rule:
-
-> Recognition is not authorisation.
-
-A source IP matching a published vendor range only identifies likely ownership or service association.
-
-It does not prove:
-
-- that the scan is authorised for this customer;
-- that the traffic should be allowlisted;
-- that the source should bypass security controls;
-- that the customer commissioned the activity.
-
-Customer-specific authorisation must be represented separately.
-
-## 9.1 Scanner Trust States
-
-At minimum:
-
-- Unknown
-- Known commercial scanner
-- Known Internet-wide research scanner
-- Customer-authorised scanner
-- Explicitly denied scanner
-- Previously authorised but expired
-- Identity conflict
-
-## 9.2 Authoritative Sources
-
-Every centrally maintained intelligence record should include:
-
-- vendor;
-- category;
-- network ranges;
-- source URL;
-- verification method;
-- last checked date;
-- provenance;
-- confidence;
-- notes.
-
-The source URL must be retained so administrators can understand where the data came from.
+**Not delivered, and not a code gap:** none of the initial known categories (Qualys, Tenable, Rapid7, Detectify, Intruder, StackHawk, Burp Suite DAST, Acunetix, ImmuniWeb, BitSight, Censys) are pre-seeded -- only Googlebot/Bingbot are, deliberately, because their network ranges are forward-confirmed-reverse-DNS-verifiable without fabricating commercial vendor data VCNS hasn't independently verified (`class-activator.php`'s `seed_default_scanner_vendors()` docblock). Administrators can already add vendors themselves via the UI; shipping pre-verified commercial-vendor data is a data-sourcing decision, not an engineering task, and is out of scope for a plan document.
 
 ---
 
 # 10. Bot, Crawler and Scraper Detection
+
+**Status: real remaining work.** The identity-matching substrate this depends on (§8, §9) is delivered, but the multi-signal classification model below is not -- no robots.txt-behaviour tracking, no session/cookie-behaviour analysis, no header-consistency scoring, no AI-crawler identities seeded (zero matches for `GPTBot`/`ClaudeBot`/`CCBot`/`PerplexityBot` anywhere in the codebase). Rate/timing signals exist only generically via `Rate_Limiter`, not attributed to "crawler behaviour" as its own classification. Full text below is the active spec.
 
 Phase 3 should support classification of:
 
@@ -523,6 +395,8 @@ Suggested classification should consider:
 ---
 
 # 11. Pattern Recognition and Detector Families
+
+**Status: real remaining work, 10 of 13 families delivered.** `class-detector-registry.php`'s `register_defaults()` registers exactly 10: 11.1 Technology Mismatch, 11.2 Command Injection, 11.3 SQL Injection, 11.5 Script/Web-Shell Probes, 11.7 Protocol Injection, 11.8 Sensitive Directory Probing, 11.9 Sensitive File Probing, 11.10 Setup/Install Probes, 11.11 Version-Control Artefacts, 11.12 Vulnerability Probes -- each with full test fixtures per §32. **Not built:** §11.4 HTML Injection, §11.6 PHP/PHPUnit Probes, §11.13 Legacy WordPress Endpoints (XML-RPC) -- three genuinely new detector families, kept in full below. Also missing: no detector carries an "allowed control actions" / "default action" field (per the shared metadata contract below) -- `Traffic_Guard` blocking is generic rate/IP-based, not keyed to which detector family matched, so §13.3's "firewalling by detector family" depends on this too.
 
 Phase 3 should not implement an unstructured collection of independent regular expressions.
 
@@ -715,6 +589,8 @@ RPC/XML-RPC controls must be configurable rather than assumed universally safe t
 
 # 12. HTTP Method Intelligence
 
+**Status: real remaining work, small-to-moderate.** Method is already captured as raw evidence (`class-request-observer.php`, `REQUEST_METHOD` -> context -> `Event_Store`), but no classification logic exists on top of it -- `Rate_Limiter` keys only on `(ip, surface)`, no method dimension anywhere. Since the data is already recorded, building the classification below is additive, not architectural.
+
 The product should classify HTTP methods in context.
 
 Methods such as GET, POST and HEAD are expected.
@@ -741,9 +617,13 @@ Method classification must therefore combine:
 
 # 13. Traffic Protection Controls
 
+**Status: real remaining work.** 13.1/13.2/13.3 are partially delivered (see per-subsection notes); **13.4 Geo-IP, 13.5 ASN, and 13.6 Tor Awareness are genuinely zero-implementation** -- no matches for `geoip`/`asn`/`tor` anywhere in `includes/` beyond forward-looking docblock comments explicitly noting they're not yet built. This is correctly blocked on sourcing a verified, licensable data provider, not an oversight -- confirmed no partial scaffolding exists to build on. 13.7 Progressive Response is fully delivered.
+
 Phase 3 should introduce a coherent traffic-protection capability.
 
 ## 13.1 Rate Limiting
+
+**Delivered, by `(ip, surface)` only** (`class-rate-limiter.php`, `class-traffic-guard.php`). Missing dimensions from the list below: subnet, ASN, identity, endpoint, HTTP method, request classification, authenticated state.
 
 Support rate limits based on combinations of:
 
@@ -767,6 +647,8 @@ Controls should support:
 
 ## 13.2 Excessive Request Detection
 
+**Partial.** Generic rate-limit exceed/escalation exists (`class-traffic-guard.php`), but doesn't yet distinguish the categories below as separate classifications -- it's one undifferentiated "rate_limit" reason.
+
 The product should distinguish between:
 
 - high legitimate traffic;
@@ -778,6 +660,8 @@ The product should distinguish between:
 - distributed activity.
 
 ## 13.3 Firewalling
+
+**Partial.** IP/CIDR block/allow rules implemented (`class-ip-rule-store.php`, `class-cidr-matcher.php`). Missing: ASN, country, identity, detector-family, request-rate-as-firewall-dimension.
 
 Phase 3 may introduce application-level request blocking.
 
@@ -831,6 +715,8 @@ Default treatment should be observation only.
 
 ## 13.7 Progressive Response
 
+**Delivered.** `class-traffic-guard.php`'s stage model matches the 6-stage list below almost exactly, with the final stage requiring explicit admin action (`Traffic_Block_Store::set_persistent()`).
+
 Where appropriate, controls may escalate through stages:
 
 1. observe;
@@ -844,172 +730,55 @@ Where appropriate, controls may escalate through stages:
 
 # 14. Campaign Detection
 
-Campaign detection is an advanced optional capability.
-
-It must not be enabled for automatic control by default.
-
-The system may correlate multiple individual events into a likely campaign where there is sufficient evidence.
-
-Signals may include:
-
-- repeated identical paths;
-- repeated payload fingerprints;
-- common user-agents;
-- common timing;
-- distributed source IPs;
-- multiple cloud providers;
-- repeated detector-family matches;
-- coordinated path sequencing.
-
-Example:
-
-Fifty IP addresses across several infrastructure providers making the same unusual request sequence should be represented as a possible coordinated campaign rather than merely fifty unrelated alerts.
-
-Default behaviour:
-
-- observe;
-- correlate;
-- explain;
-- notify.
-
-Automatic blocking of a correlated campaign requires explicit opt-in.
+**Status: Delivered**, one signal of the eight listed. `includes/intelligence/class-campaign-detector.php` + `class-campaign-store.php` implement distinct-source-IP correlation per detector+surface within a time window -- the roadmap's own worked example (many IPs, one unusual request sequence). Observe/correlate/notify only, exactly as required; blocking participants is a separate, explicit admin action with a required reason, never automatic. **Not implemented:** payload-fingerprint clustering, common-UA/timing correlation, multi-cloud-provider awareness, path sequencing -- each would need infrastructure (payload fingerprint storage, ASN/provider lookup) this build doesn't have; not faked.
 
 ---
 
 # 15. Deception and Honey Paths
 
-Optional deception capability may include endpoints which legitimate users should never request.
-
-Examples:
-
-- fake administrative paths;
-- fake sensitive files;
-- canary paths.
-
-Requests to these resources may produce high-confidence reconnaissance signals.
-
-Requirements:
-
-- disabled by default;
-- no interference with legitimate routes;
-- clear administrative explanation;
-- evidence recorded;
-- no uncontrolled exposure of sensitive content;
-- no active exploitation of the requester.
+**Status: Delivered.** `includes/intelligence/class-honeypath-store.php` + `detectors/class-honeypath-detector.php`. Disabled by default because a fresh install has zero configured paths (structural, not a flag). A hit is recorded through the same `Event_Store` path as every other detector; the actual HTTP response is never altered, satisfying "no active exploitation of the requester" by construction.
 
 ---
 
 # 16. Integrity Monitoring
 
-Phase 3 should extend beyond inbound request inspection into local integrity observation.
+**Status: Delivered, 2 of 9 signals.** `includes/intelligence/class-account-integrity-recorder.php` covers new administrator accounts and role escalations to administrator, correlating with the existing plugin/theme/core change log. **Not implemented:** unexpected PHP/executable files, unusual cron entries, unexpected plugin/theme file changes, new third-party script origins, critical-configuration changes -- each needs filesystem/cron-scanning infrastructure this build doesn't have. Explicit gap, not partial/faked coverage.
 
-Candidate signals include:
+Candidate signals not yet covered:
 
 - unexpected PHP files;
 - unexpected executable files;
-- new administrator accounts;
-- suspicious role changes;
 - unexpected scheduled tasks;
 - unusual WordPress cron entries;
 - unexpected plugin/theme file changes;
 - new third-party script origins;
 - changes to critical configuration.
 
-Integrity monitoring should correlate, where possible, with legitimate events such as:
-
-- plugin update;
-- theme update;
-- WordPress core update;
-- administrator action.
-
 ---
 
 # 17. Change Attribution
 
-Phase 3 should attempt to explain security changes in relation to site changes.
-
-Example:
-
-- 14:03 Elementor upgraded;
-- 14:04 new script origin observed;
-- 14:04 CSP violations begin;
-- 14:06 external verification confirms resource-graph change.
-
-The product must not claim causation where only correlation exists.
-
-Where causation cannot be established, the UI should describe the relationship as correlated evidence.
+**Status: Delivered.** `includes/admin/class-change-timeline-builder.php` merges site changes (`Change_Log_Store`), security drift (`Drift_Store`), and campaigns (`Campaign_Store`) into one chronological view, modeled on the existing `Policy_Events_Builder` pattern. Every row is worded as correlation only ("Correlates with...") -- the causation rule below is enforced in the UI copy itself, not just aspirationally.
 
 ---
 
 # 18. Security Change Window
 
-Phase 3 should consider a controlled security change-window workflow.
-
-An administrator should be able to indicate an intentional change event, for example:
-
-- plugin upgrade;
-- theme upgrade;
-- deployment;
-- major configuration change.
-
-The product may then:
-
-1. snapshot current security state;
-2. increase observation;
-3. record application changes;
-4. collect new behaviour;
-5. run external verification;
-6. present the delta;
-7. allow the administrator to accept the new state as baseline;
-8. retain a rollback point where technically possible.
+**Status: Delivered, 5 of 8 steps.** `includes/intelligence/class-change-window-store.php` covers: (1) snapshot reference -- records whatever baseline is current, doesn't force a fresh capture; (3)+(4) application changes and new behaviour -- already run continuously via existing infrastructure, nothing new needed; (6) delta presentation on close; (8) retained rollback reference via baseline history (`Baseline_Store::approve()` never deletes prior versions). **Not implemented:** (2) "increase observation" has no concrete lever anywhere in the codebase to hook (detector sensitivity isn't currently tunable); (5) "run external verification" depends on §20, deferred. (7) accepting the new baseline stays a separate, explicit "Capture Baseline" action -- never automatic, by design.
 
 ---
 
 # 19. Baseline and Drift
 
-Known-good baselines are a major Phase 3 requirement.
+**Status: Delivered.** `includes/intelligence/class-baseline-state-builder.php` + `class-baseline-store.php` + `class-drift-store.php` + `class-drift-scanner.php` implement this section close to verbatim: baseline snapshots (CSP headers, pillar toggles, dependency/asset-integrity inventories, certificate expiry, WordPress/theme/plugin versions), drift records with old/new value, risk classification, correlated-change text, and a four-state disposition (`unexplained`/`expected`/`approved`/`resolved`) matching the four states below exactly. Disposition changes only via an explicit administrator action with a required note.
 
-A baseline may include:
-
-- security headers;
-- CSP;
-- external origins;
-- scripts;
-- SRI state;
-- certificate;
-- redirects;
-- selected DNS records;
-- cookies;
-- WordPress/plugin versions;
-- representative URLs;
-- externally visible technology;
-- relevant configuration state.
-
-Future verification must compare current state against the approved baseline.
-
-A drift record should show:
-
-- exact change;
-- first observed;
-- latest observed;
-- affected surface;
-- associated control;
-- risk classification;
-- supporting evidence;
-- known correlated change;
-- recommendation;
-- administrator disposition.
-
-The product must distinguish:
-
-- expected change;
-- approved change;
-- unexplained drift;
-- resolved drift.
+**Not covered:** externally-observed sources (redirects, selected DNS records, externally visible technology) -- those depend on §20, deferred.
 
 ---
 
 # 20. External Verification
+
+**Status: deferred by explicit product decision, 2 September 2026** (this is what "Phase 3G" in §35 refers to). Requires a central, VCNS-operated verification service that does not exist yet -- the product owner chose to skip building that infrastructure for now rather than build it prematurely. `Security_Health`'s `external_verification` row (§21) honestly reports "not available yet" rather than faking a status. Kept in full below as the active spec for whenever this is picked back up.
 
 Local configuration alone cannot prove what an external client receives.
 
@@ -1049,26 +818,13 @@ Authenticated administration pages must not be externally crawled unless a separ
 
 # 21. Site Security Health
 
-Phase 3 should avoid arbitrary gamified security scoring as the primary interface.
-
-The preferred model is a defensible operational health summary.
-
-Example categories:
-
-- Enforcement: Healthy
-- External verification: Healthy
-- Drift: 2 items requiring review
-- Certificates: Healthy
-- Third-party dependencies: 1 unclassified
-- Exceptions: 3 active, 1 expiring
-- Automation: Controlled automatic
-- Evidence freshness: 17 hours
-
-A numeric score may only be introduced later if its methodology is explainable and defensible.
+**Status: Delivered**, as an 8-category cross-pillar summary rather than a numeric score, matching this section's own preference. `includes/intelligence/class-security-health.php`'s `get_report()` returns enforcement, drift, certificates, dependencies, exceptions, automation, evidence freshness, and external verification, each with a `{label, value, status, detail}` shape (`pass`/`warning`/`fail`/`info` -- `info` used specifically so external verification can honestly say "not available yet" instead of faking a status). No numeric score exists, per this section's own guidance not to introduce one without a defensible methodology.
 
 ---
 
 # 22. Recommendations
+
+**Status: real remaining work, not started.** No matches for `recommendation`/`Recommendation_Engine`/`recommended_action` anywhere in the codebase -- confirmed absent, consistent with GitHub #190's deferral. Nothing to build on beyond the general evidence infrastructure (`Evidence_Exporter`, `Security_Health`) this would need to draw from. Kept in full below.
 
 Recommendations must be evidence-backed.
 
@@ -1103,6 +859,8 @@ AI must not independently bypass deterministic controls or directly alter enforc
 ---
 
 # 23. Federated Intelligence Service
+
+**Status: deferred by explicit product decision, 2 September 2026** (this is "Phase 3H" in §35 -- deferred together with §20/Phase 3G since it depends on the same central-service infrastructure not existing yet). Kept in full below.
 
 Phase 3 should define a central VCNS intelligence architecture.
 
@@ -1176,6 +934,8 @@ Existing controls must continue operating using the last valid local configurati
 
 # 24. Managed Intelligence Updates
 
+**Status: deferred by explicit product decision, 2 September 2026** -- same reason as §23, part of Phase 3H.
+
 A future managed update service may distribute:
 
 - vendor IP ranges;
@@ -1193,6 +953,8 @@ The value proposition should centre on maintained security intelligence and assu
 ---
 
 # 25. Commercial Product Boundary
+
+**Status: real remaining work.** Only legacy, single-tier entitlement plumbing exists (`includes/extensions/commercial-services.php`'s `sam_entitlements` table, `tier varchar(32) DEFAULT 'free'` -- one free/paid distinction, not the Community/Professional/Managed taxonomy below). `Detector_Registry::is_available()` and each `Detector::is_available()` are a real, reusable per-detector entitlement gate extension point, ready to wire up once tiers are actually defined. **Not done:** mapping any specific capability below to a tier -- largely moot until the capabilities themselves exist (most of Professional/Managed's list is still §10/§13.4-13.6/§22/§23/§27, all elsewhere marked as remaining work). See `docs/sam-portal-requirements-spec.md` for the checkout/entitlement-delivery infrastructure question, which is related but distinct from the tier-packaging design this section is about.
 
 Phase 3 should allow for future product tiers without requiring the entire architecture to be duplicated.
 
@@ -1237,33 +999,13 @@ Exact commercial boundaries remain a packaging decision and must be reconciled w
 
 # 26. Evidence and Assurance
 
-Phase 3 should evolve SAM towards continuous security assurance.
-
-The assurance model should connect:
-
-**Control configured locally → Observed → Decided → Controlled → Externally verified → Evidenced**
-
-Evidence should support:
-
-- security reviews;
-- MSP service reporting;
-- customer assurance;
-- audit preparation;
-- technical control review.
-
-Potential mappings may include:
-
-- Cyber Essentials;
-- ISO/IEC 27001;
-- PCI DSS;
-- OWASP ASVS;
-- CIS Controls.
-
-The product must not claim that technical evidence alone establishes compliance or certification.
+**Status: Delivered.** `includes/intelligence/class-evidence-exporter.php`'s `build()` returns a JSON bundle (health summary, per-pillar controls, exceptions, certificates, current baseline, open drift count, recent change log, audit-log excerpt) with an explicit "not a certification" disclaimer and named-framework context (ISO/IEC 27001, PCI DSS, and others) stated as informational only -- never claiming the technical control alone satisfies a requirement, per this section's own rule. **Not covered:** CSV/HTML export formats (JSON only) and signing/checksumming for tamper detection -- see GitHub #178.
 
 ---
 
 # 27. Fleet Management
+
+**Status: deferred, unchanged since original write.** No matches for `fleet` anywhere in the codebase -- consistent with GitHub #186-190, all confirmed still deferred.
 
 Fleet management is explicitly later-phase capability.
 
@@ -1369,6 +1111,8 @@ Automation may increase only when:
 
 # 31. Technical Architecture Requirements
 
+**Status: satisfied, differently factored.** Request Observer, Surface Classifier, Identity Resolver, Detector Registry, Detector Engine, and Audit/Evidence Store all exist as named classes. Confidence/policy/control logic lives inside `Traffic_Guard`/`Traffic_Policy_Store` directly rather than as separately-named engines -- a naming/factoring difference, not a missing capability. **Genuinely absent:** `Network_Intelligence_Resolver` and `Intelligence_Update_Client` -- both tied to the same missing ASN/Geo-IP (§13.4-13.6) and federated-intelligence (§23-24, deferred) work, not a separate gap.
+
 The detector subsystem should use reusable interfaces rather than embedding isolated regular expressions throughout request hooks.
 
 Suggested logical components:
@@ -1428,6 +1172,8 @@ Requirements:
 
 # 34. Privacy Requirements
 
+**Status: satisfied, one nuance.** Retention is documented and enforced (`class-scheduler.php`'s `purge_old_request_events()`, default 90 days via `wp_sam_violation_retention_days`); detail payloads are size-capped. **Missing:** no WordPress core Personal-Data Eraser/Exporter hook integration -- deletion is time-based retention only, not an on-demand per-subject erase tool. Mechanical addition once prioritised; the retention cron already does the heavy lifting.
+
 Security telemetry can contain personal data.
 
 Phase 3 must:
@@ -1445,7 +1191,11 @@ Phase 3 must:
 
 # 35. Development Roadmap
 
+**All sub-phases below are delivered except 3G and 3H, which were explicitly deferred by product decision on 2 September 2026 -- not skipped by oversight.** 3D through 3J shipped as v2.9.40 through v2.9.44 across five same-day releases; 3A-3C predate this plan document (already implemented at its v2.9.24 baseline). See `.roadmap/phase4_plan.md` for what comes next.
+
 ## Phase 3A: Information Architecture and Product Model
+
+**Delivered** (predates this document's v2.9.24 baseline).
 
 Deliver:
 
@@ -1464,6 +1214,8 @@ Exit criteria:
 
 ## Phase 3B: Request Observation Framework
 
+**Delivered** (predates this document's v2.9.24 baseline).
+
 Deliver:
 
 - request observer;
@@ -1479,6 +1231,8 @@ Exit criteria:
 - detectors can be added without rewriting core request-flow architecture.
 
 ## Phase 3C: Initial Detector Families
+
+**Delivered** (predates this document's v2.9.24 baseline) -- 10 of the 10 listed here; see §11 for the 3 additional families (11.4/11.6/11.13) identified after this document was written, which are real remaining work.
 
 Deliver initial deterministic detectors for:
 
@@ -1499,6 +1253,8 @@ Exit criteria:
 
 ## Phase 3D: Identity and Scanner Intelligence
 
+**Delivered, v2.9.40.**
+
 Deliver:
 
 - user-agent extraction;
@@ -1515,6 +1271,8 @@ Exit criteria:
 - recognised vendor traffic is never automatically treated as authorised.
 
 ## Phase 3E: Traffic Controls
+
+**Delivered, v2.9.41 -- except ASN/Geo-IP, blocked on a verified data source (see §13.4-13.5), and per-surface policy, which is delivered.**
 
 Deliver:
 
@@ -1533,6 +1291,8 @@ Exit criteria:
 
 ## Phase 3F: Baseline and Drift
 
+**Delivered, v2.9.42.**
+
 Deliver:
 
 - approved baseline;
@@ -1548,6 +1308,8 @@ Exit criteria:
 - administrators can answer "what changed?" rather than only "what is configured?"
 
 ## Phase 3G: External Verification
+
+**Deferred by explicit product decision, 2 September 2026** -- requires central VCNS-operated infrastructure that doesn't exist yet; the product owner chose not to build it prematurely. Not started, not partially built.
 
 Deliver:
 
@@ -1566,6 +1328,8 @@ Exit criteria:
 
 ## Phase 3H: Federated Intelligence
 
+**Deferred by explicit product decision, 2 September 2026** -- depends on Phase 3G's infrastructure, deferred together with it.
+
 Deliver:
 
 - central intelligence data model;
@@ -1583,6 +1347,8 @@ Exit criteria:
 
 ## Phase 3I: Assurance and Reporting
 
+**Delivered, v2.9.43.**
+
 Deliver:
 
 - site security health;
@@ -1597,6 +1363,8 @@ Exit criteria:
 - output is useful to administrators, MSPs and assurance reviewers without making unsupported compliance claims.
 
 ## Phase 3J: Advanced Optional Intelligence
+
+**Delivered in full, v2.9.44** -- built ahead of the "should follow operational validation" guidance below, at the product owner's explicit request. See §14-19 for what shipped and what didn't (each section notes its own gaps individually).
 
 Consider:
 
@@ -1631,23 +1399,25 @@ Phase 3 is not intended to:
 
 # 37. Definition of Done for Phase 3 Core
 
-The Phase 3 core should be considered complete when:
+**Status, checked against v2.9.44, 2 September 2026:**
 
-- the product architecture clearly separates layers, lifecycle, surfaces and technology pillars;
-- the primary administration experience uses Observe, Decide, Control, Verify and Settings;
-- the Settings overview is grouped by protection layer;
-- request observation is implemented through a reusable detector architecture;
-- key attack/reconnaissance detector families are available;
-- crawler/scanner identities can be recognised and evidence-backed;
-- recognition and authorisation are explicitly distinct;
-- traffic controls are surface-aware;
-- controlled automation applies to detection and traffic controls;
-- baselines and drift records are supported;
-- external verification can compare intended and observed state;
-- central intelligence updates are signed and locally validated;
-- loss of the central service does not remove local protections;
-- actions and recommendations are explainable and auditable;
-- evidence can be exported for security assurance purposes.
+- [x] the product architecture clearly separates layers, lifecycle, surfaces and technology pillars;
+- [x] the primary administration experience uses Observe, Decide, Control, Verify and Settings;
+- [x] the Settings overview is grouped by protection layer;
+- [x] request observation is implemented through a reusable detector architecture;
+- [x] key attack/reconnaissance detector families are available (10 of 13 -- see §11 for the 3 remaining);
+- [x] crawler/scanner identities can be recognised and evidence-backed;
+- [x] recognition and authorisation are explicitly distinct ("Recognition is not authorisation" enforced throughout §9, §14);
+- [x] traffic controls are surface-aware;
+- [x] controlled automation applies to detection and traffic controls;
+- [x] baselines and drift records are supported;
+- [ ] external verification can compare intended and observed state -- **deferred (§20/Phase 3G)**;
+- [ ] central intelligence updates are signed and locally validated -- **deferred (§23-24/Phase 3H)**;
+- [x] loss of the central service does not remove local protections (vacuously true -- no central service exists yet to lose);
+- [x] actions and recommendations are explainable and auditable (for what's built -- §22's actual recommendation *engine* is separate, unbuilt work);
+- [x] evidence can be exported for security assurance purposes.
+
+**13 of 15 done.** The 2 unchecked items are exactly the 2 explicitly deferred phases (3G, 3H) -- this was a known, accepted trade-off when that decision was made, not a surprise gap found now.
 
 ---
 
