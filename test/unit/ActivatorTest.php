@@ -281,22 +281,30 @@ class ActivatorTest extends TestCase {
 	// ── Scanner vendor catalogue seed (Phase 3D) ──────────────────────────────
 
 	public function test_seed_default_scanner_vendors_inserts_builtin_crawlers_when_missing(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array( null, null ); // googlebot, bingbot both missing.
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 6, null ); // googlebot, bingbot, ccbot, gptbot, claudebot, perplexitybot all missing.
 
 		$this->invoke_seed_default_scanner_vendors();
 
-		$this->assertCount( 2, $GLOBALS['_wpdb_inserted_rows'] );
+		$this->assertCount( 6, $GLOBALS['_wpdb_inserted_rows'] );
 		$keys = array_column( array_column( $GLOBALS['_wpdb_inserted_rows'], 'data' ), 'vendor_key' );
-		$this->assertSame( array( 'googlebot', 'bingbot' ), $keys );
+		$this->assertSame( array( 'googlebot', 'bingbot', 'ccbot', 'gptbot', 'claudebot', 'perplexitybot' ), $keys );
+
+		$fcrdns_keys = array( 'googlebot', 'bingbot', 'ccbot' );
+		$cidr_keys   = array( 'gptbot', 'claudebot', 'perplexitybot' );
 		foreach ( $GLOBALS['_wpdb_inserted_rows'] as $row ) {
 			$this->assertSame( 1, $row['data']['is_builtin'] );
-			$this->assertSame( 'fcrdns', $row['data']['verification_method'] );
 			$this->assertNotSame( '', $row['data']['source_url'] );
+			if ( in_array( $row['data']['vendor_key'], $fcrdns_keys, true ) ) {
+				$this->assertSame( 'fcrdns', $row['data']['verification_method'] );
+			} elseif ( in_array( $row['data']['vendor_key'], $cidr_keys, true ) ) {
+				$this->assertSame( 'cidr', $row['data']['verification_method'] );
+				$this->assertSame( '[]', $row['data']['cidr_ranges'] );
+			}
 		}
 	}
 
 	public function test_seed_default_scanner_vendors_skips_rows_that_already_exist(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array( 1, 1 );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 6, 1 );
 
 		$this->invoke_seed_default_scanner_vendors();
 

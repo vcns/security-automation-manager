@@ -5,13 +5,16 @@
  * Commercial Scanner Intelligence, §9.2 Authoritative Sources).
  *
  * Deliberately ships with only a small, built-in seed of well-documented
- * search crawlers (see Activator::seed_default_scanner_vendors()) verified
- * by forward-confirmed reverse DNS against a vendor-published hostname
- * suffix -- not by a hardcoded IP range. Commercial scanner vendors
- * (Qualys, Tenable, Rapid7, etc., listed in §9) are NOT seeded with
- * fabricated network data: their published ranges change over time and
- * asserting stale or guessed ranges in a security product would be worse
- * than asserting nothing. Administrators add those themselves, with a
+ * search/AI crawlers (see Activator::seed_default_scanner_vendors(),
+ * extended Phase 4C for GPTBot/ClaudeBot/CCBot/PerplexityBot, .roadmap/
+ * phase3_early_plan.md §10): verified by forward-confirmed reverse DNS
+ * against a vendor-published hostname suffix where the vendor documents
+ * one, else by the vendor's own published IP-range JSON -- never a
+ * hardcoded IP range, in either case. Commercial scanner vendors (Qualys,
+ * Tenable, Rapid7, etc., listed in §9) are NOT seeded with fabricated
+ * network data: their published ranges change over time and asserting
+ * stale or guessed ranges in a security product would be worse than
+ * asserting nothing. Administrators add those themselves, with a
  * mandatory source_url per §9.2, once they have a range they trust.
  *
  * Built-in rows (is_builtin = 1) can be edited (e.g. to add a

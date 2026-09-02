@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.52] - 2026-09-02
+
+### Added
+
+- Phase 4C of `.roadmap/phase4_plan.md`, first increment (AI-crawler identity seeding, `.roadmap/phase3_early_plan.md` §10): `Activator::seed_default_scanner_vendors()` now also seeds GPTBot (OpenAI), ClaudeBot (Anthropic), CCBot (Common Crawl), and PerplexityBot into `sam_scanner_vendors`, reusing the existing `known_crawler` category and the identical fcrdns/cidr verification machinery Googlebot/Bingbot already exercise -- no new code in `Identity_Resolver`, `Scanner_Identity_Store`, or the admin label maps was needed. Verified against each vendor's own current published documentation (fetched live, not from training memory), not fabricated: CCBot documents forward-confirmable reverse DNS (`*.crawl.commoncrawl.org`); GPTBot, ClaudeBot, and PerplexityBot instead publish IP-range JSON, so those three ship with `verification_method = 'cidr'` and empty `cidr_ranges` (never a guessed range) plus the real published source URL, so an administrator can paste in current ranges via the existing Scanner Vendors admin form.
+- Schema v35 -- no new table; bumped purely so `maybe_upgrade_db()` re-runs the (idempotent, missing-row-only) seed on every already-upgraded site, not just fresh installs.
+
 ## [2.9.51] - 2026-09-02
 
 ### Added
