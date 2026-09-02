@@ -155,6 +155,8 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_certificates',
 			'wp_sam_migration_snapshots',
 			'wp_sam_request_events',
+			'wp_sam_scanner_vendors',
+			'wp_sam_scanner_identities',
 		);
 
 		$this->assertSame(

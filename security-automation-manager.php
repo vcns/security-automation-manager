@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.39
+ * Version:           2.9.40
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.39' );
+define( 'WP_SAM_VERSION', '2.9.40' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -147,8 +147,16 @@ define( 'WP_SAM_VERSION', '2.9.39' );
  *        (Layer 3: Continuous Intelligence) -- ships empty in this release;
  *        no detector is registered yet, so nothing writes to it. See
  *        Intelligence\Event_Store.
+ * v27 -- adds sam_scanner_vendors and sam_scanner_identities (Phase 3D:
+ *        Identity and Scanner Intelligence). sam_scanner_vendors is seeded
+ *        with two built-in, FCrDNS-verified search crawlers (Googlebot,
+ *        Bingbot); administrators can add their own commercial scanner
+ *        vendors. sam_scanner_identities records every resolved request
+ *        identity, with automatic recognition state kept structurally
+ *        separate from administrator authorisation decisions -- see
+ *        Intelligence\Scanner_Identity_Store.
  */
-define( 'WP_SAM_DB_VERSION', '26' );
+define( 'WP_SAM_DB_VERSION', '27' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

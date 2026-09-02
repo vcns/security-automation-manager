@@ -19,6 +19,12 @@
  * Detector_Registry is empty (e.g. no core detector loaded), Detector_Engine
  * ::evaluate() simply returns no Findings and nothing is written to
  * Event_Store.
+ *
+ * Also resolves the request's claimed identity (Phase 3D, Identity_Resolver)
+ * and records it via Scanner_Identity_Store on every hit -- cheap,
+ * synchronous, no network I/O (see Identity_Resolver's own docblock).
+ * Recognition here is never authorisation: see Scanner_Identity_Store's
+ * docblock for why this write path can never set a decision state.
  */
 
 declare( strict_types=1 );
@@ -35,10 +41,14 @@ final class Request_Observer {
 
 	private Detector_Engine $engine;
 	private Event_Store $events;
+	private Identity_Resolver $identity_resolver;
+	private Scanner_Identity_Store $identities;
 
-	public function __construct( Detector_Engine $engine, Event_Store $events ) {
-		$this->engine = $engine;
-		$this->events = $events;
+	public function __construct( Detector_Engine $engine, Event_Store $events, Identity_Resolver $identity_resolver, Scanner_Identity_Store $identities ) {
+		$this->engine            = $engine;
+		$this->events            = $events;
+		$this->identity_resolver = $identity_resolver;
+		$this->identities        = $identities;
 	}
 
 	public function register(): void {
@@ -65,6 +75,19 @@ final class Request_Observer {
 
 		$context  = $this->build_context();
 		$findings = $this->engine->evaluate( $context );
+
+		if ( '' !== $context['ip'] ) {
+			$identity = $this->identity_resolver->resolve( $context['ip'], $context['user_agent'] );
+			$this->identities->record(
+				$context['ip'],
+				$identity['claimed_identity'],
+				$context['user_agent'],
+				$identity['vendor_key'],
+				$context['surface'],
+				$identity['verification_state'],
+				$identity['network_match']
+			);
+		}
 
 		foreach ( $findings as $finding ) {
 			$this->events->record(
