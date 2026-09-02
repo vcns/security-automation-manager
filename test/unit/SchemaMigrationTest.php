@@ -160,6 +160,9 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_traffic_policies',
 			'wp_sam_ip_rules',
 			'wp_sam_traffic_blocks',
+			'wp_sam_security_baselines',
+			'wp_sam_drift_records',
+			'wp_sam_change_log',
 		);
 
 		$this->assertSame(

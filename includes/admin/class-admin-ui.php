@@ -68,6 +68,11 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Intelligence\Baseline_State_Builder;
+use WP_SAM\Intelligence\Baseline_Store;
+use WP_SAM\Intelligence\Change_Log_Store;
+use WP_SAM\Intelligence\Drift_Scanner;
+use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
@@ -142,6 +147,9 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_ip_rule_delete', array( $this, 'handle_ip_rule_delete' ) );
 		add_action( 'admin_post_wp_sam_traffic_block_release', array( $this, 'handle_traffic_block_release' ) );
 		add_action( 'admin_post_wp_sam_traffic_block_persist', array( $this, 'handle_traffic_block_persist' ) );
+		add_action( 'admin_post_wp_sam_baseline_capture', array( $this, 'handle_baseline_capture' ) );
+		add_action( 'admin_post_wp_sam_drift_scan', array( $this, 'handle_drift_scan' ) );
+		add_action( 'admin_post_wp_sam_drift_disposition', array( $this, 'handle_drift_disposition' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -268,6 +276,15 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
+			__( 'Baseline & Drift', 'vcns-security-automation-manager' ),
+			__( 'Baseline & Drift', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-baseline',
+			array( $this, 'render_baseline' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
 			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			__( 'Cross-Origin Policies', 'vcns-security-automation-manager' ),
 			'manage_options',
@@ -377,6 +394,7 @@ class Admin_UI {
 			'security-automation-manager-certificates',
 			'security-automation-manager-intelligence',
 			'security-automation-manager-traffic',
+			'security-automation-manager-baseline',
 			'security-automation-manager-cross-origin',
 			'security-automation-manager-dashboard',
 			'security-automation-manager-hsts',
@@ -577,6 +595,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-cross-origin',
 			'security-automation-manager_page_security-automation-manager-intelligence',
 			'security-automation-manager_page_security-automation-manager-traffic',
+			'security-automation-manager_page_security-automation-manager-baseline',
 		);
 	}
 
@@ -700,6 +719,13 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+	}
+
+	public function render_baseline(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-baseline.php';
 	}
 
 	public function render_observe(): void {
@@ -1114,6 +1140,63 @@ class Admin_UI {
 		( new Traffic_Block_Store() )->set_persistent( (int) ( $_POST['block_id'] ?? 0 ), get_current_user_id() );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=blocks' ) );
+		exit;
+	}
+
+	// ── Baseline and Drift (Phase 3F) ─────────────────────────────────────────
+
+	public function handle_baseline_capture(): void {
+		check_admin_referer( 'wp_sam_baseline_capture' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage the security baseline.', 'vcns-security-automation-manager' ) );
+		}
+
+		$builder = new Baseline_State_Builder( $this->plugin->policy_builder );
+		$state   = $builder->build();
+
+		( new Baseline_Store() )->approve(
+			$state,
+			$builder->hash( $state ),
+			get_current_user_id(),
+			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-baseline&tab=history' ) );
+		exit;
+	}
+
+	public function handle_drift_scan(): void {
+		check_admin_referer( 'wp_sam_drift_scan' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run a drift scan.', 'vcns-security-automation-manager' ) );
+		}
+
+		$scanner = new Drift_Scanner(
+			new Baseline_State_Builder( $this->plugin->policy_builder ),
+			new Baseline_Store(),
+			new Drift_Store(),
+			new Change_Log_Store()
+		);
+		$scanner->scan();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-baseline&tab=drift' ) );
+		exit;
+	}
+
+	public function handle_drift_disposition(): void {
+		check_admin_referer( 'wp_sam_drift_disposition' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage drift records.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Drift_Store() )->disposition(
+			(int) ( $_POST['drift_id'] ?? 0 ),
+			sanitize_key( wp_unslash( $_POST['disposition'] ?? '' ) ),
+			get_current_user_id(),
+			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-baseline&tab=drift' ) );
 		exit;
 	}
 

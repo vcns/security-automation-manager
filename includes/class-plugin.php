@@ -22,6 +22,8 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Change_Attribution_Recorder;
+use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Rate_Limiter;
@@ -259,6 +261,13 @@ final class Plugin {
 			new Traffic_Block_Store(),
 			new Rate_Limiter()
 		) )->register();
+
+		// Change Attribution (Phase 3F). Records real plugin/theme/core
+		// change history for Drift_Scanner to correlate drift against --
+		// kept entirely separate from Learning_Window's own, narrower
+		// hooks so this can never change its CSP-source-learning
+		// behaviour. See Change_Attribution_Recorder's own docblock.
+		( new Change_Attribution_Recorder( new Change_Log_Store() ) )->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already

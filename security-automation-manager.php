@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.41
+ * Version:           2.9.42
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.41' );
+define( 'WP_SAM_VERSION', '2.9.42' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -161,8 +161,15 @@ define( 'WP_SAM_VERSION', '2.9.41' );
  *        response headers. Every surface seeds in 'observe' mode; nothing
  *        blocks until an administrator explicitly promotes a surface to
  *        'enforce'. See Intelligence\Traffic_Guard.
+ * v29 -- adds sam_security_baselines, sam_drift_records, and sam_change_log
+ *        (Phase 3F: Baseline and Drift). An administrator-approved snapshot
+ *        of locally-known configuration state, diffed on each scan against
+ *        current state; differences become drift records an administrator
+ *        can review. Ships with no baseline approved -- nothing to diff
+ *        against until an administrator explicitly captures one. See
+ *        Intelligence\Baseline_State_Builder and Intelligence\Drift_Scanner.
  */
-define( 'WP_SAM_DB_VERSION', '28' );
+define( 'WP_SAM_DB_VERSION', '29' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

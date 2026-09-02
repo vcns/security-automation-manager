@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.42] - 2026-09-02
+
+### Added
+
+- Phase 3F of `.roadmap/phase3_early_plan.md` (§19 Baseline and Drift, §17 Change Attribution): `includes/intelligence/class-baseline-state-builder.php` assembles a flat, diffable snapshot of locally-known configuration state -- effective CSP header per surface, simple pillar toggles, the external dependency and internal-asset-integrity inventories, certificate expiry, and WordPress/theme/plugin versions. Deliberately scoped to state this server already knows about itself; externally-observed state (redirects, DNS, cookies, what a client actually receives) is §20 External Verification, a later phase with its own infrastructure decisions.
+- `includes/intelligence/class-baseline-store.php` (new `sam_security_baselines` table, schema v29): administrator-approved snapshots, only ever written by an explicit "Capture baseline" action -- there is no automatic baseline capture.
+- `includes/intelligence/class-drift-scanner.php` + `class-drift-store.php` (new `sam_drift_records` table): diffs current state against the approved baseline, risk-classifies each difference (reusing the existing `low`/`medium`/`high`/`critical`/`unknown` scale and `Risk_Badge`), and attempts correlation with recent plugin/theme/core changes -- worded as correlation only, never causation, per §17. Differences that revert to match the baseline are marked resolved automatically; escalation of an open drift record's disposition (`expected`/`approved`) is always an explicit administrator action with a required reason.
+- `includes/intelligence/class-change-log-store.php` + `class-change-attribution-recorder.php` (new `sam_change_log` table, §17 Change Attribution): a real event log of plugin/theme/core changes (item identity, version), hooked from the same `upgrader_process_complete`/`activated_plugin`/`deactivated_plugin` events `Learning_Window` already listens to, plus `switch_theme` -- kept entirely separate from `Learning_Window` so this can't affect its existing CSP-source-learning behaviour.
+- `includes/admin/views/page-baseline.php`: new "Baseline & Drift" admin page (Drift / Baseline History / Change Log tabs); `page-verify.php` gains a link to it, since confirming resolved drift is explicitly part of this plugin's "Verify" lifecycle stage (§3.4).
+- `includes/csp/class-scheduler.php`: a drift scan now runs as part of the existing daily cron job when a baseline has been approved.
+- Fixed during development, before shipping: `Policy_Builder::build_policy_string()` embeds a fresh CSP nonce on every call (by design -- that's what makes a nonce meaningful as a security control), which would have made every CSP-header drift check a permanent false positive. `Baseline_State_Builder::normalise_nonce()` replaces the nonce token with a fixed placeholder before the value is ever stored or diffed, so only the *structural* policy is compared. Verified live: a fresh baseline followed by two consecutive scans produces zero false-positive drift.
+
 ## [2.9.41] - 2026-09-02
 
 ### Added

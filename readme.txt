@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.41
+Stable tag: 2.9.42
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.42 =
+
+* Added: Phase 3F of the roadmap -- Baseline and Drift. Capture an approved snapshot of this site's locally-known configuration (CSP headers, security header toggles, external dependency and internal-asset-integrity inventories, certificate state, and WordPress/theme/plugin versions) from the new Baseline & Drift page, then run scans to see exactly what changed since. Each difference is risk-classified, checked for a plausible (never claimed-causal) correlation with a recent plugin/theme/core change, and can be reviewed as expected, approved, or left open for investigation -- items that revert to match the baseline are marked resolved automatically. A real Change Log now tracks plugin/theme/core update history for this correlation, separate from the plugin's existing CSP-learning-window signal.
 
 = 2.9.41 =
 

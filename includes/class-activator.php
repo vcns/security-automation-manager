@@ -286,6 +286,9 @@ class Activator {
 			'sam_traffic_policies',
 			'sam_ip_rules',
 			'sam_traffic_blocks',
+			'sam_security_baselines',
+			'sam_drift_records',
+			'sam_change_log',
 		);
 	}
 
@@ -957,6 +960,88 @@ class Activator {
   KEY surface (surface),
   KEY blocked_until (blocked_until),
   UNIQUE KEY fingerprint (fingerprint)
+) {$cc};"
+		);
+
+		// Schema v29: Baseline and Drift (Phase 3F, Layer 3: Continuous
+		// Intelligence -> Layer/lifecycle "Verify"). sam_security_baselines
+		// stores an administrator-approved snapshot of locally-known
+		// configuration state (see Intelligence\Baseline_State_Builder);
+		// only ever written by an explicit "Capture baseline" admin
+		// action, mirroring this plugin's report-only-until-promoted
+		// philosophy elsewhere. is_current marks the one baseline Drift_
+		// Scanner currently diffs against -- capturing a new baseline
+		// clears the flag on every prior row rather than deleting history.
+		dbDelta(
+			"CREATE TABLE {$p}sam_security_baselines (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  version_number int(11) NOT NULL,
+  state_json longtext NOT NULL,
+  state_hash varchar(64) NOT NULL,
+  is_current tinyint(1) NOT NULL DEFAULT 0,
+  approved_by bigint(20) UNSIGNED DEFAULT NULL,
+  approved_at datetime NOT NULL,
+  note longtext NOT NULL,
+  PRIMARY KEY  (id),
+  KEY is_current (is_current),
+  KEY state_hash (state_hash)
+) {$cc};"
+		);
+
+		// sam_drift_records: one row per (category, surface, item_key)
+		// currently differing from the approved baseline -- see Drift_
+		// Scanner's docblock for the diff/upsert/auto-resolve algorithm.
+		// disposition distinguishes the four states the roadmap requires
+		// (§19): 'unexplained' (default, needs review), 'expected' and
+		// 'approved' (an administrator has reviewed and accepted it,
+		// set via Drift_Store::disposition()), and 'resolved' (the item
+		// reverted to match the baseline again -- only ever set
+		// automatically by the scanner, never by an admin action).
+		dbDelta(
+			"CREATE TABLE {$p}sam_drift_records (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  category varchar(32) NOT NULL,
+  surface varchar(32) NOT NULL DEFAULT '',
+  item_key varchar(191) NOT NULL,
+  old_value longtext NOT NULL,
+  new_value longtext NOT NULL,
+  risk_level varchar(16) NOT NULL DEFAULT 'unknown',
+  risk_reason longtext NOT NULL,
+  correlated_change longtext NOT NULL,
+  disposition varchar(16) NOT NULL DEFAULT 'unexplained',
+  disposition_note longtext NOT NULL,
+  disposition_by bigint(20) UNSIGNED DEFAULT NULL,
+  disposition_at datetime DEFAULT NULL,
+  fingerprint varchar(64) NOT NULL,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY category (category),
+  KEY disposition (disposition),
+  KEY risk_level (risk_level),
+  UNIQUE KEY fingerprint (fingerprint)
+) {$cc};"
+		);
+
+		// sam_change_log: Change Attribution (§17) -- a real event log
+		// (item identity, old/new version), unlike Learning_Window's
+		// single re-opens-a-window timestamp. Populated by
+		// Intelligence\Change_Attribution_Recorder from the same
+		// upgrader_process_complete/activated_plugin/deactivated_plugin/
+		// switch_theme hooks Learning_Window already listens to, kept
+		// entirely separate so this doesn't risk changing Learning_
+		// Window's existing CSP-source-learning behaviour.
+		dbDelta(
+			"CREATE TABLE {$p}sam_change_log (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  change_type varchar(32) NOT NULL,
+  item_name varchar(191) NOT NULL DEFAULT '',
+  old_version varchar(64) NOT NULL DEFAULT '',
+  new_version varchar(64) NOT NULL DEFAULT '',
+  occurred_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY change_type (change_type),
+  KEY occurred_at (occurred_at)
 ) {$cc};"
 		);
 
