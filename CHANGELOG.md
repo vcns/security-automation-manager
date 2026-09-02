@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.40] - 2026-09-02
+
+### Added
+
+- Phase 3D of `.roadmap/phase3_early_plan.md` (§8 Identity Verification, §9 Commercial Scanner Intelligence, §31 "Identity Resolver" / "Network Intelligence Resolver"): `includes/intelligence/class-identity-resolver.php` resolves a request's claimed identity against a known-vendor catalogue -- a cheap, synchronous, per-request User-Agent match plus an optional in-memory CIDR check (`class-cidr-matcher.php`, IPv4 and IPv6), with a deliberately separate, never-automatic `verify_fcrdns()` for forward-confirmed reverse DNS, only ever triggered by an explicit admin action.
+- `includes/intelligence/class-scanner-vendor-store.php`: CRUD for the new `sam_scanner_vendors` table (schema v27), the known-identity catalogue. Ships with two built-in rows (Googlebot, Bingbot) verified by FCrDNS against a vendor-published hostname suffix, not a hardcoded IP range -- see the class docblock for why commercial scanner vendors (Qualys, Tenable, etc.) are deliberately NOT seeded with guessed network data. Administrators can add their own, each requiring a `source_url` (§9.2).
+- `includes/intelligence/class-scanner-identity-store.php`: storage for the new `sam_scanner_identities` table (schema v27). Enforces the roadmap's core rule -- "recognition is not authorisation" -- structurally: `record()`, the automatic per-request write `Request_Observer` now calls on every hit, can only ever set an automatic recognition state (`unknown` / `known_commercial_scanner` / `known_research_scanner` / `known_crawler` / `identity_conflict`); it can never overwrite an existing `customer_authorised` / `explicitly_denied` / `previously_authorised_expired` decision. Only an explicit admin action (`authorise()` / `deny()` / `clear_decision()`, each requiring a non-empty reason) can set or clear a decision.
+- `includes/admin/views/page-intelligence.php`: the Continuous Intelligence page gains "Identities" and "Vendors" tabs alongside the existing Events tab. Identities shows every resolved identity with its recognition state and a same-row Authorise/Deny decision form (or Clear decision, once one exists); Vendors lists and manages the catalogue.
+- `includes/admin/class-admin-ui.php`: three new `admin_post_wp_sam_scanner_*` handlers (`identity_decide`, `vendor_upsert`, `vendor_delete`), each nonce- and capability-gated, following this codebase's existing `admin_post_` convention.
+
 ## [2.9.39] - 2026-09-02
 
 ### Fixed

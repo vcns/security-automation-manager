@@ -68,6 +68,8 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Intelligence\Scanner_Identity_Store;
+use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
@@ -129,6 +131,9 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_export_config', array( $this, 'handle_export_config' ) );
 		add_action( 'admin_post_wp_sam_import_config', array( $this, 'handle_import_config' ) );
 		add_action( 'admin_post_wp_sam_dismiss_conflicts', array( $this, 'handle_dismiss_conflicts' ) );
+		add_action( 'admin_post_wp_sam_scanner_identity_decide', array( $this, 'handle_scanner_identity_decide' ) );
+		add_action( 'admin_post_wp_sam_scanner_vendor_upsert', array( $this, 'handle_scanner_vendor_upsert' ) );
+		add_action( 'admin_post_wp_sam_scanner_vendor_delete', array( $this, 'handle_scanner_vendor_delete' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -930,6 +935,81 @@ class Admin_UI {
 
 		wp_safe_redirect( $url );
 		exit;
+	}
+
+	// ── Continuous Intelligence: scanner/vendor identity (Phase 3D) ──────────
+
+	public function handle_scanner_identity_decide(): void {
+		check_admin_referer( 'wp_sam_scanner_identity_decide' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to make this decision.', 'vcns-security-automation-manager' ) );
+		}
+
+		$id       = (int) ( $_POST['identity_id'] ?? 0 );
+		$decision = sanitize_key( wp_unslash( $_POST['decision'] ?? '' ) );
+		$note     = sanitize_text_field( wp_unslash( $_POST['note'] ?? '' ) );
+
+		if ( $id > 0 && '' !== trim( $note ) ) {
+			$store = new Scanner_Identity_Store();
+			$user  = get_current_user_id();
+
+			if ( 'authorise' === $decision ) {
+				$store->authorise( $id, $user, $note );
+			} elseif ( 'deny' === $decision ) {
+				$store->deny( $id, $user, $note );
+			} elseif ( 'clear' === $decision ) {
+				$store->clear_decision( $id, $user, $note );
+			}
+		}
+
+		$url = admin_url( 'admin.php?page=security-automation-manager-intelligence&tab=identities' );
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	public function handle_scanner_vendor_upsert(): void {
+		check_admin_referer( 'wp_sam_scanner_vendor_upsert' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage the vendor catalogue.', 'vcns-security-automation-manager' ) );
+		}
+
+		$store = new Scanner_Vendor_Store();
+		$store->upsert(
+			sanitize_text_field( wp_unslash( $_POST['vendor_key'] ?? '' ) ),
+			sanitize_text_field( wp_unslash( $_POST['vendor_name'] ?? '' ) ),
+			sanitize_key( wp_unslash( $_POST['category'] ?? '' ) ),
+			sanitize_text_field( wp_unslash( $_POST['ua_pattern'] ?? '' ) ),
+			$this->split_lines( (string) wp_unslash( is_scalar( $_POST['rdns_suffixes'] ?? null ) ? $_POST['rdns_suffixes'] : '' ) ),
+			$this->split_lines( (string) wp_unslash( is_scalar( $_POST['cidr_ranges'] ?? null ) ? $_POST['cidr_ranges'] : '' ) ),
+			sanitize_text_field( wp_unslash( $_POST['source_url'] ?? '' ) ),
+			sanitize_key( wp_unslash( $_POST['verification_method'] ?? '' ) ),
+			sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-intelligence&tab=vendors' ) );
+		exit;
+	}
+
+	public function handle_scanner_vendor_delete(): void {
+		check_admin_referer( 'wp_sam_scanner_vendor_delete' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage the vendor catalogue.', 'vcns-security-automation-manager' ) );
+		}
+
+		$vendor_key = sanitize_text_field( wp_unslash( $_POST['vendor_key'] ?? '' ) );
+		if ( '' !== $vendor_key ) {
+			( new Scanner_Vendor_Store() )->delete( $vendor_key );
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-intelligence&tab=vendors' ) );
+		exit;
+	}
+
+	/** @return array<string> Non-empty, trimmed lines from a textarea's raw value. */
+	private function split_lines( string $raw ): array {
+		$lines = preg_split( '/\r\n|\r|\n/', $raw );
+		$lines = false !== $lines ? $lines : array();
+		return array_values( array_filter( array_map( 'trim', $lines ) ) );
 	}
 
 	// ── Certificates (ACME) ───────────────────────────────────────────────────

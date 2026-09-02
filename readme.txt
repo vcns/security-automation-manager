@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.39
+Stable tag: 2.9.40
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.40 =
+
+* Added: Phase 3D of the roadmap -- Identity and Scanner Intelligence. A new Continuous Intelligence "Identities" tab shows every claimed identity resolved from real traffic (crawler/scanner recognition via User-Agent + optional published IP ranges), always kept structurally distinct from authorisation: a recognised source is never automatically treated as authorised, and only an explicit administrator decision (with a required reason) changes that. A new "Vendors" tab manages the known-identity catalogue, seeded with two built-in search crawlers (Googlebot, Bingbot) verified by forward-confirmed reverse DNS rather than a hardcoded IP range; administrators can add their own verified commercial scanner vendors, each requiring a source URL.
 
 = 2.9.39 =
 

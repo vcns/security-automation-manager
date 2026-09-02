@@ -22,7 +22,10 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Request_Observer;
+use WP_SAM\Intelligence\Scanner_Identity_Store;
+use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
@@ -231,8 +234,14 @@ final class Plugin {
 		// combination. On the empty Detector_Registry every build ships with
 		// until an extension (or a future in-core Phase 3C detector family)
 		// registers something, this observes every request but records
-		// nothing.
-		( new Request_Observer( new Detector_Engine(), new Event_Store() ) )->register();
+		// nothing. Identity_Resolver/Scanner_Identity_Store (Phase 3D) run
+		// unconditionally alongside it -- see Request_Observer's docblock.
+		( new Request_Observer(
+			new Detector_Engine(),
+			new Event_Store(),
+			new Identity_Resolver( new Scanner_Vendor_Store() ),
+			new Scanner_Identity_Store()
+		) )->register();
 
 		// Register output-buffering hooks to capture inline blocks for hashing.
 		// Must be registered after nonce_manager so nonce tags are already

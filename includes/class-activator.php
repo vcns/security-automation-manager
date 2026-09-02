@@ -41,6 +41,7 @@ class Activator {
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();
 		self::seed_initial_policy_versions();
+		self::seed_default_scanner_vendors();
 		self::schedule_events();
 		self::mark_schema_verified();
 	}
@@ -279,6 +280,8 @@ class Activator {
 			'sam_certificates',
 			'sam_migration_snapshots',
 			'sam_request_events',
+			'sam_scanner_vendors',
+			'sam_scanner_identities',
 		);
 	}
 
@@ -814,6 +817,65 @@ class Activator {
 ) {$cc};"
 		);
 
+		// Schema v27: identity/scanner intelligence (Phase 3D, Layer 3:
+		// Continuous Intelligence). sam_scanner_vendors is the known-identity
+		// catalogue Identity_Resolver matches claimed identities against --
+		// a handful of built-in, forward-confirmed-reverse-DNS-verified
+		// search crawlers (see seed_default_scanner_vendors()), extensible
+		// by administrators for commercial scanner vendors they've verified
+		// themselves. sam_scanner_identities is per-IP+claimed-identity
+		// resolution state; see Scanner_Identity_Store's own docblock for
+		// why verification_state has both automatic and decision states,
+		// and why the two can never be conflated.
+		dbDelta(
+			"CREATE TABLE {$p}sam_scanner_vendors (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  vendor_key varchar(64) NOT NULL,
+  vendor_name varchar(128) NOT NULL,
+  category varchar(48) NOT NULL,
+  ua_pattern varchar(255) NOT NULL DEFAULT '',
+  rdns_suffixes longtext NOT NULL,
+  cidr_ranges longtext NOT NULL,
+  source_url varchar(255) NOT NULL DEFAULT '',
+  verification_method varchar(16) NOT NULL DEFAULT 'none',
+  notes longtext NOT NULL,
+  is_builtin tinyint(1) NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY vendor_key (vendor_key)
+) {$cc};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$p}sam_scanner_identities (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip varchar(64) NOT NULL,
+  claimed_identity varchar(128) NOT NULL DEFAULT '',
+  user_agent varchar(512) NOT NULL DEFAULT '',
+  vendor_key varchar(64) NOT NULL DEFAULT '',
+  surface varchar(32) NOT NULL,
+  verification_state varchar(32) NOT NULL DEFAULT 'unknown',
+  network_match tinyint(1) DEFAULT NULL,
+  rdns_hostname varchar(255) NOT NULL DEFAULT '',
+  fcrdns_verified tinyint(1) DEFAULT NULL,
+  fcrdns_checked_at datetime DEFAULT NULL,
+  authorised_by bigint(20) UNSIGNED DEFAULT NULL,
+  authorised_at datetime DEFAULT NULL,
+  decision_note longtext NOT NULL,
+  fingerprint varchar(64) NOT NULL,
+  occurrence_count int(11) NOT NULL DEFAULT 1,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY ip (ip),
+  KEY vendor_key (vendor_key),
+  KEY verification_state (verification_state),
+  KEY last_seen_at (last_seen_at),
+  UNIQUE KEY fingerprint (fingerprint)
+) {$cc};"
+		);
+
 		update_option( 'wp_sam_db_version', WP_SAM_DB_VERSION );
 	}
 
@@ -1233,6 +1295,79 @@ class Activator {
 					array( '%s', '%s', '%d', '%s', '%s', '%s' )
 				);
 			}
+		}
+	}
+
+	/**
+	 * Schema v27 seed: a small, deliberately conservative built-in scanner
+	 * vendor catalogue. See Scanner_Vendor_Store's own docblock for why
+	 * this does NOT include commercial scanner vendors (Qualys, Tenable,
+	 * etc.) with hardcoded IP ranges -- those change over time and this
+	 * plugin has no live source to verify or refresh them against yet
+	 * (that's Phase 3H, Federated Intelligence). What it does include are
+	 * two long-standing, publicly documented search crawlers verified by
+	 * forward-confirmed reverse DNS against a vendor-published hostname
+	 * suffix, which is genuinely stable and independently checkable by any
+	 * administrator, unlike a guessed IP range.
+	 *
+	 * Idempotent like seed_default_pillar_profiles() above: only inserts a
+	 * vendor_key that doesn't already exist, so an administrator's own edit
+	 * to a built-in row (e.g. adding a verified CIDR range once they have
+	 * one) is never overwritten on a later upgrade.
+	 */
+	private static function seed_default_scanner_vendors(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_scanner_vendors';
+		$now   = current_time( 'mysql', true );
+
+		$vendors = array(
+			array(
+				'vendor_key'          => 'googlebot',
+				'vendor_name'         => 'Googlebot',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'Googlebot',
+				'rdns_suffixes'       => array( 'googlebot.com', 'google.com' ),
+				'source_url'          => 'https://developers.google.com/search/docs/crawling-indexing/verifying-googlebot',
+				'verification_method' => 'fcrdns',
+				'notes'               => 'Verify via forward-confirmed reverse DNS, not a fixed IP range -- Google publishes that its crawler ranges change and explicitly recommends FCrDNS over IP allowlisting.',
+			),
+			array(
+				'vendor_key'          => 'bingbot',
+				'vendor_name'         => 'Bingbot',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'bingbot',
+				'rdns_suffixes'       => array( 'search.msn.com' ),
+				'source_url'          => 'https://www.bing.com/webmasters/help/how-to-verify-bingbot-3905dc26',
+				'verification_method' => 'fcrdns',
+				'notes'               => 'Verify via forward-confirmed reverse DNS against *.search.msn.com, per Microsoft\'s own published verification method.',
+			),
+		);
+
+		foreach ( $vendors as $vendor ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE vendor_key = %s", $vendor['vendor_key'] ) );
+			if ( $exists ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->insert(
+				$table,
+				array(
+					'vendor_key'          => $vendor['vendor_key'],
+					'vendor_name'         => $vendor['vendor_name'],
+					'category'            => $vendor['category'],
+					'ua_pattern'          => $vendor['ua_pattern'],
+					'rdns_suffixes'       => wp_json_encode( $vendor['rdns_suffixes'] ),
+					'cidr_ranges'         => wp_json_encode( array() ),
+					'source_url'          => $vendor['source_url'],
+					'verification_method' => $vendor['verification_method'],
+					'notes'               => $vendor['notes'],
+					'is_builtin'          => 1,
+					'created_at'          => $now,
+					'updated_at'          => $now,
+				)
+			);
 		}
 	}
 

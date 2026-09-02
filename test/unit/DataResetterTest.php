@@ -33,6 +33,9 @@ class DataResetterTest extends TestCase {
 			array_fill( 0, 4, '1' ),
 			array( 'wp_sam_policy_versions' ),
 			array_fill( 0, 4, '1' ),
+			// seed_default_scanner_vendors(): existence checks for the two
+			// built-in crawler rows (googlebot, bingbot) -- both missing.
+			array( null, null ),
 			array( 'wp_csp_policy_profiles' )
 		);
 		$GLOBALS['_wpdb_get_var']       = 'wp_csp_policy_profiles';

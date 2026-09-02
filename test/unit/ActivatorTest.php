@@ -278,6 +278,31 @@ class ActivatorTest extends TestCase {
 
 	// ── Automation defaults ──────────────────────────────────────────────────
 
+	// ── Scanner vendor catalogue seed (Phase 3D) ──────────────────────────────
+
+	public function test_seed_default_scanner_vendors_inserts_builtin_crawlers_when_missing(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array( null, null ); // googlebot, bingbot both missing.
+
+		$this->invoke_seed_default_scanner_vendors();
+
+		$this->assertCount( 2, $GLOBALS['_wpdb_inserted_rows'] );
+		$keys = array_column( array_column( $GLOBALS['_wpdb_inserted_rows'], 'data' ), 'vendor_key' );
+		$this->assertSame( array( 'googlebot', 'bingbot' ), $keys );
+		foreach ( $GLOBALS['_wpdb_inserted_rows'] as $row ) {
+			$this->assertSame( 1, $row['data']['is_builtin'] );
+			$this->assertSame( 'fcrdns', $row['data']['verification_method'] );
+			$this->assertNotSame( '', $row['data']['source_url'] );
+		}
+	}
+
+	public function test_seed_default_scanner_vendors_skips_rows_that_already_exist(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array( 1, 1 );
+
+		$this->invoke_seed_default_scanner_vendors();
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
 	public function test_default_automation_config_is_automatic_high_approval_with_a_positive_change_cap(): void {
 		Activator::activate();
 
@@ -301,6 +326,12 @@ class ActivatorTest extends TestCase {
 
 	private function invoke_seed_default_pillar_profiles(): void {
 		$method = new ReflectionMethod( Activator::class, 'seed_default_pillar_profiles' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+	}
+
+	private function invoke_seed_default_scanner_vendors(): void {
+		$method = new ReflectionMethod( Activator::class, 'seed_default_scanner_vendors' );
 		$method->setAccessible( true );
 		$method->invoke( null );
 	}
