@@ -23,13 +23,14 @@ use WP_SAM\Admin\Status_Badge;
 use WP_SAM\Certificates\Certificate_Store;
 use WP_SAM\CSP\Automation_Config;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Security_Health;
 use WP_SAM\Rollback_Guard;
 
 global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'overview';
-$allowed_tabs = array( 'overview', 'readiness', 'recovery', 'updates', 'about' );
+$allowed_tabs = array( 'overview', 'health', 'readiness', 'recovery', 'updates', 'about' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'overview';
 }
@@ -39,6 +40,10 @@ $tab_help = array(
 	'overview'  => array(
 		'label'       => __( 'Overview', 'vcns-security-automation-manager' ),
 		'description' => __( 'At-a-glance status for every pillar this plugin manages, and a link to configure each one.', 'vcns-security-automation-manager' ),
+	),
+	'health'    => array(
+		'label'       => __( 'Security Health', 'vcns-security-automation-manager' ),
+		'description' => __( 'A plain-language summary of security outcomes -- enforcement, drift, certificates, dependencies, and open exceptions -- plus an evidence export for reviews and audits.', 'vcns-security-automation-manager' ),
 	),
 	'readiness' => array(
 		'label'       => __( 'Readiness', 'vcns-security-automation-manager' ),
@@ -57,6 +62,11 @@ $tab_help = array(
 		'description' => __( 'Who built this plugin, why, and where to find the full documentation.', 'vcns-security-automation-manager' ),
 	),
 );
+
+// ── Health tab data ──────────────────────────────────────────────────────────
+if ( 'health' === $tab ) {
+	$security_health = ( new Security_Health() )->get_report();
+}
 
 // ── Overview tab data ────────────────────────────────────────────────────────
 // Scoped to the Overview tab only -- Pillar_Registry::fetch_rows() and the
@@ -141,6 +151,7 @@ $status_badge       = static function ( string $status ): void {
 		'pass'    => __( 'Pass', 'vcns-security-automation-manager' ),
 		'warning' => __( 'Warning', 'vcns-security-automation-manager' ),
 		'fail'    => __( 'Fail', 'vcns-security-automation-manager' ),
+		'info'    => __( 'Info', 'vcns-security-automation-manager' ),
 	);
 	$label  = $labels[ $status ] ?? __( 'Unknown', 'vcns-security-automation-manager' );
 
@@ -466,6 +477,44 @@ $status_badge       = static function ( string $status ): void {
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+
+	<?php elseif ( 'health' === $tab ) : ?>
+
+	<table class="widefat striped wp-sam-readiness-table">
+		<thead>
+			<tr>
+				<th scope="col"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( $security_health as $item ) : ?>
+				<tr>
+					<th scope="row">
+						<?php echo esc_html( $item['label'] ); ?>
+						<?php if ( '' !== $item['detail'] ) : ?>
+						<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+							<span class="wp-sam-meta-popover" role="tooltip"><?php echo esc_html( $item['detail'] ); ?></span>
+						</span>
+						<?php endif; ?>
+					</th>
+					<td><?php echo esc_html( (string) $item['value'] ); ?></td>
+					<td><?php $status_badge( $item['status'] ); ?></td>
+				</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+
+	<h2 style="margin-top:2em"><?php esc_html_e( 'Evidence Export', 'vcns-security-automation-manager' ); ?></h2>
+	<p class="description">
+		<?php esc_html_e( 'Downloads a JSON snapshot of currently-configured controls, open exceptions, certificate state, baseline/drift status, and recent audit history -- useful for a security review, an MSP report, or audit preparation. This is evidence to support a review, not a compliance certification.', 'vcns-security-automation-manager' ); ?>
+	</p>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<?php wp_nonce_field( 'wp_sam_export_evidence' ); ?>
+		<input type="hidden" name="action" value="wp_sam_export_evidence" />
+		<?php submit_button( __( 'Download Evidence Export', 'vcns-security-automation-manager' ), 'primary', '', false ); ?>
+	</form>
 
 	<?php elseif ( 'recovery' === $tab ) : ?>
 

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.43] - 2026-09-02
+
+### Added
+
+- Phase 3I of `.roadmap/phase3_early_plan.md` (§21 Site Security Health, §26 Evidence and Assurance): `includes/intelligence/class-security-health.php` computes a non-gamified, cross-pillar operational summary -- enforcement (CSP/Traffic Controls surfaces in enforce mode), drift (open `sam_drift_records`), certificates (expired/expiring-soon/healthy), third-party dependencies (unclassified count), exceptions (a single aggregate across IP allow rules, permanent traffic blocks, dependency exceptions, and CSP/pillar overrides), automation posture, and evidence freshness (time since the last completed scan). Each row reuses the `{label, value, status, detail}` shape `Readiness_Checker` already uses, adding a new `info` status (and matching CSS) for genuinely neutral rows. "External verification" is included, always `info`, honestly stating it isn't available yet rather than omitting the roadmap's own example row or faking a status -- Phase 3G (the service it would report on) is deliberately deferred.
+- `includes/intelligence/class-evidence-exporter.php`: a read-only JSON evidence bundle (health summary, per-pillar controls, exception detail, certificate state, current baseline, open drift count, recent change log, and a warning/error audit-log excerpt) for security reviews, MSP reporting, and audit preparation -- deliberately distinct from `Config_Portability`, which is destructive backup/restore, not evidence for a third party. Every export carries an explicit disclaimer that it supports a review rather than establishing compliance or certification (§26), with named frameworks (Cyber Essentials, ISO/IEC 27001, PCI DSS, OWASP ASVS, CIS Controls) listed only as informational context.
+- `includes/admin/views/page-overview.php`: new "Security Health" tab (Settings page) rendering the health summary and an "Evidence Export" download button; `includes/admin/class-admin-ui.php` gains `admin_post_wp_sam_export_evidence`, mirroring the existing certificate-download handler's pattern.
+- No new schema in this phase -- both the health summary and the evidence export are computed live from existing tables; nothing new is persisted.
+
 ## [2.9.42] - 2026-09-02
 
 ### Added
