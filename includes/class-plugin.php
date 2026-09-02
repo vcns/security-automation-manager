@@ -20,6 +20,7 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Scheduler;
 use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Intelligence\Account_Integrity_Recorder;
+use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
@@ -253,7 +254,7 @@ final class Plugin {
 			new Event_Store(),
 			new Identity_Resolver( new Scanner_Vendor_Store() ),
 			new Scanner_Identity_Store(),
-			new Network_Intelligence_Resolver( new Tor_Exit_List_Store() )
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store() )
 		) )->register();
 
 		// Traffic Controls (Phase 3E). Every surface seeds in 'observe'

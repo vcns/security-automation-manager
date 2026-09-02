@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.46] - 2026-09-02
+
+### Added
+
+- Phase 4A of `.roadmap/phase4_plan.md`, second increment (ASN Controls, `.roadmap/phase3_early_plan.md` §13.5): `includes/intelligence/class-asn-lookup-store.php` resolves a source IP's Autonomous System Number and organisation name via Team Cymru's free, unauthenticated DNS-based lookup (no account or licensing decision needed, same reasoning as Tor Awareness). Results are cached in the new `sam_asn_cache` table (30-day TTL, including a cached negative result on lookup failure) so the DNS round-trip is paid once per IP, not per request -- the lookup itself is injectable (mirroring `Identity_Resolver`'s `reverse_lookup`/`forward_lookup` pattern) so no test makes a real DNS call. IPv4 only for this increment; IPv6 (a different Team Cymru query format) is not implemented.
+- `includes/intelligence/class-network-intelligence-resolver.php`: extended with the new `Asn_Lookup_Store` collaborator; `asn`/`asn_org` are now attached alongside `is_tor_exit` on any Finding's evidence, using the same lazy-resolution-only-when-needed pattern.
+- `includes/csp/class-scheduler.php`: daily housekeeping prune for stale `sam_asn_cache` rows, reusing the existing `wp_sam_violation_retention_days` retention window rather than a new option.
+- `includes/admin/views/page-traffic.php`: the Network Intelligence tab gains a "Look Up" tool (any IP -> its ASN and organisation, via a simple GET query) for direct admin visibility into what the resolver would report.
+- Schema v32.
+
 ## [2.9.45] - 2026-09-02
 
 ### Added

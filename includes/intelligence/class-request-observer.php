@@ -120,6 +120,8 @@ final class Request_Observer {
 						'method'       => $context['method'],
 						'user_agent'   => $context['user_agent'],
 						'is_tor_exit'  => $context['network']['is_tor_exit'] ?? false,
+						'asn'          => $context['network']['asn'] ?? null,
+						'asn_org'      => $context['network']['asn_org'] ?? null,
 					),
 					is_array( $finding['detail'] ?? null ) ? $finding['detail'] : array()
 				)

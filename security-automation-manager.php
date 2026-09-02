@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.45
+ * Version:           2.9.46
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.45' );
+define( 'WP_SAM_VERSION', '2.9.46' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -185,8 +185,14 @@ define( 'WP_SAM_VERSION', '2.9.45' );
  *        implies malicious intent and nothing blocks by default. See
  *        Intelligence\Tor_Exit_List_Store and
  *        Intelligence\Network_Intelligence_Resolver.
+ * v32 -- adds sam_asn_cache (Phase 4A, second increment -- ASN Controls,
+ *        .roadmap/phase4_plan.md, .roadmap/phase3_early_plan.md §13.5).
+ *        Caches Team Cymru's free, unauthenticated per-IP ASN DNS lookup
+ *        (no account or licensing decision needed) so its cost is paid
+ *        once per IP, not on every request. Observation only. See
+ *        Intelligence\Asn_Lookup_Store.
  */
-define( 'WP_SAM_DB_VERSION', '31' );
+define( 'WP_SAM_DB_VERSION', '32' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

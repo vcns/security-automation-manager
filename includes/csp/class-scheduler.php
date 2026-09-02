@@ -86,6 +86,7 @@ class Scheduler {
 			$this->run_drift_scan( $plugin );
 			$this->run_campaign_scan();
 			$this->refresh_tor_exit_list();
+			$this->purge_stale_asn_cache();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -299,6 +300,40 @@ class Scheduler {
 				'scheduler',
 				'campaign_detected',
 				sprintf( 'Campaign scan found %d possible coordinated campaign(s).', $result['campaigns_detected'] ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Prunes stale sam_asn_cache rows (Phase 4A, second increment). Not a
+	 * correctness requirement -- Asn_Lookup_Store::resolve() already
+	 * ignores a row past its 30-day TTL and re-resolves it live -- purely
+	 * housekeeping so the cache table doesn't grow unbounded over a long
+	 * time horizon. Same retention window as request events/violations
+	 * (wp_sam_violation_retention_days), not a new option.
+	 */
+	private function purge_stale_asn_cache(): void {
+		$days = (int) get_option( 'wp_sam_violation_retention_days', 90 );
+		if ( $days <= 0 ) {
+			return;
+		}
+
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_asn_cache';
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM {$table} WHERE resolved_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				$days
+			)
+		);
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'asn_cache_purged',
+				sprintf( 'Purged %d stale ASN cache entries older than %d days.', $deleted, $days ),
 				'info'
 			);
 		}
