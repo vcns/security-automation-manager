@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.48] - 2026-09-02
+
+### Added
+
+- Phase 4B of `.roadmap/phase4_plan.md`, first increment: the control-action framework (`.roadmap/phase3_early_plan.md` §11's shared detector metadata contract -- the "allowed control actions / default action" field, previously missing). `includes/intelligence/class-detector.php`: every `Detector` now declares `allowed_control_actions()` (subset of `observe`/`enforce`) and `default_control_action()`, both defaulting to observation-only -- zero behaviour change for any detector shipped before this.
+- `includes/intelligence/class-detector-policy-store.php` (new): per-detector admin override -- enabled/disabled, and which control action a match should trigger. A missing row means "enabled, detector's own default"; a saved `enforce` override is only honoured while it remains a member of that detector's own `allowed_control_actions()`. New `sam_detector_policies` table, schema v34.
+- `includes/intelligence/class-detector-engine.php`: skips a detector an administrator has disabled; every Finding now carries its resolved `control_action`.
+- `includes/intelligence/class-request-observer.php`: when a Finding's `control_action` is `enforce`, calls the same `Traffic_Block_Store::record_violation()` login-brute-force protection already uses -- a detector match becomes another source feeding the existing progressive-response ladder (warn -> throttle -> temporary block -> extended block -> admin-only persistent block), with no new blocking path and no change to the existing per-surface Observe/Enforce gate.
+- `includes/admin/views/page-traffic.php`: new "Detectors" tab -- enable/disable each registered detector and, where its family allows it, switch its control action between Observe and Enforce.
+
 ## [2.9.47] - 2026-09-02
 
 ### Added

@@ -74,6 +74,8 @@ use WP_SAM\Intelligence\Campaign_Detector;
 use WP_SAM\Intelligence\Campaign_Store;
 use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Change_Window_Store;
+use WP_SAM\Intelligence\Detector_Policy_Store;
+use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
@@ -154,6 +156,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_ip_rule_delete', array( $this, 'handle_ip_rule_delete' ) );
 		add_action( 'admin_post_wp_sam_traffic_block_release', array( $this, 'handle_traffic_block_release' ) );
 		add_action( 'admin_post_wp_sam_traffic_block_persist', array( $this, 'handle_traffic_block_persist' ) );
+		add_action( 'admin_post_wp_sam_detector_policy_update', array( $this, 'handle_detector_policy_update' ) );
 		add_action( 'admin_post_wp_sam_baseline_capture', array( $this, 'handle_baseline_capture' ) );
 		add_action( 'admin_post_wp_sam_drift_scan', array( $this, 'handle_drift_scan' ) );
 		add_action( 'admin_post_wp_sam_drift_disposition', array( $this, 'handle_drift_disposition' ) );
@@ -1173,6 +1176,35 @@ class Admin_UI {
 		( new Traffic_Block_Store() )->set_persistent( (int) ( $_POST['block_id'] ?? 0 ), get_current_user_id() );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=blocks' ) );
+		exit;
+	}
+
+	/**
+	 * Saves the submitted enabled/control_action choice for every currently
+	 * registered detector (Phase 4B). Iterates Detector_Registry -- the
+	 * canonical set of what exists -- rather than trusting which keys the
+	 * submitted form happened to include; a detector missing from $_POST
+	 * (an unchecked "Enabled" checkbox never submits its field) is treated
+	 * as disabled, standard HTML checkbox semantics.
+	 */
+	public function handle_detector_policy_update(): void {
+		check_admin_referer( 'wp_sam_detector_policy_update' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		$submitted = isset( $_POST['detector'] ) && is_array( $_POST['detector'] ) ? wp_unslash( $_POST['detector'] ) : array();
+		$policies  = new Detector_Policy_Store();
+
+		foreach ( Detector_Registry::all() as $detector ) {
+			$row            = $submitted[ $detector->id() ] ?? array();
+			$is_enabled     = ! empty( $row['enabled'] );
+			$control_action = isset( $row['control_action'] ) ? sanitize_key( (string) $row['control_action'] ) : $detector->default_control_action();
+
+			$policies->set( $detector->id(), $is_enabled, $control_action, $detector->allowed_control_actions() );
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=detectors' ) );
 		exit;
 	}
 

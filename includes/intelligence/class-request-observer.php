@@ -34,6 +34,23 @@
  * as extra context on evidence that already exists, so skipping it on the
  * overwhelming majority of benign requests is a genuine, safe cost saving,
  * not a feature gap.
+ *
+ * Detector-family-aware control actions (Phase 4B, .roadmap/phase4_plan.md):
+ * each Finding already carries its resolved 'control_action' (Detector_
+ * Engine, backed by Detector_Policy_Store). When that action is 'enforce',
+ * this class calls Traffic_Block_Store::record_violation() -- the exact
+ * same call on_login_failed() already makes for login brute force, and the
+ * exact same progressive-response ladder (observe -> warn -> throttle ->
+ * temporary_block -> extended_block -> admin-only persistent_block)
+ * Traffic_Guard already enforces for rate-limit violations. No new
+ * enforcement path is introduced: a detector match just becomes another
+ * source of violations feeding infrastructure that already exists,
+ * including the same per-surface Traffic_Policy_Store observe/enforce gate
+ * -- Traffic_Guard::decide() cannot tell a detector-sourced violation from
+ * a rate-limit one, by design, and doesn't need to. As with login brute
+ * force, this can only ever affect a later request, never the one that
+ * tripped it: Traffic_Guard::enforce() runs on `init`, earlier in the
+ * request lifecycle than this class's own send_headers/login_init hooks.
  */
 
 declare( strict_types=1 );
@@ -53,13 +70,22 @@ final class Request_Observer {
 	private Identity_Resolver $identity_resolver;
 	private Scanner_Identity_Store $identities;
 	private Network_Intelligence_Resolver $network_intelligence;
+	private Traffic_Block_Store $blocks;
 
-	public function __construct( Detector_Engine $engine, Event_Store $events, Identity_Resolver $identity_resolver, Scanner_Identity_Store $identities, Network_Intelligence_Resolver $network_intelligence ) {
+	public function __construct(
+		Detector_Engine $engine,
+		Event_Store $events,
+		Identity_Resolver $identity_resolver,
+		Scanner_Identity_Store $identities,
+		Network_Intelligence_Resolver $network_intelligence,
+		?Traffic_Block_Store $blocks = null
+	) {
 		$this->engine               = $engine;
 		$this->events               = $events;
 		$this->identity_resolver    = $identity_resolver;
 		$this->identities           = $identities;
 		$this->network_intelligence = $network_intelligence;
+		$this->blocks               = $blocks ?? new Traffic_Block_Store();
 	}
 
 	public function register(): void {
@@ -129,6 +155,14 @@ final class Request_Observer {
 					is_array( $finding['detail'] ?? null ) ? $finding['detail'] : array()
 				)
 			);
+
+			if ( 'enforce' === ( $finding['control_action'] ?? 'observe' ) && '' !== $context['ip'] ) {
+				$this->blocks->record_violation(
+					$context['ip'],
+					(string) ( $finding['surface'] ?? $context['surface'] ),
+					'detector:' . (string) ( $finding['detector_family'] ?? $finding['detector_id'] ?? '' )
+				);
+			}
 		}
 	}
 

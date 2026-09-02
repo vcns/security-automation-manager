@@ -18,6 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use WP_SAM\Intelligence\Asn_Lookup_Store;
+use WP_SAM\Intelligence\Detector_Policy_Store;
+use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -26,7 +28,7 @@ use WP_SAM\Intelligence\Traffic_Policy_Store;
 
 $base_url     = admin_url( 'admin.php?page=security-automation-manager-traffic' );
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'policy'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-$allowed_tabs = array( 'policy', 'ip-rules', 'blocks', 'network-intelligence' );
+$allowed_tabs = array( 'policy', 'ip-rules', 'blocks', 'network-intelligence', 'detectors' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'policy';
 }
@@ -47,6 +49,10 @@ $tab_help = array(
 	'network-intelligence' => array(
 		'label'       => __( 'Network Intelligence', 'vcns-security-automation-manager' ),
 		'description' => __( 'Observation-only network-level facts -- Tor exit status, ASN, and (opt-in) Geo-IP. Never implies malicious intent and never blocks on its own.', 'vcns-security-automation-manager' ),
+	),
+	'detectors'            => array(
+		'label'       => __( 'Detectors', 'vcns-security-automation-manager' ),
+		'description' => __( 'Enable or disable individual detector families, and -- where a family allows it -- opt a family into contributing to progressive blocking instead of pure observation.', 'vcns-security-automation-manager' ),
 	),
 );
 ?>
@@ -407,6 +413,73 @@ $tab_help = array(
 		</table>
 			<?php endif; ?>
 		<?php endif; ?>
+
+	<?php elseif ( 'detectors' === $tab ) : ?>
+
+		<?php
+		$detector_policies = new Detector_Policy_Store();
+		$detectors         = Detector_Registry::all();
+		usort( $detectors, static fn( $a, $b ) => strcmp( $a->id(), $b->id() ) );
+		?>
+
+		<p class="description" style="max-width:700px">
+			<?php esc_html_e( 'A detector left on "Observe only" only ever records evidence -- it never contributes to blocking. Switching one to "Enforce" feeds the exact same progressive-response ladder as rate limiting (Warn -> Throttle -> Temporary block -> Extended block), still gated by that surface\'s own Observe/Enforce mode on the Policy tab above. Not every family allows Enforce -- some are reconnaissance signals only, by design.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+			<?php wp_nonce_field( 'wp_sam_detector_policy_update' ); ?>
+			<input type="hidden" name="action" value="wp_sam_detector_policy_update" />
+
+			<table class="widefat fixed striped wp-sam-violations-table">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Family', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Control action', 'vcns-security-automation-manager' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ( $detectors as $detector ) : ?>
+					<?php
+					$allowed      = $detector->allowed_control_actions();
+					$effective    = $detector_policies->control_action_for( $detector );
+					$field_prefix = 'detector[' . $detector->id() . ']';
+					?>
+					<tr>
+						<td style="white-space:nowrap"><code><?php echo esc_html( $detector->id() ); ?></code></td>
+						<td><?php echo esc_html( $detector->family() ); ?></td>
+						<td>
+							<input type="checkbox" name="<?php echo esc_attr( $field_prefix ); ?>[enabled]" value="1" <?php checked( $detector_policies->is_enabled( $detector->id() ) ); ?> />
+						</td>
+						<td>
+							<?php if ( count( $allowed ) > 1 ) : ?>
+							<select name="<?php echo esc_attr( $field_prefix ); ?>[control_action]">
+								<?php foreach ( $allowed as $action ) : ?>
+								<option value="<?php echo esc_attr( $action ); ?>" <?php selected( $effective, $action ); ?>>
+									<?php echo esc_html( 'enforce' === $action ? __( 'Enforce (feeds progressive blocking)', 'vcns-security-automation-manager' ) : __( 'Observe only', 'vcns-security-automation-manager' ) ); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php else : ?>
+							<input type="hidden" name="<?php echo esc_attr( $field_prefix ); ?>[control_action]" value="observe" />
+								<?php esc_html_e( 'Observe only (fixed)', 'vcns-security-automation-manager' ); ?>
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				<?php if ( empty( $detectors ) ) : ?>
+					<tr>
+						<td colspan="4"><p><?php esc_html_e( 'No detectors registered.', 'vcns-security-automation-manager' ); ?></p></td>
+					</tr>
+				<?php endif; ?>
+				</tbody>
+			</table>
+
+			<?php if ( ! empty( $detectors ) ) : ?>
+			<p><?php submit_button( __( 'Save Detector Settings', 'vcns-security-automation-manager' ), 'primary', '', false ); ?></p>
+			<?php endif; ?>
+		</form>
 
 	<?php endif; ?>
 </div>
