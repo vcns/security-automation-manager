@@ -5,6 +5,21 @@ on:
     branches:
       - development
       - main
+    # Scoped to files that can actually change the running site's runtime
+    # HTTP behaviour -- the whole repo is bind-mounted into the scanned
+    # WordPress container, so only PHP/asset/dependency changes are
+    # meaningful here. Mirrors release-package.yml's own paths filter.
+    paths:
+      - '.github/workflows/dast.yml'
+      - 'assets/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'includes/**'
+      - 'LICENSE'
+      - 'readme.txt'
+      - 'tools/lint-php.php'
+      - 'uninstall.php'
+      - 'security-automation-manager.php'
   workflow_dispatch:
 
 permissions:

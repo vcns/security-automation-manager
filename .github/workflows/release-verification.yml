@@ -39,6 +39,24 @@ on:
     branches:
       - development
       - main
+    # Scoped to files that can actually change install/upgrade/rollback
+    # behaviour -- this workflow spins up 5 separate real WordPress+MySQL
+    # Docker jobs per run, so it's expensive to run unconditionally on
+    # every PR (e.g. a docs-only or CSS-only change can't affect any of
+    # this). Mirrors release-package.yml's own paths filter, which covers
+    # the same "does the installable plugin behave correctly" concern from
+    # the packaging side.
+    paths:
+      - '.github/workflows/release-verification.yml'
+      - 'assets/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'includes/**'
+      - 'LICENSE'
+      - 'readme.txt'
+      - 'tools/lint-php.php'
+      - 'uninstall.php'
+      - 'security-automation-manager.php'
   workflow_dispatch:
 
 permissions:

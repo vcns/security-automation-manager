@@ -1,14 +1,20 @@
 name: CI
 
+# push is intentionally scoped to development/main only, not every working
+# branch pattern (codex/**, feature/**, fix/**, release/**) -- pr-branch-
+# policy.yml already requires every one of those to land via a PR into
+# development or main, so the pull_request trigger below covers them. Once a
+# PR is open, a push to its head branch fires BOTH a `push` and a
+# `pull_request: synchronize` event for the identical commit; keeping those
+# branch patterns here made this entire workflow (a 4-way PHPUnit matrix,
+# Secret Scan, Semgrep, and the release-artifact build) run twice per push.
+# push on development/main themselves is kept as a post-merge trunk health
+# check -- those refs can never simultaneously be a PR head into themselves.
 on:
   push:
     branches:
       - development
       - main
-      - 'codex/**'
-      - 'feature/**'
-      - 'fix/**'
-      - 'release/**'
   pull_request:
     branches:
       - development
