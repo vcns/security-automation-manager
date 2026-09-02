@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.39] - 2026-09-02
+
+### Fixed
+
+- `includes/csp/class-learning-window.php`: the CSP learning window -- the bounded period after a "material change" during which newly-discovered hosts from real browser violation reports get re-evaluated (`Violation_Reporter::learn_source_from_report()`) -- only reopened for `activated_plugin`/`deactivated_plugin` and `save_post_post`/`save_post_page`, plus `upgrader_process_complete` when `hook_extra['type'] === 'plugin'`. A theme update or WordPress core update never reopened it, even though either can change the exact bytes of inline scripts/styles and the third-party hosts a page depends on just as much as a plugin update can. `mark_plugin_upgrader_change()` is renamed to `mark_upgrader_change()` and now also recognises `'theme'` and `'core'` from `upgrader_process_complete`'s `hook_extra['type']`.
+- `test/unit/LearningWindowTest.php`: added coverage for the renamed handler across all three recognised upgrader types plus an unrecognised type (`'translation'`) to confirm it's correctly ignored.
+
 ## [2.9.38] - 2026-09-02
 
 ### Changed
