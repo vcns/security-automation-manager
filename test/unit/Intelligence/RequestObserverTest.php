@@ -75,13 +75,19 @@ class RequestObserverTest extends TestCase {
 		return array_values( array_filter( $GLOBALS['_wpdb_queries'], static fn( $q ) => str_contains( $q, 'sam_scanner_identities' ) ) );
 	}
 
-	public function test_register_hooks_send_headers_login_init_and_wp_redirect(): void {
+	public function test_register_hooks_send_headers_login_init_wp_redirect_and_init(): void {
 		$this->observer->register();
 
 		$this->assertArrayHasKey( 'send_headers', $GLOBALS['_wp_actions'] );
 		$this->assertArrayHasKey( 'login_init', $GLOBALS['_wp_actions'] );
 		$this->assertArrayHasKey( 'wp_redirect', $GLOBALS['_wp_actions'] );
 		$this->assertSame( 1, $GLOBALS['_wp_actions']['wp_redirect'][0][1] );
+
+		// init: covers direct WP entry points (xmlrpc.php, wp-cron.php) that
+		// never fire send_headers -- priority 20, after Detector_Registry::
+		// register_defaults() (priority 10) has already run.
+		$this->assertArrayHasKey( 'init', $GLOBALS['_wp_actions'] );
+		$this->assertSame( 20, $GLOBALS['_wp_actions']['init'][0][1] );
 	}
 
 	public function test_observe_writes_nothing_to_event_store_on_an_empty_registry(): void {
