@@ -4,8 +4,8 @@
 **Product:** VCNS Security Automation Manager
 **Repository:** `vcns/security-automation-manager`
 **Phase:** 4
-**Baseline:** v2.9.44
-**Status:** Draft for sign-off
+**Baseline:** v2.9.44 (Phase 4A delivered through v2.9.47)
+**Status:** Draft for sign-off; Phase 4A delivered, Phase 4B in progress
 **Date:** 2 September 2026
 
 ---
@@ -38,17 +38,22 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4A: Traffic Intelligence Data Sourcing
 
+**Status: Delivered, v2.9.45-v2.9.47 (2 September 2026).** All three increments shipped sequentially, each through the full schema-bump/class/admin-UI/tests/lint/live-Docker-verification/release cycle, following the provider decisions below.
+
 **Addresses:** `.roadmap/phase3_early_plan.md` §13.4 (Geo-IP), §13.5 (ASN), §13.6 (Tor Awareness), §8's missing ASN identity field, §31's missing `Network_Intelligence_Resolver`.
 
-**Confirmed status:** genuinely zero implementation -- no partial scaffolding exists anywhere in the codebase to build on (verified by direct grep, not assumed). Correctly blocked on sourcing a verified, licensable data provider, not an engineering gap.
+**Provider decisions made:** Tor Project's official bulk exit-node list (`torbulkexitlist`) for §13.6, daily-refreshed. Team Cymru DNS (`origin.asn.cymru.com` / `asn.cymru.com`) for §13.5 ASN lookups -- no API key required. IPinfo (`ipinfo.io`) live API, customer-supplied token, for §13.4 Geo-IP -- MaxMind was scoped (product decision: BYO-credentials option to "upgrade" Geo-IP quality) but its free tier has no live-lookup API, only a downloadable MMDB binary requiring either a new Composer production dependency or a hand-rolled binary parser; both were weighed against this product's zero-production-dependency architecture and the decision was to skip MaxMind entirely and ship IPinfo only.
 
-**This is a procurement/data decision before it's an engineering task.** Candidate providers (not evaluated, just named for scoping): MaxMind GeoIP2 or IPinfo for Geo-IP, Team Cymru or IPinfo for ASN, the Tor Project's official bulk exit-node list for §13.6. Whoever owns this needs to pick a provider, confirm licensing terms are compatible with redistributing derived data to every customer install (or decide the plugin calls out to the provider directly instead), and only then does `Network_Intelligence_Resolver` get built.
+- `includes/intelligence/class-tor-exit-list-store.php` (`Tor_Exit_List_Store`, v2.9.45, PR #325) -- daily-refreshed exit-node table, wholesale-replace on a plausibility-checked successful fetch, never touched on failure.
+- `includes/intelligence/class-asn-lookup-store.php` (`Asn_Lookup_Store`, v2.9.46, PR #326) -- Team Cymru two-step DNS TXT lookup, 30-day cache including negative results.
+- `includes/intelligence/class-geo-ip-store.php` (`Geo_Ip_Store`, v2.9.47, PR #327) -- opt-in, customer-supplied IPinfo token sealed via `WP_SAM\Certificates\Credential_Vault`, 30-day cache including negative results.
+- `includes/intelligence/class-network-intelligence-resolver.php` (`Network_Intelligence_Resolver`) -- merges all three into one `resolve(string $ip): array` call, wired into `includes/intelligence/class-request-observer.php` as a lazy enrichment (only resolved when some other detector already produced a finding, per §33 Performance Requirements) that adds `is_tor_exit`/`asn`/`asn_org`/`geo_country`/`geo_region`/`geo_city` to `Event_Store` evidence. Pure Observe -- no default blocking, matching §30's Default-Safety Requirements.
 
-**Exit criteria:**
-- A verified data source is selected and its licensing confirmed compatible with this product's distribution model.
-- Geo-IP/ASN/Tor identification is available as evidence (§3.1 Observe) with no default blocking, per `.roadmap/phase3_early_plan.md` §30's Default-Safety Requirements.
-- §8's identity record gains its ASN field.
-- §13.1/§13.3's rate-limiting and firewalling dimensions extend to include subnet/ASN/country, per the original §13.1/§13.3 text.
+**Exit criteria -- all met:**
+- ~~A verified data source is selected and its licensing confirmed compatible with this product's distribution model.~~ Done (see provider decisions above).
+- ~~Geo-IP/ASN/Tor identification is available as evidence (§3.1 Observe) with no default blocking, per `.roadmap/phase3_early_plan.md` §30's Default-Safety Requirements.~~ Done.
+- **Not done, carried forward:** §8's identity record does not yet gain a persisted ASN field on the identity record itself (ASN is resolved and recorded in `Event_Store` evidence per-request, not yet merged into `Scanner_Identity_Store`'s identity model).
+- **Not done, carried forward:** §13.1/§13.3's rate-limiting and firewalling dimensions do not yet extend to subnet/ASN/country -- `Traffic_Guard` remains generic rate/IP-based. This is exactly what Phase 4B's control-action framework is for; §13.3's "firewalling by detector family" and network-intelligence-aware controls are explicitly in Phase 4B's scope below.
 
 ## Phase 4B: Remaining Detector Families and Control-Action Wiring
 
