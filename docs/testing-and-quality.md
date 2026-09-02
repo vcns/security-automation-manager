@@ -33,7 +33,7 @@ Current baseline:
 - PHPCS via `composer run lint:phpcs`
 - PHPUnit via `composer run test:no-coverage`
 - release ZIP smoke build for development pull requests
-- source branch policy allowing `codex/*`, `feature/*`, `fix/*`, `hotfix/*`, and `release/*` branches into `development`
+- source branch policy allowing `chore/*`, `docs/*`, `feature/*`, `fix/*`, `hotfix/*`, and `release/*` branches into `development` (two-stage flow; `codex/*` is not allowed); `development`, `release/*`, and `hotfix/*` into `main`
 
 ### Fast checks
 

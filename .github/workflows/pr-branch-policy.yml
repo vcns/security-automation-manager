@@ -1,5 +1,18 @@
 name: PR Branch Policy
 
+# Two-stage flow, formalised now that the product is moving from MVP into a
+# real commercial release cadence: chore/codex/docs/feature/fix/hotfix work
+# lands in `development` first; only `release/*` (a version-bump branch cut
+# from development, per docs/release-and-publishing.md) or `hotfix/*` (a
+# genuine emergency fix that can't wait for the normal cycle) may go
+# straight to `main`. `development` had gone unused for months while this
+# was still an MVP with no real staging need -- see docs/consolidation-
+# ledger.md and the git history around 2026-07 for that period -- and has
+# been reset to match `main` as of this policy taking effect, rather than
+# merging its old, superseded pre-rebrand commits forward.
+#
+# codex/* is deliberately NOT in either allowlist: the team does not want
+# that branch pattern treated as a first-class source for any target.
 on:
   pull_request:
     branches:
@@ -27,8 +40,8 @@ jobs:
           if [[ "$ACTOR" == "dependabot[bot]" && "$HEAD_REF" =~ ^dependabot/ ]]; then
             exit 0
           fi
-          if [[ ! "$HEAD_REF" =~ ^codex/ && ! "$HEAD_REF" =~ ^feature/ && ! "$HEAD_REF" =~ ^fix/ && ! "$HEAD_REF" =~ ^hotfix/ && ! "$HEAD_REF" =~ ^release/ ]]; then
-            echo "Pull requests into development must come from codex/*, feature/*, fix/*, hotfix/*, or release/* branches. Got: $HEAD_REF"
+          if [[ ! "$HEAD_REF" =~ ^chore/ && ! "$HEAD_REF" =~ ^docs/ && ! "$HEAD_REF" =~ ^feature/ && ! "$HEAD_REF" =~ ^fix/ && ! "$HEAD_REF" =~ ^hotfix/ && ! "$HEAD_REF" =~ ^release/ ]]; then
+            echo "Pull requests into development must come from chore/*, docs/*, feature/*, fix/*, hotfix/*, or release/* branches. Got: $HEAD_REF"
             exit 1
           fi
 
@@ -43,7 +56,7 @@ jobs:
           if [[ "$ACTOR" == "dependabot[bot]" && "$HEAD_REF" =~ ^dependabot/ ]]; then
             exit 0
           fi
-          if [[ ! "$HEAD_REF" =~ ^development$ && ! "$HEAD_REF" =~ ^release/ ]]; then
-            echo "Pull requests into main must come from development or release/* branches. Got: $HEAD_REF"
+          if [[ ! "$HEAD_REF" =~ ^development$ && ! "$HEAD_REF" =~ ^release/ && ! "$HEAD_REF" =~ ^hotfix/ ]]; then
+            echo "Pull requests into main must come from development, release/*, or hotfix/* branches. Got: $HEAD_REF"
             exit 1
           fi
