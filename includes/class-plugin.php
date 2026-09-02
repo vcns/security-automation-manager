@@ -27,6 +27,7 @@ use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
 use WP_SAM\Intelligence\Change_Log_Store;
+use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
@@ -254,7 +255,7 @@ final class Plugin {
 			new Event_Store(),
 			new Identity_Resolver( new Scanner_Vendor_Store() ),
 			new Scanner_Identity_Store(),
-			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store() )
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store(), new Geo_Ip_Store() )
 		) )->register();
 
 		// Traffic Controls (Phase 3E). Every surface seeds in 'observe'

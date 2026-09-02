@@ -10,6 +10,7 @@ use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Network_Intelligence_Resolver;
 use WP_SAM\Intelligence\Request_Observer;
@@ -35,7 +36,8 @@ class RequestObserverTest extends TestCase {
 			new Scanner_Identity_Store(),
 			new Network_Intelligence_Resolver(
 				new Tor_Exit_List_Store(),
-				new Asn_Lookup_Store( static fn( string $h ): array => array() )
+				new Asn_Lookup_Store( static fn( string $h ): array => array() ),
+				new Geo_Ip_Store()
 			)
 		);
 	}
