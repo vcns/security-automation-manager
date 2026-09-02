@@ -25,6 +25,15 @@
  * synchronous, no network I/O (see Identity_Resolver's own docblock).
  * Recognition here is never authorisation: see Scanner_Identity_Store's
  * docblock for why this write path can never set a decision state.
+ *
+ * Network intelligence (Phase 4A, Network_Intelligence_Resolver -- Tor
+ * exit status today, ASN/Geo-IP later) is resolved only when a detector
+ * has actually produced a Finding, not on every request -- unlike identity
+ * resolution above, which every request needs for the scanner-recognition
+ * feature to work at all, network-fact enrichment is only ever consumed
+ * as extra context on evidence that already exists, so skipping it on the
+ * overwhelming majority of benign requests is a genuine, safe cost saving,
+ * not a feature gap.
  */
 
 declare( strict_types=1 );
@@ -43,12 +52,14 @@ final class Request_Observer {
 	private Event_Store $events;
 	private Identity_Resolver $identity_resolver;
 	private Scanner_Identity_Store $identities;
+	private Network_Intelligence_Resolver $network_intelligence;
 
-	public function __construct( Detector_Engine $engine, Event_Store $events, Identity_Resolver $identity_resolver, Scanner_Identity_Store $identities ) {
-		$this->engine            = $engine;
-		$this->events            = $events;
-		$this->identity_resolver = $identity_resolver;
-		$this->identities        = $identities;
+	public function __construct( Detector_Engine $engine, Event_Store $events, Identity_Resolver $identity_resolver, Scanner_Identity_Store $identities, Network_Intelligence_Resolver $network_intelligence ) {
+		$this->engine               = $engine;
+		$this->events               = $events;
+		$this->identity_resolver    = $identity_resolver;
+		$this->identities           = $identities;
+		$this->network_intelligence = $network_intelligence;
 	}
 
 	public function register(): void {
@@ -89,6 +100,10 @@ final class Request_Observer {
 			);
 		}
 
+		if ( ! empty( $findings ) && '' !== $context['ip'] ) {
+			$context['network'] = $this->network_intelligence->resolve( $context['ip'] );
+		}
+
 		foreach ( $findings as $finding ) {
 			$this->events->record(
 				(string) ( $finding['detector_id'] ?? '' ),
@@ -104,6 +119,7 @@ final class Request_Observer {
 						'query_string' => $context['query_string'],
 						'method'       => $context['method'],
 						'user_agent'   => $context['user_agent'],
+						'is_tor_exit'  => $context['network']['is_tor_exit'] ?? false,
 					),
 					is_array( $finding['detail'] ?? null ) ? $finding['detail'] : array()
 				)

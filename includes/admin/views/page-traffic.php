@@ -18,28 +18,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
 
 $base_url     = admin_url( 'admin.php?page=security-automation-manager-traffic' );
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'policy'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-$allowed_tabs = array( 'policy', 'ip-rules', 'blocks' );
+$allowed_tabs = array( 'policy', 'ip-rules', 'blocks', 'network-intelligence' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'policy';
 }
 
 $tab_help = array(
-	'policy'   => array(
+	'policy'               => array(
 		'label'       => __( 'Policy', 'vcns-security-automation-manager' ),
 		'description' => __( 'Per-surface mode and thresholds. Observe mode never blocks a visitor -- it only records what would have happened.', 'vcns-security-automation-manager' ),
 	),
-	'ip-rules' => array(
+	'ip-rules'             => array(
 		'label'       => __( 'IP Rules', 'vcns-security-automation-manager' ),
 		'description' => __( 'A manual allow/block list. These are explicit decisions and apply regardless of a surface\'s observe/enforce mode.', 'vcns-security-automation-manager' ),
 	),
-	'blocks'   => array(
+	'blocks'               => array(
 		'label'       => __( 'Blocks', 'vcns-security-automation-manager' ),
 		'description' => __( 'Sources currently escalated by automatic detection, and the ones you\'ve made permanent.', 'vcns-security-automation-manager' ),
+	),
+	'network-intelligence' => array(
+		'label'       => __( 'Network Intelligence', 'vcns-security-automation-manager' ),
+		'description' => __( 'Observation-only network-level facts -- Tor exit status today, ASN and Geo-IP planned. Never implies malicious intent and never blocks on its own.', 'vcns-security-automation-manager' ),
 	),
 );
 ?>
@@ -254,6 +259,48 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+
+	<?php elseif ( 'network-intelligence' === $tab ) : ?>
+
+		<?php $tor_store = new Tor_Exit_List_Store(); ?>
+
+		<h2><?php esc_html_e( 'Tor Exit List', 'vcns-security-automation-manager' ); ?></h2>
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+			<tbody>
+				<tr>
+					<th style="width:200px"><?php esc_html_e( 'Known exit nodes', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( number_format( $tor_store->count() ) ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $tor_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+					<td>
+						<?php
+						$status = $tor_store->last_fetch_status();
+						echo esc_html( '' !== $status ? ucfirst( $status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+						?>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<p class="description" style="margin-top:1em;max-width:600px">
+			<?php esc_html_e( 'Refreshed automatically once a day from the Tor Project\'s own public exit-node list. Tor identity is recorded as context on evidence a detector already produced -- it never implies malicious intent on its own, and nothing here blocks a visitor.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+			<?php wp_nonce_field( 'wp_sam_tor_list_refresh' ); ?>
+			<input type="hidden" name="action" value="wp_sam_tor_list_refresh" />
+			<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+		</form>
+
+		<h2 style="margin-top:2em"><?php esc_html_e( 'ASN and Geo-IP', 'vcns-security-automation-manager' ); ?></h2>
+		<p class="description" style="max-width:600px">
+			<?php esc_html_e( 'Planned next -- ASN via a free lookup service, and Geo-IP as an opt-in feature using your own MaxMind or IPinfo account (never a shared VCNS credential). Not available yet.', 'vcns-security-automation-manager' ); ?>
+		</p>
 
 	<?php endif; ?>
 </div>

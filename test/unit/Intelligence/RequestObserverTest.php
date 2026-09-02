@@ -10,9 +10,11 @@ use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
+use WP_SAM\Intelligence\Network_Intelligence_Resolver;
 use WP_SAM\Intelligence\Request_Observer;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
+use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Security\Request_Surface;
 
 class RequestObserverTest extends TestCase {
@@ -29,7 +31,8 @@ class RequestObserverTest extends TestCase {
 			new Detector_Engine(),
 			new Event_Store(),
 			new Identity_Resolver( new Scanner_Vendor_Store() ),
-			new Scanner_Identity_Store()
+			new Scanner_Identity_Store(),
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store() )
 		);
 	}
 
@@ -163,6 +166,44 @@ class RequestObserverTest extends TestCase {
 		$this->assertCount( 1, $identity_queries );
 		$this->assertStringContainsString( "'known_crawler'", $identity_queries[0] );
 		$this->assertStringContainsString( "'googlebot'", $identity_queries[0] );
+	}
+
+	// ── Network intelligence enrichment (Phase 4A) ──────────────────────────
+
+	public function test_observe_enriches_a_finding_with_tor_exit_status_when_matched(): void {
+		Detector_Registry::register( new Observer_Fixture_Detector() );
+		$GLOBALS['_wpdb_get_var'] = '1';
+
+		$this->observer->observe();
+
+		$event_queries = $this->event_queries();
+		$this->assertCount( 1, $event_queries );
+		// The wpdb stub's prepare() addslashes() every %s substitution, so
+		// the JSON detail's own quotes are backslash-escaped once more when
+		// embedded as a SQL string literal -- compute the expected form the
+		// same way rather than hardcoding the escaping.
+		$this->assertStringContainsString( addslashes( '"is_tor_exit":true' ), $event_queries[0] );
+	}
+
+	public function test_observe_enriches_a_finding_with_non_tor_status_by_default(): void {
+		Detector_Registry::register( new Observer_Fixture_Detector() );
+		$GLOBALS['_wpdb_get_var'] = null;
+
+		$this->observer->observe();
+
+		$event_queries = $this->event_queries();
+		$this->assertCount( 1, $event_queries );
+		$this->assertStringContainsString( addslashes( '"is_tor_exit":false' ), $event_queries[0] );
+	}
+
+	public function test_observe_never_queries_the_tor_list_when_nothing_matched(): void {
+		// No detector registered -- findings is always empty, so the Tor
+		// lookup must never run at all (performance requirement: don't pay
+		// for network-intelligence resolution on ordinary benign requests).
+		$this->observer->observe();
+
+		$tor_queries = array_values( array_filter( $GLOBALS['_wpdb_queries'], static fn( $q ) => str_contains( $q, 'sam_tor_exit_nodes' ) ) );
+		$this->assertSame( array(), $tor_queries );
 	}
 }
 

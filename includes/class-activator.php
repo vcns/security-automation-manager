@@ -292,6 +292,7 @@ class Activator {
 			'sam_campaigns',
 			'sam_honeypaths',
 			'sam_change_windows',
+			'sam_tor_exit_nodes',
 		);
 	}
 
@@ -327,6 +328,8 @@ class Activator {
 			'wp_sam_acme_account_keys',
 			'wp_sam_acme_http_tokens',
 			'wp_sam_cert_last_run',
+			'wp_sam_tor_list_refreshed_at',
+			'wp_sam_tor_list_last_fetch_status',
 		);
 	}
 
@@ -1140,6 +1143,27 @@ class Activator {
   resolution_note longtext NOT NULL,
   PRIMARY KEY  (id),
   KEY status (status)
+) {$cc};"
+		);
+
+		// Schema v31: Phase 4A, Traffic Intelligence Data Sourcing --
+		// Tor Awareness (.roadmap/phase4_plan.md Phase 4A,
+		// .roadmap/phase3_early_plan.md §13.6). sam_tor_exit_nodes holds the
+		// Tor Project's own public bulk exit-node list (no account, no API
+		// key, no licensing question -- unlike Geo-IP/ASN, deliberately
+		// built first for that reason). Refreshed wholesale by
+		// Intelligence\Tor_Exit_List_Store::refresh() on a daily schedule;
+		// a fetch failure leaves the existing table untouched rather than
+		// wiping known-good data, matching this build's established
+		// "don't revoke on a refresh failure" pattern. Lookup is a single
+		// indexed exact-match query, not a network call, on the request
+		// path -- see Intelligence\Network_Intelligence_Resolver.
+		dbDelta(
+			"CREATE TABLE {$p}sam_tor_exit_nodes (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip varchar(64) NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY ip (ip)
 ) {$cc};"
 		);
 

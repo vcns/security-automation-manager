@@ -21,6 +21,7 @@ use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -84,6 +85,7 @@ class Scheduler {
 			$hash_mgr->prune_stale_by_age();
 			$this->run_drift_scan( $plugin );
 			$this->run_campaign_scan();
+			$this->refresh_tor_exit_list();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -300,6 +302,23 @@ class Scheduler {
 				'info'
 			);
 		}
+	}
+
+	/**
+	 * Refreshes the Tor exit-node list (Phase 4A, .roadmap/phase4_plan.md).
+	 * A fetch failure is logged but never treated as fatal to the rest of
+	 * the daily scan -- Tor_Exit_List_Store::refresh() itself already
+	 * guarantees a failed fetch leaves existing data untouched.
+	 */
+	private function refresh_tor_exit_list(): void {
+		$result = ( new Tor_Exit_List_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'tor_exit_list_refreshed' : 'tor_exit_list_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
 	}
 
 	// ── Notification ──────────────────────────────────────────────────────────
