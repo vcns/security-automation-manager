@@ -80,11 +80,13 @@ Typical mapping:
 
 - `.github/workflows/ci.yml` for PHP lint, PHPCS, Semgrep, secret scanning, and package creation
 - `.github/workflows/pr-branch-policy.yml` for source-branch enforcement on PRs into `development` and `main`
-- `.github/workflows/codeql.yml` for GitHub-native static analysis
-- `.github/workflows/dast.yml` for disposable-environment baseline DAST
+- `.github/workflows/dast.yml` for disposable-environment baseline DAST (paths-filtered to install/runtime-relevant files)
 - `.github/workflows/pages.yml` for publishing the public GitHub Pages help site from `docs/`
 - `.github/workflows/release-package.yml` for release-candidate ZIP validation and tag-driven GitHub Release ZIP publishing
+- `.github/workflows/release-verification.yml` for real WordPress+MySQL install/upgrade/rollback lifecycle tests (paths-filtered)
 - `.github/workflows/wporg-deploy.yml` for tag-driven deployment to WordPress.org SVN
+
+There is no GitHub-native CodeQL analysis configured for this repository (`codeql.yml` was removed -- despite its name it only ran a second, duplicate Semgrep pass identical to `ci.yml`'s, never `github/codeql-action`; see `docs/testing-and-quality.md`'s "CodeQL for PHP" security-checks item, which remains an unmet target, not a description of current state). `ci.yml`'s `push` trigger only fires on `development`/`main` directly, not on working-branch patterns (`codex/**`, `feature/**`, `fix/**`, `release/**`) -- every one of those already gets full CI coverage via its own PR's `pull_request` trigger, so keeping them in `push` too only produced duplicate runs once a PR was open.
 
 ## GitHub Release Artifacts
 

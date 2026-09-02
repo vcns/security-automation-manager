@@ -78,9 +78,6 @@ jobs:
           sudo apt-get update $APT_OPTS
           sudo apt-get install -y $APT_OPTS $MISSING
 
-      - name: Validate composer.json
-        run: composer validate --strict
-
       - name: Cache Composer packages
         uses: actions/cache@v6
         with:
@@ -94,15 +91,13 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: PHP syntax lint
-        run: composer run lint:php
-
-      - name: PHPCS
-        run: composer run lint:phpcs -- --report=full
-
-      - name: PHPUnit
-        run: composer run test:no-coverage
-
+      # composer validate/lint:php/lint:phpcs/PHPUnit deliberately NOT
+      # repeated here -- ci.yml's pull_request trigger already runs all four
+      # (PHPUnit across the full 8.1-8.4 matrix) against this exact commit
+      # before this workflow's own paths filter can even match. Re-running
+      # them here was pure duplicate compute with no additional coverage;
+      # composer audit is kept because it's the one check ci.yml doesn't do
+      # (dependency vulnerability advisories, not code correctness).
       - name: Composer audit
         run: composer audit
 
