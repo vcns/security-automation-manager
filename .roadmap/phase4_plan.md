@@ -1,0 +1,155 @@
+# VCNS Security Automation Manager
+## Phase 4 Development Plan
+
+**Product:** VCNS Security Automation Manager
+**Repository:** `vcns/security-automation-manager`
+**Phase:** 4
+**Baseline:** v2.9.44
+**Status:** Draft for sign-off
+**Date:** 2 September 2026
+
+---
+
+# 1. Why This Document Exists
+
+Three roadmap-numbering schemes have accumulated in this project, and they were never reconciled with each other:
+
+- **`docs/consolidation-ledger.md`**'s "Phase 0-6" scheme (issue-label based, written 2026-08-18). Its own "Phase 4" means *posture, drift, evidence, resilience* -- unrelated numbering to what follows here, and now visibly stale after the 2026-09-02 GitHub issue audit closed or rewrote 19 of the 38 issues it covers.
+- A phantom **`roadmap-spec.md`**, never committed to this repository, cited by "Section N" in roughly 15 still-open GitHub issues. Confirmed absent from the entire git history on every branch.
+- **`.roadmap/phase3_early_plan.md`** (this document's predecessor), which substantially delivered what several of those Section-N issues asked for, under entirely different section numbers nobody cross-referenced until the 2026-09-02 audit.
+
+**Going forward: `.roadmap/` is the living, authoritative roadmap for this product.** `docs/consolidation-ledger.md` is retired as a planning document -- it remains a valid historical audit of its own date, not something to keep patching. "Phase 4" in this document means *the next slice of `.roadmap/phase3_early_plan.md`'s own numbering*, successor to that document's Phase 3A-3J, not `docs/consolidation-ledger.md`'s unrelated "Phase 4."
+
+This document assumes `.roadmap/phase3_early_plan.md`'s §1-3 (Purpose, Product Model, Operational Lifecycle), §28-34 (UX, Explainability, Default-Safety, Architecture, Testing, Performance, Privacy), and §36/§38 (Non-Goals, Strategic Outcome) as still-authoritative living principles. They are not repeated here.
+
+---
+
+# 2. Where Phase 3 Actually Landed
+
+Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes (added 2026-09-02) and its Definition of Done (§37: **13 of 15 criteria met**). Summary:
+
+- **Delivered:** identity/scanner intelligence, per-surface traffic controls (IP/CIDR only), baseline and drift, change attribution, security change windows, campaign detection (one signal), deception/honey paths, partial integrity monitoring (2 of 9 signals), site security health, evidence export (JSON), 10 of 13 detector families, the full Observe/Decide/Control/Verify admin IA.
+- **Deferred by explicit product decision** (2026-09-02, not oversight): external verification (3G) and federated intelligence (3H) -- both depend on central VCNS-operated infrastructure that doesn't exist yet.
+- **Real remaining work**, identified by the same 2026-09-02 audit: this is what Phase 4 is built from.
+
+---
+
+# 3. Phase 4 Scope
+
+## Phase 4A: Traffic Intelligence Data Sourcing
+
+**Addresses:** `.roadmap/phase3_early_plan.md` §13.4 (Geo-IP), §13.5 (ASN), §13.6 (Tor Awareness), §8's missing ASN identity field, §31's missing `Network_Intelligence_Resolver`.
+
+**Confirmed status:** genuinely zero implementation -- no partial scaffolding exists anywhere in the codebase to build on (verified by direct grep, not assumed). Correctly blocked on sourcing a verified, licensable data provider, not an engineering gap.
+
+**This is a procurement/data decision before it's an engineering task.** Candidate providers (not evaluated, just named for scoping): MaxMind GeoIP2 or IPinfo for Geo-IP, Team Cymru or IPinfo for ASN, the Tor Project's official bulk exit-node list for §13.6. Whoever owns this needs to pick a provider, confirm licensing terms are compatible with redistributing derived data to every customer install (or decide the plugin calls out to the provider directly instead), and only then does `Network_Intelligence_Resolver` get built.
+
+**Exit criteria:**
+- A verified data source is selected and its licensing confirmed compatible with this product's distribution model.
+- Geo-IP/ASN/Tor identification is available as evidence (§3.1 Observe) with no default blocking, per `.roadmap/phase3_early_plan.md` §30's Default-Safety Requirements.
+- §8's identity record gains its ASN field.
+- §13.1/§13.3's rate-limiting and firewalling dimensions extend to include subnet/ASN/country, per the original §13.1/§13.3 text.
+
+## Phase 4B: Remaining Detector Families and Control-Action Wiring
+
+**Addresses:** `.roadmap/phase3_early_plan.md` §11.4 (HTML Injection), §11.6 (PHP/PHPUnit Probes), §11.13 (Legacy WordPress Endpoints/XML-RPC), the missing "allowed control actions / default action" field on the shared detector metadata contract, and §12 (HTTP Method Intelligence).
+
+**Confirmed status:** 10 of 13 detector families ship today with full test coverage (`test/unit/Intelligence/Detectors/`). The 3 missing families are individually small (each follows the same `Pattern_Detector` base class the other 10 already use -- see `includes/intelligence/detectors/class-pattern-detector.php`). The control-action wiring is a moderate architectural addition: today `Traffic_Guard` blocks generically by rate/IP, with no detector-family parameter anywhere in `class-traffic-guard.php` -- closing this is what actually enables `.roadmap/phase3_early_plan.md` §13.3's "firewalling by detector family."
+
+**Exit criteria:**
+- All 13 detector families from §11 are registered, each with the full test-fixture set §32 requires (positive/negative/encoded-variant/benign-lookalike/surface-applicability/action-eligibility/confidence/false-positive-regression).
+- A detector's Finding can carry a control-action recommendation that `Traffic_Guard` can act on, still gated behind the same observe-by-default posture every other control in this product uses.
+- §12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance, per §12's own worked example) is implemented on top of already-captured method data.
+
+## Phase 4C: Bot, Crawler, and Scraper Classification
+
+**Addresses:** `.roadmap/phase3_early_plan.md` §10.
+
+**Confirmed status:** the identity-matching substrate (§8, §9) this depends on is fully delivered. The multi-signal classification model itself is not -- no robots.txt-behaviour tracking, no session/cookie-behaviour analysis, no header-consistency scoring exist, and zero AI-crawler identities are seeded (confirmed: no `GPTBot`/`ClaudeBot`/`CCBot`/`PerplexityBot` anywhere in the codebase).
+
+**Exit criteria:**
+- At minimum, AI-crawler identities are seeded into `Scanner_Vendor_Store` the same way Googlebot/Bingbot are today -- forward-confirmed-reverse-DNS-verifiable identities only, not fabricated ranges (same rule §9's audit already established).
+- Bot classification avoids the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.
+- Cross-site intelligence signal explicitly deferred -- depends on §23 (Federated Intelligence), itself deferred.
+
+## Phase 4D: Documentation and Technical Debt Closeout
+
+**Addresses:** GitHub issues #162, #163, #167, #168, #169, #170, #220, #221 -- all confirmed still accurately open by the 2026-09-02 audit, none touched by anything in Phase 3.
+
+| Issue | What it needs |
+|---|---|
+| #162 | Full security-controls inventory doc -- 12-field-per-control format, doesn't exist yet |
+| #163 | Extend `VersionConsistencyTest.php`-style automated checks to SECURITY.md, COMMERCIAL_TERMS.md, and the remaining `docs/*` files not yet covered |
+| #167 | Per-table pagination regression tests beyond the shared `Table_Query` helper's own test |
+| #168 | Reorder `test/bootstrap.php` so the autoloader and `NonceBridge.php` aren't ~1043 lines apart; remove the `offline/` fallback dependency from tests |
+| #169 | Extend the `wpdb::prepare()` test stub beyond `%s`/`%d`/`%%` |
+| #170 | Give `Policy_Builder`'s data-loading methods a real dependency boundary instead of `protected` subclass-extension methods |
+| #220 | Information-masking admin section (Server/X-Powered-By/version-header suppression) -- zero implementation |
+| #221 | Session & cache-control admin section with competing-mechanism detection -- zero implementation |
+
+This is deliberately grouped as one phase: none of these individually justify their own phase, but they're real, unambiguous, low-risk work worth clearing in one pass rather than letting them accumulate further.
+
+## Phase 4E: Commercial Product Boundary and the SAM Portal
+
+**Addresses:** `.roadmap/phase3_early_plan.md` §25 (Commercial Product Boundary, real remaining work), GitHub #172 (closed 2026-09-02, redirected here), #173 (closed, schema shipped), #174 (grace-period entitlement logic, still open), and `docs/sam-portal-requirements-spec.md` (new, 2026-09-02).
+
+This is the phase most directly shaped by the commercial-direction shift: the product owner confirmed 2026-09-02 that the project is moving from MVP into a real commercial release cadence (the same conversation that produced the two-stage branch policy in `pr-branch-policy.yml`). Two related but distinct tracks:
+
+**4E.1 -- Tier packaging design** (§25 proper): decide what capability actually maps to Community / Professional / Managed. Currently moot for most of Professional/Managed's candidate list, since most of it (advanced detector packs, extended Geo-IP/ASN policy, deeper integrity monitoring, federated intelligence, fleet posture) is itself still Phase 4A/4C/deferred-3G/3H/deferred-3-27 work. Recommend sequencing this *after* enough of 4A-4C exists to make the tier boundaries mean something concrete, not before.
+
+**4E.2 -- SAM Portal build** (`docs/sam-portal-requirements-spec.md`): a new, separate repository (Cloudflare Worker) handling checkout and license-key issuance/validation, replacing the interim direct-Stripe-in-plugin implementation currently in `includes/extensions/fully-automatic-mode.php`. Five open decisions block implementation start (spec §14): domain/repo naming, license-key site-binding policy, whether `/buy` needs its own hosted page, migration-window length, and admin-lookup authentication. GitHub #174's grace-period requirement is directly specified as part of this track (spec §10.2) -- building the portal integration is what actually closes #174, not a separate effort.
+
+**Exit criteria:**
+- Every open decision in `docs/sam-portal-requirements-spec.md` §14 has an explicit answer.
+- No Stripe secret exists in any customer WordPress database or in this repository, in any form (matching the design goal `docs/checkout-proxy-design.md` stated from the start).
+- GitHub #174 is closed with working grace-period behaviour, not just schema.
+
+## Phase 4F: Recommendations Engine
+
+**Addresses:** `.roadmap/phase3_early_plan.md` §22.
+
+**Confirmed status:** zero implementation, confirmed by direct grep. Nothing to build on beyond the general evidence infrastructure (`Security_Health`, `Evidence_Exporter`) this would need to draw from.
+
+Lowest priority in this document, deliberately -- §22's own text and the original Phase 3J framing both suggest recommendation-quality work benefits from more operational data existing first (more detector families live, more traffic-control dimensions live, more real drift/campaign history accumulated). Revisit sequencing once Phase 4A-4C have shipped and there's real evidence to recommend against.
+
+---
+
+# 4. Explicitly Not In Scope for Phase 4
+
+Carried forward, unchanged, from `.roadmap/phase3_early_plan.md` and the 2026-09-02 GitHub issue audit -- listed here so "not mentioned" doesn't get misread as "forgotten":
+
+- **External Verification** (§20, Phase 3G) and **Federated Intelligence** (§23-24, Phase 3H) -- still deferred, same reason as before (no central service infrastructure exists).
+- **Fleet Management** (§27, GitHub #186-190) -- still deferred pending real-world operational validation, per the original document's own explicit instruction not to overbuild this before evidence exists.
+- **Time-bound exceptions** (GitHub #177) -- no unified exception-record concept exists; genuinely not started, no urgency signal from this audit.
+- **WP-CLI support** (GitHub #184), **webhook/SIEM integrations** (GitHub #183) -- both confirmed still zero-implementation, both still correctly deferred.
+- **Safe policy simulation / promotion gates** (GitHub #179) -- `Policy_Change_Manager` still only builds proposal records; no diff-preview UI or promotion gates. Confirmed unchanged, not part of this phase.
+- **DNS-01 provider setup guidance** (GitHub #291) -- accurately scoped as-is, explicitly deferred until after WordPress.org resubmission work settles; unrelated to this phase's scope.
+
+---
+
+# 5. Sequencing Recommendation
+
+Not a commitment, a starting proposal -- reorder freely:
+
+1. **4D (Documentation and Technical Debt Closeout) first.** Lowest risk, no dependencies, clears real accumulated debt before it compounds further. Can run in parallel with anything else.
+2. **4E.2 (SAM Portal build) second**, given the explicit commercial-direction shift and that GitHub #172's closure already named this as the intended near-term direction. The five open decisions in the portal spec should be resolved before implementation starts, but resolving them doesn't block other work.
+3. **4B (remaining detector families) third.** Individually small, no external dependencies, extends already-proven infrastructure.
+4. **4A (Geo-IP/ASN/Tor data sourcing) and 4C (bot/crawler classification) in parallel**, once 4A's data-provider decision is made -- 4C's AI-crawler seeding doesn't depend on 4A at all and can start immediately.
+5. **4E.1 (tier packaging design) after 4A-4C have real capability to package**, not before -- packaging decisions made against a mostly-empty Professional/Managed feature list would just need re-doing.
+6. **4F (Recommendations engine) last**, deliberately, per its own §22 rationale above.
+
+---
+
+# 6. Definition of Done for Phase 4
+
+Phase 4 should be considered complete when:
+
+- Geo-IP, ASN, and Tor awareness are available as observation-only evidence, backed by a licensed, verified data source;
+- all 13 detector families from §11 are registered with full test coverage, and detector-family-aware control actions exist;
+- HTTP method classification distinguishes legitimate CORS preflight from reconnaissance;
+- bot/crawler classification moves beyond identity-matching alone into the multi-signal model §10 specifies;
+- documentation and technical-debt issues #162/#163/#167/#168/#169/#170/#220/#221 are closed or formally re-scoped;
+- the SAM Portal is live, no Stripe secret exists on any customer WordPress install, and GitHub #174's grace-period requirement is closed with working code, not just schema;
+- a tier-packaging decision (§25) exists and is documented, grounded in capability that actually ships by that point.
+
+Everything in §4 (External Verification, Federated Intelligence, Fleet Management, time-bound exceptions, WP-CLI, webhook/SIEM, policy simulation) remains correctly out of scope regardless of what else in this document ships first.
