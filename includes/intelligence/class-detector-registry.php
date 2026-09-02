@@ -3,14 +3,15 @@
  * Registry of available request detectors.
  *
  * register_defaults() (called once from Plugin::register_detectors())
- * registers the ten deterministic detector families free and available in
- * every build (Phase 3C -- technology mismatch, command/SQL/protocol
- * injection, sensitive directories/files, setup/install probes,
- * script/web-shell probes, version-control artefacts, vulnerability
- * probes). These are core, local, free functionality -- see
- * Automation_Mode_Registry's own docblock for the same reasoning applied to
- * automation modes; only *advanced* detector packs are a possible future
- * paid tier, not this baseline set.
+ * registers the deterministic detector families free and available in every
+ * build: the original ten from Phase 3C (technology mismatch, command/SQL/
+ * protocol injection, sensitive directories/files, setup/install probes,
+ * script/web-shell probes, version-control artefacts, vulnerability probes)
+ * plus HTML injection, added in Phase 4B (.roadmap/phase4_plan.md,
+ * .roadmap/phase3_early_plan.md §11.4). These are core, local, free
+ * functionality -- see Automation_Mode_Registry's own docblock for the same
+ * reasoning applied to automation modes; only *advanced* detector packs are
+ * a possible future paid tier, not this baseline set.
  *
  * Detector_Engine iterates whatever is registered here; on a registry with
  * nothing registered (a build that skips register_defaults(), or before it
@@ -31,6 +32,7 @@ declare( strict_types=1 );
 namespace WP_SAM\Intelligence;
 
 use WP_SAM\Intelligence\Detectors\Command_Injection_Detector;
+use WP_SAM\Intelligence\Detectors\Html_Injection_Detector;
 use WP_SAM\Intelligence\Detectors\Protocol_Injection_Detector;
 use WP_SAM\Intelligence\Detectors\Script_Webshell_Probe_Detector;
 use WP_SAM\Intelligence\Detectors\Sensitive_Directory_Probing_Detector;
@@ -57,8 +59,8 @@ final class Detector_Registry {
 	}
 
 	/**
-	 * Registers the ten core detector families. Idempotent -- safe to call
-	 * more than once (e.g. once per test).
+	 * Registers the core detector families. Idempotent -- safe to call more
+	 * than once (e.g. once per test).
 	 */
 	public static function register_defaults(): void {
 		if ( self::$defaults_registered ) {
@@ -76,6 +78,7 @@ final class Detector_Registry {
 		self::register( new Protocol_Injection_Detector() );
 		self::register( new Version_Control_Artefact_Detector() );
 		self::register( new Vulnerability_Probe_Detector() );
+		self::register( new Html_Injection_Detector() );
 	}
 
 	public static function is_registered( string $id ): bool {

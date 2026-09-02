@@ -196,7 +196,7 @@ final class Plugin {
 		// registering there instead changes no behaviour.
 		add_action( 'init', array( $this, 'register_automation_modes' ) );
 
-		// Detector registry: the ten core detector families (see
+		// Detector registry: the core detector families (see
 		// Detector_Registry::register_defaults()) plus whatever a loaded
 		// extension adds via wp_sam_register_detectors. Deferred to `init`
 		// for the same reason as register_automation_modes above --
@@ -345,7 +345,7 @@ final class Plugin {
 	// ── Detector registry ──────────────────────────────────────────────────────
 
 	/**
-	 * Registers the ten core detector families, then fires the extension
+	 * Registers the core detector families, then fires the extension
 	 * point for anything else -- see Detector_Registry's own docblock.
 	 *
 	 * @see bootstrap()'s call to add_action( 'init', ... ) for why this isn't called directly from bootstrap().
@@ -354,7 +354,7 @@ final class Plugin {
 		\WP_SAM\Intelligence\Detector_Registry::register_defaults();
 
 		// Deception and Honey Paths (Phase 3J, §15): registered unconditionally,
-		// alongside but distinct from the ten free defaults above -- with zero
+		// alongside but distinct from the free defaults above -- with zero
 		// administrator-configured decoy paths (every fresh install), its
 		// rules() is empty and it structurally never matches anything. See
 		// Honeypath_Detector's own docblock.

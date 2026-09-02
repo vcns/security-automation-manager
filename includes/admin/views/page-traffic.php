@@ -433,9 +433,9 @@ $tab_help = array(
 			<table class="widefat fixed striped wp-sam-violations-table">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Family', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+						<th style="width:220px"><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
+						<th style="width:200px"><?php esc_html_e( 'Family', 'vcns-security-automation-manager' ); ?></th>
+						<th style="width:80px"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 						<th><?php esc_html_e( 'Control action', 'vcns-security-automation-manager' ); ?></th>
 					</tr>
 				</thead>
