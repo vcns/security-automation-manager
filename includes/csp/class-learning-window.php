@@ -22,7 +22,7 @@ class Learning_Window {
 		add_action( 'save_post_page', array( $this, 'mark_post_change' ), 10, 3 );
 		add_action( 'activated_plugin', array( $this, 'mark_material_change' ) );
 		add_action( 'deactivated_plugin', array( $this, 'mark_material_change' ) );
-		add_action( 'upgrader_process_complete', array( $this, 'mark_plugin_upgrader_change' ), 10, 2 );
+		add_action( 'upgrader_process_complete', array( $this, 'mark_upgrader_change' ), 10, 2 );
 	}
 
 	/**
@@ -40,10 +40,15 @@ class Learning_Window {
 	}
 
 	/**
-	 * Marks plugin installs/updates from the upgrader workflow.
+	 * Marks plugin, theme, and core installs/updates from the upgrader
+	 * workflow. A theme or core update can change the byte content of
+	 * inline scripts/styles and the hosts a page depends on just as
+	 * surely as a plugin update can -- omitting them here left the window
+	 * unopened for exactly the updates most likely to invalidate the
+	 * current CSP inventory.
 	 */
-	public function mark_plugin_upgrader_change( object $upgrader, array $hook_extra ): void {
-		if ( 'plugin' !== ( $hook_extra['type'] ?? '' ) ) {
+	public function mark_upgrader_change( object $upgrader, array $hook_extra ): void {
+		if ( ! in_array( $hook_extra['type'] ?? '', array( 'plugin', 'theme', 'core' ), true ) ) {
 			return;
 		}
 
