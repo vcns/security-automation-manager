@@ -28,6 +28,11 @@
  * severity/confidence columns (still reflecting whichever rule matched
  * first). occurrence_count and first_seen_at are the only fields that
  * stay anchored to history; everything else reflects the most recent hit.
+ *
+ * Schema v30 (Phase 3J) adds a real, indexed `ip` column alongside the
+ * `detail` blob's own copy of it -- distinct_ips()/active_detector_
+ * surfaces() below back Campaign_Detector's correlation query, which needs
+ * to count distinct sources cheaply and can't scan JSON to do it.
  */
 
 declare( strict_types=1 );
@@ -88,10 +93,10 @@ final class Event_Store {
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"INSERT INTO {$table} (
-					surface, detector_id, detector_family, severity, confidence, detail,
+					surface, detector_id, detector_family, severity, confidence, ip, detail,
 					fingerprint, occurrence_count, first_seen_at, last_seen_at
 				) VALUES (
-					%s, %s, %s, %s, NULLIF(%s, ''), %s,
+					%s, %s, %s, %s, NULLIF(%s, ''), %s, %s,
 					%s, %d, %s, %s
 				) ON DUPLICATE KEY UPDATE
 					occurrence_count = occurrence_count + 1,
@@ -104,6 +109,7 @@ final class Event_Store {
 				$detector_family,
 				$severity,
 				$confidence_arg,
+				substr( $ip, 0, 64 ),
 				$detail_json,
 				$fingerprint,
 				1,
@@ -111,5 +117,56 @@ final class Event_Store {
 				$now
 			)
 		);
+	}
+
+	/**
+	 * Distinct, non-empty source IPs that have hit this detector+surface
+	 * within the last $since_hours -- the core signal Campaign_Detector
+	 * correlates on (.roadmap/phase3_early_plan.md §14).
+	 *
+	 * @return array<int, string>
+	 */
+	public function distinct_ips( string $detector_id, string $surface, int $since_hours ): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_request_events';
+		$since = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, $since_hours ) * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT DISTINCT ip FROM {$table} WHERE detector_id = %s AND surface = %s AND ip != '' AND last_seen_at >= %s",
+				$detector_id,
+				$surface,
+				$since
+			)
+		);
+
+		return ! empty( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Every distinct (detector_id, detector_family, surface) combination with
+	 * at least one event in the last $since_hours -- what Campaign_Detector
+	 * iterates instead of guessing which detectors are even active.
+	 *
+	 * @return array<int, array{detector_id:string, detector_family:string, surface:string}>
+	 */
+	public function active_detector_surfaces( int $since_hours ): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_request_events';
+		$since = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, $since_hours ) * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT DISTINCT detector_id, detector_family, surface FROM {$table} WHERE last_seen_at >= %s",
+				$since
+			),
+			ARRAY_A
+		);
+
+		return ! empty( $rows ) ? $rows : array();
 	}
 }

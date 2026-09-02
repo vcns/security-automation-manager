@@ -7,6 +7,12 @@
  * Distinct from Learning_Window, which only stamps a single "something
  * material changed" timestamp to gate CSP source re-learning. This class
  * keeps the actual history Drift_Scanner correlates drift against.
+ *
+ * 'admin_account_created' and 'admin_role_granted' were added for Phase 3J
+ * (§16 Integrity Monitoring, Account_Integrity_Recorder) -- the roadmap's
+ * two most cleanly-hookable integrity signals. Reusing this same store
+ * means they appear in Change_Timeline_Builder's merged view for free,
+ * without Drift_Scanner needing to know either type exists.
  */
 
 declare( strict_types=1 );
@@ -19,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Change_Log_Store {
 
-	public const CHANGE_TYPES = array( 'plugin_updated', 'plugin_activated', 'plugin_deactivated', 'theme_updated', 'theme_switched', 'core_updated' );
+	public const CHANGE_TYPES = array( 'plugin_updated', 'plugin_activated', 'plugin_deactivated', 'theme_updated', 'theme_switched', 'core_updated', 'admin_account_created', 'admin_role_granted' );
 
 	public function record( string $change_type, string $item_name, string $old_version, string $new_version ): void {
 		if ( ! in_array( $change_type, self::CHANGE_TYPES, true ) ) {

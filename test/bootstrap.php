@@ -116,6 +116,16 @@ if ( ! function_exists( 'get_current_user_id' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_userdata' ) ) {
+	/** @return object{user_login:string}|false */
+	function get_userdata( int $user_id ) {
+		if ( isset( $GLOBALS['_wp_userdata'][ $user_id ] ) ) {
+			return (object) array( 'user_login' => $GLOBALS['_wp_userdata'][ $user_id ] );
+		}
+		return false;
+	}
+}
+
 if ( ! function_exists( 'human_time_diff' ) ) {
 	function human_time_diff( int $from, int $to = 0 ): string {
 		$to   = 0 === $to ? time() : $to;
@@ -1036,6 +1046,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_current_theme']        = null;
 	$GLOBALS['_wp_plugins']              = [];
 	$GLOBALS['_wp_plugin_data']          = [];
+	$GLOBALS['_wp_userdata']             = [];
 	$GLOBALS['_wpdb_get_var']            = null;
 	$GLOBALS['_wpdb_get_row']            = null;
 	$GLOBALS['_wpdb_get_var_queue']      = [];

@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.43
+ * Version:           2.9.44
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.43' );
+define( 'WP_SAM_VERSION', '2.9.44' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -168,8 +168,17 @@ define( 'WP_SAM_VERSION', '2.9.43' );
  *        can review. Ships with no baseline approved -- nothing to diff
  *        against until an administrator explicitly captures one. See
  *        Intelligence\Baseline_State_Builder and Intelligence\Drift_Scanner.
+ * v30 -- adds sam_campaigns, sam_honeypaths, sam_change_windows, and an
+ *        indexed `ip` column on sam_request_events (Phase 3J: Advanced
+ *        Optional Intelligence -- campaign detection, deception/honey
+ *        paths, integrity monitoring, change attribution timeline, and
+ *        security change windows). Every new capability observes/records
+ *        only by default; nothing blocks or exposes decoy content without
+ *        an explicit administrator action. See Intelligence\Campaign_
+ *        Detector, Intelligence\Detectors\Honeypath_Detector, and
+ *        Intelligence\Change_Window_Store.
  */
-define( 'WP_SAM_DB_VERSION', '29' );
+define( 'WP_SAM_DB_VERSION', '30' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

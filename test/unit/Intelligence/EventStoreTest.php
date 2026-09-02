@@ -146,4 +146,41 @@ class EventStoreTest extends TestCase {
 		$this->assertStringContainsString( 'severity = VALUES(severity)', $GLOBALS['_wpdb_last_query'] );
 		$this->assertStringContainsString( 'confidence = VALUES(confidence)', $GLOBALS['_wpdb_last_query'] );
 	}
+
+	/** Phase 3J (§14): `ip` is now a real, indexed column, not just folded into the fingerprint. */
+	public function test_record_binds_ip_as_its_own_column(): void {
+		$this->store->record( 'sqli-probe', 'injection', 'frontend', 'high', null, '203.0.113.42', array() );
+
+		$this->assertStringContainsString( "'203.0.113.42'", $GLOBALS['_wpdb_last_query'] );
+	}
+
+	public function test_distinct_ips_queries_with_detector_surface_and_since_bound(): void {
+		$GLOBALS['_wpdb_get_col'] = array( '203.0.113.42', '198.51.100.7' );
+
+		$ips = $this->store->distinct_ips( 'sqli-probe', 'frontend', 24 );
+
+		$this->assertSame( array( '203.0.113.42', '198.51.100.7' ), $ips );
+	}
+
+	public function test_distinct_ips_returns_empty_array_when_none(): void {
+		$GLOBALS['_wpdb_get_col'] = array();
+
+		$this->assertSame( array(), $this->store->distinct_ips( 'sqli-probe', 'frontend', 24 ) );
+	}
+
+	public function test_active_detector_surfaces_returns_distinct_combinations(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'detector_id'     => 'sqli-probe',
+				'detector_family' => 'injection',
+				'surface'         => 'frontend',
+			),
+		);
+
+		$combos = $this->store->active_detector_surfaces( 24 );
+
+		$this->assertCount( 1, $combos );
+		$this->assertSame( 'sqli-probe', $combos[0]['detector_id'] );
+		$this->assertStringContainsString( 'DISTINCT detector_id', $GLOBALS['_wpdb_last_get_results_query'] );
+	}
 }

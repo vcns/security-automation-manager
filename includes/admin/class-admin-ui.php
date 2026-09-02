@@ -70,9 +70,14 @@ use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
 use WP_SAM\Intelligence\Baseline_State_Builder;
 use WP_SAM\Intelligence\Baseline_Store;
+use WP_SAM\Intelligence\Campaign_Detector;
+use WP_SAM\Intelligence\Campaign_Store;
 use WP_SAM\Intelligence\Change_Log_Store;
+use WP_SAM\Intelligence\Change_Window_Store;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
+use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
@@ -150,6 +155,13 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_baseline_capture', array( $this, 'handle_baseline_capture' ) );
 		add_action( 'admin_post_wp_sam_drift_scan', array( $this, 'handle_drift_scan' ) );
 		add_action( 'admin_post_wp_sam_drift_disposition', array( $this, 'handle_drift_disposition' ) );
+		add_action( 'admin_post_wp_sam_campaign_scan', array( $this, 'handle_campaign_scan' ) );
+		add_action( 'admin_post_wp_sam_campaign_disposition', array( $this, 'handle_campaign_disposition' ) );
+		add_action( 'admin_post_wp_sam_campaign_block', array( $this, 'handle_campaign_block' ) );
+		add_action( 'admin_post_wp_sam_honeypath_add', array( $this, 'handle_honeypath_add' ) );
+		add_action( 'admin_post_wp_sam_honeypath_delete', array( $this, 'handle_honeypath_delete' ) );
+		add_action( 'admin_post_wp_sam_change_window_open', array( $this, 'handle_change_window_open' ) );
+		add_action( 'admin_post_wp_sam_change_window_close', array( $this, 'handle_change_window_close' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -282,6 +294,15 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-baseline',
 			array( $this, 'render_baseline' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Advanced Intelligence', 'vcns-security-automation-manager' ),
+			__( 'Advanced Intelligence', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-advanced',
+			array( $this, 'render_advanced' )
 		);
 
 		add_submenu_page(
@@ -727,6 +748,13 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-baseline.php';
+	}
+
+	public function render_advanced(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-advanced.php';
 	}
 
 	public function render_observe(): void {
@@ -1198,6 +1226,147 @@ class Admin_UI {
 		);
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-baseline&tab=drift' ) );
+		exit;
+	}
+
+	// ── Advanced Intelligence (Phase 3J) ──────────────────────────────────────
+
+	public function handle_campaign_scan(): void {
+		check_admin_referer( 'wp_sam_campaign_scan' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run a campaign scan.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Campaign_Detector( new Event_Store(), new Campaign_Store() ) )->scan();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=campaigns' ) );
+		exit;
+	}
+
+	public function handle_campaign_disposition(): void {
+		check_admin_referer( 'wp_sam_campaign_disposition' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage campaigns.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Campaign_Store() )->disposition(
+			(int) ( $_POST['campaign_id'] ?? 0 ),
+			sanitize_key( wp_unslash( $_POST['disposition'] ?? '' ) ),
+			get_current_user_id(),
+			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=campaigns' ) );
+		exit;
+	}
+
+	/**
+	 * The one Advanced Intelligence action with a real side effect: adds
+	 * every currently-live campaign participant IP as an explicit block.
+	 * Requires a note, same as every other disposition action here -- see
+	 * Campaign_Detector::block_participants()'s own docblock for why this
+	 * is never triggered automatically from a scan.
+	 */
+	public function handle_campaign_block(): void {
+		check_admin_referer( 'wp_sam_campaign_block' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to block campaign participants.', 'vcns-security-automation-manager' ) );
+		}
+
+		$campaign = ( new Campaign_Store() )->get( (int) ( $_POST['campaign_id'] ?? 0 ) );
+		$note     = sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) );
+
+		if ( null !== $campaign && '' !== trim( $note ) ) {
+			( new Campaign_Detector( new Event_Store(), new Campaign_Store() ) )->block_participants(
+				$campaign,
+				get_current_user_id(),
+				$note,
+				new Ip_Rule_Store()
+			);
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=campaigns' ) );
+		exit;
+	}
+
+	public function handle_honeypath_add(): void {
+		check_admin_referer( 'wp_sam_honeypath_add' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage honey paths.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Honeypath_Store() )->add(
+			sanitize_text_field( wp_unslash( $_POST['path'] ?? '' ) ),
+			sanitize_text_field( wp_unslash( $_POST['description'] ?? '' ) ),
+			get_current_user_id()
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=honeypaths' ) );
+		exit;
+	}
+
+	public function handle_honeypath_delete(): void {
+		check_admin_referer( 'wp_sam_honeypath_delete' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage honey paths.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Honeypath_Store() )->delete( (int) ( $_POST['honeypath_id'] ?? 0 ) );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=honeypaths' ) );
+		exit;
+	}
+
+	public function handle_change_window_open(): void {
+		check_admin_referer( 'wp_sam_change_window_open' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to open a change window.', 'vcns-security-automation-manager' ) );
+		}
+
+		$current  = ( new Baseline_Store() )->get_current();
+		$duration = (int) ( $_POST['duration_hours'] ?? 0 );
+
+		( new Change_Window_Store() )->open(
+			sanitize_text_field( wp_unslash( $_POST['description'] ?? '' ) ),
+			get_current_user_id(),
+			$duration > 0 ? $duration : null,
+			null !== $current ? (int) $current['id'] : null
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=change-windows' ) );
+		exit;
+	}
+
+	/**
+	 * Runs a fresh drift scan before closing so the delta shown genuinely
+	 * reflects the state at close time, then closes the window -- accepting
+	 * the new state as baseline stays a separate, explicit "Capture
+	 * Baseline" action (Baseline & Drift page), never automatic here.
+	 */
+	public function handle_change_window_close(): void {
+		check_admin_referer( 'wp_sam_change_window_close' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to close a change window.', 'vcns-security-automation-manager' ) );
+		}
+
+		$scanner = new Drift_Scanner(
+			new Baseline_State_Builder( $this->plugin->policy_builder ),
+			new Baseline_Store(),
+			new Drift_Store(),
+			new Change_Log_Store()
+		);
+		$scanner->scan();
+
+		$current = ( new Baseline_Store() )->get_current();
+
+		( new Change_Window_Store() )->close(
+			(int) ( $_POST['window_id'] ?? 0 ),
+			get_current_user_id(),
+			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) ),
+			null !== $current ? (int) $current['id'] : null
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=change-windows' ) );
 		exit;
 	}
 

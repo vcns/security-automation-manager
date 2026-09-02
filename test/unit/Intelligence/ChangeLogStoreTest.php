@@ -34,6 +34,14 @@ class ChangeLogStoreTest extends TestCase {
 		$this->assertSame( '5.3', $data['new_version'] );
 	}
 
+	/** Phase 3J (§16 Integrity Monitoring): Account_Integrity_Recorder's two new change types. */
+	public function test_record_accepts_admin_account_created_and_admin_role_granted(): void {
+		$this->store->record( 'admin_account_created', 'jane', '', 'administrator' );
+		$this->store->record( 'admin_role_granted', 'jane', 'editor', 'administrator' );
+
+		$this->assertCount( 2, $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
 	public function test_recent_queries_with_a_since_bound(): void {
 		$this->store->recent( 48 );
 
