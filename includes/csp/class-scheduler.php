@@ -13,6 +13,11 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+use WP_SAM\Intelligence\Baseline_State_Builder;
+use WP_SAM\Intelligence\Baseline_Store;
+use WP_SAM\Intelligence\Change_Log_Store;
+use WP_SAM\Intelligence\Drift_Scanner;
+use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -74,6 +79,7 @@ class Scheduler {
 			$this->purge_old_request_events();
 			$this->purge_stale_traffic_blocks();
 			$hash_mgr->prune_stale_by_age();
+			$this->run_drift_scan( $plugin );
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -242,6 +248,32 @@ class Scheduler {
 				'scheduler',
 				'traffic_blocks_purged',
 				sprintf( 'Purged %d stale traffic block record(s) not seen again within 30 days.', $deleted ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Diffs current state against the approved baseline, if one exists
+	 * (Phase 3F). A no-op when no baseline has ever been approved --
+	 * Drift_Scanner::scan() itself reports that rather than this class
+	 * needing to check first. Failures here are caught by the outer
+	 * try/catch in run_daily_scan() like every other step.
+	 */
+	private function run_drift_scan( \WP_SAM\Plugin $plugin ): void {
+		$scanner = new Drift_Scanner(
+			new Baseline_State_Builder( $plugin->policy_builder ),
+			new Baseline_Store(),
+			new Drift_Store(),
+			new Change_Log_Store()
+		);
+		$result  = $scanner->scan();
+
+		if ( 'scanned' === $result['status'] && $result['drift_count'] > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'drift_detected',
+				sprintf( 'Drift scan found %d difference(s) from the approved baseline.', $result['drift_count'] ),
 				'info'
 			);
 		}

@@ -14,6 +14,7 @@ declare( strict_types=1 );
 // ── Plugin constants ──────────────────────────────────────────────────────────
 define( 'ABSPATH',               __DIR__ . '/' );
 define( 'WP_CONTENT_DIR',        __DIR__ . '/wp-content' );
+define( 'WP_PLUGIN_DIR',         __DIR__ . '/wp-content/plugins' );
 define( 'WPINC',                 'wp-includes' );
 define( 'WP_SAM_VERSION',        '2.4.30' );
 define( 'WP_SAM_DB_VERSION',     '10' );
@@ -23,6 +24,7 @@ define( 'WP_SAM_URL',            'https://example.com/wp-content/plugins/securit
 define( 'WP_SAM_PLUGIN_BASENAME', 'security-automation-manager/security-automation-manager.php' );
 define( 'WP_SAM_DISTRIBUTION_CHANNEL', 'wordpress-org' );
 define( 'WP_SAM_UPDATE_MANIFEST_URL', 'https://vcns.github.io/wp-updates/security-automation-manager/update.json' );
+define( 'MINUTE_IN_SECONDS',     60 );
 define( 'HOUR_IN_SECONDS',       3600 );
 define( 'DAY_IN_SECONDS',        86400 );
 define( 'KB_IN_BYTES',           1024 );
@@ -111,6 +113,20 @@ if ( ! function_exists( 'is_user_logged_in' ) ) {
 if ( ! function_exists( 'get_current_user_id' ) ) {
 	function get_current_user_id(): int {
 		return $GLOBALS['_wp_current_user_id'] ?? 0;
+	}
+}
+
+if ( ! function_exists( 'human_time_diff' ) ) {
+	function human_time_diff( int $from, int $to = 0 ): string {
+		$to   = 0 === $to ? time() : $to;
+		$diff = max( 0, abs( $to - $from ) );
+		if ( $diff < HOUR_IN_SECONDS ) {
+			return max( 1, (int) round( $diff / MINUTE_IN_SECONDS ) ) . ' mins';
+		}
+		if ( $diff < DAY_IN_SECONDS ) {
+			return max( 1, (int) round( $diff / HOUR_IN_SECONDS ) ) . ' hours';
+		}
+		return max( 1, (int) round( $diff / DAY_IN_SECONDS ) ) . ' days';
 	}
 }
 
@@ -602,6 +618,48 @@ if ( ! function_exists( 'get_bloginfo' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WP_Theme' ) ) {
+	class WP_Theme {
+		private string $stylesheet;
+		private string $version;
+
+		public function __construct( string $stylesheet = 'default-theme', string $version = '1.0' ) {
+			$this->stylesheet = $stylesheet;
+			$this->version    = $version;
+		}
+
+		public function get_stylesheet(): string {
+			return $this->stylesheet;
+		}
+
+		public function get( string $key ): string {
+			return 'Version' === $key ? $this->version : '';
+		}
+	}
+}
+
+if ( ! function_exists( 'wp_get_theme' ) ) {
+	function wp_get_theme( ?string $stylesheet = null ): WP_Theme {
+		if ( null !== $stylesheet && isset( $GLOBALS['_wp_themes'][ $stylesheet ] ) ) {
+			return $GLOBALS['_wp_themes'][ $stylesheet ];
+		}
+		return $GLOBALS['_wp_current_theme'] ?? new WP_Theme();
+	}
+}
+
+if ( ! function_exists( 'get_plugins' ) ) {
+	function get_plugins(): array {
+		return $GLOBALS['_wp_plugins'] ?? array();
+	}
+}
+
+if ( ! function_exists( 'get_plugin_data' ) ) {
+	function get_plugin_data( string $file, bool $markup = true, bool $translate = true ): array {
+		unset( $markup, $translate );
+		return $GLOBALS['_wp_plugin_data'][ $file ] ?? array();
+	}
+}
+
 if ( ! function_exists( 'is_admin' ) ) {
 	function is_admin(): bool {
 		return $GLOBALS['_wp_is_admin'] ?? false;
@@ -967,6 +1025,10 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_doing_cron']           = false;
 	$GLOBALS['_wp_cron']                 = [];
 	$GLOBALS['_wp_current_user_can']     = [];
+	$GLOBALS['_wp_themes']               = [];
+	$GLOBALS['_wp_current_theme']        = null;
+	$GLOBALS['_wp_plugins']              = [];
+	$GLOBALS['_wp_plugin_data']          = [];
 	$GLOBALS['_wpdb_get_var']            = null;
 	$GLOBALS['_wpdb_get_row']            = null;
 	$GLOBALS['_wpdb_get_var_queue']      = [];

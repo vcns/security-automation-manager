@@ -418,6 +418,7 @@ class AdminUITest extends TestCase {
 
 		$this->assertStringContainsString( 'Verify', $output );
 		$this->assertStringContainsString( 'planned for a future phase', $output );
+		$this->assertStringContainsString( 'security-automation-manager-baseline', $output );
 	}
 
 	/**
