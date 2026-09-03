@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.58
+Stable tag: 2.9.59
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.59 =
+
+* Added: Information Masking, a new pillar (GitHub issue #220) removing headers that disclose the server stack, PHP version, or this site's own hostname -- X-Powered-By (PHP version), Server (web-server signature), and X-Pingback (this site's own xmlrpc.php URL). Per-surface enable toggle, same shape as X-Content-Type-Options; enabled on every surface by default, matching every other simple pillar. X-Powered-By and X-Pingback removal is always reliable; Server is best-effort -- many hosts set it at the web-server layer before PHP ever runs, a layer no WordPress plugin can reach. A new live readiness check (Information Masking admin page) probes this site's own front page and reports whether each header is actually absent, so that host-dependent limitation is visible rather than silently assumed to work.
 
 = 2.9.58 =
 

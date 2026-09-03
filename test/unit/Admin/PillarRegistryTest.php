@@ -26,13 +26,13 @@ class PillarRegistryTest extends TestCase {
 		);
 	}
 
-	public function test_pillars_returns_twelve_entries_sorted_by_label(): void {
+	public function test_pillars_returns_thirteen_entries_sorted_by_label(): void {
 		$pillars = Pillar_Registry::pillars();
 		$labels  = array_values( array_map( static fn( array $p ): string => $p['label'], $pillars ) );
 		$sorted  = $labels;
 		usort( $sorted, static fn( string $a, string $b ): int => strcasecmp( $a, $b ) );
 
-		$this->assertCount( 12, $pillars );
+		$this->assertCount( 13, $pillars );
 		$this->assertSame( $sorted, $labels );
 	}
 

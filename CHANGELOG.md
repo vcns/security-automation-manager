@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.59] - 2026-09-03
+
+### Added
+
+- Phase 4D of `.roadmap/phase4_plan.md`, GitHub issue #220 (Information Masking): a new pillar removing headers that disclose the server stack, PHP version, or this site's own hostname. `includes/security/class-information-masking-builder.php` (`Information_Masking_Builder extends Pillar_Header_Builder`) removes `X-Powered-By`, `Server`, and `X-Pingback` on every enabled surface -- no configurable value, same shape as `X_Content_Type_Options_Builder`. `X-Powered-By` and `X-Pingback` are set by PHP/WordPress itself and always removable; `Server` is best-effort, since most hosts set it at the web-server layer before PHP ever runs, a layer `header_remove()` cannot reach.
+- `includes/security/class-information-masking-diagnostic.php` (`Information_Masking_Diagnostic`): a live self-probe (`home_url('/')` over real HTTP, same "observe real behaviour" approach as `Robots_Rules_Store`/`Tor_Exit_List_Store`) reporting per-header whether the removal actually took effect on this specific install -- resolves issue #220's own "readiness/diagnostic check" acceptance criterion, since `Server`'s effectiveness genuinely varies by host and should never be silently assumed. A transient probe failure never overwrites the previous result.
+- New "Information Masking" admin page (per-surface enable toggle + readiness check with a manual "Check Now" button); registered in `Pillar_Registry` (13th pillar) so it also appears on the Settings Overview page's Layer 4 table.
+- `X-Generator` (WordPress core's version tag) is deliberately out of scope: confirmed live that WordPress emits it as a `<generator>` element in RSS/Atom feed body content, never as an actual HTTP header -- doesn't fit this plugin's header-only architecture.
+- No schema change -- reuses the existing `sam_pillar_profiles` table's per-pillar row shape.
+
 ## [2.9.58] - 2026-09-03
 
 ### Added
