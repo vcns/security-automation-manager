@@ -1145,6 +1145,7 @@ wp_test_reset_globals();
 // Load namespace-scoped stubs before any plugin class that might define the
 // real counterpart. Order matters: stubs must come first.
 require_once __DIR__ . '/unit/NonceBridge.php';
+require_once __DIR__ . '/unit/Stub_Policy_Data_Loader.php';
 
 // Shared abstract test-case base classes must be loaded before any concrete
 // test file that extends them -- PHPUnit's directory-based discovery does

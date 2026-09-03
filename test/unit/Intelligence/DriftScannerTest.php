@@ -28,7 +28,7 @@ class DriftScannerTest extends TestCase {
 
 	protected function setUp(): void {
 		wp_test_reset_globals();
-		$policy_builder = new Policy_Builder( new Feature_Gate(), static fn ( string $s ) => array(), static fn ( string $s ) => array() );
+		$policy_builder = new Policy_Builder( new Feature_Gate(), new Stub_Policy_Data_Loader() );
 		$this->scanner   = new Drift_Scanner(
 			new Baseline_State_Builder( $policy_builder ),
 			new Baseline_Store(),

@@ -26,6 +26,7 @@
     <exclude-pattern>includes/class-config-portability.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-hash-manager.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-policy-builder.php</exclude-pattern>
+    <exclude-pattern>includes/csp/class-wpdb-policy-data-loader.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-policy-change-manager.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-policy-version-manager.php</exclude-pattern>
     <exclude-pattern>includes/csp/class-scheduler.php</exclude-pattern>

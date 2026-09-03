@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.62] - 2026-09-03
+
+### Changed
+
+- Phase 4D of `.roadmap/phase4_plan.md`, GitHub issue #170 (`Policy_Builder` dependency boundary): `load_profile()`, `load_approved_hashes()`, and `load_approved_sources()` were `protected` methods on `Policy_Builder` itself -- a de facto subclass extension point for a security-sensitive, header-emitting class, and this codebase's own tests were already exploiting it (an `extends Policy_Builder` anonymous class in `PolicyBuilderTest.php` overrode `load_approved_sources()`, and its `hash_loader`/`source_loader` constructor callables coexisted with the same protected methods being independently overridden elsewhere in the same file -- two different seams for the same job). Replaced with `includes/csp/class-policy-data-loader.php` (`Policy_Data_Loader` interface: `load_profile()`/`load_approved_hashes()`/`load_approved_sources()`) and `includes/csp/class-wpdb-policy-data-loader.php` (`Wpdb_Policy_Data_Loader`, the real implementation -- the exact query logic relocated verbatim, unchanged).
+- `Policy_Builder`'s constructor now takes `(Feature_Gate $gate, ?Policy_Data_Loader $data_loader = null, ?Audit_Log $audit = null)`, defaulting to `Wpdb_Policy_Data_Loader` -- production wiring (`Plugin::bootstrap()`) never has to pass one explicitly. `load_approved_hashes()`/`load_approved_sources()` are now `private` (no longer overridable at all); `load_profile()` stays `protected` only because `Header_Builder`'s own abstract contract requires it, but is now `final` to close that one remaining seam.
+- Tests inject a `Policy_Data_Loader` implementation (`test/unit/Stub_Policy_Data_Loader.php`, a new shared test double, loaded the same way `NonceBridge.php` already is) instead of subclassing `Policy_Builder`. Moved the one DB-query-shape regression test that belonged with the data-loading implementation, not `Policy_Builder` itself, into new `test/unit/WpdbPolicyDataLoaderTest.php`.
+- Confirmed live in Docker: CSP headers (nonces, approved hashes, approved sources, every directive) are emitted exactly as before this refactor -- no behaviour change, internal architecture only.
+- No schema change.
+
 ## [2.9.61] - 2026-09-03
 
 ### Changed
