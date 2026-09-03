@@ -20,6 +20,14 @@
  * silently overwrite it just because the same traffic recurred. Only
  * authorise()/deny()/clear_decision(), called exclusively from an explicit
  * admin action, may set or clear a decision state.
+ *
+ * recent_paths (schema v36, Phase 4C -- URI-pattern signal, .roadmap/
+ * phase3_early_plan.md §10) holds this identity's last MAX_RECENT_PATHS
+ * request paths as a JSON array, oldest first -- bounded, never grown
+ * without limit, and read by Uri_Pattern_Analyzer to recognise sequential/
+ * enumerating access (e.g. /product/101, /product/102, /product/103) as
+ * its own signal, and to answer §10's "log the fact they're hitting the
+ * endpoint" plainly on the Identities admin view.
  */
 
 declare( strict_types=1 );
@@ -34,6 +42,9 @@ final class Scanner_Identity_Store {
 
 	private const MAX_PER_HOUR_PER_KEY = 500;
 	private const RATE_LIMIT_WINDOW    = HOUR_IN_SECONDS;
+
+	/** Bounded so recent_paths can never grow without limit -- see class docblock. */
+	public const MAX_RECENT_PATHS = 10;
 
 	public const AUTOMATIC_STATES = array( 'unknown', 'known_commercial_scanner', 'known_research_scanner', 'known_crawler', 'identity_conflict' );
 
@@ -50,7 +61,8 @@ final class Scanner_Identity_Store {
 		string $vendor_key,
 		string $surface,
 		string $verification_state,
-		?bool $network_match
+		?bool $network_match,
+		string $path = ''
 	): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_scanner_identities';
@@ -75,7 +87,9 @@ final class Scanner_Identity_Store {
 		$now = current_time( 'mysql', true );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$existing_state = $wpdb->get_var( $wpdb->prepare( "SELECT verification_state FROM {$table} WHERE fingerprint = %s", $fingerprint ) );
+		$existing       = $wpdb->get_row( $wpdb->prepare( "SELECT verification_state, recent_paths FROM {$table} WHERE fingerprint = %s", $fingerprint ), ARRAY_A );
+		$existing_state = is_array( $existing ) ? (string) ( $existing['verification_state'] ?? '' ) : null;
+		$recent_paths   = $this->append_recent_path( is_array( $existing ) ? (string) ( $existing['recent_paths'] ?? '' ) : '', $path );
 
 		if ( is_string( $existing_state ) && in_array( $existing_state, self::DECISION_STATES, true ) ) {
 			// wpdb::update() can't express `occurrence_count = occurrence_count + 1`, so this is a direct query.
@@ -83,8 +97,9 @@ final class Scanner_Identity_Store {
 			$wpdb->query(
 				$wpdb->prepare(
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"UPDATE {$table} SET occurrence_count = occurrence_count + 1, last_seen_at = %s WHERE fingerprint = %s",
+					"UPDATE {$table} SET occurrence_count = occurrence_count + 1, last_seen_at = %s, recent_paths = %s WHERE fingerprint = %s",
 					$now,
+					$recent_paths,
 					$fingerprint
 				)
 			);
@@ -97,16 +112,17 @@ final class Scanner_Identity_Store {
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"INSERT INTO {$table} (
 					ip, claimed_identity, user_agent, vendor_key, surface, verification_state,
-					network_match, fingerprint, occurrence_count, first_seen_at, last_seen_at
+					network_match, fingerprint, occurrence_count, first_seen_at, last_seen_at, recent_paths
 				) VALUES (
 					%s, %s, %s, %s, %s, %s,
-					%s, %s, %d, %s, %s
+					%s, %s, %d, %s, %s, %s
 				) ON DUPLICATE KEY UPDATE
 					occurrence_count = occurrence_count + 1,
 					last_seen_at = VALUES(last_seen_at),
 					user_agent = VALUES(user_agent),
 					verification_state = VALUES(verification_state),
-					network_match = VALUES(network_match)",
+					network_match = VALUES(network_match),
+					recent_paths = VALUES(recent_paths)",
 				$ip,
 				substr( $claimed_identity, 0, 128 ),
 				substr( $user_agent, 0, 512 ),
@@ -117,9 +133,33 @@ final class Scanner_Identity_Store {
 				$fingerprint,
 				1,
 				$now,
-				$now
+				$now,
+				$recent_paths
 			)
 		);
+	}
+
+	/**
+	 * Appends $path to the existing JSON-encoded recent_paths array,
+	 * keeping only the most recent MAX_RECENT_PATHS entries (oldest
+	 * dropped first) -- see class docblock.
+	 */
+	private function append_recent_path( string $existing_json, string $path ): string {
+		$paths = json_decode( $existing_json, true );
+		if ( ! is_array( $paths ) ) {
+			$paths = array();
+		}
+
+		if ( '' !== $path ) {
+			$paths[] = substr( $path, 0, 255 );
+		}
+
+		if ( count( $paths ) > self::MAX_RECENT_PATHS ) {
+			$paths = array_slice( $paths, -self::MAX_RECENT_PATHS );
+		}
+
+		$encoded = wp_json_encode( array_values( $paths ) );
+		return false !== $encoded ? $encoded : '[]';
 	}
 
 	public function authorise( int $id, int $user_id, string $note ): bool {

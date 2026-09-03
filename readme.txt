@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.56
+Stable tag: 2.9.57
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.57 =
+
+* Added: Phase 4C of the roadmap, fifth increment -- URI-pattern recognition, closing the last of the three signals (identity, request-rate, URI-pattern) the roadmap calls for combining into bot classification. Every recognised source now has its last 10 request paths logged (visible as a hover tooltip on the Identities tab's Classification column -- directly answering "log the fact they're hitting the endpoint"). An unrecognised source whose recent paths show a consistent sequential-ID pattern (e.g. /product/101, /product/102, /product/103, /product/104) is now classified as "Enumerating" -- checked ahead of the existing rate-based signal, since a script walking IDs is worth flagging whether or not it has tripped a rate limit yet. A known crawler's own path history is never checked this way, since systematically walking a site's posts is normal, expected crawler behaviour.
 
 = 2.9.56 =
 

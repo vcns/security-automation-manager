@@ -874,6 +874,11 @@ class Activator {
 ) {$cc};"
 		);
 
+		// recent_paths (schema v36, Phase 4C -- URI-pattern signal,
+		// .roadmap/phase3_early_plan.md §10): bounded JSON array of this
+		// identity's last Scanner_Identity_Store::MAX_RECENT_PATHS request
+		// paths, oldest first. See that class's own docblock and Uri_
+		// Pattern_Analyzer.
 		dbDelta(
 			"CREATE TABLE {$p}sam_scanner_identities (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -894,6 +899,7 @@ class Activator {
   occurrence_count int(11) NOT NULL DEFAULT 1,
   first_seen_at datetime NOT NULL,
   last_seen_at datetime NOT NULL,
+  recent_paths longtext NOT NULL,
   PRIMARY KEY  (id),
   KEY ip (ip),
   KEY vendor_key (vendor_key),

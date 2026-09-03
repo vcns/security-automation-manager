@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.56
+ * Version:           2.9.57
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.56' );
+define( 'WP_SAM_VERSION', '2.9.57' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -221,8 +221,18 @@ define( 'WP_SAM_VERSION', '2.9.56' );
  *        already use. Without this bump, maybe_upgrade_db() would never
  *        call Activator::activate() again on a site already at v34, and
  *        the new vendor rows would only appear on a fresh install.
+ * v36 -- adds recent_paths to sam_scanner_identities (Phase 4C -- URI-
+ *        pattern signal, .roadmap/phase4_plan.md, .roadmap/phase3_early_
+ *        plan.md §10). Bounded JSON array (Scanner_Identity_Store::
+ *        MAX_RECENT_PATHS, oldest dropped first) of an identity's recent
+ *        request paths, read by the new Uri_Pattern_Analyzer to recognise
+ *        sequential/enumerating access (e.g. /product/101, /product/102,
+ *        /product/103) as its own bot-classification signal, and to
+ *        answer §10's "log the fact they're hitting the endpoint" plainly
+ *        on the Identities admin view. See Intelligence\Scanner_Identity_
+ *        Store and Intelligence\Uri_Pattern_Analyzer.
  */
-define( 'WP_SAM_DB_VERSION', '35' );
+define( 'WP_SAM_DB_VERSION', '36' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

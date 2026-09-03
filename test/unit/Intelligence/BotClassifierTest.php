@@ -111,4 +111,56 @@ class BotClassifierTest extends TestCase {
 
 		$this->assertSame( 'aggressive_unidentified', $this->classifier->classify( $identity, $block ) );
 	}
+
+	// ── URI-pattern signal (Phase 4C) ────────────────────────────────────────
+
+	public function test_unrecognised_source_with_a_sequential_path_pattern_is_enumerating(): void {
+		$identity = $this->identity(
+			array(
+				'recent_paths' => wp_json_encode( array( '/product/101', '/product/102', '/product/103', '/product/104' ) ),
+			)
+		);
+
+		$this->assertSame( 'enumerating_scraper', $this->classifier->classify( $identity, null ) );
+	}
+
+	public function test_enumeration_check_wins_over_rate_escalation(): void {
+		// Both signals are present -- enumeration is checked first and
+		// takes priority, per the class's own documented order.
+		$identity = $this->identity(
+			array(
+				'recent_paths' => wp_json_encode( array( '/product/1', '/product/2', '/product/3', '/product/4' ) ),
+			)
+		);
+		$block = array( 'stage' => 'temporary_block' );
+
+		$this->assertSame( 'enumerating_scraper', $this->classifier->classify( $identity, $block ) );
+	}
+
+	public function test_a_known_crawlers_enumeration_is_never_flagged(): void {
+		// A search engine systematically walking a site's posts is normal,
+		// expected crawler behaviour -- recent_paths is never even
+		// consulted once a known vendor match has already been decided.
+		$identity = $this->identity(
+			array(
+				'verification_state' => 'known_crawler',
+				'network_match'      => 1,
+				'recent_paths'       => wp_json_encode( array( '/post/1', '/post/2', '/post/3', '/post/4' ) ),
+			)
+		);
+
+		$this->assertSame( 'verified_crawler', $this->classifier->classify( $identity, null ) );
+	}
+
+	public function test_missing_recent_paths_is_treated_as_no_pattern(): void {
+		$identity = $this->identity(); // No 'recent_paths' key at all.
+
+		$this->assertSame( 'unclassified', $this->classifier->classify( $identity, null ) );
+	}
+
+	public function test_malformed_recent_paths_json_is_treated_as_no_pattern(): void {
+		$identity = $this->identity( array( 'recent_paths' => 'not valid json' ) );
+
+		$this->assertSame( 'unclassified', $this->classifier->classify( $identity, null ) );
+	}
 }

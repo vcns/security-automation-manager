@@ -20,23 +20,29 @@
  * detection" rule already enforced throughout this product (e.g. Traffic_
  * Guard never auto-blocking a privileged admin session).
  *
- * Below a decision, two independent axes combine into six possible
- * outcomes, not a bot/not-bot flag:
- * - A known vendor match (verification_state is one of Identity_Resolver's
- *   automatic known_* states) splits on network_match: matching the
- *   vendor's own published network data is 'verified_crawler'; claiming
- *   the identity without matching it is 'claimed_crawler_unverified' --
- *   §10's "impersonated crawlers" category, and the case worth an
- *   administrator's attention most.
- * - No vendor match splits on whether this source has actually escalated
- *   through Traffic_Block_Store's existing progressive-response ladder
- *   (throttle or worse): 'aggressive_unidentified' if so, else
- *   'unclassified' -- the overwhelming majority of ordinary, unremarkable
- *   traffic, deliberately not asserted as anything more specific than that.
+ * Below a decision, a known vendor match (verification_state is one of
+ * Identity_Resolver's automatic known_* states) splits on network_match:
+ * matching the vendor's own published network data is 'verified_crawler';
+ * claiming the identity without matching it is 'claimed_crawler_unverified'
+ * -- §10's "impersonated crawlers" category, and the case worth an
+ * administrator's attention most. A known vendor's own recent_paths is
+ * never checked for enumeration below -- a search engine systematically
+ * walking a site's posts is normal, expected crawler behaviour, not a
+ * signal worth flagging.
  *
- * URI-pattern (the third signal §10's own exit criteria names alongside
- * identity and request-rate) is not incorporated in this first pass --
- * carried forward, see .roadmap/phase4_plan.md's Phase 4C status.
+ * An unrecognised source (no vendor match) is classified across two
+ * further signals, checked in this order:
+ * - Uri_Pattern_Analyzer::is_enumerating() against this identity's
+ *   Scanner_Identity_Store::recent_paths (§10's "URI-pattern" signal):
+ *   'enumerating_scraper' if its last several requests show a fixed-step
+ *   sequential pattern (e.g. /product/101, /product/102, /product/103) --
+ *   checked first because a script walking IDs is worth flagging on its
+ *   own, whether or not it has also tripped a rate limit yet.
+ * - Else, whether this source has actually escalated through Traffic_
+ *   Block_Store's existing progressive-response ladder (throttle or
+ *   worse): 'aggressive_unidentified' if so, else 'unclassified' -- the
+ *   overwhelming majority of ordinary, unremarkable traffic, deliberately
+ *   not asserted as anything more specific than that.
  */
 
 declare( strict_types=1 );
@@ -52,6 +58,12 @@ final class Bot_Classifier {
 	private const KNOWN_STATES = array( 'known_crawler', 'known_commercial_scanner', 'known_research_scanner' );
 
 	private const ESCALATED_STAGES = array( 'throttle', 'temporary_block', 'extended_block', 'persistent_block' );
+
+	private Uri_Pattern_Analyzer $uri_patterns;
+
+	public function __construct( ?Uri_Pattern_Analyzer $uri_patterns = null ) {
+		$this->uri_patterns = $uri_patterns ?? new Uri_Pattern_Analyzer();
+	}
 
 	/**
 	 * @param array<string, mixed>      $identity      A sam_scanner_identities row.
@@ -72,6 +84,11 @@ final class Bot_Classifier {
 		if ( in_array( $state, self::KNOWN_STATES, true ) ) {
 			$network_match = $identity['network_match'] ?? null;
 			return ( null !== $network_match && (bool) $network_match ) ? 'verified_crawler' : 'claimed_crawler_unverified';
+		}
+
+		$recent_paths = json_decode( (string) ( $identity['recent_paths'] ?? '' ), true );
+		if ( is_array( $recent_paths ) && $this->uri_patterns->is_enumerating( $recent_paths ) ) {
+			return 'enumerating_scraper';
 		}
 
 		$stage = null !== $traffic_block ? (string) ( $traffic_block['stage'] ?? 'observe' ) : 'observe';

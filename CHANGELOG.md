@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.57] - 2026-09-03
+
+### Added
+
+- Phase 4C of `.roadmap/phase4_plan.md`, fifth increment (URI-pattern signal, `.roadmap/phase3_early_plan.md` §10): the last of the three signals §10's exit criteria names (identity, request-rate, URI-pattern) is now combined into `Bot_Classifier`.
+- `includes/intelligence/class-scanner-identity-store.php`: new `recent_paths` column (bounded JSON array, `MAX_RECENT_PATHS = 10`, oldest dropped first) logging each identity's recent request paths -- directly answers §10's "log the fact they're hitting the endpoint." `record()` gains an optional `$path` parameter.
+- `includes/intelligence/class-uri-pattern-analyzer.php` (`Uri_Pattern_Analyzer`): recognises a fixed-step sequential pattern across at least 4 consecutive numeric-ending paths (e.g. `/product/101`, `/product/102`, `/product/103`, `/product/104`) -- the classic signature of a script walking IDs. Pure and read-only, like `Bot_Classifier`.
+- `Bot_Classifier` now checks enumeration for an unrecognised source before its existing rate-escalation check -- a script walking IDs is worth flagging whether or not it's also tripped a rate limit. A known vendor's own recent_paths is never checked this way: systematically crawling a site's posts is normal, expected behaviour for a real search engine.
+- `includes/admin/views/page-intelligence.php`: the Identities tab's Classification column now shows a hover tooltip with the identity's logged recent paths.
+- Schema v36 (`recent_paths` column, no new table).
+
 ## [2.9.56] - 2026-09-03
 
 ### Added
