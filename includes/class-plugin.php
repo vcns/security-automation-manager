@@ -28,6 +28,7 @@ use WP_SAM\Intelligence\Detectors\Header_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
 use WP_SAM\Intelligence\Detectors\Login_Cookie_Consistency_Detector;
+use WP_SAM\Intelligence\Detectors\Robots_Compliance_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
@@ -39,6 +40,7 @@ use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Network_Intelligence_Resolver;
 use WP_SAM\Intelligence\Rate_Limiter;
 use WP_SAM\Intelligence\Request_Observer;
+use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -382,6 +384,11 @@ final class Plugin {
 		// register_defaults(). See each detector's own docblock.
 		Detector_Registry::register( new Login_Cookie_Consistency_Detector() );
 		Detector_Registry::register( new Header_Consistency_Detector() );
+
+		// Robots.txt disallow-rule compliance (§10, Phase 4C): the second
+		// half of the robots.txt behaviour signal, alongside Robots_Txt_
+		// Detector above. See Robots_Compliance_Detector's own docblock.
+		Detector_Registry::register( new Robots_Compliance_Detector( new Robots_Rules_Store() ) );
 
 		do_action( 'wp_sam_register_detectors' );
 	}

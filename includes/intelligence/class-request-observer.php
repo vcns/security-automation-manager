@@ -125,11 +125,24 @@ final class Request_Observer {
 			return;
 		}
 
-		$context  = $this->build_context();
+		$context = $this->build_context();
+
+		// Resolved before detector evaluation (Phase 4C, Robots_Compliance_
+		// Detector) so a detector can read $context['identity_verification_
+		// state'] -- a pure, already-computed value, not a new I/O call
+		// inside the detector itself. Purely additive: resolve() has no
+		// dependency on anything evaluate() computes, and no detector
+		// consumed this field before now, so this reorder changes nothing
+		// about any existing detector's behaviour.
+		$identity = null;
+		if ( '' !== $context['ip'] ) {
+			$identity                               = $this->identity_resolver->resolve( $context['ip'], $context['user_agent'] );
+			$context['identity_verification_state'] = $identity['verification_state'];
+		}
+
 		$findings = $this->engine->evaluate( $context );
 
-		if ( '' !== $context['ip'] ) {
-			$identity = $this->identity_resolver->resolve( $context['ip'], $context['user_agent'] );
+		if ( null !== $identity && '' !== $context['ip'] ) {
 			$this->identities->record(
 				$context['ip'],
 				$identity['claimed_identity'],

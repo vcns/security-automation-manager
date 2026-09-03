@@ -10,11 +10,13 @@ use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
+use WP_SAM\Intelligence\Detectors\Robots_Compliance_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Network_Intelligence_Resolver;
 use WP_SAM\Intelligence\Request_Observer;
+use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -272,6 +274,51 @@ class RequestObserverTest extends TestCase {
 		$this->assertStringContainsString( addslashes( '"method_classification":"cors_preflight"' ), $event_queries[0] );
 
 		unset( $_SERVER['HTTP_ORIGIN'], $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'], $_SERVER['REQUEST_METHOD'] );
+	}
+
+	// ── Robots.txt disallow-rule compliance (§10, Phase 4C) ─────────────────
+
+	/**
+	 * Proves the Phase 4C reorder actually works: identity resolution now
+	 * runs before detector evaluation, so a real Robots_Compliance_Detector
+	 * can read $context['identity_verification_state'] and act on a real
+	 * Identity_Resolver's result within the same observe() call.
+	 */
+	public function test_observe_flags_a_recognised_crawler_requesting_a_disallowed_path(): void {
+		update_option( 'wp_sam_robots_disallow_rules', array( '/wp-admin/' ) );
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'vendor_key'          => 'googlebot',
+				'vendor_name'         => 'Googlebot',
+				'category'            => 'known_crawler',
+				'ua_pattern'          => 'Googlebot',
+				'rdns_suffixes'       => '["googlebot.com"]',
+				'cidr_ranges'         => '[]',
+				'source_url'          => 'https://developers.google.com/search/docs/crawling-indexing/verifying-googlebot',
+				'verification_method' => 'fcrdns',
+				'notes'               => '',
+				'is_builtin'          => 1,
+			),
+		);
+		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+		$_SERVER['REQUEST_URI']     = '/wp-admin/plugins.php';
+		Detector_Registry::register( new Robots_Compliance_Detector( new Robots_Rules_Store() ) );
+
+		$this->observer->observe();
+
+		$event_queries = $this->event_queries();
+		$this->assertCount( 1, $event_queries );
+		$this->assertStringContainsString( addslashes( '"robots_signal":"disallowed_path_requested"' ), $event_queries[0] );
+	}
+
+	public function test_observe_never_flags_an_unrecognised_source_for_the_same_disallowed_path(): void {
+		update_option( 'wp_sam_robots_disallow_rules', array( '/wp-admin/' ) );
+		$_SERVER['REQUEST_URI'] = '/wp-admin/plugins.php';
+		Detector_Registry::register( new Robots_Compliance_Detector( new Robots_Rules_Store() ) );
+
+		$this->observer->observe();
+
+		$this->assertSame( array(), $this->event_queries() );
 	}
 }
 
