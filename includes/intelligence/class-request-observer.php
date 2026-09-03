@@ -195,6 +195,16 @@ final class Request_Observer {
 			// together -- see that detector's own docblock.
 			'origin'                        => isset( $_SERVER['HTTP_ORIGIN'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ORIGIN'] ) ) : '',
 			'access_control_request_method' => isset( $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ) ) : '',
+			// §10 session/cookie behaviour (Login_Cookie_Consistency_Detector):
+			// wordpress_test_cookie is set by WP core itself when it renders
+			// the login form -- never introduced by this plugin -- and a real
+			// browser resends it on the following POST.
+			'has_login_test_cookie'         => isset( $_COOKIE['wordpress_test_cookie'] ),
+			// §10 header-consistency (Header_Consistency_Detector): the
+			// headers a genuine browser always sends alongside a
+			// browser-shaped User-Agent -- see that detector's own docblock.
+			'accept'                        => isset( $_SERVER['HTTP_ACCEPT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ACCEPT'] ) ) : '',
+			'accept_language'               => isset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ) : '',
 		);
 	}
 }
