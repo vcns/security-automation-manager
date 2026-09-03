@@ -32,7 +32,7 @@ class PillarRegistryTest extends TestCase {
 		$sorted  = $labels;
 		usort( $sorted, static fn( string $a, string $b ): int => strcasecmp( $a, $b ) );
 
-		$this->assertCount( 13, $pillars );
+		$this->assertCount( 14, $pillars );
 		$this->assertSame( $sorted, $labels );
 	}
 

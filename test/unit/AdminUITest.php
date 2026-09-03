@@ -120,6 +120,7 @@ class AdminUITest extends TestCase {
 
 		$this->assertSame(
 			array(
+				'Cache-Control',
 				'Cross-Origin-Embedder-Policy',
 				'Cross-Origin-Opener-Policy',
 				'Cross-Origin-Resource-Policy',
@@ -193,7 +194,7 @@ class AdminUITest extends TestCase {
 	}
 
 	/**
-	 * All twelve technology-standard pages must still be REGISTERED (same as
+	 * All thirteen technology-standard pages must still be REGISTERED (same as
 	 * before this change) -- they're hidden from the rendered menu via CSS
 	 * (print_hidden_menu_css()), not via removal, specifically because
 	 * removal breaks direct URL access in real WordPress (see
@@ -217,6 +218,7 @@ class AdminUITest extends TestCase {
 				'security-automation-manager-dashboard',
 				'security-automation-manager-hsts',
 				'security-automation-manager-information-masking',
+				'security-automation-manager-cache-control',
 				'security-automation-manager-permissions-policy',
 				'security-automation-manager-referrer-policy',
 				'security-automation-manager-reverse-tabnabbing',
@@ -262,6 +264,7 @@ class AdminUITest extends TestCase {
 				'security-automation-manager-dashboard',
 				'security-automation-manager-hsts',
 				'security-automation-manager-information-masking',
+				'security-automation-manager-cache-control',
 				'security-automation-manager-permissions-policy',
 				'security-automation-manager-referrer-policy',
 				'security-automation-manager-reverse-tabnabbing',
@@ -416,6 +419,33 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Masked', $output );
 		$this->assertStringContainsString( 'Present', $output );
 		$this->assertStringContainsString( '2026-09-02 10:00:00', $output );
+	}
+
+	public function test_cache_control_page_renders_without_fatal_when_unblocked(): void {
+		wp_test_reset_globals();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cache-control.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Cache-Control', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-enabled', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-value', $output );
+		$this->assertStringContainsString( 'wp_sam_cache_control_cdn_acknowledge', $output );
+		$this->assertStringNotContainsString( "disabled='disabled'", $output );
+	}
+
+	public function test_cache_control_page_shows_a_warning_and_disables_controls_when_blocked(): void {
+		wp_test_reset_globals();
+		update_option( 'wp_sam_cache_control_cdn_acknowledged', true );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cache-control.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'This pillar is currently disabled.', $output );
+		$this->assertStringContainsString( 'CDN or edge cache has been acknowledged', $output );
+		$this->assertStringContainsString( "disabled='disabled'", $output );
 	}
 
 	public function test_observe_view_renders_without_fatal(): void {

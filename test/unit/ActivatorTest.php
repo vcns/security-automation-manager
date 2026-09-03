@@ -280,6 +280,31 @@ class ActivatorTest extends TestCase {
 		}
 	}
 
+	public function test_seed_cache_control_pillar_profiles_is_disabled_with_the_safest_preset_on_every_surface(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 4, null );
+
+		$method = new ReflectionMethod( Activator::class, 'seed_cache_control_pillar_profiles' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$rows = $this->inserted_rows_for_pillar( 'cache-control' );
+		$this->assertCount( 4, $rows );
+		foreach ( $rows as $surface => $row ) {
+			$this->assertSame( 0, $row['enabled'], "surface {$surface}" );
+			$this->assertSame( 'no-store', json_decode( $row['payload'], true )['value'], "surface {$surface}" );
+		}
+	}
+
+	public function test_seed_cache_control_pillar_profiles_skips_rows_that_already_exist(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 4, 1 );
+
+		$method = new ReflectionMethod( Activator::class, 'seed_cache_control_pillar_profiles' );
+		$method->setAccessible( true );
+		$method->invoke( null );
+
+		$this->assertSame( array(), $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
 	public function test_seed_default_pillar_profiles_does_not_include_hsts(): void {
 		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
