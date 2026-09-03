@@ -57,7 +57,7 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4B: Remaining Detector Families and Control-Action Wiring
 
-**Status: Detector families and control-action wiring delivered, v2.9.48-v2.9.51 (2 September 2026); §12 method classification carried forward (not yet built).**
+**Status: Delivered, v2.9.48-v2.9.53 (2-3 September 2026). All 13 detector families, the control-action framework, and §12 method classification are shipped.**
 
 **Addresses:** `.roadmap/phase3_early_plan.md` §11.4 (HTML Injection), §11.6 (PHP/PHPUnit Probes), §11.13 (Legacy WordPress Endpoints/XML-RPC), the missing "allowed control actions / default action" field on the shared detector metadata contract, and §12 (HTTP Method Intelligence).
 
@@ -66,23 +66,26 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 - §11.6 PHP/PHPUnit Probes (v2.9.50, PR #331) -- `Php_Probe_Detector`, 12th core family. Specific, versioned vulnerability signatures (PHPUnit `eval-stdin.php` RCE/CVE-2017-9841, Laravel Ignition RCE/CVE-2021-3129, php-cgi argument injection/CVE-2012-1823, exposed `phpinfo()`, Symfony profiler) -- kept non-overlapping with the existing `Script_Webshell_Probe_Detector` (§11.5) and `Vulnerability_Probe_Detector` (§11.12) rulesets.
 - §11.13 Legacy WordPress Endpoints (v2.9.51, PR #332) -- `Legacy_Endpoint_Detector`, 13th and final core family. `xmlrpc.php`, `wp-trackback.php`, `wp-app.php`. Per §11.13's own "must be configurable rather than assumed universally safe to block," the second detector (after HTML Injection) to be enforce-capable. **All 13 detector families from §11 are now registered.**
 - Also fixed alongside the Legacy Endpoints increment, found live in Docker rather than by the test suite: `Request_Observer` now also hooks `init` (priority 20) -- `xmlrpc.php`/`wp-cron.php` bootstrap WordPress directly via `wp-load.php` and never fire `send_headers`, so they were structurally invisible to every detector until this fix, not just the new one.
+- §12 HTTP Method Intelligence (v2.9.53) -- `Http_Method_Detector` classifies OPTIONS requests (`cors_preflight` when both `Origin` and `Access-Control-Request-Method` are present, per the Fetch/CORS spec; `unclassified_options` otherwise, since §12 itself lists legitimate API-discovery tooling and reconnaissance as both real possibilities headers alone can't distinguish). Implements `Detector` directly (no regex pattern) and is registered alongside `Honeypath_Detector`, outside `register_defaults()`, since §12 isn't one of §11's 13 named families. Enforce-capable, defaults to observe.
 
-**Not done, carried forward:** §12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance) is not yet built -- method is already captured as raw evidence on every Finding, but no classification logic exists on top of it yet.
-
-**Exit criteria:**
+**Exit criteria -- all met:**
 - ~~All 13 detector families from §11 are registered, each with the full test-fixture set §32 requires (positive/negative/encoded-variant/benign-lookalike/surface-applicability/action-eligibility/confidence/false-positive-regression).~~ Done.
 - ~~A detector's Finding can carry a control-action recommendation that `Traffic_Guard` can act on, still gated behind the same observe-by-default posture every other control in this product uses.~~ Done.
-- **Not done, carried forward:** §12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance, per §12's own worked example) is not yet implemented on top of already-captured method data.
+- ~~§12's method classification (OPTIONS-as-CORS-preflight vs. reconnaissance, per §12's own worked example) is implemented on top of already-captured method data.~~ Done.
 
 ## Phase 4C: Bot, Crawler, and Scraper Classification
 
+**Status: In progress. First increment delivered, v2.9.52 (2 September 2026).**
+
 **Addresses:** `.roadmap/phase3_early_plan.md` §10.
 
-**Confirmed status:** the identity-matching substrate (§8, §9) this depends on is fully delivered. The multi-signal classification model itself is not -- no robots.txt-behaviour tracking, no session/cookie-behaviour analysis, no header-consistency scoring exist, and zero AI-crawler identities are seeded (confirmed: no `GPTBot`/`ClaudeBot`/`CCBot`/`PerplexityBot` anywhere in the codebase).
+**Confirmed status:** the identity-matching substrate (§8, §9) this depends on is fully delivered. AI-crawler identities are now seeded (below). Still not built: robots.txt-behaviour tracking, session/cookie-behaviour analysis, header-consistency scoring.
+
+- AI-crawler identity seeding (v2.9.52) -- `Activator::seed_default_scanner_vendors()` extended with GPTBot (OpenAI), ClaudeBot (Anthropic), CCBot (Common Crawl), and PerplexityBot, verified against each vendor's own current published documentation (fetched live, not fabricated): CCBot by forward-confirmed reverse DNS (matching Googlebot/Bingbot exactly); the other three by their vendor's published IP-range JSON (`verification_method = 'cidr'`, `cidr_ranges` shipped empty -- never a guessed range -- with the source URL so an admin can add current ranges via the existing Scanner Vendors form). Reuses the existing `known_crawler` category end to end; zero new code in `Identity_Resolver`/`Scanner_Identity_Store`/admin label maps. Schema v35 (no new table, bumped only so the idempotent seed re-runs on an already-upgraded site).
 
 **Exit criteria:**
-- At minimum, AI-crawler identities are seeded into `Scanner_Vendor_Store` the same way Googlebot/Bingbot are today -- forward-confirmed-reverse-DNS-verifiable identities only, not fabricated ranges (same rule §9's audit already established).
-- Bot classification avoids the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.
+- ~~At minimum, AI-crawler identities are seeded into `Scanner_Vendor_Store` the same way Googlebot/Bingbot are today -- forward-confirmed-reverse-DNS-verifiable identities only, not fabricated ranges (same rule §9's audit already established).~~ Done.
+- **Not done:** bot classification avoiding the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.
 - Cross-site intelligence signal explicitly deferred -- depends on §23 (Federated Intelligence), itself deferred.
 
 ## Phase 4D: Documentation and Technical Debt Closeout
