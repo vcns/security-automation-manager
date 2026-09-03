@@ -137,7 +137,8 @@ final class Request_Observer {
 				$identity['vendor_key'],
 				$context['surface'],
 				$identity['verification_state'],
-				$identity['network_match']
+				$identity['network_match'],
+				$context['path']
 			);
 		}
 

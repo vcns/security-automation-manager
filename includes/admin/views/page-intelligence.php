@@ -410,6 +410,7 @@ $tab_help = array(
 			'admin_authorisation_expired' => __( 'Authorisation expired', 'vcns-security-automation-manager' ),
 			'verified_crawler'            => __( 'Verified crawler', 'vcns-security-automation-manager' ),
 			'claimed_crawler_unverified'  => __( 'Claimed crawler (unverified)', 'vcns-security-automation-manager' ),
+			'enumerating_scraper'         => __( 'Enumerating (sequential ID pattern)', 'vcns-security-automation-manager' ),
 			'aggressive_unidentified'     => __( 'Aggressive / rate-escalated', 'vcns-security-automation-manager' ),
 			'unclassified'                => __( 'Unclassified', 'vcns-security-automation-manager' ),
 		);
@@ -479,6 +480,8 @@ $tab_help = array(
 				$is_decided     = in_array( $state, Scanner_Identity_Store::DECISION_STATES, true );
 				$traffic_block  = $traffic_blocks->get( (string) $row['ip'], (string) $row['surface'] );
 				$classification = $bot_classifier->classify( $row, $traffic_block );
+				$recent_paths   = json_decode( (string) ( $row['recent_paths'] ?? '' ), true );
+				$recent_paths   = is_array( $recent_paths ) ? $recent_paths : array();
 				?>
 			<tr>
 				<td><?php echo esc_html( '' !== (string) $row['claimed_identity'] ? (string) $row['claimed_identity'] : __( '(unrecognised)', 'vcns-security-automation-manager' ) ); ?></td>
@@ -491,7 +494,14 @@ $tab_help = array(
 						&mdash;
 					<?php endif; ?>
 				</td>
-				<td><?php echo esc_html( $classification_labels[ $classification ] ?? $classification ); ?></td>
+				<td>
+					<span<?php echo ! empty( $recent_paths ) ? ' title="' . esc_attr( implode( ', ', $recent_paths ) ) . '"' : ''; ?>>
+						<?php echo esc_html( $classification_labels[ $classification ] ?? $classification ); ?>
+					</span>
+					<?php if ( ! empty( $recent_paths ) ) : ?>
+						<br /><small class="description"><?php echo esc_html( sprintf( /* translators: %d: number of recently observed request paths */ _n( '%d recent path logged', '%d recent paths logged', count( $recent_paths ), 'vcns-security-automation-manager' ), count( $recent_paths ) ) ); ?></small>
+					<?php endif; ?>
+				</td>
 				<td><?php echo esc_html( $state_labels[ $state ] ?? $state ); ?></td>
 				<td><?php echo esc_html( number_format( (int) $row['occurrence_count'] ) ); ?></td>
 				<td><?php echo esc_html( (string) $row['last_seen_at'] ); ?></td>
