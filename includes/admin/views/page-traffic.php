@@ -22,6 +22,7 @@ use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
@@ -413,6 +414,41 @@ $tab_help = array(
 		</table>
 			<?php endif; ?>
 		<?php endif; ?>
+
+		<?php $robots_rules_store = new Robots_Rules_Store(); ?>
+
+		<h2 style="margin-top:2em"><?php esc_html_e( 'Robots.txt Rules', 'vcns-security-automation-manager' ); ?></h2>
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+			<tbody>
+				<tr>
+					<th style="width:200px"><?php esc_html_e( 'Cached disallow rules', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( number_format( count( $robots_rules_store->rules() ) ) ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+					<td><?php echo esc_html( $robots_rules_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+					<td>
+						<?php
+						$robots_status = $robots_rules_store->last_fetch_status();
+						echo esc_html( '' !== $robots_status ? ucfirst( $robots_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+						?>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<p class="description" style="margin-top:1em;max-width:600px">
+			<?php esc_html_e( 'Refreshed automatically once a day from this site\'s own /robots.txt, fetched the same way a real crawler would. Used only to check whether a source already recognised as a known crawler/scanner vendor is requesting a path this site disallows -- an ordinary visitor is never evaluated against these rules.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+			<?php wp_nonce_field( 'wp_sam_robots_rules_refresh' ); ?>
+			<input type="hidden" name="action" value="wp_sam_robots_rules_refresh" />
+			<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+		</form>
 
 	<?php elseif ( 'detectors' === $tab ) : ?>
 

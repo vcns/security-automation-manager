@@ -21,6 +21,7 @@ use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
@@ -87,6 +88,7 @@ class Scheduler {
 			$this->run_campaign_scan();
 			$this->refresh_tor_exit_list();
 			$this->purge_stale_asn_cache();
+			$this->refresh_robots_rules();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -351,6 +353,24 @@ class Scheduler {
 		$this->audit->log(
 			'scheduler',
 			'refreshed' === $result['status'] ? 'tor_exit_list_refreshed' : 'tor_exit_list_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
+	}
+
+	/**
+	 * Refreshes this site's own cached robots.txt disallow rules (Phase 4C,
+	 * .roadmap/phase4_plan.md -- see Robots_Rules_Store's own docblock). A
+	 * fetch failure is logged but never fatal to the rest of the daily
+	 * scan -- Robots_Rules_Store::refresh() itself already guarantees a
+	 * failed fetch leaves existing cached rules untouched.
+	 */
+	private function refresh_robots_rules(): void {
+		$result = ( new Robots_Rules_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'robots_rules_refreshed' : 'robots_rules_refresh_failed',
 			(string) $result['message'],
 			'refreshed' === $result['status'] ? 'info' : 'warning'
 		);

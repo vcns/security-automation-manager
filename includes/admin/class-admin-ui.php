@@ -82,6 +82,7 @@ use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
@@ -168,6 +169,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_change_window_open', array( $this, 'handle_change_window_open' ) );
 		add_action( 'admin_post_wp_sam_change_window_close', array( $this, 'handle_change_window_close' ) );
 		add_action( 'admin_post_wp_sam_tor_list_refresh', array( $this, 'handle_tor_list_refresh' ) );
+		add_action( 'admin_post_wp_sam_robots_rules_refresh', array( $this, 'handle_robots_rules_refresh' ) );
 		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
@@ -1419,6 +1421,18 @@ class Admin_UI {
 		}
 
 		( new Tor_Exit_List_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		exit;
+	}
+
+	public function handle_robots_rules_refresh(): void {
+		check_admin_referer( 'wp_sam_robots_rules_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh robots.txt rules.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Robots_Rules_Store() )->refresh();
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
 		exit;

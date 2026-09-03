@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.58] - 2026-09-03
+
+### Added
+
+- Phase 4C of `.roadmap/phase4_plan.md`, sixth increment (robots.txt disallow-rule compliance, `.roadmap/phase3_early_plan.md` §10 -- completing the "robots.txt behaviour" signal, whose fetch-recognition half shipped in v2.9.55): `includes/intelligence/class-robots-rules-store.php` (`Robots_Rules_Store`) fetches this site's own `/robots.txt` over real HTTP (`home_url()`), the same way any real crawler would, rather than reimplementing WordPress core's `do_robots()`/`robots_txt`-filter resolution logic. Parses the generic `User-agent: *` block's Disallow directives; refreshed daily via `Scheduler::refresh_robots_rules()`, mirroring `Tor_Exit_List_Store`'s cadence -- a fetch failure never clears already-cached rules.
+- `includes/intelligence/detectors/class-robots-compliance-detector.php` (`Robots_Compliance_Detector`): records a source already recognised as a known crawler/scanner vendor requesting a path this site's robots.txt disallows. Deliberately scoped to recognised identities only -- robots.txt is a voluntary convention for automated crawlers, and an ordinary unrecognised visitor is never evaluated against it. Enforce-capable, defaults to observe.
+- `includes/intelligence/class-request-observer.php`: identity resolution now runs before detector evaluation (previously after) so a detector can read the already-resolved `identity_verification_state` -- purely additive, no existing detector consumed this field before, so no behaviour changes for anything already shipped.
+- New "Robots.txt Rules" section on the Network Intelligence tab (cached rule count, last refresh status, manual refresh).
+- No schema change.
+
 ## [2.9.57] - 2026-09-03
 
 ### Added
