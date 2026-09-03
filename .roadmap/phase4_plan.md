@@ -75,18 +75,28 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4C: Bot, Crawler, and Scraper Classification
 
-**Status: In progress. First increment delivered, v2.9.52 (2 September 2026).**
+**Status: In progress, five increments delivered v2.9.52-v2.9.56 (2-3 September 2026). Core signal set built; the remaining work is cross-request correlation, a materially bigger architectural investment than any single increment so far.**
 
 **Addresses:** `.roadmap/phase3_early_plan.md` §10.
 
-**Confirmed status:** the identity-matching substrate (§8, §9) this depends on is fully delivered. AI-crawler identities are now seeded (below). Still not built: robots.txt-behaviour tracking, session/cookie-behaviour analysis, header-consistency scoring.
+**Confirmed status:** the identity-matching substrate (§8, §9) this depends on is fully delivered.
 
-- AI-crawler identity seeding (v2.9.52) -- `Activator::seed_default_scanner_vendors()` extended with GPTBot (OpenAI), ClaudeBot (Anthropic), CCBot (Common Crawl), and PerplexityBot, verified against each vendor's own current published documentation (fetched live, not fabricated): CCBot by forward-confirmed reverse DNS (matching Googlebot/Bingbot exactly); the other three by their vendor's published IP-range JSON (`verification_method = 'cidr'`, `cidr_ranges` shipped empty -- never a guessed range -- with the source URL so an admin can add current ranges via the existing Scanner Vendors form). Reuses the existing `known_crawler` category end to end; zero new code in `Identity_Resolver`/`Scanner_Identity_Store`/admin label maps. Schema v35 (no new table, bumped only so the idempotent seed re-runs on an already-upgraded site).
+- AI-crawler identity seeding (v2.9.52) -- `Activator::seed_default_scanner_vendors()` extended with GPTBot (OpenAI), ClaudeBot (Anthropic), CCBot (Common Crawl), and PerplexityBot, verified against each vendor's own current published documentation (fetched live, not fabricated): CCBot by forward-confirmed reverse DNS (matching Googlebot/Bingbot exactly); the other three by their vendor's published IP-range JSON (`verification_method = 'cidr'`, `cidr_ranges` shipped empty -- never a guessed range -- with the source URL so an admin can add current ranges via the existing Scanner Vendors form). Reuses the existing `known_crawler` category end to end. Schema v35 (no new table, bumped only so the idempotent seed re-runs on an already-upgraded site).
+- Bot/crawler classification (v2.9.54) -- `Bot_Classifier` combines identity (`Identity_Resolver`'s verification_state + network_match) and request-rate (`Traffic_Block_Store`'s existing escalation stage) signals into six states, avoiding the binary "bot/not bot" model: an admin decision always wins; else a recognised vendor splits into `verified_crawler` vs. `claimed_crawler_unverified` (§10's "impersonated crawlers"); else an unrecognised source splits into `aggressive_unidentified` vs. `unclassified`. Pure and read-only, surfaced on the Identities admin tab.
+- Robots.txt visit recognition (v2.9.55) -- `Robots_Txt_Detector` records a source examining `/robots.txt` as low-severity, positive-leaning evidence, correlatable by IP.
+- Session/cookie behaviour, first piece (v2.9.56) -- `Login_Cookie_Consistency_Detector` records a login POST missing WordPress core's own `wordpress_test_cookie`, consistent with scripted credential stuffing bypassing the normal form load.
+- Header consistency (v2.9.56) -- `Header_Consistency_Detector` records a browser-claiming User-Agent (matched narrowly on each browser's own version token) sent without an `Accept-Language` header.
 
 **Exit criteria:**
 - ~~At minimum, AI-crawler identities are seeded into `Scanner_Vendor_Store` the same way Googlebot/Bingbot are today -- forward-confirmed-reverse-DNS-verifiable identities only, not fabricated ranges (same rule §9's audit already established).~~ Done.
-- **Not done:** bot classification avoiding the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.
+- ~~Bot classification avoiding the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.~~ Delivered for request-rate + identity; URI-pattern not incorporated (see below).
 - Cross-site intelligence signal explicitly deferred -- depends on §23 (Federated Intelligence), itself deferred.
+
+**Not done, carried forward -- each needs new cross-request correlation infrastructure this phase hasn't built, not just another detector:**
+- URI-pattern signal (sequential/enumerating request detection across a source's own history).
+- robots.txt disallow-rule compliance (does a source that fetched robots.txt go on to request disallowed paths anyway) -- only the fetch-recognition half is built.
+- A broader, site-wide session/cookie-persistence test beyond the login-specific piece above -- would need this plugin to set its own first-party cookie for every visitor, a privacy/product decision requiring explicit sign-off, not something to build silently.
+- Timing and repeated-error correlation (§10's own list also names these, neither built).
 
 ## Phase 4D: Documentation and Technical Debt Closeout
 
