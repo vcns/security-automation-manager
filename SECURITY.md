@@ -2,10 +2,15 @@
 
 ## Supported versions
 
+Only the latest released version is supported. Fixes are not backported to
+older releases -- always update to the current version (see the plugin
+header `Version` / `readme.txt` Stable tag) before reporting a suspected
+vulnerability.
+
 | Version | Supported |
 | --- | --- |
-| 2.4.x | Yes |
-| < 2.4.0 | No |
+| Latest released version | Yes |
+| Any earlier version | No |
 
 ## Reporting a vulnerability
 

@@ -47,7 +47,7 @@ Current baseline:
 
 - boot WordPress in a disposable environment
 - activate the plugin
-- verify all custom tables are created (including `csp_audit_log`, `csp_policy_change_decisions`, `csp_policy_versions`, and `csp_decision_rule_evaluations`)
+- verify all custom tables are created (including `sam_audit_log`, `sam_policy_change_decisions`, `sam_policy_versions`, and `sam_decision_rule_evaluations`)
 - verify admin pages load
 - verify REST routes register and respond with expected status codes
 
@@ -61,10 +61,10 @@ Current baseline:
 
 ### Activation and upgrade
 
-- activate plugin on a clean site; confirm all custom tables exist (`csp_policy_profiles`, `csp_source_inventory`, `csp_hash_inventory`, `csp_violation_reports`, `csp_scan_logs`, `csp_entitlements`, `csp_processed_events`, `csp_audit_log`, `csp_policy_change_decisions`, `csp_policy_versions`, `csp_decision_rule_evaluations`)
-- confirm default options are seeded including `wp_csp_violation_retention_days` (should be `90`)
-- confirm `wp_csp_automation_config` is seeded to `manual` for every surface
-- simulate DB upgrade path: set `wp_csp_db_version` to a lower version, reload; confirm `maybe_upgrade_db()` fires and new schema is applied without data loss
+- activate plugin on a clean site; confirm all custom tables exist (`csp_policy_profiles`, `csp_source_inventory`, `csp_hash_inventory`, `csp_violation_reports`, `sam_scan_logs`, `sam_entitlements`, `sam_processed_events`, `sam_audit_log`, `sam_policy_change_decisions`, `sam_policy_versions`, `sam_decision_rule_evaluations`)
+- confirm default options are seeded including `wp_sam_violation_retention_days` (should be `90`)
+- confirm `wp_sam_automation_config` is seeded to `automatic_high_approval` ("Automatic (high approvals only)") for every surface -- schema v18 changed the seeded default away from `manual`; an *upgrade* never changes an existing selection, including an explicit prior Manual choice
+- simulate DB upgrade path: set `wp_sam_db_version` to a lower version, reload; confirm `maybe_upgrade_db()` fires and new schema is applied without data loss
 - deactivate and confirm cron event is removed
 - uninstall and confirm tables and options are removed
 
@@ -89,7 +89,7 @@ Current baseline:
 - verify `upgrade-insecure-requests` appears as a standalone token (no source list) in frontend, admin, and login surfaces; confirm it does not appear in the api surface
 - verify `child-src 'none'` appears in the emitted policy (Safari worker-src fallback)
 - verify approved sources and active hashes appear in the emitted header
-- insert a forbidden directive (`navigate-to 'self'`) directly into a profile's `overrides` JSON; reload and confirm: (a) `navigate-to` does not appear in the emitted CSP header; (b) a `warning`-severity event with event type `forbidden_directive_stripped` is present in `csp_audit_log`
+- insert a forbidden directive (`navigate-to 'self'`) directly into a profile's `overrides` JSON; reload and confirm: (a) `navigate-to` does not appear in the emitted CSP header; (b) a `warning`-severity event with event type `forbidden_directive_stripped` is present in `sam_audit_log`
 - enable `strict_dynamic` on a licensed profile; verify `'strict-dynamic'` is present in `script-src` and that approved host sources are absent from `script-src` (hosts are silently ignored by browsers when `strict-dynamic` is present - CSP3 §8.2)
 
 **Sandbox:**
@@ -104,7 +104,7 @@ Current baseline:
 
 **wp-admin surface:**
 
-- set admin surface profile mode to `enforce`; load an admin page; confirm a one-per-session info notice is displayed referencing WordPress core Trac #59446; confirm the notice does not reappear on subsequent admin page loads in the same session (transient key: `wp_csp_admin59446_warned_{user_id}`)
+- set admin surface profile mode to `enforce`; load an admin page; confirm a one-per-session info notice is displayed referencing WordPress core Trac #59446; confirm the notice does not reappear on subsequent admin page loads in the same session (transient key: `wp_sam_admin59446_warned_{user_id}`)
 
 ### Discovery and inventory
 
@@ -113,15 +113,15 @@ Current baseline:
 - verify high-risk directives such as `script-src`, `style-src`, `connect-src`, `form-action`, `frame-src`, and `worker-src` are flagged as high-risk proposals
 - verify same-origin assets are excluded
 - verify approval and deny actions persist correctly
-- reject a pending proposal and confirm a suppressing row is appended to `csp_policy_change_decisions`
+- reject a pending proposal and confirm a suppressing row is appended to `sam_policy_change_decisions`
 - attempt approve, reject, revert, and undo actions without a reason; confirm each request is rejected and no source inventory or decision-ledger row is written
 - rescan the same source and confirm it is not reintroduced while the latest decision for its fingerprint is suppressing
 - approve the source again and confirm the latest decision clears suppression
 - undo a rejected source decision and confirm the source returns to pending, the prior decision is referenced where available, and suppression is cleared by a new append-only row
 - revert an approved source and confirm it moves to denied, is removed from emitted CSP, and suppresses future automatic proposals
-- approve or revert a source and confirm a `csp_policy_versions` row is appended for the affected surface
+- approve or revert a source and confirm a `sam_policy_versions` row is appended for the affected surface
 - confirm decision rows include `decision_engine_version`, deterministic result JSON, evidence snapshot JSON, actor metadata, and policy version references where applicable
-- confirm `csp_decision_rule_evaluations` rows are appended for the decision
+- confirm `sam_decision_rule_evaluations` rows are appended for the decision
 
 ### Policy audit and admin REST
 
@@ -162,15 +162,15 @@ Current baseline:
 
 - insert test rows into `csp_violation_reports` with `reported_at` set to a date older than 90 days
 - trigger the daily cron scan (or call `Scheduler::run_daily_scan()` directly in a test)
-- confirm the old rows are deleted and a `violations_purged` info event is present in `csp_audit_log`
-- set `wp_csp_violation_retention_days` to `0`; trigger a scan; confirm no rows are deleted
+- confirm the old rows are deleted and a `violations_purged` info event is present in `sam_audit_log`
+- set `wp_sam_violation_retention_days` to `0`; trigger a scan; confirm no rows are deleted
 
 ### Audit log
 
-- perform a policy change, a scan run, and a forbidden-directive injection; confirm `csp_audit_log` has corresponding rows with correct `component`, `event`, `severity`, and `user_id` values
-- confirm no `UPDATE` or `DELETE` is ever issued against `csp_audit_log` (grep test: no `$wpdb->update` or `$wpdb->delete` call references `csp_audit_log` in any source file)
-- confirm `csp_policy_change_decisions` is append-only and receives rows for approve, reject, and revert actions
-- confirm `csp_policy_versions` is append-oriented and receives new rows instead of rewriting older policy snapshots
+- perform a policy change, a scan run, and a forbidden-directive injection; confirm `sam_audit_log` has corresponding rows with correct `component`, `event`, `severity`, and `user_id` values
+- confirm no `UPDATE` or `DELETE` is ever issued against `sam_audit_log` (grep test: no `$wpdb->update` or `$wpdb->delete` call references `sam_audit_log` in any source file)
+- confirm `sam_policy_change_decisions` is append-only and receives rows for approve, reject, and revert actions
+- confirm `sam_policy_versions` is append-oriented and receives new rows instead of rewriting older policy snapshots
 
 ### Premium flow
 
@@ -178,7 +178,7 @@ Current baseline:
 - create Stripe Checkout Session in test mode
 - complete a successful test payment
 - verify entitlement is granted only after webhook delivery
-- resend the same webhook and confirm idempotency (`csp_processed_events.stripe_event_id` UNIQUE constraint)
+- resend the same webhook and confirm idempotency (`sam_processed_events.stripe_event_id` UNIQUE constraint)
 - simulate async failure and confirm no entitlement is granted
 
 ## Release validation checklist
@@ -222,7 +222,7 @@ High severity:
 - persistent data loss on upgrade or uninstall
 - invalid remote config acceptance
 - forbidden directives (`plugin-types`, `block-all-mixed-content`, `navigate-to`, `prefetch-src`) appearing in emitted headers
-- `csp_audit_log` receiving an `UPDATE` or `DELETE` (immutability violation)
+- `sam_audit_log` receiving an `UPDATE` or `DELETE` (immutability violation)
 
 Medium severity:
 

@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.64
+Stable tag: 2.9.65
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.65 =
+
+* Fixed: several documentation files had drifted from the current codebase (GitHub issue #163) -- SECURITY.md's supported-versions table still named a years-old release line (now an evergreen "latest version only" policy that can't go stale the same way again); COMMERCIAL_TERMS.md still referred to the plugin by its pre-rename name, "CSP Automation Manager"; docs/architecture.md and docs/testing-and-quality.md still referenced database table and option names renamed away in schema v9; docs/database-schema.md's version history table stopped at schema v12 while the plugin has shipped 24 schema versions since. All corrected, and extended the automated documentation-consistency test suite so drift like this is caught by CI going forward rather than found by manual audit again.
 
 = 2.9.64 =
 

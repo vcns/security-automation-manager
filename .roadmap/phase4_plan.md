@@ -100,14 +100,14 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4D: Documentation and Technical Debt Closeout
 
-**Status: In progress. #162, #167, #168 (already closed), #169, #170, #220, and #221 delivered/closed. #163 remains (4 September 2026).**
+**Status: Delivered. All 8 issues (#162, #163, #167, #168, #169, #170, #220, #221) closed, v2.9.59-v2.9.65 (3-4 September 2026).**
 
 **Addresses:** GitHub issues #162, #163, #167, #168, #169, #170, #220, #221 -- all confirmed still accurately open by the 2026-09-02 audit, none touched by anything in Phase 3.
 
 | Issue | What it needs |
 |---|---|
 | #162 | ~~Full security-controls inventory doc -- 12-field-per-control format, doesn't exist yet~~ **Delivered, v2.9.64.** |
-| #163 | Extend `VersionConsistencyTest.php`-style automated checks to SECURITY.md, COMMERCIAL_TERMS.md, and the remaining `docs/*` files not yet covered |
+| #163 | ~~Extend `VersionConsistencyTest.php`-style automated checks to SECURITY.md, COMMERCIAL_TERMS.md, and the remaining `docs/*` files not yet covered~~ **Delivered, v2.9.65.** |
 | #167 | ~~Per-table pagination regression tests beyond the shared `Table_Query` helper's own test~~ **Delivered, v2.9.63 -- also fixed a real bug the new coverage found (External Scripts table never capped an out-of-range page).** |
 | #168 | ~~Reorder `test/bootstrap.php` so the autoloader and `NonceBridge.php` aren't ~1043 lines apart; remove the `offline/` fallback dependency from tests~~ **Already closed on GitHub (2026-09-02), completed prior to this phase's own tracking catching up -- no remaining work.** |
 | #169 | ~~Extend the `wpdb::prepare()` test stub beyond `%s`/`%d`/`%%`~~ **Delivered, v2.9.61.** |
@@ -123,6 +123,9 @@ This is deliberately grouped as one phase: none of these individually justify th
 - #170 `Policy_Builder` dependency boundary (v2.9.62) -- `load_profile()`/`load_approved_hashes()`/`load_approved_sources()` were `protected` methods on `Policy_Builder` itself, a de facto subclass extension point for a security-sensitive header-emitting class (this codebase's own tests were already exploiting it, with two different, coexisting seams for the same job). Replaced with an explicit `Policy_Data_Loader` interface plus `Wpdb_Policy_Data_Loader`'s real implementation (query logic relocated verbatim), constructor-injected into `Policy_Builder` and defaulting to the real loader in production. `load_approved_hashes()`/`load_approved_sources()` are now `private`; `load_profile()` stays `protected` only because `Header_Builder`'s own abstract contract requires it, but is now `final`. Tests inject a `Policy_Data_Loader` implementation (new shared `test/unit/Stub_Policy_Data_Loader.php`) instead of subclassing `Policy_Builder`. Confirmed live in Docker: CSP headers (nonces, hashes, sources, every directive) emit exactly as before -- no behaviour change, internal architecture only.
 - #167 per-table pagination regression tests (v2.9.63) -- all 7 `Table_Query`-driven admin tables now have real-view-render regression coverage (out-of-range page caps, filter survival across a page change, empty-result handling); `page-csp-dashboard.php` and `page-intelligence.php` had never been directly rendered by any test before. Writing that coverage found a genuine bug: the External Scripts table (`scripts-external.php`) floored its page number at 1 but never capped it at the real last page, unlike every other paginated table in this codebase -- `?ext_paged=9999` against a 3-page list rendered "Page 9999 of 3" instead of the real last page. Fixed to match the same clamp pattern (`min(max(1, $page), $pages)`) every other table already used.
 - #162 security-controls inventory (v2.9.64) -- new `docs/security-controls-inventory.md`, all 19 implemented controls (the issue's own 17 plus Information Masking and Cache-Control, shipped after the issue was written), each field grounded directly in the current codebase. Surfaced several non-obvious findings while grounding it in real behaviour rather than assumption: Reverse Tabnabbing Protection and External Script Integrity share `Content_Rewriter`'s exclusion gate, so their `admin`/`login`/`api` configuration rows exist but are never actually live -- only the `frontend` row has an observable effect, undocumented anywhere the admin UI would surface it; across every simple pillar, saving a config change never writes an audit-log entry (confirmed by grepping every `Audit_Log`/`->log()` call site); and Trusted Types' own code comment claiming "always report-only regardless of surface mode" does not match `build_policy_string()`'s actual behaviour on an enforce-mode surface -- corrected the comment itself (documentation-only fix, no behaviour change) rather than silently repeating a false claim in the new inventory doc. Whether to build the always-report-only behaviour the old comment promised is flagged as an open product decision, not resolved here.
+- #163 documentation consistency (v2.9.65, narrowed scope per the issue's own 2026-09-02 status comment) -- reviewed and corrected drift in the 9 remaining files: `SECURITY.md` named a specific stale release line (replaced with an evergreen "latest version only" policy); `COMMERCIAL_TERMS.md` still used the plugin's pre-rename name "CSP Automation Manager"; `docs/architecture.md` and `docs/testing-and-quality.md` still referenced pre-schema-v9 `wp_csp_*`/`csp_*` identifiers (plus a stale automation-default claim `docs/testing-and-quality.md` made); `docs/database-schema.md`'s version table stopped at v12 while the code had reached v36 -- backfilled v13 through v36. `docs/release-and-publishing.md`, `docs/user-guide.html`, `docs/faq.html` were reviewed and found already accurate, no changes needed. Added 6 new automated checks to `VersionConsistencyTest.php` covering schema-doc version, WP/PHP requirement wording, subscription price, manifest URL, product name, and a regression guard against reintroducing pre-v9 identifiers -- so this class of drift is now caught by CI, not found by manual audit again.
+
+**Phase 4D is now fully delivered -- all 8 issues closed.**
 
 ## Phase 4E: Commercial Product Boundary and the SAM Portal
 
@@ -183,7 +186,7 @@ Phase 4 should be considered complete when:
 - all 13 detector families from §11 are registered with full test coverage, and detector-family-aware control actions exist;
 - HTTP method classification distinguishes legitimate CORS preflight from reconnaissance;
 - bot/crawler classification moves beyond identity-matching alone into the multi-signal model §10 specifies;
-- documentation and technical-debt issues #162/#163/#167/#168/#169/#170/#220/#221 are closed or formally re-scoped;
+- ~~documentation and technical-debt issues #162/#163/#167/#168/#169/#170/#220/#221 are closed or formally re-scoped~~ **Done -- all 8 closed, v2.9.59-v2.9.65.**
 - the SAM Portal is live, no Stripe secret exists on any customer WordPress install, and GitHub #174's grace-period requirement is closed with working code, not just schema;
 - a tier-packaging decision (§25) exists and is documented, grounded in capability that actually ships by that point.
 
