@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.54] - 2026-09-03
+
+### Added
+
+- Phase 4C of `.roadmap/phase4_plan.md`, second increment (bot/crawler classification, `.roadmap/phase3_early_plan.md` §10): `includes/intelligence/class-bot-classifier.php` (`Bot_Classifier`) combines identity and request-rate signals into a multi-state classification, avoiding the binary "bot/not bot" model §10 explicitly warns against. Pure and read-only -- takes an already-recorded `Scanner_Identity_Store` row and the matching `Traffic_Block_Store` row (if any) for the same (ip, surface); writes nothing new to the database.
+- Priority order: an administrator's own decision (`customer_authorised`/`explicitly_denied`/`previously_authorised_expired`) always wins. Below that, a recognised vendor match splits on `network_match`: `verified_crawler` if it matches the vendor's own published network data, `claimed_crawler_unverified` otherwise -- §10's "impersonated crawlers" category. An unrecognised source splits on whether it's actually escalated through `Traffic_Block_Store`'s progressive-response ladder (throttle or worse): `aggressive_unidentified` if so, else `unclassified`.
+- `includes/admin/views/page-intelligence.php`: the Identities tab gains a Classification column, computed on demand per visible row.
+- URI-pattern (the third signal §10's exit criteria names) is not incorporated in this pass -- carried forward.
+
 ## [2.9.53] - 2026-09-03
 
 ### Added

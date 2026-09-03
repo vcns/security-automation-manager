@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.53
+Stable tag: 2.9.54
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.54 =
+
+* Added: Phase 4C of the roadmap, second increment -- bot/crawler classification that avoids a binary "bot or not" model. The Identities tab now shows a Classification column combining what's already known about each source: an explicit admin decision always wins if one exists; otherwise a recognised vendor is split into "Verified crawler" (matches the vendor's own published network data) versus "Claimed crawler (unverified)" -- a real impersonation signal, since claiming to be Googlebot without matching Google's network is worth noticing; an unrecognised source is split into "Aggressive / rate-escalated" versus plain "Unclassified" depending on whether it's actually triggered progressive rate-limiting. Nothing new is written to the database -- purely a read-time view over evidence this plugin already records.
 
 = 2.9.53 =
 
