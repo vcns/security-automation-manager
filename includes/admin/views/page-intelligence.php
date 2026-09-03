@@ -24,8 +24,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use WP_SAM\Admin\Table_Query;
+use WP_SAM\Intelligence\Bot_Classifier;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
+use WP_SAM\Intelligence\Traffic_Block_Store;
 
 global $wpdb;
 
@@ -393,6 +395,24 @@ $tab_help = array(
 			'explicitly_denied'             => __( 'Denied', 'vcns-security-automation-manager' ),
 			'previously_authorised_expired' => __( 'Authorisation expired', 'vcns-security-automation-manager' ),
 		);
+
+		// Bot classification (Phase 4C, .roadmap/phase3_early_plan.md §10):
+		// combines this row's already-recorded identity signal with the
+		// matching Traffic_Block_Store row's request-rate escalation, if
+		// any -- see Bot_Classifier's own docblock. Computed here, on
+		// demand, for this page only; nothing new is written to the
+		// database.
+		$bot_classifier        = new Bot_Classifier();
+		$traffic_blocks        = new Traffic_Block_Store();
+		$classification_labels = array(
+			'admin_authorised'            => __( 'Authorised by admin', 'vcns-security-automation-manager' ),
+			'admin_denied'                => __( 'Denied by admin', 'vcns-security-automation-manager' ),
+			'admin_authorisation_expired' => __( 'Authorisation expired', 'vcns-security-automation-manager' ),
+			'verified_crawler'            => __( 'Verified crawler', 'vcns-security-automation-manager' ),
+			'claimed_crawler_unverified'  => __( 'Claimed crawler (unverified)', 'vcns-security-automation-manager' ),
+			'aggressive_unidentified'     => __( 'Aggressive / rate-escalated', 'vcns-security-automation-manager' ),
+			'unclassified'                => __( 'Unclassified', 'vcns-security-automation-manager' ),
+		);
 		?>
 
 		<div class="notice notice-info inline" style="padding:12px 16px;margin:1em 0;">
@@ -441,6 +461,7 @@ $tab_help = array(
 					<th><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
 					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
 					<th><?php esc_html_e( 'Vendor Source', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?></th>
 					<?php
 					echo Table_Query::sort_header( __( 'State', 'vcns-security-automation-manager' ), 'state', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -452,10 +473,12 @@ $tab_help = array(
 			<tbody>
 			<?php foreach ( $identities as $row ) : ?>
 				<?php
-				$vendor_key = (string) $row['vendor_key'];
-				$vendor     = $vendors_by_key[ $vendor_key ] ?? null;
-				$state      = (string) $row['verification_state'];
-				$is_decided = in_array( $state, Scanner_Identity_Store::DECISION_STATES, true );
+				$vendor_key     = (string) $row['vendor_key'];
+				$vendor         = $vendors_by_key[ $vendor_key ] ?? null;
+				$state          = (string) $row['verification_state'];
+				$is_decided     = in_array( $state, Scanner_Identity_Store::DECISION_STATES, true );
+				$traffic_block  = $traffic_blocks->get( (string) $row['ip'], (string) $row['surface'] );
+				$classification = $bot_classifier->classify( $row, $traffic_block );
 				?>
 			<tr>
 				<td><?php echo esc_html( '' !== (string) $row['claimed_identity'] ? (string) $row['claimed_identity'] : __( '(unrecognised)', 'vcns-security-automation-manager' ) ); ?></td>
@@ -468,6 +491,7 @@ $tab_help = array(
 						&mdash;
 					<?php endif; ?>
 				</td>
+				<td><?php echo esc_html( $classification_labels[ $classification ] ?? $classification ); ?></td>
 				<td><?php echo esc_html( $state_labels[ $state ] ?? $state ); ?></td>
 				<td><?php echo esc_html( number_format( (int) $row['occurrence_count'] ) ); ?></td>
 				<td><?php echo esc_html( (string) $row['last_seen_at'] ); ?></td>
@@ -498,7 +522,7 @@ $tab_help = array(
 			<?php endforeach; ?>
 			<?php if ( empty( $identities ) ) : ?>
 			<tr>
-				<td colspan="8"><p><?php esc_html_e( 'No identities recorded yet.', 'vcns-security-automation-manager' ); ?></p></td>
+				<td colspan="9"><p><?php esc_html_e( 'No identities recorded yet.', 'vcns-security-automation-manager' ); ?></p></td>
 			</tr>
 			<?php endif; ?>
 			</tbody>
