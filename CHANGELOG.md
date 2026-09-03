@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.65] - 2026-09-04
+
+### Fixed
+
+- Phase 4D of `.roadmap/phase4_plan.md`, GitHub issue #163 (documentation consistency, narrowed scope per the issue's own 2026-09-02 status comment -- `README.md`/`readme.txt`/`SPECIFICATION.md`/`CHANGELOG.md` were already covered by `VersionConsistencyTest.php`; this closes the remaining 9 files): `SECURITY.md`'s supported-versions table named a specific old release line (`2.4.x`) that had been stale since the plugin moved past it -- replaced with an evergreen "latest released version only" policy. `COMMERCIAL_TERMS.md` still opened as "CSP Automation Manager Commercial Terms" and used that retired trademark, three years after the plugin's actual rename (`CHANGELOG.md`'s `[2.0.0]` entry) to "VCNS Security Automation Manager" -- corrected throughout. `docs/architecture.md` and, much more extensively, `docs/testing-and-quality.md` still referenced `wp_csp_*` options and `csp_*` table names schema v9 renamed to `wp_sam_*`/`sam_*` years ago; `docs/testing-and-quality.md` also asserted CSP automation seeds to `manual` by default, contradicted by schema v18's change to `automatic_high_approval`. `docs/database-schema.md`'s version-history table stopped at schema v12 while `WP_SAM_DB_VERSION` had reached 36 -- backfilled v13 through v36 (also correcting two existing rows that had drifted to describe what are now v20's and v22's changes), and corrected an example `product_key` value that didn't match `Feature_Gate::PRODUCT_KEY`'s actual (deliberately pre-rename, for entitlement-matching continuity) value.
+- Reviewed `docs/release-and-publishing.md`, `docs/user-guide.html`, and `docs/faq.html` against the same authoritative sources (plugin header, `SPECIFICATION.md`, `Github_Update_Checker::UPDATE_URL`) -- no drift found in any of the three.
+
+### Added
+
+- Extended `test/unit/VersionConsistencyTest.php` with 6 new automated checks so this drift is caught by CI going forward: the database-schema doc's latest version row against `WP_SAM_DB_VERSION`; WordPress/PHP minimum-requirement wording across `docs/architecture.md`/`docs/user-guide.html`/`docs/faq.html` against the plugin header; the subscription price across `docs/user-guide.html`/`docs/faq.html` against `SPECIFICATION.md`; the update manifest URL in `docs/release-and-publishing.md` against `Github_Update_Checker::UPDATE_URL`; `COMMERCIAL_TERMS.md`'s product name; and a regression guard across `docs/testing-and-quality.md`/`docs/architecture.md`/`docs/threat-model.md` against reintroducing any pre-schema-v9 table/option identifier.
+- No schema change; documentation and test-infrastructure only.
+
 ## [2.9.64] - 2026-09-04
 
 ### Added

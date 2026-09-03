@@ -183,7 +183,7 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 ### 3. Scan flow
 
 1. A scan is triggered manually or by WP Cron.
-2. `Audit_Log::start_scan()` opens a `csp_scan_logs` record with status `running`.
+2. `Audit_Log::start_scan()` opens a `sam_scan_logs` record with status `running`.
 3. `Discovery` crawls the target URL for each allowed surface.
 4. External origins are classified by directive type.
 5. New origins are upserted into the source inventory as `pending`.
@@ -213,8 +213,8 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 5. Administrators approve, reject, revert, or undo decisions from the For Review queue. Every material administrator decision requires a reason.
 6. When a surface is explicitly configured for automation and a per-run limit is set, deterministic proposals within that mode's risk ceiling may be approved automatically with actor `automation_engine`. Automation Mode alone gates eligibility -- there is no separate kill-switch field; setting a surface to Manual is how automatic approval is stopped.
 7. Medium, high, unknown, ambiguous, hard-excluded, disallowed-scheme, excluded-directive, and AI-agreement-required proposals remain pending for administrator review.
-8. Every decision is appended to `csp_policy_change_decisions`, mirrored to `sam_audit_log`, and linked to deterministic rule findings in `csp_decision_rule_evaluations`.
-9. Approved, automatically approved, and reverted decisions capture a `csp_policy_versions` snapshot for the affected surface.
+8. Every decision is appended to `sam_policy_change_decisions`, mirrored to `sam_audit_log`, and linked to deterministic rule findings in `sam_decision_rule_evaluations`.
+9. Approved, automatically approved, and reverted decisions capture a `sam_policy_versions` snapshot for the affected surface.
 10. Rejected and reverted decisions set suppression on that fingerprint; future automation skips the same source until a later approval or undo becomes the newest decision.
 
 ### 6. Policy audit flow
@@ -298,7 +298,7 @@ These design choices should not be changed casually:
 - when `strict-dynamic` is active, host-based sources are suppressed from `script-src` at emit time; emitting them is harmless but creates misleading policy noise since browsers ignore them
 - cross-origin violation reports are silently discarded; only reports whose `document-uri` matches the site's own origin are stored
 - `sam_audit_log` is append-only - no `UPDATE` or `DELETE` may ever be issued against it; it is the permanent operational audit trail
-- `csp_policy_change_decisions` is append-only; suppression is represented by the latest decision for a fingerprint, not by rewriting old decisions; undo appends a new non-suppressing decision and links to the decision it reverses where available
+- `sam_policy_change_decisions` is append-only; suppression is represented by the latest decision for a fingerprint, not by rewriting old decisions; undo appends a new non-suppressing decision and links to the decision it reverses where available
 - the violation retention purge uses `UTC_TIMESTAMP()` not `NOW()` to avoid timezone-offset errors in environments where MySQL and PHP have different local time configurations
 
 ## Failure handling
@@ -312,7 +312,7 @@ These design choices should not be changed casually:
 ### Webhook replay or duplicate delivery
 
 - reject invalid signatures
-- use the `csp_processed_events` table for idempotency
+- use the `sam_processed_events` table for idempotency
 
 ### Scan failure
 
