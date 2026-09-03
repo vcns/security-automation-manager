@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
@@ -254,6 +255,23 @@ class RequestObserverTest extends TestCase {
 		$this->observer->observe();
 
 		$this->assertSame( array(), $this->block_writes() );
+	}
+
+	// ── HTTP Method Intelligence wiring (§12, Phase 4B carry-forward) ───────
+
+	public function test_observe_records_a_genuine_cors_preflight_via_the_real_http_method_detector(): void {
+		Detector_Registry::register( new Http_Method_Detector() );
+		$_SERVER['REQUEST_METHOD']                     = 'OPTIONS';
+		$_SERVER['HTTP_ORIGIN']                        = 'https://example.com';
+		$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] = 'POST';
+
+		$this->observer->observe();
+
+		$event_queries = $this->event_queries();
+		$this->assertCount( 1, $event_queries );
+		$this->assertStringContainsString( addslashes( '"method_classification":"cors_preflight"' ), $event_queries[0] );
+
+		unset( $_SERVER['HTTP_ORIGIN'], $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'], $_SERVER['REQUEST_METHOD'] );
 	}
 }
 

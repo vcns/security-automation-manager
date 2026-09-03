@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.53] - 2026-09-03
+
+### Added
+
+- HTTP Method Intelligence (`.roadmap/phase3_early_plan.md` §12, carried forward from Phase 4B): `includes/intelligence/detectors/class-http-method-detector.php` (`Http_Method_Detector`) classifies OPTIONS requests instead of treating every one as reconnaissance, per §12's explicit "OPTIONS must not be considered malicious merely because it is OPTIONS." A genuine browser CORS preflight always carries both an `Origin` header and an `Access-Control-Request-Method` header (the Fetch/CORS spec's own mechanism, not a heuristic) -- classified `cors_preflight`, low severity. An OPTIONS request missing that pair is classified `unclassified_options`, medium severity -- §12 itself lists both legitimate API-discovery tooling and reconnaissance as real possibilities headers alone can't distinguish, so this doesn't over-claim maliciousness.
+- Implements `Detector` directly rather than `Pattern_Detector` (no string to regex-match), and is registered separately from `Detector_Registry::register_defaults()` alongside `Honeypath_Detector` -- §12 is its own roadmap section, not one of §11's 13 named detector families, so it doesn't change that count. Enforce-capable under the Phase 4B control-action framework, still defaulting to `observe`.
+- `includes/intelligence/class-request-observer.php`: `build_context()` now also captures the `Origin`/`Access-Control-Request-Method` headers for this detector to read. No schema change.
+
 ## [2.9.52] - 2026-09-02
 
 ### Added

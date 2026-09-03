@@ -25,6 +25,7 @@ use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
+use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
 use WP_SAM\Intelligence\Change_Log_Store;
@@ -359,6 +360,13 @@ final class Plugin {
 		// rules() is empty and it structurally never matches anything. See
 		// Honeypath_Detector's own docblock.
 		Detector_Registry::register( new Honeypath_Detector( new Honeypath_Store() ) );
+
+		// HTTP Method Intelligence (§12, Phase 4B carry-forward): also
+		// registered separately from register_defaults() -- §12 is its own
+		// roadmap section, not one of §11's 13 named detector families, and
+		// isn't a Pattern_Detector (no string to regex-match). See Http_
+		// Method_Detector's own docblock.
+		Detector_Registry::register( new Http_Method_Detector() );
 
 		do_action( 'wp_sam_register_detectors' );
 	}

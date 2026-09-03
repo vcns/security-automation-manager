@@ -184,12 +184,17 @@ final class Request_Observer {
 	/** @return array<string, mixed> */
 	private function build_context(): array {
 		return array(
-			'surface'      => Surface_Classifier::detect(),
-			'path'         => Surface_Classifier::request_path(),
-			'query_string' => Surface_Classifier::query_string(),
-			'ip'           => Ip_Resolver::resolve(),
-			'method'       => isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_METHOD'] ) ) : '',
-			'user_agent'   => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+			'surface'                       => Surface_Classifier::detect(),
+			'path'                          => Surface_Classifier::request_path(),
+			'query_string'                  => Surface_Classifier::query_string(),
+			'ip'                            => Ip_Resolver::resolve(),
+			'method'                        => isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_METHOD'] ) ) : '',
+			'user_agent'                    => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+			// §12 HTTP Method Intelligence (Http_Method_Detector): the two
+			// headers a genuine browser CORS preflight always carries
+			// together -- see that detector's own docblock.
+			'origin'                        => isset( $_SERVER['HTTP_ORIGIN'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ORIGIN'] ) ) : '',
+			'access_control_request_method' => isset( $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ) ) : '',
 		);
 	}
 }
