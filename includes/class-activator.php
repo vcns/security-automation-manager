@@ -14,6 +14,7 @@ namespace WP_SAM;
 
 use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Security\Cache_Control_Builder;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
@@ -41,6 +42,7 @@ class Activator {
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();
+		self::seed_cache_control_pillar_profiles();
 		self::seed_initial_policy_versions();
 		self::seed_default_scanner_vendors();
 		self::seed_default_traffic_policies();
@@ -1669,6 +1671,46 @@ class Activator {
 					array( '%s', '%s', '%d', '%s', '%s', '%s' )
 				);
 			}
+		}
+	}
+
+	/**
+	 * Seeds Cache_Control_Builder's rows separately from every other simple
+	 * pillar above: `enabled => 0` on every surface, not 1. GitHub issue
+	 * #221 -- unlike a header-hardening pillar, Cache-Control is a
+	 * performance/behaviour decision, not a universal security default;
+	 * shipping it pre-enabled would risk silently changing a site's
+	 * frontend caching behaviour on upgrade. The stored value still
+	 * defaults to the safest preset (Cache_Control_Builder::DEFAULT_VALUE,
+	 * "no-store") so an admin who does enable it starts from a safe
+	 * choice rather than an empty one.
+	 */
+	private static function seed_cache_control_pillar_profiles(): void {
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_pillar_profiles';
+		$now     = current_time( 'mysql', true );
+		$payload = wp_json_encode( array( 'value' => Cache_Control_Builder::DEFAULT_VALUE ) );
+
+		foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $surface ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE pillar = %s AND surface = %s", Cache_Control_Builder::PILLAR_KEY, $surface ) );
+			if ( $exists ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->insert(
+				$table,
+				array(
+					'pillar'     => Cache_Control_Builder::PILLAR_KEY,
+					'surface'    => $surface,
+					'enabled'    => 0,
+					'payload'    => $payload,
+					'created_at' => $now,
+					'updated_at' => $now,
+				),
+				array( '%s', '%s', '%d', '%s', '%s', '%s' )
+			);
 		}
 	}
 

@@ -100,7 +100,7 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4D: Documentation and Technical Debt Closeout
 
-**Status: In progress. #220 delivered, v2.9.59 (3 September 2026).**
+**Status: In progress. #220 and #221 delivered, v2.9.59-v2.9.60 (3 September 2026).**
 
 **Addresses:** GitHub issues #162, #163, #167, #168, #169, #170, #220, #221 -- all confirmed still accurately open by the 2026-09-02 audit, none touched by anything in Phase 3.
 
@@ -113,11 +113,12 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 | #169 | Extend the `wpdb::prepare()` test stub beyond `%s`/`%d`/`%%` |
 | #170 | Give `Policy_Builder`'s data-loading methods a real dependency boundary instead of `protected` subclass-extension methods |
 | #220 | ~~Information-masking admin section (Server/X-Powered-By/version-header suppression) -- zero implementation~~ **Delivered, v2.9.59.** |
-| #221 | Session & cache-control admin section with competing-mechanism detection -- zero implementation |
+| #221 | ~~Session & cache-control admin section with competing-mechanism detection -- zero implementation~~ **Delivered, v2.9.60 (Cache-Control only -- see note below on scope).** |
 
 This is deliberately grouped as one phase: none of these individually justify their own phase, but they're real, unambiguous, low-risk work worth clearing in one pass rather than letting them accumulate further.
 
 - #220 Information Masking (v2.9.59) -- `Information_Masking_Builder` (new `Pillar_Header_Builder` subclass) removes `X-Powered-By`, `Server`, and `X-Pingback` on every enabled surface. Resolved the issue's own open questions: "hostname masking" means `X-Pingback` (discloses this site's own `xmlrpc.php` URL); the full target header list is `X-Powered-By`/`Server`/`X-Pingback` only -- `X-Generator` was confirmed live to be feed-body content (a `<generator>` element via the `the_generator` filter), never an actual HTTP header, so it's out of scope for this header-only pillar; `Server`'s host-dependent technical ceiling is resolved as documented best-effort (option (a) from the issue) rather than scoped out entirely, backed by `Information_Masking_Diagnostic`'s live self-probe against the site's own front page so a host where `header_remove('Server')` doesn't take effect is visible rather than silently assumed to work. No schema change -- reuses `sam_pillar_profiles`'s existing per-pillar row shape (13th pillar in `Pillar_Registry`).
+- #221 Cache-Control (v2.9.60) -- scoped to Cache-Control specifically: the issue's title says "Session & Cache Control," but its body, context, and every acceptance criterion discuss Cache-Control only -- nothing session/cookie-related was specified, so nothing session-related was built, and this closes the issue as delivered against what it actually asked for. `Cache_Control_Builder` offers a small named-preset value per surface (`no-store`/`private-no-cache`/`public-short`/`public-long`) rather than a free-form directive builder, since Cache-Control directives interact (`public`/`private` are mutually exclusive) and a preset can't express a contradictory combination. Seeded `enabled => 0` on every surface, unlike every other simple pillar -- a deliberate exception, since this is a performance/behaviour decision, not a universal security default, and WordPress core already sends its own strict Cache-Control wherever one is needed. `Cache_Control_Conflict_Detector` implements the issue's own explicit safety requirement ("must be disabled/grayed out rather than emit a competing header"): a known caching plugin (9 verified live, extensible list) or an admin-acknowledged CDN always wins over a stored `enabled=1` row -- confirmed live that acknowledging a CDN silently stops emission even with the row still enabled. No schema change -- 14th pillar in `Pillar_Registry`.
 
 ## Phase 4E: Commercial Product Boundary and the SAM Portal
 

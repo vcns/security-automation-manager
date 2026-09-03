@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.59
+Stable tag: 2.9.60
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,11 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.60 =
+
+* Added: Cache-Control, a new pillar (GitHub issue #221) with a named-preset Cache-Control value per surface (no-store; private, no-cache; public with a 5-minute or 1-hour max-age). Unlike every other pillar, this one is not enabled by default on any surface -- Cache-Control is a caching/performance decision, not a universal security default, and shipping it pre-enabled would risk silently changing a site's frontend caching behaviour on upgrade.
+* Added: automatic conflict detection so this pillar never competes with an existing caching mechanism, per the issue's own explicit safety requirement. It disables itself (with a clear on-screen explanation) when a known caching plugin is detected (WP Rocket, W3 Total Cache, WP Super Cache, LiteSpeed Cache, WP Fastest Cache, Cache Enabler, SiteGround Speed Optimizer, WP-Optimize, or Breeze -- more can be added over time) or when an admin has acknowledged a CDN/edge cache is in front of the site (a manual acknowledgement, since a reverse proxy's own caching isn't observable from inside a single PHP request).
 
 = 2.9.59 =
 

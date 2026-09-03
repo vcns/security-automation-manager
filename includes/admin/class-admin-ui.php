@@ -19,8 +19,8 @@
  *   - security-automation-manager-control  – Control: apply a configured response
  *   - security-automation-manager-verify   – Verify: confirm a control had the intended effect
  *
- * The twelve existing technology-standard pages (Certificates, Continuous
- * Intelligence, Cross-Origin Policies, CSP, HSTS, Information Masking,
+ * The thirteen existing technology-standard pages (Cache-Control, Certificates,
+ * Continuous Intelligence, Cross-Origin Policies, CSP, HSTS, Information Masking,
  * Permissions-Policy, Referrer-Policy, Reverse Tabnabbing, Scripts,
  * X-Content-Type-Options, X-Frame-Options) are still registered exactly as before -- same slugs,
  * callbacks, and capability checks -- then visually hidden from the
@@ -88,6 +88,8 @@ use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
+use WP_SAM\Security\Cache_Control_Builder;
+use WP_SAM\Security\Cache_Control_Conflict_Detector;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
@@ -173,6 +175,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_tor_list_refresh', array( $this, 'handle_tor_list_refresh' ) );
 		add_action( 'admin_post_wp_sam_robots_rules_refresh', array( $this, 'handle_robots_rules_refresh' ) );
 		add_action( 'admin_post_wp_sam_information_masking_check', array( $this, 'handle_information_masking_check' ) );
+		add_action( 'admin_post_wp_sam_cache_control_cdn_acknowledge', array( $this, 'handle_cache_control_cdn_acknowledge' ) );
 		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
@@ -400,6 +403,15 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
+			__( 'Cache-Control', 'vcns-security-automation-manager' ),
+			__( 'Cache-Control', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-cache-control',
+			array( $this, 'render_cache_control' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
 			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			'manage_options',
@@ -407,7 +419,7 @@ class Admin_UI {
 			array( $this, 'render_x_frame_options' )
 		);
 
-		// The twelve technology-standard pages above are visually hidden from
+		// The thirteen technology-standard pages above are visually hidden from
 		// the left-nav by print_hidden_menu_css() (hooked to admin_head,
 		// unconditionally, in register()) -- NOT by remove_submenu_page().
 		// remove_submenu_page() only removes an entry from the $submenu
@@ -423,7 +435,7 @@ class Admin_UI {
 	}
 
 	/**
-	 * Hides the twelve technology-standard pages' entries from the rendered
+	 * Hides the thirteen technology-standard pages' entries from the rendered
 	 * left-nav, without touching their menu/capability registration -- see
 	 * add_menu_pages()'s own comment for why remove_submenu_page() (which
 	 * DOES touch that registration) is not used here. Hooked to admin_head
@@ -434,6 +446,7 @@ class Admin_UI {
 	 */
 	public function print_hidden_menu_css(): void {
 		$hidden_slugs = array(
+			'security-automation-manager-cache-control',
 			'security-automation-manager-certificates',
 			'security-automation-manager-intelligence',
 			'security-automation-manager-traffic',
@@ -632,6 +645,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-xfo',
 			'security-automation-manager_page_security-automation-manager-xcto',
 			'security-automation-manager_page_security-automation-manager-information-masking',
+			'security-automation-manager_page_security-automation-manager-cache-control',
 			'security-automation-manager_page_security-automation-manager-referrer-policy',
 			'security-automation-manager_page_security-automation-manager-permissions-policy',
 			'security-automation-manager_page_security-automation-manager-hsts',
@@ -750,6 +764,13 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-information-masking.php';
+	}
+
+	public function render_cache_control(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-cache-control.php';
 	}
 
 	public function render_cross_origin(): void {
@@ -1474,6 +1495,26 @@ class Admin_UI {
 		( new Information_Masking_Diagnostic() )->check();
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-information-masking' ) );
+		exit;
+	}
+
+	/**
+	 * Saves the admin's manual "I use a CDN/edge cache" acknowledgement --
+	 * GitHub issue #221's own explicit escape hatch for a caching mechanism
+	 * this plugin cannot detect automatically from a single PHP request
+	 * (see Cache_Control_Conflict_Detector's own docblock). An unchecked
+	 * checkbox means the field is simply absent from $_POST, not sent as
+	 * '0', so its presence/absence is what's stored.
+	 */
+	public function handle_cache_control_cdn_acknowledge(): void {
+		check_admin_referer( 'wp_sam_cache_control_cdn_acknowledge' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to change this setting.', 'vcns-security-automation-manager' ) );
+		}
+
+		update_option( Cache_Control_Conflict_Detector::CDN_ACKNOWLEDGED_OPTION, ! empty( $_POST['cdn_acknowledged'] ) );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-cache-control' ) );
 		exit;
 	}
 
@@ -2206,6 +2247,13 @@ class Admin_UI {
 				$sanitized_value = Referrer_Policy_Builder::sanitize_value( $value );
 				if ( $enabled && '' === $sanitized_value ) {
 					wp_send_json_error( array( 'message' => __( 'Invalid Referrer-Policy value.', 'vcns-security-automation-manager' ) ) );
+				}
+				break;
+
+			case Cache_Control_Builder::PILLAR_KEY:
+				$sanitized_value = Cache_Control_Builder::sanitize_value( $value );
+				if ( $enabled && '' === $sanitized_value ) {
+					wp_send_json_error( array( 'message' => __( 'Invalid Cache-Control value.', 'vcns-security-automation-manager' ) ) );
 				}
 				break;
 
