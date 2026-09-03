@@ -24,8 +24,10 @@ use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Detectors\Header_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
+use WP_SAM\Intelligence\Detectors\Login_Cookie_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
@@ -374,6 +376,12 @@ final class Plugin {
 		// bot/crawler classification, not one of §11's 13 families. See
 		// Robots_Txt_Detector's own docblock.
 		Detector_Registry::register( new Robots_Txt_Detector() );
+
+		// Session/cookie behaviour and header-consistency signals (§10,
+		// Phase 4C): same reason, registered separately from
+		// register_defaults(). See each detector's own docblock.
+		Detector_Registry::register( new Login_Cookie_Consistency_Detector() );
+		Detector_Registry::register( new Header_Consistency_Detector() );
 
 		do_action( 'wp_sam_register_detectors' );
 	}

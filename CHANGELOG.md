@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.56] - 2026-09-03
+
+### Added
+
+- Phase 4C of `.roadmap/phase4_plan.md`, fourth increment (session/cookie behaviour and header-consistency signals, `.roadmap/phase3_early_plan.md` §10): `includes/intelligence/detectors/class-login-cookie-consistency-detector.php` (`Login_Cookie_Consistency_Detector`) records a login-surface POST that never carries back `wordpress_test_cookie` -- a cookie WordPress core itself sets when rendering the login form, never introduced by this plugin -- consistent with a script posting credentials straight to `wp-login.php` rather than a real browser that loaded the form first. A broader, site-wide first-party tracking cookie for cookie-persistence testing beyond this is a bigger product/privacy decision, deliberately not built here -- see the detector's own docblock.
+- `includes/intelligence/detectors/class-header-consistency-detector.php` (`Header_Consistency_Detector`) records a request whose User-Agent claims a specific versioned browser (matched on each browser's own token -- `Chrome/`, `Firefox/`, `Edg(e)/`, or `Version/... Safari/`, deliberately not the bare `Safari/537.36` substring that appears in many legitimate WebKit-based crawlers) but sends no `Accept-Language` header, which every mainstream browser always does.
+- `includes/intelligence/class-request-observer.php`: `build_context()` now also captures `has_login_test_cookie`, `accept`, and `accept_language` for these two detectors to read.
+- Both registered outside `register_defaults()` alongside the other §10/§12 signals -- neither is one of §11's 13 named detector families. Both default to observation only.
+
 ## [2.9.55] - 2026-09-03
 
 ### Added
