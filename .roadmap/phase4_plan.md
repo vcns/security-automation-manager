@@ -98,11 +98,6 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 - A broader, site-wide session/cookie-persistence test beyond the login-specific piece already shipped -- would need this plugin to set its own first-party cookie for every visitor. A genuine privacy/product decision (is a security-purpose-only cookie worth the consent-posture question it raises), not something to build without explicit sign-off.
 - Timing and repeated-error correlation (§10's own signal list names these; neither built -- both would need new time-series tracking per source, not just another detector).
 
-**Not done, carried forward:**
-- robots.txt disallow-rule compliance (does a source that fetched robots.txt go on to request disallowed paths anyway) -- only the fetch-recognition half is built; needs live rule parsing plus the same cross-request correlation `recent_paths`/`Uri_Pattern_Analyzer` just proved out for URI-pattern, so this is now a smaller lift than it was.
-- A broader, site-wide session/cookie-persistence test beyond the login-specific piece above -- would need this plugin to set its own first-party cookie for every visitor, a privacy/product decision requiring explicit sign-off, not something to build silently.
-- Timing and repeated-error correlation (§10's own list also names these, neither built).
-
 ## Phase 4D: Documentation and Technical Debt Closeout
 
 **Addresses:** GitHub issues #162, #163, #167, #168, #169, #170, #220, #221 -- all confirmed still accurately open by the 2026-09-02 audit, none touched by anything in Phase 3.
