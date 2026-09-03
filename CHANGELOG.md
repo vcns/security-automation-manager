@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.63] - 2026-09-04
+
+### Fixed
+
+- Phase 4D of `.roadmap/phase4_plan.md`, GitHub issue #167 (per-table pagination regression coverage): `includes/admin/views/partials/scripts-external.php` (the External Scripts table) floored its page number at 1 but never capped it at the real last page -- every other `Table_Query`-driven table in this codebase clamps both ends (`min( max( 1, $page ), $pages )`); this was the one that didn't. `?ext_paged=9999` against a 3-page result set rendered "Page 9999 of 3" instead of serving (and reporting) the real last page. Fixed by reordering the count query ahead of the page-number calculation and applying the same clamp every other table already uses.
+
+### Added
+
+- New regression coverage across all seven of this plugin's `Table_Query`-driven admin tables (External Scripts, Report-Only Evidence, CSP Sources/Policy Changes/Violations, Continuous Intelligence Events/Identities) confirming each one, rendered through its real view file: caps an out-of-range page number at the true last page, preserves at least one filter across a page change, and renders an empty result set without a fatal. `page-csp-dashboard.php` and `page-intelligence.php` had never been directly rendered by any test before (new `test/unit/PageCspDashboardTest.php`, `test/unit/PageIntelligenceTest.php`); the External Scripts and Report-Only Evidence tables gained coverage in the existing `test/unit/AdminUITest.php`. `Table_Query` itself was already covered in isolation (`test/unit/Admin/TableQueryTest.php`) -- this proves each table actually wires it up correctly, not just that the shared helper works.
+- No schema change; no production behaviour change beyond the one bug fix above.
+
 ## [2.9.62] - 2026-09-03
 
 ### Changed

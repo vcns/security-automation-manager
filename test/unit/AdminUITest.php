@@ -385,6 +385,60 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'Hash inventory', $output );
 	}
 
+	/**
+	 * Regression test for Phase 4D (issue #167): scripts-external.php floored
+	 * ext_paged at 1 but never capped it at the real last page -- every other
+	 * Table_Query-driven table in this codebase clamps both ends, so
+	 * ?ext_paged=9999 against a 3-page result set was the one place that
+	 * still rendered "Page 9999 of 3" instead of serving the real last page.
+	 */
+	public function test_scripts_external_pagination_caps_out_of_range_page(): void {
+		$_GET['tab']       = 'external';
+		$_GET['ext_paged'] = '9999';
+		$GLOBALS['_wpdb_get_var']           = 45;
+		$GLOBALS['_wpdb_get_results_queue'] = array( array(), $this->dependency_inventory_rows( 20 ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['ext_paged'] );
+
+		$this->assertStringNotContainsString( 'Page 9999', $output );
+		$this->assertStringContainsString( 'Page 3 of 3', $output );
+	}
+
+	public function test_scripts_external_filter_survives_page_change(): void {
+		$_GET['tab']        = 'external';
+		$_GET['ext_origin'] = 'gstatic.com';
+		$_GET['ext_paged']  = '1';
+		$GLOBALS['_wpdb_get_var']           = 45;
+		$GLOBALS['_wpdb_get_results_queue'] = array( array(), $this->dependency_inventory_rows( 2 ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['ext_origin'], $_GET['ext_paged'] );
+
+		$this->assertStringContainsString( 'ext_origin=gstatic.com', $output );
+		$this->assertStringContainsString( 'ext_paged=2', $output );
+	}
+
+	public function test_scripts_external_empty_result_set_renders_without_fatal(): void {
+		$_GET['tab']              = 'external';
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'No third-party scripts or stylesheets have been observed yet.', $output );
+		$this->assertStringNotContainsString( 'tablenav-pages', $output );
+	}
+
 	public function test_information_masking_page_renders_without_fatal(): void {
 		wp_test_reset_globals();
 
@@ -553,6 +607,60 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'wp-sam-pillar-enabled', $output );
 	}
 
+	/**
+	 * Regression coverage for Phase 4D (issue #167): proves the Report-Only
+	 * Evidence table's e_paged pagination actually caps at the true last
+	 * page when the real view renders, the same guarantee
+	 * test_scripts_external_pagination_caps_out_of_range_page() proves was
+	 * missing for the External Scripts table.
+	 */
+	public function test_cross_origin_coep_evidence_pagination_caps_out_of_range_page(): void {
+		$_GET['tab']     = 'coep';
+		$_GET['e_paged'] = '9999';
+		$GLOBALS['_wpdb_get_var_queue']      = array( 45, 3 );
+		$GLOBALS['_wpdb_get_results_queue']  = array( array(), $this->evidence_rows( 20 ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['e_paged'] );
+
+		$this->assertStringNotContainsString( 'Page 9999', $output );
+		$this->assertStringContainsString( 'Page 3 of 3', $output );
+	}
+
+	public function test_cross_origin_coep_evidence_filter_survives_page_change(): void {
+		$_GET['tab']       = 'coep';
+		$_GET['e_surface'] = 'admin';
+		$_GET['e_paged']   = '1';
+		$GLOBALS['_wpdb_get_var_queue']      = array( 45, 0 );
+		$GLOBALS['_wpdb_get_results_queue']  = array( array(), $this->evidence_rows( 2 ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['e_surface'], $_GET['e_paged'] );
+
+		$this->assertStringContainsString( 'e_surface=admin', $output );
+		$this->assertStringContainsString( 'e_paged=2', $output );
+	}
+
+	public function test_cross_origin_coep_evidence_empty_result_set_renders_without_fatal(): void {
+		$_GET['tab'] = 'coep';
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0 );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'No report-only evidence recorded yet.', $output );
+		$this->assertStringNotContainsString( 'tablenav-pages', $output );
+	}
+
 	// ── display_admin_notices() ────────────────────────────────────────────────
 
 	public function test_display_admin_notices_shows_a_plain_english_summary_for_known_events(): void {
@@ -638,5 +746,41 @@ class AdminUITest extends TestCase {
 		$reflection = new ReflectionClass( Plugin::class );
 
 		return new Admin_UI( $reflection->newInstanceWithoutConstructor() );
+	}
+
+	/** @return array<int, array<string, mixed>> */
+	private function dependency_inventory_rows( int $count ): array {
+		$rows = array();
+		for ( $i = 1; $i <= $count; $i++ ) {
+			$rows[] = array(
+				'id'             => $i,
+				'surface'        => 'frontend',
+				'resource_type'  => 'script',
+				'origin'         => "https://cdn{$i}.example.test",
+				'last_seen_url'  => '',
+				'classification' => 'unclassified',
+				'expected_sri'   => '',
+				'evidence_count' => 1,
+				'last_seen_at'   => '2026-01-01 00:00:00',
+			);
+		}
+		return $rows;
+	}
+
+	/** @return array<int, array<string, mixed>> */
+	private function evidence_rows( int $count ): array {
+		$rows = array();
+		for ( $i = 1; $i <= $count; $i++ ) {
+			$rows[] = array(
+				'surface'          => 'frontend',
+				'report_type'      => 'navigation',
+				'disposition'      => 'report-only',
+				'occurrence_count' => 1,
+				'first_seen_at'    => '2026-01-01 00:00:00',
+				'last_seen_at'     => '2026-01-02 00:00:00',
+				'detail'           => '',
+			);
+		}
+		return $rows;
 	}
 }
