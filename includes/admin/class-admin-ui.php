@@ -19,10 +19,10 @@
  *   - security-automation-manager-control  – Control: apply a configured response
  *   - security-automation-manager-verify   – Verify: confirm a control had the intended effect
  *
- * The eleven existing technology-standard pages (Certificates, Continuous
- * Intelligence, Cross-Origin Policies, CSP, HSTS, Permissions-Policy,
- * Referrer-Policy, Reverse Tabnabbing, Scripts, X-Content-Type-Options,
- * X-Frame-Options) are still registered exactly as before -- same slugs,
+ * The twelve existing technology-standard pages (Certificates, Continuous
+ * Intelligence, Cross-Origin Policies, CSP, HSTS, Information Masking,
+ * Permissions-Policy, Referrer-Policy, Reverse Tabnabbing, Scripts,
+ * X-Content-Type-Options, X-Frame-Options) are still registered exactly as before -- same slugs,
  * callbacks, and capability checks -- then visually hidden from the
  * rendered left-nav by print_hidden_menu_css() (hooked to admin_head,
  * unconditionally on every wp-admin screen). This is deliberately NOT done
@@ -92,6 +92,8 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
+use WP_SAM\Security\Information_Masking_Builder;
+use WP_SAM\Security\Information_Masking_Diagnostic;
 use WP_SAM\Security\Internal_Script_Integrity_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
@@ -170,6 +172,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_change_window_close', array( $this, 'handle_change_window_close' ) );
 		add_action( 'admin_post_wp_sam_tor_list_refresh', array( $this, 'handle_tor_list_refresh' ) );
 		add_action( 'admin_post_wp_sam_robots_rules_refresh', array( $this, 'handle_robots_rules_refresh' ) );
+		add_action( 'admin_post_wp_sam_information_masking_check', array( $this, 'handle_information_masking_check' ) );
 		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
@@ -388,6 +391,15 @@ class Admin_UI {
 
 		add_submenu_page(
 			'security-automation-manager',
+			__( 'Information Masking', 'vcns-security-automation-manager' ),
+			__( 'Information Masking', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-information-masking',
+			array( $this, 'render_information_masking' )
+		);
+
+		add_submenu_page(
+			'security-automation-manager',
 			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			'manage_options',
@@ -395,7 +407,7 @@ class Admin_UI {
 			array( $this, 'render_x_frame_options' )
 		);
 
-		// The eleven technology-standard pages above are visually hidden from
+		// The twelve technology-standard pages above are visually hidden from
 		// the left-nav by print_hidden_menu_css() (hooked to admin_head,
 		// unconditionally, in register()) -- NOT by remove_submenu_page().
 		// remove_submenu_page() only removes an entry from the $submenu
@@ -411,7 +423,7 @@ class Admin_UI {
 	}
 
 	/**
-	 * Hides the eleven technology-standard pages' entries from the rendered
+	 * Hides the twelve technology-standard pages' entries from the rendered
 	 * left-nav, without touching their menu/capability registration -- see
 	 * add_menu_pages()'s own comment for why remove_submenu_page() (which
 	 * DOES touch that registration) is not used here. Hooked to admin_head
@@ -429,6 +441,7 @@ class Admin_UI {
 			'security-automation-manager-cross-origin',
 			'security-automation-manager-dashboard',
 			'security-automation-manager-hsts',
+			'security-automation-manager-information-masking',
 			'security-automation-manager-permissions-policy',
 			'security-automation-manager-referrer-policy',
 			'security-automation-manager-reverse-tabnabbing',
@@ -618,6 +631,7 @@ class Admin_UI {
 			'security-automation-manager_page_security-automation-manager-dashboard',
 			'security-automation-manager_page_security-automation-manager-xfo',
 			'security-automation-manager_page_security-automation-manager-xcto',
+			'security-automation-manager_page_security-automation-manager-information-masking',
 			'security-automation-manager_page_security-automation-manager-referrer-policy',
 			'security-automation-manager_page_security-automation-manager-permissions-policy',
 			'security-automation-manager_page_security-automation-manager-hsts',
@@ -729,6 +743,13 @@ class Admin_UI {
 			'<p>' . esc_html__( 'Stops browsers from guessing ("MIME-sniffing") a response\'s content type away from what the server declared, closing off a class of content-sniffing attacks. nosniff is the only defined value for this header, so each surface is simply on or off.', 'vcns-security-automation-manager' ) . '</p>',
 			null
 		);
+	}
+
+	public function render_information_masking(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		require WP_SAM_DIR . 'includes/admin/views/page-information-masking.php';
 	}
 
 	public function render_cross_origin(): void {
@@ -1439,6 +1460,24 @@ class Admin_UI {
 	}
 
 	/**
+	 * Runs Information_Masking_Diagnostic's live self-probe against this
+	 * site's own front page and persists the result -- see that class's own
+	 * docblock for why a "present" result for Server specifically is not
+	 * necessarily a bug (issue #220's documented technical ceiling).
+	 */
+	public function handle_information_masking_check(): void {
+		check_admin_referer( 'wp_sam_information_masking_check' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this check.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Information_Masking_Diagnostic() )->check();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-information-masking' ) );
+		exit;
+	}
+
+	/**
 	 * Saves (or clears) the administrator's own IPinfo API token for
 	 * Geo-IP (Phase 4A, third increment). Sealed via Credential_Vault --
 	 * see Geo_Ip_Store's own docblock for why this is never a shared VCNS
@@ -2140,6 +2179,11 @@ class Admin_UI {
 		switch ( $pillar ) {
 			case X_Content_Type_Options_Builder::PILLAR_KEY:
 				// No configurable value -- nosniff is the only defined value.
+				break;
+
+			case Information_Masking_Builder::PILLAR_KEY:
+				// No configurable value -- an enabled surface removes every
+				// deliverable-from-PHP item (X-Powered-By, Server, X-Pingback).
 				break;
 
 			case Reverse_Tabnabbing_Builder::PILLAR_KEY:

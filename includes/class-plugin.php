@@ -55,6 +55,7 @@ use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
 use WP_SAM\Security\Dependency_Integrity_Monitor;
+use WP_SAM\Security\Information_Masking_Builder;
 use WP_SAM\Security\Internal_Script_Integrity_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
@@ -85,6 +86,7 @@ final class Plugin {
 	public Policy_Builder $policy_builder;
 	public X_Frame_Options_Builder $x_frame_options_builder;
 	public X_Content_Type_Options_Builder $x_content_type_options_builder;
+	public Information_Masking_Builder $information_masking_builder;
 	public Referrer_Policy_Builder $referrer_policy_builder;
 	public Permissions_Policy_Builder $permissions_policy_builder;
 	public Strict_Transport_Security_Builder $strict_transport_security_builder;
@@ -216,6 +218,7 @@ final class Plugin {
 		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
 		$this->x_content_type_options_builder            = new X_Content_Type_Options_Builder();
+		$this->information_masking_builder               = new Information_Masking_Builder();
 		$this->referrer_policy_builder                   = new Referrer_Policy_Builder();
 		$this->permissions_policy_builder                = new Permissions_Policy_Builder();
 		$this->strict_transport_security_builder         = new Strict_Transport_Security_Builder();
@@ -238,6 +241,7 @@ final class Plugin {
 		$this->policy_builder->register();
 		$this->x_frame_options_builder->register();
 		$this->x_content_type_options_builder->register();
+		$this->information_masking_builder->register();
 		$this->referrer_policy_builder->register();
 		$this->permissions_policy_builder->register();
 		$this->strict_transport_security_builder->register();

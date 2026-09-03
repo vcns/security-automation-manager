@@ -124,6 +124,7 @@ class AdminUITest extends TestCase {
 				'Cross-Origin-Opener-Policy',
 				'Cross-Origin-Resource-Policy',
 				'External Scripts',
+				'Information Masking',
 				'Internal Script Integrity',
 				'Permissions-Policy',
 				'Referrer-Policy',
@@ -192,7 +193,7 @@ class AdminUITest extends TestCase {
 	}
 
 	/**
-	 * All eleven technology-standard pages must still be REGISTERED (same as
+	 * All twelve technology-standard pages must still be REGISTERED (same as
 	 * before this change) -- they're hidden from the rendered menu via CSS
 	 * (print_hidden_menu_css()), not via removal, specifically because
 	 * removal breaks direct URL access in real WordPress (see
@@ -215,6 +216,7 @@ class AdminUITest extends TestCase {
 				'security-automation-manager-cross-origin',
 				'security-automation-manager-dashboard',
 				'security-automation-manager-hsts',
+				'security-automation-manager-information-masking',
 				'security-automation-manager-permissions-policy',
 				'security-automation-manager-referrer-policy',
 				'security-automation-manager-reverse-tabnabbing',
@@ -259,6 +261,7 @@ class AdminUITest extends TestCase {
 				'security-automation-manager-cross-origin',
 				'security-automation-manager-dashboard',
 				'security-automation-manager-hsts',
+				'security-automation-manager-information-masking',
 				'security-automation-manager-permissions-policy',
 				'security-automation-manager-referrer-policy',
 				'security-automation-manager-reverse-tabnabbing',
@@ -377,6 +380,42 @@ class AdminUITest extends TestCase {
 		unset( $_GET['tab'] );
 
 		$this->assertStringContainsString( 'Hash inventory', $output );
+	}
+
+	public function test_information_masking_page_renders_without_fatal(): void {
+		wp_test_reset_globals();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-information-masking.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Information Masking', $output );
+		$this->assertStringContainsString( 'wp-sam-pillar-enabled', $output );
+		$this->assertStringContainsString( 'X-Powered-By', $output );
+		$this->assertStringContainsString( 'Not yet checked', $output );
+		$this->assertStringContainsString( 'wp_sam_information_masking_check', $output );
+	}
+
+	public function test_information_masking_page_shows_diagnostic_results(): void {
+		wp_test_reset_globals();
+		update_option(
+			'wp_sam_information_masking_diagnostic',
+			array(
+				'x-powered-by' => 'masked',
+				'server'       => 'present',
+				'x-pingback'   => 'masked',
+			)
+		);
+		update_option( 'wp_sam_information_masking_checked_at', '2026-09-02 10:00:00' );
+		update_option( 'wp_sam_information_masking_last_status', 'success' );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-information-masking.php';
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Masked', $output );
+		$this->assertStringContainsString( 'Present', $output );
+		$this->assertStringContainsString( '2026-09-02 10:00:00', $output );
 	}
 
 	public function test_observe_view_renders_without_fatal(): void {

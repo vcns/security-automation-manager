@@ -339,6 +339,22 @@ if ( ! function_exists( 'submit_button' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_nonce_field' ) ) {
+	// Fixed, non-cryptographic value -- no test asserts a real nonce's
+	// actual value, only that a form renders one of these fields at all.
+	function wp_nonce_field( int|string $action = -1, string $name = '_wpnonce', bool $referer = true, bool $echo = true ): string {
+		$field = sprintf(
+			'<input type="hidden" name="%s" value="test-nonce-%s">',
+			esc_attr( $name ),
+			esc_attr( (string) $action )
+		);
+		if ( $echo ) {
+			echo $field; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- test stub.
+		}
+		return $field;
+	}
+}
+
 if ( ! function_exists( 'wp_unslash' ) ) {
 	function wp_unslash( mixed $value ): mixed {
 		return is_string( $value ) ? stripslashes( $value ) : $value;

@@ -170,19 +170,19 @@ class ActivatorTest extends TestCase {
 	// ── Pillar profile seeding ───────────────────────────────────────────────
 
 	public function test_seed_default_pillar_profiles_inserts_enabled_rows_for_every_missing_surface(): void {
-		// 9 pillars x 4 surfaces = 36 (pillar, surface) pairs, none existing yet.
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		// 10 pillars x 4 surfaces = 40 (pillar, surface) pairs, none existing yet.
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
-		$this->assertCount( 36, $GLOBALS['_wpdb_inserted_rows'] );
+		$this->assertCount( 40, $GLOBALS['_wpdb_inserted_rows'] );
 		foreach ( $GLOBALS['_wpdb_inserted_rows'] as $row ) {
 			$this->assertSame( 1, $row['data']['enabled'] );
 		}
 	}
 
 	public function test_seed_default_pillar_profiles_skips_rows_that_already_exist(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, 1 );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, 1 );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -190,7 +190,7 @@ class ActivatorTest extends TestCase {
 	}
 
 	public function test_seed_default_pillar_profiles_x_frame_options_denies_api_and_sameorigin_elsewhere(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -202,7 +202,7 @@ class ActivatorTest extends TestCase {
 	}
 
 	public function test_seed_default_pillar_profiles_referrer_policy_no_referrer_on_api_only(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -212,7 +212,7 @@ class ActivatorTest extends TestCase {
 	}
 
 	public function test_seed_default_pillar_profiles_permissions_policy_autoplay_self_on_frontend_only_and_payment_none_everywhere(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -232,7 +232,7 @@ class ActivatorTest extends TestCase {
 	}
 
 	public function test_seed_default_pillar_profiles_cross_origin_resource_policy_same_site_on_api_only(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -244,7 +244,7 @@ class ActivatorTest extends TestCase {
 	}
 
 	public function test_seed_default_pillar_profiles_coop_and_coep_are_unsafe_none_on_every_surface(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -257,7 +257,7 @@ class ActivatorTest extends TestCase {
 	}
 
 	public function test_seed_default_pillar_profiles_x_permitted_cross_domain_policies_is_none_everywhere(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 
@@ -267,8 +267,21 @@ class ActivatorTest extends TestCase {
 		}
 	}
 
+	public function test_seed_default_pillar_profiles_information_masking_is_enabled_with_no_value_on_every_surface(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
+
+		$this->invoke_seed_default_pillar_profiles();
+
+		$rows = $this->inserted_rows_for_pillar( 'information-masking' );
+		$this->assertCount( 4, $rows );
+		foreach ( $rows as $surface => $row ) {
+			$this->assertSame( 1, $row['enabled'], "surface {$surface}" );
+			$this->assertSame( array(), json_decode( $row['payload'], true ), "surface {$surface}" );
+		}
+	}
+
 	public function test_seed_default_pillar_profiles_does_not_include_hsts(): void {
-		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 36, null );
+		$GLOBALS['_wpdb_get_var_queue'] = array_fill( 0, 40, null );
 
 		$this->invoke_seed_default_pillar_profiles();
 

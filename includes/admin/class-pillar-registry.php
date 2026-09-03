@@ -1,8 +1,9 @@
 <?php
 /**
- * Single source of truth for the 12 pillars backed by the shared
+ * Single source of truth for the 13 pillars backed by the shared
  * sam_pillar_profiles table (the nine "simple" header pillars, Reverse
- * Tabnabbing, External Scripts, and Internal Script Integrity).
+ * Tabnabbing, External Scripts, Internal Script Integrity, and
+ * Information Masking).
  *
  * Replaces the view-local $simple_pillars array that used to live in
  * page-overview.php -- that array had already drifted from reality once
@@ -28,6 +29,7 @@ use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
 use WP_SAM\Security\Dependency_Governance_Builder;
+use WP_SAM\Security\Information_Masking_Builder;
 use WP_SAM\Security\Internal_Script_Integrity_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
@@ -68,6 +70,13 @@ final class Pillar_Registry {
 			Referrer_Policy_Builder::PILLAR_KEY            => array(
 				'label'           => __( 'Referrer-Policy', 'vcns-security-automation-manager' ),
 				'page'            => 'security-automation-manager-referrer-policy',
+				'tab'             => null,
+				'mode_extractor'  => null,
+				'mode_status_map' => array(),
+			),
+			Information_Masking_Builder::PILLAR_KEY        => array(
+				'label'           => __( 'Information Masking', 'vcns-security-automation-manager' ),
+				'page'            => 'security-automation-manager-information-masking',
 				'tab'             => null,
 				'mode_extractor'  => null,
 				'mode_status_map' => array(),

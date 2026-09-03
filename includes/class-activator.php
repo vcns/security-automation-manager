@@ -17,6 +17,7 @@ use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Resource_Policy_Builder;
+use WP_SAM\Security\Information_Masking_Builder;
 use WP_SAM\Security\Permissions_Policy_Builder;
 use WP_SAM\Security\Referrer_Policy_Builder;
 use WP_SAM\Security\Reverse_Tabnabbing_Builder;
@@ -1637,6 +1638,7 @@ class Activator {
 			$rows = array(
 				X_Frame_Options_Builder::PILLAR_KEY        => wp_json_encode( array( 'value' => $is_api ? 'DENY' : 'SAMEORIGIN' ) ),
 				X_Content_Type_Options_Builder::PILLAR_KEY => $empty_payload,
+				Information_Masking_Builder::PILLAR_KEY    => $empty_payload,
 				Referrer_Policy_Builder::PILLAR_KEY        => wp_json_encode( array( 'value' => $is_api ? 'no-referrer' : Referrer_Policy_Builder::DEFAULT_VALUE ) ),
 				Permissions_Policy_Builder::PILLAR_KEY     => 'frontend' === $surface ? $permissions_payload_frontend : $permissions_payload_default,
 				Reverse_Tabnabbing_Builder::PILLAR_KEY     => $empty_payload,
