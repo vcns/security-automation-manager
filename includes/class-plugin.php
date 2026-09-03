@@ -26,6 +26,7 @@ use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
+use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
 use WP_SAM\Intelligence\Change_Log_Store;
@@ -367,6 +368,12 @@ final class Plugin {
 		// isn't a Pattern_Detector (no string to regex-match). See Http_
 		// Method_Detector's own docblock.
 		Detector_Registry::register( new Http_Method_Detector() );
+
+		// Robots.txt visit recognition (§10 "robots.txt behaviour" signal,
+		// Phase 4C): registered separately for the same reason -- §10 is
+		// bot/crawler classification, not one of §11's 13 families. See
+		// Robots_Txt_Detector's own docblock.
+		Detector_Registry::register( new Robots_Txt_Detector() );
 
 		do_action( 'wp_sam_register_detectors' );
 	}

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.55] - 2026-09-03
+
+### Added
+
+- Phase 4C of `.roadmap/phase4_plan.md`, third increment (robots.txt behaviour tracking, first piece, `.roadmap/phase3_early_plan.md` §10): `includes/intelligence/detectors/class-robots-txt-detector.php` (`Robots_Txt_Detector`) recognises a source examining `/robots.txt`, recorded as low-severity, observation-only evidence -- deliberately not treated as adverse (checking robots.txt is well-behaved-crawler etiquette), just made correlatable by IP against `Scanner_Identity_Store`/`Bot_Classifier`.
+- Registered separately from `register_defaults()` alongside `Honeypath_Detector`/`Http_Method_Detector` -- §10 isn't one of §11's 13 named detector families.
+- Explicitly not built in this pass: actually parsing robots.txt's disallow rules and checking whether a source goes on to violate them -- carried forward.
+
 ## [2.9.54] - 2026-09-03
 
 ### Added
