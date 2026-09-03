@@ -2,9 +2,10 @@
 /**
  * Unit tests for WP_SAM\Intelligence\Baseline_State_Builder.
  *
- * Policy_Builder is constructed with no-op hash/source loader callables so
- * build_policy_string() never makes its own additional wpdb calls -- this
- * class's own four table queries (csp_policy_profiles, sam_pillar_profiles,
+ * Policy_Builder is constructed with a no-op Stub_Policy_Data_Loader (see
+ * test/unit/Stub_Policy_Data_Loader.php) so build_policy_string() never
+ * makes its own additional wpdb calls -- this class's own four table
+ * queries (csp_policy_profiles, sam_pillar_profiles,
  * sam_dependency_inventory, sam_internal_asset_inventory) stay the only
  * wpdb interaction to sequence via _wpdb_get_results_queue.
  */
@@ -22,7 +23,7 @@ class BaselineStateBuilderTest extends TestCase {
 
 	protected function setUp(): void {
 		wp_test_reset_globals();
-		$policy_builder = new Policy_Builder( new Feature_Gate(), static fn ( string $s ) => array(), static fn ( string $s ) => array() );
+		$policy_builder = new Policy_Builder( new Feature_Gate(), new Stub_Policy_Data_Loader() );
 		$this->builder   = new Baseline_State_Builder( $policy_builder );
 	}
 

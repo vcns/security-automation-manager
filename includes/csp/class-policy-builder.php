@@ -44,6 +44,12 @@
  * Extends Header_Builder, which owns the pillar-agnostic envelope: hook
  * registration, the header_emitted/headers_sent() guard, and surface
  * detection. See includes/security/class-header-builder.php.
+ *
+ * Policy input (the stored profile, approved hashes, approved sources) is
+ * read exclusively through the injected Policy_Data_Loader collaborator
+ * (GitHub issue #170) -- never a wpdb call this class makes itself, and
+ * never a protected method a subclass can override. See Policy_Data_
+ * Loader's own docblock for why.
  */
 
 declare( strict_types=1 );
@@ -265,23 +271,25 @@ class Policy_Builder extends Header_Builder {
 
 	private Feature_Gate $gate;
 	private ?Audit_Log $audit;
+	private Policy_Data_Loader $data_loader;
 
-	/** @var callable|null */
-	private $hash_loader;
-
-	/** @var callable|null */
-	private $source_loader;
-
+	/**
+	 * $data_loader is the sole seam for how policy input is loaded (GitHub
+	 * issue #170) -- defaults to the real wpdb-backed implementation, so
+	 * production wiring (Plugin::bootstrap()) never has to pass one
+	 * explicitly. Tests inject a Policy_Data_Loader implementation of
+	 * their own instead of subclassing this class to override a protected
+	 * method, which is exactly the trust-boundary widening #170 asks to
+	 * close.
+	 */
 	public function __construct(
 		Feature_Gate $gate,
-		?callable $hash_loader = null,
-		?callable $source_loader = null,
+		?Policy_Data_Loader $data_loader = null,
 		?Audit_Log $audit = null
 	) {
-		$this->gate          = $gate;
-		$this->hash_loader   = $hash_loader;
-		$this->source_loader = $source_loader;
-		$this->audit         = $audit;
+		$this->gate        = $gate;
+		$this->data_loader = $data_loader ?? new Wpdb_Policy_Data_Loader();
+		$this->audit       = $audit;
 	}
 
 	// ── Header emission ───────────────────────────────────────────────────────
@@ -662,67 +670,24 @@ class Policy_Builder extends Header_Builder {
 		return $directives;
 	}
 
-	// ── DB reads ──────────────────────────────────────────────────────────────
+	// ── Policy input (delegated to $data_loader; see class docblock and
+	// Policy_Data_Loader's own for why this is the sole seam) ───────────────
 
-	protected function load_profile( string $surface ): ?array {
-		global $wpdb;
-		$table = $wpdb->prefix . 'csp_policy_profiles';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE surface = %s LIMIT 1", $surface ), ARRAY_A );
-		return ! empty( $row ) ? $row : null;
+	/**
+	 * final because load_profile() is Header_Builder's own abstract
+	 * contract (must stay at least protected to satisfy it) -- final
+	 * closes the one remaining subclass-override seam GitHub issue #170
+	 * objects to, without narrowing the visibility Header_Builder requires.
+	 */
+	final protected function load_profile( string $surface ): ?array {
+		return $this->data_loader->load_profile( $surface );
 	}
 
-	protected function load_approved_hashes( string $surface ): array {
-		if ( null !== $this->hash_loader ) {
-			return ( $this->hash_loader )( $surface );
-		}
-		global $wpdb;
-		$table = $wpdb->prefix . 'csp_hash_inventory';
-		// ORDER BY last_seen_at DESC, id DESC: the hash-append loop in
-		// build_policy_string() relies on most-recently-seen rows coming
-		// first, so its byte-budget cutoff drops the oldest hashes rather
-		// than an arbitrary subset. `last_seen_at` is a datetime column
-		// (one-second resolution) and many rows commonly get bumped to the
-		// exact same second by the same page render, so ORDER BY on that
-		// column alone leaves the relative order of everything tied on a
-		// timestamp unspecified by SQL -- confirmed in production,
-		// 2026-08-19: the same ~1,027-row backlog produced a
-		// "Dropped 34" cutoff on one request and "Dropped 985" on another
-		// moments later, because the arbitrary tie order happened to place
-		// a different mix of cheap (style-src-attr, single-directive) vs
-		// expensive (script-src/style-src, doubled) hashes before the
-		// cutoff each time. `id DESC` breaks ties deterministically (a
-		// row's id never changes on reactivation), so the same DB state
-		// now always produces the same cutoff, not just "some" cutoff.
-		// The LIMIT is a generous, defense-in-depth ceiling on rows loaded
-		// into PHP memory in the first place -- not the primary safety
-		// mechanism (that's the byte budget) -- so it's set well above
-		// MAX_HASH_TOKEN_BUDGET_BYTES could ever actually use.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT directive, hash_algo, hash_value FROM {$table} WHERE surface = %s AND status = 'active' ORDER BY last_seen_at DESC, id DESC LIMIT 2000",
-				$surface
-			),
-			ARRAY_A
-		);
-		return ! empty( $rows ) ? $rows : array();
+	private function load_approved_hashes( string $surface ): array {
+		return $this->data_loader->load_approved_hashes( $surface );
 	}
 
-	protected function load_approved_sources( string $surface ): array {
-		if ( null !== $this->source_loader ) {
-			return ( $this->source_loader )( $surface );
-		}
-		global $wpdb;
-		$table = $wpdb->prefix . 'csp_source_inventory';
-		$rows  = $wpdb->get_results(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT directive, source_host, source_scheme FROM {$table} WHERE surface = %s AND approval_state = 'approved'",
-				$surface
-			),
-			ARRAY_A
-		);
-		return ! empty( $rows ) ? $rows : array();
+	private function load_approved_sources( string $surface ): array {
+		return $this->data_loader->load_approved_sources( $surface );
 	}
 }

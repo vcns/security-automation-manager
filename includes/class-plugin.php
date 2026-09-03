@@ -217,7 +217,7 @@ final class Plugin {
 		add_action( 'init', array( $this, 'register_detectors' ) );
 
 		$this->nonce_manager                             = new Nonce_Manager( $this->gate );
-		$this->policy_builder                            = new Policy_Builder( $this->gate, null, null, $this->audit );
+		$this->policy_builder                            = new Policy_Builder( $this->gate, null, $this->audit );
 		$this->x_frame_options_builder                   = new X_Frame_Options_Builder();
 		$this->x_content_type_options_builder            = new X_Content_Type_Options_Builder();
 		$this->information_masking_builder               = new Information_Masking_Builder();

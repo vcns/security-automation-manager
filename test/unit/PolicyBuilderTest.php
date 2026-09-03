@@ -4,12 +4,19 @@
  *
  * Focuses on build_policy_string() which assembles the CSP header value.
  * Header emission itself is not tested here as it requires PHP header state.
+ *
+ * Policy input is stubbed via Stub_Policy_Data_Loader (test/unit/
+ * Stub_Policy_Data_Loader.php), never by subclassing Policy_Builder
+ * itself (GitHub issue #170) -- direct SQL/query-shape coverage for the
+ * real data-loading implementation now lives in
+ * test/unit/WpdbPolicyDataLoaderTest.php instead.
  */
 
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\CSP\Policy_Builder;
+use WP_SAM\CSP\Policy_Data_Loader;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -22,6 +29,32 @@ class PolicyBuilderTest extends TestCase {
 		wp_test_reset_globals();
 		$this->gate    = $this->createMock( Feature_Gate::class );
 		$this->builder = new Policy_Builder( $this->gate );
+	}
+
+	// ── Policy_Data_Loader dependency boundary (GitHub issue #170) ───────────
+
+	/**
+	 * Confirms the constructor's default collaborator is a real, working
+	 * Wpdb_Policy_Data_Loader when none is injected -- production wiring
+	 * (Plugin::bootstrap()) never passes one explicitly, so this is what
+	 * every real WordPress request actually gets.
+	 */
+	public function test_load_profile_defaults_to_the_real_wpdb_backed_loader(): void {
+		$GLOBALS['_wpdb_get_row'] = array( 'surface' => 'frontend', 'mode' => 'enforce' );
+
+		$this->assertSame( $GLOBALS['_wpdb_get_row'], $this->invoke_load_profile( $this->builder, 'frontend' ) );
+	}
+
+	public function test_load_profile_delegates_to_an_injected_data_loader(): void {
+		$builder = new Policy_Builder( $this->gate, new Stub_Policy_Data_Loader( profile: array( 'surface' => 'admin', 'mode' => 'report-only' ) ) );
+
+		$this->assertSame( array( 'surface' => 'admin', 'mode' => 'report-only' ), $this->invoke_load_profile( $builder, 'admin' ) );
+	}
+
+	private function invoke_load_profile( Policy_Builder $builder, string $surface ): ?array {
+		$method = new ReflectionMethod( $builder, 'load_profile' );
+		$method->setAccessible( true );
+		return $method->invoke( $builder, $surface );
 	}
 
 	public function test_register_emits_headers_on_send_headers_and_redirects(): void {
@@ -351,17 +384,12 @@ class PolicyBuilderTest extends TestCase {
 		);
 
 		// Inject cdn.example.com as an approved host source for script-src.
-		$builder = $this->make_db_stub_builder(
-			approved_sources: [ [ 'directive' => 'script-src', 'source_host' => 'cdn.example.com' ] ]
-		);
-		// Gate must allow strict_dynamic for this builder too.
-		$builder2 = new Policy_Builder(
+		$builder = new Policy_Builder(
 			$this->gate,
-			fn( string $s ) => [],
-			fn( string $s ) => [ [ 'directive' => 'script-src', 'source_host' => 'cdn.example.com' ] ]
+			new Stub_Policy_Data_Loader( sources: [ [ 'directive' => 'script-src', 'source_host' => 'cdn.example.com' ] ] )
 		);
 
-		$policy = $builder2->build_policy_string( $profile, 'frontend' );
+		$policy = $builder->build_policy_string( $profile, 'frontend' );
 
 		$this->assertStringContainsString( "'strict-dynamic'", $policy );
 		$this->assertStringNotContainsString( 'cdn.example.com', $policy );
@@ -396,18 +424,10 @@ class PolicyBuilderTest extends TestCase {
 			strict_dynamic: true
 		);
 
-		$builder = new class(
+		$builder = new Policy_Builder(
 			$this->gate,
-			[ [ 'directive' => 'script-src-elem', 'source_host' => 'cdn.example.com' ] ]
-		) extends Policy_Builder {
-			public function __construct( Feature_Gate $gate, private array $stub_sources ) {
-				parent::__construct( $gate );
-			}
-
-			protected function load_approved_sources( string $surface ): array {
-				return $this->stub_sources;
-			}
-		};
+			new Stub_Policy_Data_Loader( sources: [ [ 'directive' => 'script-src-elem', 'source_host' => 'cdn.example.com' ] ] )
+		);
 
 		$policy = $builder->build_policy_string( $profile, 'frontend' );
 
@@ -679,24 +699,6 @@ class PolicyBuilderTest extends TestCase {
 		// The policy must stay well under the raw (undropped) size 80 hashes
 		// would have produced, confirming something was actually dropped.
 		$this->assertLessThan( 80 * 2 * 60, strlen( $policy ) );
-	}
-
-	public function test_load_approved_hashes_orders_deterministically_on_tied_timestamps(): void {
-		// Regression test for a production bug (2026-08-19): ORDER BY
-		// last_seen_at DESC alone leaves ties (very common -- last_seen_at
-		// is a datetime column, one-second resolution, and many hashes get
-		// bumped by the same page render) in SQL-unspecified order, so the
-		// same ~1,027-row backlog produced a "Dropped 34" cutoff on one
-		// request and "Dropped 985" moments later on another. The query
-		// must always include a deterministic tiebreaker.
-		$builder = new Policy_Builder( $this->gate );
-
-		$ref = new ReflectionMethod( $builder, 'load_approved_hashes' );
-		$ref->setAccessible( true );
-		$ref->invoke( $builder, 'frontend' );
-
-		$query = $GLOBALS['_wpdb_last_get_results_query'] ?? '';
-		$this->assertStringContainsString( 'ORDER BY last_seen_at DESC, id DESC', $query );
 	}
 
 	public function test_build_logs_a_warning_when_hashes_are_dropped_for_budget(): void {
@@ -1110,7 +1112,12 @@ class PolicyBuilderTest extends TestCase {
 	}
 
 	/**
-	 * Returns a Policy_Builder subclass that stubs DB reads and the nonce bridge.
+	 * Returns a Policy_Builder with a Stub_Policy_Data_Loader injected
+	 * (GitHub issue #170) and the nonce bridge stubbed. The nonce bridge
+	 * itself is a separate, pre-existing mechanism (see NonceBridge.php)
+	 * outside #170's scope, so it's still worked around via
+	 * $GLOBALS['_wp_sam_test_nonce'] and a build_policy_string() override
+	 * -- that method isn't part of the data-loading boundary #170 is about.
 	 */
 	private function make_db_stub_builder(
 		string $nonce = '',
@@ -1120,28 +1127,18 @@ class PolicyBuilderTest extends TestCase {
 	): Policy_Builder {
 		return new class(
 			$this->gate,
+			new Stub_Policy_Data_Loader( $approved_hashes, $approved_sources ),
 			$nonce,
-			$approved_hashes,
-			$approved_sources,
 			$audit
 		) extends Policy_Builder {
 
 			public function __construct(
 				Feature_Gate $gate,
+				Policy_Data_Loader $data_loader,
 				private string $stub_nonce,
-				private array  $stub_hashes,
-				private array  $stub_sources,
 				?Audit_Log $audit
 			) {
-				parent::__construct( $gate, null, null, $audit );
-			}
-
-			protected function load_approved_hashes( string $surface ): array {
-				return $this->stub_hashes;
-			}
-
-			protected function load_approved_sources( string $surface ): array {
-				return $this->stub_sources;
+				parent::__construct( $gate, $data_loader, $audit );
 			}
 
 			public function build_policy_string( array $profile, string $surface ): string {
@@ -1156,5 +1153,5 @@ class PolicyBuilderTest extends TestCase {
 	}
 }
 
-// Plugin_Nonce_Manager stub is defined in tests/stubs/NonceBridge.php
-// which is loaded by tests/bootstrap.php before any test class is instantiated.
+// Plugin_Nonce_Manager stub is defined in test/unit/NonceBridge.php,
+// which is loaded by test/bootstrap.php before any test class is instantiated.
