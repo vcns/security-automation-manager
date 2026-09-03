@@ -878,21 +878,69 @@ if ( ! class_exists( 'wpdb_stub' ) ) {
 		public int     $rows_affected = 0;
 		public int     $insert_id      = 0;
 
-		public function prepare( string $query, mixed ...$args ): string {
+		/**
+		 * Mirrors real wpdb::prepare() closely enough for this codebase's own
+		 * placeholder usage (GitHub issue #169): %s/%d/%f/%i, %% as a literal
+		 * percent, multiple placeholders consumed in order, and an argument-
+		 * count mismatch returning null with no query -- exactly what real
+		 * WordPress does (wp-includes/class-wpdb.php, confirmed against
+		 * current core source, 3 September 2026), not a stub-only behaviour.
+		 * LIKE expressions need no special handling here: the wildcard '%'
+		 * characters live inside an argument VALUE (typically built via
+		 * esc_like()), never inside the query template preg_replace_callback()
+		 * scans, so they're never mistaken for a placeholder.
+		 *
+		 * Deliberately does NOT implement positional (%1$s) or width/precision
+		 * (%05d) placeholder syntax -- confirmed via a full codebase grep that
+		 * no ->prepare() call anywhere uses either, so real WP's considerably
+		 * more complex placeholder regex would only add untested surface here.
+		 */
+		public function prepare( string $query, mixed ...$args ): ?string {
+			// Backward-compat calling convention real wpdb::prepare() also
+			// supports: prepare($query, [$a, $b]) as well as the variadic
+			// prepare($query, $a, $b) this codebase always actually uses.
+			if ( 1 === count( $args ) && is_array( $args[0] ) ) {
+				$args = $args[0];
+			}
+
+			$placeholder_count = 0;
+			foreach ( self::prepare_matches( $query ) as $match ) {
+				if ( '%%' !== $match ) {
+					++$placeholder_count;
+				}
+			}
+
+			if ( $placeholder_count !== count( $args ) ) {
+				return null;
+			}
+
 			$i = 0;
 			return (string) preg_replace_callback(
-				'/%%|%(s|d)/',
+				'/%%|%([sdfi])/',
 				static function ( array $m ) use ( &$i, $args ): string {
 					if ( '%%' === $m[0] ) {
 						return '%';
 					}
-					$val = $args[ $i++ ] ?? '';
-					return 's' === $m[1]
-						? "'" . addslashes( (string) $val ) . "'"
-						: (string) (int) $val;
+					$val = $args[ $i++ ];
+					return match ( $m[1] ) {
+						's'     => "'" . addslashes( (string) $val ) . "'",
+						'd'     => (string) (int) $val,
+						'f'     => sprintf( '%f', (float) $val ),
+						// Matches wpdb::_escape_identifier_value(): doubles any
+						// embedded backtick, then wraps the whole identifier in
+						// backticks -- never single-quoted like %s.
+						'i'     => '`' . str_replace( '`', '``', (string) $val ) . '`',
+						default => (string) $val,
+					};
 				},
 				$query
 			);
+		}
+
+		/** @return array<int,string> every %%/%s/%d/%f/%i token found, in order. */
+		private static function prepare_matches( string $query ): array {
+			preg_match_all( '/%%|%[sdfi]/', $query, $matches );
+			return $matches[0];
 		}
 
 		public function get_var( string $query ): mixed {
