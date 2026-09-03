@@ -79,8 +79,6 @@ $ext_sort           = Table_Query::resolve_sort(
 );
 
 $ext_per_page = 20;
-$ext_page_num = max( 1, (int) ( $_GET['ext_paged'] ?? 1 ) );
-$ext_offset   = ( $ext_page_num - 1 ) * $ext_per_page;
 
 $ext_table     = $wpdb->prefix . 'sam_dependency_inventory';
 $ext_where_sql = implode( ' AND ', $ext_where );
@@ -93,6 +91,13 @@ if ( ! empty( $ext_args ) ) {
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $ext_total = (int) $wpdb->get_var( $ext_count_sql );
 $ext_pages = max( 1, (int) ceil( $ext_total / $ext_per_page ) );
+
+// Cap at $ext_pages (not just floored at 1) -- every other Table_Query-driven
+// table in this codebase clamps its page number the same way; this one didn't,
+// so ?ext_paged=9999 against a 3-page result set rendered "Page 9999 of 3"
+// instead of serving (and reporting) the real last page.
+$ext_page_num = min( max( 1, (int) ( $_GET['ext_paged'] ?? 1 ) ), $ext_pages );
+$ext_offset   = ( $ext_page_num - 1 ) * $ext_per_page;
 
 $ext_data_args = array_merge( $ext_args, array( $ext_per_page, $ext_offset ) );
 $ext_data_sql  = "SELECT * FROM {$ext_table} WHERE {$ext_where_sql} " . Table_Query::order_by_sql( $ext_sort ) . ' LIMIT %d OFFSET %d';
