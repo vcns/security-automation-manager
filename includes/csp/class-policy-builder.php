@@ -556,8 +556,17 @@ class Policy_Builder extends Header_Builder {
 		}
 
 		// Trusted Types directives (require-trusted-types-for, trusted-types) are disabled
-		// when their value list is empty. When enabled they are always emitted as report-only
-		// regardless of surface mode (Chromium-strong; Baseline widely available ~2028).
+		// when their value list is empty. NOTE: unlike an earlier version of this comment
+		// claimed, they are NOT forced into report-only regardless of surface mode -- they
+		// are ordinary entries in $directives like everything else, so on an enforce-mode
+		// surface they are serialised into the real, blocking Content-Security-Policy header
+		// (confirmed by reading emit_profile_header()/get_policy_header_name(), which choose
+		// the header name from $profile['mode'] alone, with no directive-specific carve-out).
+		// Flagged in docs/security-controls-inventory.md's Trusted Types section (issue #162)
+		// rather than silently fixed here, since forcing an always-report-only Trusted Types
+		// posture on an enforce-mode surface would need real changes (e.g. a second,
+		// supplementary Content-Security-Policy-Report-Only header carrying only these two
+		// directives) -- a deliberate product decision, not a drive-by comment correction.
 		$trusted_types_enabled = ! empty( $directives['require-trusted-types-for'] )
 			&& is_array( $directives['require-trusted-types-for'] );
 		if ( ! $trusted_types_enabled ) {

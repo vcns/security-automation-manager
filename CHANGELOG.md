@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.64] - 2026-09-04
+
+### Added
+
+- Phase 4D of `.roadmap/phase4_plan.md`, GitHub issue #162 (security-controls inventory): new `docs/security-controls-inventory.md` documenting all 19 implemented HTTP security/content-protection controls (the 17 named in the issue's own acceptance criteria, plus Information Masking and Cache-Control, shipped after the issue was written) -- purpose, supported surfaces, default state, report-only/enforcement/discovery capability, approval requirements, breakage risk, rollback behaviour, audit events, limitations, and relevant standards for each. Grounded directly in the current codebase (each control's own class, `Pillar_Registry`, `Activator`'s seeding logic, every `Audit_Log::log()` call site, `Rollback_Guard`) rather than general assumptions about header behaviour.
+- Registered the new doc in `docs/README.md`'s Internal Documentation index.
+
+### Fixed
+
+- `includes/csp/class-policy-builder.php`: corrected a misleading code comment claiming Trusted Types directives (`require-trusted-types-for`, `trusted-types`) are "always emitted as report-only regardless of surface mode" -- confirmed by reading `emit_profile_header()`/`get_policy_header_name()` directly that no such carve-out exists; on an enforce-mode surface these directives go out in the real, blocking `Content-Security-Policy` header along with everything else. This is a comment-only fix (documents reality accurately instead of an inaccurate claim); it does not change runtime behaviour. Whether to build the (materially larger) always-report-only Trusted Types behaviour the old comment promised is an open product decision, not resolved by this change -- see the security-controls inventory's own Trusted Types section.
+
 ## [2.9.63] - 2026-09-04
 
 ### Fixed

@@ -24,6 +24,7 @@ These documents are written for maintainers, release managers, security reviewer
 - `testing-and-quality.md` - expected validation workflow, CI scope, and manual verification checklist
 - `release-and-publishing.md` - versioning, branching, packaging, and WordPress.org publishing flow
 - `rollback-and-recovery.md` - schema-downgrade detection, configuration snapshot/restore, and manual database-backup recovery for a bad release
+- `security-controls-inventory.md` - per-control inventory (purpose, surfaces, default state, report-only/enforcement/discovery capability, approval requirements, breakage risk, rollback, audit events, limitations, relevant standards) for every implemented HTTP security and content-protection control
 - `wordpress-org-assets.md` - listing artwork, screenshot requirements, and WordPress.org asset handling
 - `dns-provider-test-matrix.md` - per-provider request-level test evidence for all 41 DNS-01 drivers: what is mocked-contract tested vs. live-verified, and every confirmed defect, contrast finding, and `[Unverified]` research gap discovered while building that coverage
 - `ci-openai-review.md` - the advisory, repository-owned OpenAI PR code-review pipeline: architecture, trust model, authentication setup (workload identity federation), cost controls, data handling, and rollback
