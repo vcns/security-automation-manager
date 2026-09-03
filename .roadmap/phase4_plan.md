@@ -75,7 +75,7 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4C: Bot, Crawler, and Scraper Classification
 
-**Status: In progress, five increments delivered v2.9.52-v2.9.56 (2-3 September 2026). Core signal set built; the remaining work is cross-request correlation, a materially bigger architectural investment than any single increment so far.**
+**Status: In progress, six increments delivered v2.9.52-v2.9.57 (2-3 September 2026). Both named exit criteria fully met. The remaining work is cross-request correlation beyond what §10's exit criteria itself requires -- a materially bigger architectural investment than any single increment so far.**
 
 **Addresses:** `.roadmap/phase3_early_plan.md` §10.
 
@@ -86,15 +86,15 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 - Robots.txt visit recognition (v2.9.55) -- `Robots_Txt_Detector` records a source examining `/robots.txt` as low-severity, positive-leaning evidence, correlatable by IP.
 - Session/cookie behaviour, first piece (v2.9.56) -- `Login_Cookie_Consistency_Detector` records a login POST missing WordPress core's own `wordpress_test_cookie`, consistent with scripted credential stuffing bypassing the normal form load.
 - Header consistency (v2.9.56) -- `Header_Consistency_Detector` records a browser-claiming User-Agent (matched narrowly on each browser's own version token) sent without an `Accept-Language` header.
+- URI-pattern signal (v2.9.57) -- `Scanner_Identity_Store` now logs each identity's last 10 request paths (`recent_paths`, schema v36); new `Uri_Pattern_Analyzer` recognises a fixed-step sequential-ID pattern across them (e.g. `/product/101..104`). `Bot_Classifier` checks this for an unrecognised source ahead of its rate-escalation check -- new `enumerating_scraper` state. A known vendor's path history is never checked this way (crawling a site's posts is normal crawler behaviour). This closes out all three signals §10's exit criteria named.
 
-**Exit criteria:**
+**Exit criteria -- both met:**
 - ~~At minimum, AI-crawler identities are seeded into `Scanner_Vendor_Store` the same way Googlebot/Bingbot are today -- forward-confirmed-reverse-DNS-verifiable identities only, not fabricated ranges (same rule §9's audit already established).~~ Done.
-- ~~Bot classification avoiding the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.~~ Delivered for request-rate + identity; URI-pattern not incorporated (see below).
+- ~~Bot classification avoiding the binary "bot/not bot" model §10 explicitly warns against, combining at least request-rate, URI-pattern, and identity signals already available from delivered work.~~ Done -- all three signals combined in `Bot_Classifier`.
 - Cross-site intelligence signal explicitly deferred -- depends on §23 (Federated Intelligence), itself deferred.
 
-**Not done, carried forward -- each needs new cross-request correlation infrastructure this phase hasn't built, not just another detector:**
-- URI-pattern signal (sequential/enumerating request detection across a source's own history).
-- robots.txt disallow-rule compliance (does a source that fetched robots.txt go on to request disallowed paths anyway) -- only the fetch-recognition half is built.
+**Not done, carried forward:**
+- robots.txt disallow-rule compliance (does a source that fetched robots.txt go on to request disallowed paths anyway) -- only the fetch-recognition half is built; needs live rule parsing plus the same cross-request correlation `recent_paths`/`Uri_Pattern_Analyzer` just proved out for URI-pattern, so this is now a smaller lift than it was.
 - A broader, site-wide session/cookie-persistence test beyond the login-specific piece above -- would need this plugin to set its own first-party cookie for every visitor, a privacy/product decision requiring explicit sign-off, not something to build silently.
 - Timing and repeated-error correlation (§10's own list also names these, neither built).
 
