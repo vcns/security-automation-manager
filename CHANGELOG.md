@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.61] - 2026-09-03
+
+### Changed
+
+- Phase 4D of `.roadmap/phase4_plan.md`, GitHub issue #169 (`wpdb::prepare()` test stub): `test/bootstrap.php`'s `wpdb_stub::prepare()` now mirrors real `wpdb::prepare()` (`wp-includes/class-wpdb.php`, confirmed against current WordPress core source) far more closely than the previous `%s`/`%d`-only regex swap. Added `%f` (cast to float, formatted like PHP's own `%f` sprintf conversion) and `%i` (wrapped in backticks, with any embedded backtick doubled, matching `_escape_identifier_value()` -- for dynamic table/column identifiers, never quoted like `%s`). An argument-count mismatch between the query's placeholders and the arguments passed now returns `null`, exactly like real WordPress, instead of silently truncating or padding -- confirmed via a full test-suite run that no existing `->prepare()` call site in this codebase was relying on the old lenient behaviour. Also supports the single-array-argument backward-compatibility calling convention real `wpdb::prepare()` accepts, even though nothing in this codebase currently calls it that way. Deliberately does not implement positional (`%1$s`) or width/precision (`%05d`) placeholder syntax -- confirmed via a full codebase grep that no `->prepare()` call anywhere uses either, so WordPress core's considerably more complex placeholder regex would only add untested surface here. New `test/unit/WpdbStubTest.php` covers every placeholder type, `%%`, multiple placeholders, LIKE-expression wildcard survival, null arguments, and the count-mismatch/array-unpacking edge cases.
+- No production code changed -- `test/bootstrap.php` and its own test coverage only, never loaded outside the PHPUnit test suite.
+
 ## [2.9.60] - 2026-09-03
 
 ### Added
