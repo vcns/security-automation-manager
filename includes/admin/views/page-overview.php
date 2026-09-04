@@ -922,12 +922,12 @@ $status_badge       = static function ( string $status ): void {
 			<li>
 				<strong><?php esc_html_e( 'Content Security Policy', 'vcns-security-automation-manager' ); ?></strong>
 				&nbsp;&mdash;
-				<?php esc_html_e( 'the most capable pillar: per-surface profiles, nonce injection, automatic source discovery, violation reporting, and a full report-only-to-enforce review workflow.', 'vcns-security-automation-manager' ); ?>
+				<?php esc_html_e( 'the most capable pillar: per-surface profiles, nonce injection, automatic source discovery, violation reporting, deterministic automation that can build a policy from what the site is actually running without waiting on manual review, and a full report-only-to-enforce workflow either way.', 'vcns-security-automation-manager' ); ?>
 			</li>
 			<li>
-				<strong><?php esc_html_e( 'Nine further HTTP security headers', 'vcns-security-automation-manager' ); ?></strong>
+				<strong><?php esc_html_e( 'Eleven further HTTP header pillars', 'vcns-security-automation-manager' ); ?></strong>
 				&nbsp;&mdash;
-				<?php esc_html_e( 'X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies -- simpler per-surface pillars, two of which (Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy) carry their own report-only learning workflow.', 'vcns-security-automation-manager' ); ?>
+				<?php esc_html_e( 'X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Information Masking, Cache-Control, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies -- simpler per-surface pillars, two of which (Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy) carry their own report-only learning workflow.', 'vcns-security-automation-manager' ); ?>
 			</li>
 			<li>
 				<strong><?php esc_html_e( 'Page-rewrite protections', 'vcns-security-automation-manager' ); ?></strong>
@@ -935,15 +935,25 @@ $status_badge       = static function ( string $status ): void {
 				<?php esc_html_e( 'Reverse Tabnabbing Protection, External Scripts (third-party script/stylesheet governance with Subresource Integrity), and Internal Script Integrity, which modify the rendered page itself rather than emit a header.', 'vcns-security-automation-manager' ); ?>
 			</li>
 			<li>
+				<strong><?php esc_html_e( 'Continuous Intelligence', 'vcns-security-automation-manager' ); ?></strong>
+				&nbsp;&mdash;
+				<?php esc_html_e( 'every request is observed and classified against nineteen built-in detectors covering common attack patterns (SQL injection, path traversal, webshell probes, and more), plus your own custom fail2ban-style regex rules. Recognised bots and crawlers are distinguished from unrecognised traffic without ever assuming "bot" means "hostile" -- recognition is never automatic authorisation, and nothing blocks until you configure it to.', 'vcns-security-automation-manager' ); ?>
+			</li>
+			<li>
+				<strong><?php esc_html_e( 'Baseline & Drift', 'vcns-security-automation-manager' ); ?></strong>
+				&nbsp;&mdash;
+				<?php esc_html_e( "snapshots the site's theme, plugin, and core file state, then flags what changed between snapshots -- so an unexpected file modification doesn't go unnoticed between the deployments you actually meant to make.", 'vcns-security-automation-manager' ); ?>
+			</li>
+			<li>
 				<strong><?php esc_html_e( 'Certificates', 'vcns-security-automation-manager' ); ?></strong>
 				&nbsp;&mdash;
-				<?php esc_html_e( 'a free-standing ACME v2 (Let\'s Encrypt) TLS certificate manager: DNS-01 or HTTP-01 issuance, encrypted-at-rest credentials and private keys, and automatic renewal. Unrelated to the header pillars above beyond sharing the same admin and audit plumbing.', 'vcns-security-automation-manager' ); ?>
+				<?php esc_html_e( 'a free-standing ACME v2 (Let\'s Encrypt) TLS certificate manager: DNS-01 or HTTP-01 issuance, encrypted-at-rest credentials and private keys, and automatic renewal. Unrelated to the pillars above beyond sharing the same admin and audit plumbing.', 'vcns-security-automation-manager' ); ?>
 			</li>
 		</ul>
 
 		<h2><?php esc_html_e( 'The gap this fills', 'vcns-security-automation-manager' ); ?></h2>
 		<p>
-			<?php esc_html_e( 'CSP is widely regarded as one of the most effective defenses against cross-site scripting, but it is also one of the easiest security controls to deploy badly -- an overly strict policy silently breaks a theme or plugin, and an overly loose one defends nothing. The same trade-off shows up in miniature across every layer above: an unreviewed third-party script is a supply-chain risk, a lapsed certificate is a silent outage, and a header enabled without understanding what depends on the behaviour it changes can break a site as easily as it protects one. This plugin exists to make the safe middle path the easy path everywhere it applies: learn what a site actually needs before enforcing anything, automate what is safe to automate outright, and keep every decision reviewable.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'CSP is widely regarded as one of the most effective defenses against cross-site scripting, but it is also one of the easiest security controls to deploy badly -- an overly strict policy silently breaks a theme or plugin, and an overly loose one defends nothing. The same trade-off shows up in miniature across every layer above: an unreviewed third-party script is a supply-chain risk, a lapsed certificate is a silent outage, an unnoticed file change is a compromise nobody caught, and a header enabled without understanding what depends on the behaviour it changes can break a site as easily as it protects one. This plugin exists to make the safe middle path the easy path everywhere it applies: learn what a site actually needs before enforcing anything, automate what is safe to automate outright, and keep every decision reviewable.', 'vcns-security-automation-manager' ); ?>
 		</p>
 
 		<h2><?php esc_html_e( 'Learn more', 'vcns-security-automation-manager' ); ?></h2>
