@@ -73,6 +73,7 @@
         <div>
           <p class='section-label'>Start here</p>
           <h2>What the product is for.</h2>
+          <p>A Content Security Policy is the browser's own defence against cross-site scripting (XSS) -- the attack where a compromised plugin, a malicious ad, or an injected comment gets its own JavaScript to run on your site as if it were yours. A strict policy stops that script from running even after it's already on the page, which is why CSP is considered one of the most effective defences available, and also why deploying it badly is so easy: get the policy wrong and it's your own site's scripts, fonts, and payment forms that stop working, not the attacker's.</p>
           <p>Security Automation Manager helps a WordPress administrator introduce a stricter Content Security Policy without immediately blocking live site resources. It does this by keeping each site surface in report-only mode first, collecting browser violation reports, discovering external sources, and turning those observations into reviewable policy proposals.</p>
           <p>The plugin is not a one-click security switch. It is a controlled workflow. The administrator still decides which third-party hosts, scripts, frames, fonts, images, connections, and forms are legitimate for the site.</p>
           <figure class='screenshot'>
@@ -104,35 +105,35 @@
           </article>
           <article class='card'>
             <h3>X-Frame-Options</h3>
-            <p>Per surface, choose DENY or SAMEORIGIN to stop the site being framed by another origin. A fallback for browsers that don't honour CSP's <code>frame-ancestors</code> directive.</p>
+            <p>Per surface, choose DENY or SAMEORIGIN to stop the site being framed by another origin -- closing off clickjacking, where a hidden iframe of your site is stacked under a decoy page so a visitor's real click lands on your button instead. A fallback for browsers that don't honour CSP's <code>frame-ancestors</code> directive.</p>
           </article>
           <article class='card'>
             <h3>X-Content-Type-Options</h3>
-            <p>Per surface, on or off. When on, sends <code>nosniff</code> so browsers stop guessing content types away from what the server declared.</p>
+            <p>Per surface, on or off. When on, sends <code>nosniff</code> so browsers stop guessing content types away from what the server declared -- closing a path attackers use to get a file executed as script when it was never meant to be.</p>
           </article>
           <article class='card'>
             <h3>Referrer-Policy</h3>
-            <p>Per surface, choose from the eight standard tokens. Controls how much of this site's URL is sent as the Referer header when a visitor follows a link away from it.</p>
+            <p>Per surface, choose from the eight standard tokens. Controls how much of this site's URL is sent as the Referer header when a visitor follows a link away from it, so a password-reset link or a session token sitting in the query string doesn't leak to whatever site they land on next.</p>
           </article>
           <article class='card'>
             <h3>Permissions-Policy</h3>
-            <p>Per surface, per browser feature (camera, geolocation, and similar). Choose None, Self, or All for each one covered.</p>
+            <p>Per surface, per browser feature (camera, geolocation, and similar). Choose None, Self, or All for each one covered, so an embedded ad or third-party widget can't quietly ask a visitor's browser for their camera or location.</p>
           </article>
           <article class='card'>
             <h3>Strict-Transport-Security</h3>
-            <p>Per surface, choose a Max-Age, whether to include subdomains, and whether to opt into browser preload lists. Only ever sent over HTTPS requests.</p>
+            <p>Per surface, choose a Max-Age, whether to include subdomains, and whether to opt into browser preload lists. Only ever sent over HTTPS requests -- once set, it forces the browser straight to HTTPS on every future visit, closing the window an attacker on the same network has to intercept a visitor's very first plain-HTTP request.</p>
           </article>
           <article class='card'>
             <h3>Cross-Origin-Resource-Policy</h3>
-            <p>Per surface, choose Same-Site, Same-Origin, or Cross-Origin. Controls which other sites may load this site's own resources.</p>
+            <p>Per surface, choose Same-Site, Same-Origin, or Cross-Origin. Controls which other sites may load this site's own resources, so another site can't quietly pull your images or data into a page you don't control.</p>
           </article>
           <article class='card'>
             <h3>Cross-Origin-Opener-Policy</h3>
-            <p>Per surface, choose Unsafe-None, Same-Origin, or Same-Origin-Allow-Popups. Isolates this site's browsing context from cross-origin windows.</p>
+            <p>Per surface, choose Unsafe-None, Same-Origin, or Same-Origin-Allow-Popups. Isolates this site's browsing context from cross-origin windows, closing a side-channel a malicious tab opened from your site could otherwise use to snoop on it.</p>
           </article>
           <article class='card'>
             <h3>Cross-Origin-Embedder-Policy</h3>
-            <p>Per surface, choose Unsafe-None, Require-Corp, or Credentialless. Blocks cross-origin subresources that don't explicitly opt in.</p>
+            <p>Per surface, choose Unsafe-None, Require-Corp, or Credentialless. Blocks cross-origin subresources that don't explicitly opt in, working alongside Cross-Origin-Opener-Policy to seal off that same side-channel.</p>
           </article>
           <article class='card'>
             <h3>X-Permitted-Cross-Domain-Policies</h3>

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.70] - 2026-09-04
+
+### Added
+
+- First installment of extending the UI documentation retrofit to the public GitHub Pages help site (user-requested): `docs/index.html`'s `#start-here` intro now names the actual threat CSP defends against -- cross-site scripting (XSS), where a compromised plugin, malicious ad, or injected comment gets its own JavaScript to run on the site -- rather than only describing the plugin's report-only rollout mechanics. Assessed beforehand via a background-agent review of all four public help pages (`index.html`, `user-guide.html`, `faq.html`, `operating-model.html`): the site as a whole never once named XSS or explained what CSP actually protects against, the single biggest gap found. The `#pillars` card grid also gained a short "why this matters" clause per header pillar (X-Frame-Options/clickjacking, Referrer-Policy/URL leakage, Permissions-Policy/camera-geolocation abuse, Strict-Transport-Security/first-request interception, Cross-Origin-Resource-Policy/cross-site resource pulling, COOP+COEP/cross-window side-channel isolation) instead of listing configuration mechanics alone. `user-guide.html` and `faq.html` remain for a future increment -- flagged in `.roadmap/phase4_plan.md` that `test/unit/VersionConsistencyTest.php` asserts exact substrings in both (WP/PHP version wording, subscription price) that must survive any rewording there. No code change; confirmed the edited HTML still parses cleanly.
+
 ## [2.9.69] - 2026-09-04
 
 ### Added
