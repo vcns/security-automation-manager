@@ -38,6 +38,59 @@ class IdentityResolverTest extends TestCase {
 		);
 	}
 
+	// ── Loopback recognition ──────────────────────────────────────────────────
+
+	public function test_resolve_recognises_ipv4_loopback(): void {
+		$resolver = $this->resolver_with_vendors( array() );
+
+		$result = $resolver->resolve( '127.0.0.1', 'curl/8.0' );
+
+		$this->assertSame( 'loopback', $result['verification_state'] );
+		$this->assertSame( '', $result['vendor_key'] );
+		$this->assertNull( $result['network_match'] );
+		// Stays '', matching 'unknown' -- Scanner_Identity_Store's fingerprint
+		// is hash(ip . '|' . claimed_identity), so a non-empty value here
+		// (translated, no less) would fork every existing unrecognised
+		// 127.0.0.1 row into a brand-new one instead of updating it in place.
+		$this->assertSame( '', $result['claimed_identity'] );
+	}
+
+	public function test_resolve_recognises_the_full_ipv4_loopback_block(): void {
+		// RFC 5735 -- the whole 127.0.0.0/8 block is loopback, not just
+		// 127.0.0.1.
+		$resolver = $this->resolver_with_vendors( array() );
+
+		$result = $resolver->resolve( '127.5.5.5', 'curl/8.0' );
+
+		$this->assertSame( 'loopback', $result['verification_state'] );
+	}
+
+	public function test_resolve_recognises_ipv6_loopback(): void {
+		$resolver = $this->resolver_with_vendors( array() );
+
+		$result = $resolver->resolve( '::1', 'curl/8.0' );
+
+		$this->assertSame( 'loopback', $result['verification_state'] );
+	}
+
+	public function test_resolve_recognises_loopback_even_with_an_empty_user_agent(): void {
+		// Loopback recognition is IP-only -- it doesn't depend on a
+		// user-agent being present (unlike vendor UA matching below).
+		$resolver = $this->resolver_with_vendors( array() );
+
+		$result = $resolver->resolve( '127.0.0.1', '' );
+
+		$this->assertSame( 'loopback', $result['verification_state'] );
+	}
+
+	public function test_resolve_does_not_treat_an_ordinary_ip_as_loopback(): void {
+		$resolver = $this->resolver_with_vendors( array() );
+
+		$result = $resolver->resolve( '203.0.113.42', 'curl/8.0' );
+
+		$this->assertNotSame( 'loopback', $result['verification_state'] );
+	}
+
 	public function test_resolve_returns_unknown_for_an_empty_user_agent(): void {
 		$resolver = $this->resolver_with_vendors( array( $this->googlebot_vendor_row() ) );
 

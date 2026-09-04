@@ -20,7 +20,13 @@
  * detection" rule already enforced throughout this product (e.g. Traffic_
  * Guard never auto-blocking a privileged admin session).
  *
- * Below a decision, a known vendor match (verification_state is one of
+ * Below a decision, a 'loopback' verification_state (Identity_Resolver's own
+ * recognition of a request from the server's own loopback address, 127.0.0.0/8
+ * or ::1 -- see its docblock) maps straight to 'loopback', ahead of the
+ * known-vendor check below: this is the server calling itself, not a crawler
+ * of any kind, so there's nothing to classify as verified/unverified against.
+ *
+ * Below that, a known vendor match (verification_state is one of
  * Identity_Resolver's automatic known_* states) splits on network_match:
  * matching the vendor's own published network data is 'verified_crawler';
  * claiming the identity without matching it is 'claimed_crawler_unverified'
@@ -79,6 +85,10 @@ final class Bot_Classifier {
 				return 'admin_denied';
 			case 'previously_authorised_expired':
 				return 'admin_authorisation_expired';
+		}
+
+		if ( 'loopback' === $state ) {
+			return 'loopback';
 		}
 
 		if ( in_array( $state, self::KNOWN_STATES, true ) ) {
