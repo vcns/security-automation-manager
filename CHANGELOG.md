@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.76] - 2026-09-04
+
+### Fixed
+
+- The short "tagline" description -- readme.txt's line just above `== Description ==`, and the plugin header's own `Description:` field -- is what WordPress.org actually displays in plugin-directory search results and the "Add Plugins" install screen. User-flagged from a screenshot of a live WordPress install: it still read "Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.", written before Continuous Intelligence (19 detectors, bot/crawler recognition, custom rules), Traffic Controls (IP/ASN/country/Tor filtering), and Baseline & Drift existed -- none of which it mentioned.
+- Updated both copies (kept byte-identical) to "Security headers that learn before enforcing so nothing breaks, plus attack detection, traffic filtering, and free TLS certs. No paywall." -- 137 characters, within WordPress.org's conventional ~150-character directory-tagline budget (measured, not guessed, after several candidate rewrites).
+- Added `VersionConsistencyTest::test_short_description_is_consistent_and_within_the_wporg_length_budget()` so the two copies drifting apart, or the line growing past the truncation budget, is now caught by CI rather than found by a screenshot again.
+
 ## [2.9.75] - 2026-09-04
 
 ### Fixed

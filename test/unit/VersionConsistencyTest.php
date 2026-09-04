@@ -163,6 +163,35 @@ class VersionConsistencyTest extends TestCase {
 	}
 
 	/**
+	 * The short "tagline" description (readme.txt's own line just above
+	 * "== Description ==", and the plugin header's Description: field) is
+	 * what WordPress.org actually shows in plugin-directory search results
+	 * and the "Add Plugins" install screen -- user-flagged 2026-09-04 after
+	 * it still read "Ten security headers..." with no mention of
+	 * Continuous Intelligence, traffic filtering, or Baseline & Drift, all
+	 * shipped features by then. The two copies must stay byte-identical,
+	 * and (WordPress.org truncates a directory tagline past this length)
+	 * must stay within the conventional 150-character budget.
+	 */
+	public function test_short_description_is_consistent_and_within_the_wporg_length_budget(): void {
+		$root = dirname( __DIR__, 2 );
+
+		$plugin_header_description = $this->extract_plugin_header_field( $root . '/security-automation-manager.php', 'Description' );
+		$readme_short_description  = $this->extract_readme_short_description( $root . '/readme.txt' );
+
+		$this->assertSame(
+			$plugin_header_description,
+			$readme_short_description,
+			'security-automation-manager.php\'s Description: header and readme.txt\'s short/tagline description have drifted apart.'
+		);
+		$this->assertLessThanOrEqual(
+			150,
+			strlen( $readme_short_description ),
+			'readme.txt\'s short description exceeds WordPress.org\'s conventional 150-character directory-tagline budget -- it will be truncated.'
+		);
+	}
+
+	/**
 	 * COMMERCIAL_TERMS.md still opened as "CSP Automation Manager" -- the
 	 * product's name from before the plugin was renamed to Security
 	 * Automation Manager (see CHANGELOG.md's [2.0.0] entry) to cover more
@@ -321,6 +350,20 @@ class VersionConsistencyTest extends TestCase {
 		$pattern  = '/^\s*\*\s+' . preg_quote( $field, '/' ) . ':\s*([^\r\n]+)/mi';
 
 		$this->assertMatchesRegularExpression( $pattern, $contents, "Plugin header is missing a \"{$field}\" line." );
+		preg_match( $pattern, $contents, $matches );
+
+		return trim( $matches[1] );
+	}
+
+	/**
+	 * Extracts readme.txt's short/tagline description -- the single line of
+	 * body text between the header metadata block and "== Description ==".
+	 */
+	private function extract_readme_short_description( string $file ): string {
+		$contents = $this->read_file( $file );
+		$pattern  = '/\n\n([^\n]+)\n\n== Description ==/';
+
+		$this->assertMatchesRegularExpression( $pattern, $contents, 'readme.txt is missing its short/tagline description line before "== Description ==".' );
 		preg_match( $pattern, $contents, $matches );
 
 		return trim( $matches[1] );
