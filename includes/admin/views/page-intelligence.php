@@ -553,6 +553,15 @@ $tab_help = array(
 			'known_crawler'            => __( 'Known crawler', 'vcns-security-automation-manager' ),
 			'custom'                   => __( 'Custom', 'vcns-security-automation-manager' ),
 		);
+
+		// Built-in rows are editable (e.g. to add a vendor-published CIDR
+		// range once verified) but not deletable -- Scanner_Vendor_Store's
+		// own docblock. upsert() already updates-in-place for any existing
+		// vendor_key without touching is_builtin, so editing a built-in row
+		// only ever needed a way to reach the form pre-filled; nothing on
+		// the storage side changes here.
+		$edit_vendor_key = isset( $_GET['edit'] ) ? sanitize_key( wp_unslash( $_GET['edit'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$editing_vendor  = '' !== $edit_vendor_key ? $vendor_store->get( $edit_vendor_key ) : null;
 		?>
 
 		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
@@ -586,6 +595,18 @@ $tab_help = array(
 					<?php endif; ?>
 				</td>
 				<td>
+					<?php
+					$vendor_edit_url = add_query_arg(
+						array(
+							'tab'  => 'vendors',
+							'edit' => $vendor['vendor_key'],
+						),
+						$base_url
+					) . '#wp-sam-vendor-form';
+					?>
+					<a href="<?php echo esc_url( $vendor_edit_url ); ?>" class="button button-small">
+						<?php esc_html_e( 'Edit', 'vcns-security-automation-manager' ); ?>
+					</a>
 					<?php if ( empty( $vendor['is_builtin'] ) ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
 						<?php wp_nonce_field( 'wp_sam_scanner_vendor_delete' ); ?>
@@ -593,8 +614,6 @@ $tab_help = array(
 						<input type="hidden" name="vendor_key" value="<?php echo esc_attr( (string) $vendor['vendor_key'] ); ?>" />
 						<?php submit_button( __( 'Delete', 'vcns-security-automation-manager' ), 'link-delete small', '', false ); ?>
 					</form>
-					<?php else : ?>
-						&mdash;
 					<?php endif; ?>
 				</td>
 			</tr>
@@ -602,62 +621,89 @@ $tab_help = array(
 			</tbody>
 		</table>
 
-		<h2 style="margin-top:2em"><?php esc_html_e( 'Add a vendor', 'vcns-security-automation-manager' ); ?></h2>
+		<h2 id="wp-sam-vendor-form" style="margin-top:2em">
+			<?php
+			if ( null !== $editing_vendor ) {
+				printf(
+					/* translators: %s: vendor name being edited */
+					esc_html__( 'Edit vendor: %s', 'vcns-security-automation-manager' ),
+					esc_html( (string) $editing_vendor['vendor_name'] )
+				);
+			} else {
+				esc_html_e( 'Add a vendor', 'vcns-security-automation-manager' );
+			}
+			?>
+		</h2>
 		<p class="description"><?php esc_html_e( 'A source URL is required so the record stays traceable to where the verification method came from.', 'vcns-security-automation-manager' ); ?></p>
+		<?php if ( null !== $editing_vendor && ! empty( $editing_vendor['is_builtin'] ) ) : ?>
+		<p class="description"><?php esc_html_e( 'This is a built-in vendor -- it can be edited (for example, to add a published CIDR range once verified) but not deleted or renamed.', 'vcns-security-automation-manager' ); ?></p>
+		<?php endif; ?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wp-sam-vendor-form">
 			<?php wp_nonce_field( 'wp_sam_scanner_vendor_upsert' ); ?>
 			<input type="hidden" name="action" value="wp_sam_scanner_vendor_upsert" />
 			<table class="form-table">
 				<tr>
 					<th><label for="vendor_key"><?php esc_html_e( 'Key', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><input type="text" id="vendor_key" name="vendor_key" required pattern="[a-z0-9_-]+" placeholder="qualys" /></td>
+					<td>
+						<?php if ( null !== $editing_vendor ) : ?>
+							<code><?php echo esc_html( (string) $editing_vendor['vendor_key'] ); ?></code>
+							<input type="hidden" id="vendor_key" name="vendor_key" value="<?php echo esc_attr( (string) $editing_vendor['vendor_key'] ); ?>" />
+							<p class="description"><?php esc_html_e( "Can't be changed once created -- it's what this update matches against. Delete and re-add under a new key instead.", 'vcns-security-automation-manager' ); ?></p>
+						<?php else : ?>
+							<input type="text" id="vendor_key" name="vendor_key" required pattern="[a-z0-9_-]+" placeholder="qualys" />
+						<?php endif; ?>
+					</td>
 				</tr>
 				<tr>
 					<th><label for="vendor_name"><?php esc_html_e( 'Name', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><input type="text" id="vendor_name" name="vendor_name" required placeholder="Qualys" /></td>
+					<td><input type="text" id="vendor_name" name="vendor_name" required placeholder="Qualys" value="<?php echo esc_attr( null !== $editing_vendor ? (string) $editing_vendor['vendor_name'] : '' ); ?>" /></td>
 				</tr>
 				<tr>
 					<th><label for="category"><?php esc_html_e( 'Category', 'vcns-security-automation-manager' ); ?></label></th>
 					<td>
 						<select id="category" name="category">
 							<?php foreach ( $category_labels as $cat_key => $cat_label ) : ?>
-							<option value="<?php echo esc_attr( $cat_key ); ?>"><?php echo esc_html( $cat_label ); ?></option>
+							<option value="<?php echo esc_attr( $cat_key ); ?>" <?php selected( null !== $editing_vendor ? (string) $editing_vendor['category'] : '', $cat_key ); ?>><?php echo esc_html( $cat_label ); ?></option>
 							<?php endforeach; ?>
 						</select>
 					</td>
 				</tr>
 				<tr>
 					<th><label for="ua_pattern"><?php esc_html_e( 'User-Agent contains', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><input type="text" id="ua_pattern" name="ua_pattern" placeholder="QualysGuard" /></td>
+					<td><input type="text" id="ua_pattern" name="ua_pattern" placeholder="QualysGuard" value="<?php echo esc_attr( null !== $editing_vendor ? (string) $editing_vendor['ua_pattern'] : '' ); ?>" /></td>
 				</tr>
 				<tr>
 					<th><label for="verification_method"><?php esc_html_e( 'Verification method', 'vcns-security-automation-manager' ); ?></label></th>
 					<td>
+						<?php $editing_verification_method = null !== $editing_vendor ? (string) $editing_vendor['verification_method'] : ''; ?>
 						<select id="verification_method" name="verification_method">
-							<option value="none"><?php esc_html_e( 'None', 'vcns-security-automation-manager' ); ?></option>
-							<option value="cidr"><?php esc_html_e( 'Published CIDR ranges', 'vcns-security-automation-manager' ); ?></option>
-							<option value="fcrdns"><?php esc_html_e( 'Forward-confirmed reverse DNS', 'vcns-security-automation-manager' ); ?></option>
+							<option value="none" <?php selected( $editing_verification_method, 'none' ); ?>><?php esc_html_e( 'None', 'vcns-security-automation-manager' ); ?></option>
+							<option value="cidr" <?php selected( $editing_verification_method, 'cidr' ); ?>><?php esc_html_e( 'Published CIDR ranges', 'vcns-security-automation-manager' ); ?></option>
+							<option value="fcrdns" <?php selected( $editing_verification_method, 'fcrdns' ); ?>><?php esc_html_e( 'Forward-confirmed reverse DNS', 'vcns-security-automation-manager' ); ?></option>
 						</select>
 					</td>
 				</tr>
 				<tr>
 					<th><label for="cidr_ranges"><?php esc_html_e( 'CIDR ranges (one per line)', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><textarea id="cidr_ranges" name="cidr_ranges" rows="3" style="width:100%;max-width:400px" placeholder="64.39.96.0/20"></textarea></td>
+					<td><textarea id="cidr_ranges" name="cidr_ranges" rows="3" style="width:100%;max-width:400px" placeholder="64.39.96.0/20"><?php echo esc_textarea( null !== $editing_vendor ? implode( "\n", (array) $editing_vendor['cidr_ranges'] ) : '' ); ?></textarea></td>
 				</tr>
 				<tr>
 					<th><label for="rdns_suffixes"><?php esc_html_e( 'rDNS hostname suffixes (one per line)', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><textarea id="rdns_suffixes" name="rdns_suffixes" rows="3" style="width:100%;max-width:400px" placeholder="qualys.com"></textarea></td>
+					<td><textarea id="rdns_suffixes" name="rdns_suffixes" rows="3" style="width:100%;max-width:400px" placeholder="qualys.com"><?php echo esc_textarea( null !== $editing_vendor ? implode( "\n", (array) $editing_vendor['rdns_suffixes'] ) : '' ); ?></textarea></td>
 				</tr>
 				<tr>
 					<th><label for="source_url"><?php esc_html_e( 'Source URL', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><input type="url" id="source_url" name="source_url" required style="width:100%;max-width:400px" placeholder="https://..." /></td>
+					<td><input type="url" id="source_url" name="source_url" required style="width:100%;max-width:400px" placeholder="https://..." value="<?php echo esc_attr( null !== $editing_vendor ? (string) $editing_vendor['source_url'] : '' ); ?>" /></td>
 				</tr>
 				<tr>
 					<th><label for="notes"><?php esc_html_e( 'Notes', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><textarea id="notes" name="notes" rows="2" style="width:100%;max-width:400px"></textarea></td>
+					<td><textarea id="notes" name="notes" rows="2" style="width:100%;max-width:400px"><?php echo esc_textarea( null !== $editing_vendor ? (string) $editing_vendor['notes'] : '' ); ?></textarea></td>
 				</tr>
 			</table>
-			<?php submit_button( __( 'Add vendor', 'vcns-security-automation-manager' ) ); ?>
+			<?php submit_button( null !== $editing_vendor ? __( 'Save changes', 'vcns-security-automation-manager' ) : __( 'Add vendor', 'vcns-security-automation-manager' ), 'primary', 'submit', false ); ?>
+			<?php if ( null !== $editing_vendor ) : ?>
+				<a href="<?php echo esc_url( add_query_arg( 'tab', 'vendors', $base_url ) ); ?>" class="button"><?php esc_html_e( 'Cancel', 'vcns-security-automation-manager' ); ?></a>
+			<?php endif; ?>
 		</form>
 
 	<?php endif; ?>
