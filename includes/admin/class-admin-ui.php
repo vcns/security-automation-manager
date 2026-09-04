@@ -508,7 +508,7 @@ class Admin_UI {
 	public function add_plugin_action_links( array $links ): array {
 		$settings_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
-			esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings' ) ),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager' ) ),
 			esc_html__( 'Settings', 'vcns-security-automation-manager' )
 		);
 
