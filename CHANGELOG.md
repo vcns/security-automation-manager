@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.75] - 2026-09-04
+
+### Fixed
+
+- `.github/workflows/wporg-deploy.yml` documented its own 24-hour submission-cadence gate as a WordPress.org platform requirement ("WordPress.org reviews every submission by hand and does not allow more than one per day") -- corrected, user-flagged: an already-approved, provisioned plugin's SVN commits go live immediately with no human review queue; that queue is specific to the *initial* plugin submission, not ongoing version pushes. Fixed the misleading comments at the workflow's `on:` trigger, the provenance-check step, and the rate-limit step itself (renamed from "Enforce WordPress.org's one-submission-per-day limit" to "Enforce the submission-cadence convention").
+- Added a `bypass_cadence_convention` `workflow_dispatch` input (boolean, default `false`) so this team's own cadence convention -- kept as the standing default, since pushing updates too eagerly is still poor practice regardless of whether WordPress.org itself would object -- can be explicitly skipped for one run via manual dispatch (`gh workflow run wporg-deploy.yml --ref wporg-vX.Y.Z -f bypass_cadence_convention=true`) rather than only ever waiting out the full 24 hours.
+- Corrected the same misconception in this session's own memory notes (`sam-release-conventions.md`), which had also carried it forward, and updated its stale "WordPress.org SVN repo doesn't exist yet" note -- the plugin has been approved and provisioned for some time.
+- No plugin behaviour change; CI/deploy infrastructure only.
+
 ## [2.9.74] - 2026-09-04
 
 ### Added
