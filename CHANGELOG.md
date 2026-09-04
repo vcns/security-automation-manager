@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.66] - 2026-09-04
+
+### Added
+
+- Phase 4C extension (requested alongside the bot/crawler classification work): Custom Rules, a fail2ban-style custom regex detection feature. New `sam_custom_detector_rules` table (schema v37), `includes/intelligence/class-custom-rule-store.php` (`Custom_Rule_Store` -- CRUD, validation, and a `test()` dry-run helper), and `includes/intelligence/detectors/class-custom-rule-detector.php` (`Custom_Rule_Detector extends Pattern_Detector` -- one instance per stored rule, registered fresh by `Plugin::register_detectors()` on every request, flowing through the exact same `Detector_Registry`/`Detector_Policy_Store`/`Detector_Engine`/`Traffic_Block_Store` pipeline every built-in §11 family already uses -- no new blocking path). A rule matches against one of `request_uri` (path + query string, the same convention `Sql_Injection_Detector`/`Html_Injection_Detector` already use), `path`, `query_string`, or `user_agent`, with a severity and optional surface restriction. A saved rule shows up automatically on the existing Detectors tab for enable/control-action management -- no admin UI changes needed there. New "Custom Rules" tab on Traffic Controls (list/add/edit/delete, plus a "Test a pattern" AJAX tool that compiles a pattern against a sample value without persisting anything). A pattern that fails to compile is rejected at save time.
+- Regex safety: patterns are capped at 500 characters and required to actually compile at save time. No attempt is made to detect or reject a pathologically slow-but-valid pattern (catastrophic backtracking) -- PHP's own `pcre.backtrack_limit`/`pcre.recursion_limit` already bound a single `preg_match()` call's worst case, the same backstop every other `Pattern_Detector` subclass in this codebase already relies on, and a rule is only ever authored by a `manage_options` administrator, the same trust level already required for a raw CSP directive override.
+- Confirmed live in Docker end-to-end: a created rule registers into `Detector_Registry`; a real HTTP request matching its pattern is recorded as evidence; switching it to Enforce correctly feeds `Traffic_Block_Store`'s progressive-response ladder; the rule appears correctly on both the Custom Rules and Detectors tabs.
+
 ## [2.9.65] - 2026-09-04
 
 ### Fixed

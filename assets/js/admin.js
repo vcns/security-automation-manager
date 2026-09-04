@@ -516,4 +516,42 @@
 			$( '.wp-sam-upgrade-button' ).prop( 'disabled', false );
 		} );
 	} );
+
+	// Custom Rules tab: "Test a pattern" tool -- Traffic Controls -> Custom Rules.
+	$( '#wp-sam-custom-rule-test-button' ).on( 'click', function () {
+		const $btn     = $( this );
+		const $result  = $( '#wp-sam-custom-rule-test-result' );
+		const pattern  = $( '#wp_sam_cr_test_pattern' ).val();
+		const sample   = $( '#wp_sam_cr_test_sample' ).val();
+
+		$btn.prop( 'disabled', true );
+		$result.text( '' ).css( 'color', '' );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action:  'wp_sam_test_custom_rule',
+			nonce:   wpSamAdmin.nonce,
+			pattern: pattern,
+			sample:  sample,
+		} )
+		.done( function ( res ) {
+			if ( ! res.success ) {
+				$result.text( 'Request failed.' ).css( 'color', '#cc1818' );
+				return;
+			}
+			const matched = res.data.matched;
+			if ( null === matched ) {
+				$result.text( 'Invalid pattern.' ).css( 'color', '#cc1818' );
+			} else if ( matched ) {
+				$result.text( 'Matches.' ).css( 'color', '#1a7f37' );
+			} else {
+				$result.text( 'Does not match.' ).css( 'color', '#646970' );
+			}
+		} )
+		.fail( function () {
+			$result.text( 'Request failed.' ).css( 'color', '#cc1818' );
+		} )
+		.always( function () {
+			$btn.prop( 'disabled', false );
+		} );
+	} );
 } )( jQuery );

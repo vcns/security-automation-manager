@@ -170,6 +170,7 @@ class SchemaMigrationTest extends TestCase {
 			'wp_sam_asn_cache',
 			'wp_sam_geoip_cache',
 			'wp_sam_detector_policies',
+			'wp_sam_custom_detector_rules',
 		);
 
 		$this->assertSame(

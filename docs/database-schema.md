@@ -42,6 +42,7 @@ The plugin creates custom tables on activation. All table names are prefixed wit
 | v34 | adds `sam_detector_policies` (the control-action framework): an optional per-detector admin override -- enabled/disabled, and which control action (`observe`/`enforce`) a match should trigger. A missing row means "enabled, detector's own default." See `Intelligence\Detector_Policy_Store`. |
 | v35 | no new table -- bumped purely to re-run `Activator::seed_default_scanner_vendors()` on every already-upgraded site, adding GPTBot, ClaudeBot, CCBot, and PerplexityBot to the built-in `sam_scanner_vendors` catalogue. |
 | v36 | adds `recent_paths` to `sam_scanner_identities`: a bounded JSON array (oldest dropped first) of an identity's recent request paths, read by `Uri_Pattern_Analyzer` to recognise sequential/enumerating access (e.g. `/product/101`, `/product/102`, `/product/103`) as a bot-classification signal. See `Intelligence\Scanner_Identity_Store`. |
+| v37 | adds `sam_custom_detector_rules` (admin-authored, fail2ban-style custom regex detection rules): pattern, which request field to match it against, severity, and applicable surfaces. One row per rule; `Plugin::register_detectors()` constructs and registers a `Custom_Rule_Detector` per row on every request, flowing through the exact same `Detector_Registry`/`Detector_Policy_Store`/`Detector_Engine` pipeline every built-in detector family already uses. See `Intelligence\Custom_Rule_Store`. |
 
 ## Table list
 

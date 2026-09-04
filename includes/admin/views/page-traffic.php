@@ -18,8 +18,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use WP_SAM\Intelligence\Asn_Lookup_Store;
+use WP_SAM\Intelligence\Custom_Rule_Store;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Detectors\Custom_Rule_Detector;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
@@ -29,7 +31,7 @@ use WP_SAM\Intelligence\Traffic_Policy_Store;
 
 $base_url     = admin_url( 'admin.php?page=security-automation-manager-traffic' );
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'policy'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-$allowed_tabs = array( 'policy', 'ip-rules', 'blocks', 'network-intelligence', 'detectors' );
+$allowed_tabs = array( 'policy', 'ip-rules', 'blocks', 'network-intelligence', 'detectors', 'custom-rules' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'policy';
 }
@@ -54,6 +56,10 @@ $tab_help = array(
 	'detectors'            => array(
 		'label'       => __( 'Detectors', 'vcns-security-automation-manager' ),
 		'description' => __( 'Enable or disable individual detector families, and -- where a family allows it -- opt a family into contributing to progressive blocking instead of pure observation.', 'vcns-security-automation-manager' ),
+	),
+	'custom-rules'         => array(
+		'label'       => __( 'Custom Rules', 'vcns-security-automation-manager' ),
+		'description' => __( 'Your own regex-based detection rules, similar to a fail2ban filter -- a rule you add here appears on the Detectors tab like any built-in family, so it can be enabled/disabled and opted into enforcement the same way.', 'vcns-security-automation-manager' ),
 	),
 );
 ?>
@@ -516,6 +522,211 @@ $tab_help = array(
 			<p><?php submit_button( __( 'Save Detector Settings', 'vcns-security-automation-manager' ), 'primary', '', false ); ?></p>
 			<?php endif; ?>
 		</form>
+
+	<?php elseif ( 'custom-rules' === $tab ) : ?>
+
+		<?php
+		$custom_rule_store = new Custom_Rule_Store();
+		$custom_rules      = $custom_rule_store->all();
+
+		$edit_id = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$editing = $edit_id > 0 ? $custom_rule_store->get( $edit_id ) : null;
+
+		$errors      = get_transient( 'wp_sam_custom_rule_errors_' . get_current_user_id() );
+		$errors      = is_array( $errors ) ? $errors : array();
+		$prior_input = get_transient( 'wp_sam_custom_rule_input_' . get_current_user_id() );
+		$prior_input = is_array( $prior_input ) ? $prior_input : array();
+		delete_transient( 'wp_sam_custom_rule_errors_' . get_current_user_id() );
+		delete_transient( 'wp_sam_custom_rule_input_' . get_current_user_id() );
+
+		// Form defaults: a resubmission after a validation error wins (so the
+		// admin doesn't lose what they typed), then the rule being edited,
+		// then plain empty-form defaults.
+		$form_values = array_merge(
+			array(
+				'name'          => '',
+				'pattern'       => '',
+				'subject_field' => 'request_uri',
+				'severity'      => 'medium',
+				'surfaces'      => array(),
+				'description'   => '',
+			),
+			null !== $editing ? array(
+				'name'          => $editing['name'],
+				'pattern'       => $editing['pattern'],
+				'subject_field' => $editing['subject_field'],
+				'severity'      => $editing['severity'],
+				'surfaces'      => is_array( json_decode( (string) $editing['surfaces'], true ) ) ? json_decode( (string) $editing['surfaces'], true ) : array(),
+				'description'   => $editing['description'],
+			) : array(),
+			$prior_input
+		);
+
+		$subject_field_labels = array(
+			'request_uri'  => __( 'Request URI (path + query string)', 'vcns-security-automation-manager' ),
+			'path'         => __( 'Path only', 'vcns-security-automation-manager' ),
+			'query_string' => __( 'Query string only', 'vcns-security-automation-manager' ),
+			'user_agent'   => __( 'User-Agent header', 'vcns-security-automation-manager' ),
+		);
+		$severity_labels      = array(
+			'low'      => __( 'Low', 'vcns-security-automation-manager' ),
+			'medium'   => __( 'Medium', 'vcns-security-automation-manager' ),
+			'high'     => __( 'High', 'vcns-security-automation-manager' ),
+			'critical' => __( 'Critical', 'vcns-security-automation-manager' ),
+		);
+		?>
+
+		<p class="description" style="max-width:700px">
+			<?php esc_html_e( 'A custom rule is a plain PHP regular expression (with delimiters, e.g. "/wp-config\.bak$/i") matched against one field of every incoming request. A match is recorded as evidence -- like any built-in detector family, it starts in Observe-only mode; switch it to Enforce on the Detectors tab once you trust it. Saving a rule with an invalid pattern is rejected outright, so a typo fails loudly rather than silently matching nothing.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<?php if ( ! empty( $errors ) ) : ?>
+		<div class="notice notice-error inline" style="padding:12px 16px;margin:1em 0;">
+			<p style="margin-top:0"><strong><?php esc_html_e( 'Rule not saved:', 'vcns-security-automation-manager' ); ?></strong></p>
+			<ul style="margin-bottom:0;list-style:disc;padding-left:1.5em">
+				<?php foreach ( $errors as $error ) : ?>
+				<li><?php echo esc_html( $error ); ?></li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+		<?php endif; ?>
+
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Name', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Pattern', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Matches against', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Severity', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Surfaces', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php foreach ( $custom_rules as $rule ) : ?>
+				<?php $rule_surfaces = json_decode( (string) $rule['surfaces'], true ); ?>
+				<tr>
+					<td><?php echo esc_html( (string) $rule['name'] ); ?></td>
+					<td><code><?php echo esc_html( (string) $rule['pattern'] ); ?></code></td>
+					<td><?php echo esc_html( $subject_field_labels[ $rule['subject_field'] ] ?? (string) $rule['subject_field'] ); ?></td>
+					<td><?php echo esc_html( $severity_labels[ $rule['severity'] ] ?? (string) $rule['severity'] ); ?></td>
+					<td><?php echo esc_html( ! empty( $rule_surfaces ) ? implode( ', ', array_map( 'ucfirst', $rule_surfaces ) ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+					<td style="white-space:nowrap">
+						<a href="
+						<?php
+						echo esc_url(
+							add_query_arg(
+								array(
+									'tab'  => 'custom-rules',
+									'edit' => $rule['id'],
+								),
+								$base_url
+							) . '#wp-sam-custom-rule-form'
+						);
+						?>
+									"><?php esc_html_e( 'Edit', 'vcns-security-automation-manager' ); ?></a>
+						&nbsp;|&nbsp;
+						<code><?php echo esc_html( ( new Custom_Rule_Detector( $rule ) )->id() ); ?></code>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
+							<?php wp_nonce_field( 'wp_sam_custom_rule_delete' ); ?>
+							<input type="hidden" name="action" value="wp_sam_custom_rule_delete" />
+							<input type="hidden" name="rule_id" value="<?php echo esc_attr( (string) $rule['id'] ); ?>" />
+							<?php submit_button( __( 'Delete', 'vcns-security-automation-manager' ), 'link-delete small', '', false ); ?>
+						</form>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			<?php if ( empty( $custom_rules ) ) : ?>
+				<tr>
+					<td colspan="6"><p><?php esc_html_e( 'No custom rules yet.', 'vcns-security-automation-manager' ); ?></p></td>
+				</tr>
+			<?php endif; ?>
+			</tbody>
+		</table>
+		<p class="description">
+			<?php esc_html_e( 'A rule\'s detector id (shown next to Delete above, e.g. "custom_3") is how it appears on the Detectors tab -- use it to find the right row there once you\'ve created a rule.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<h2 id="wp-sam-custom-rule-form" style="margin-top:2em">
+			<?php echo null !== $editing ? esc_html__( 'Edit rule', 'vcns-security-automation-manager' ) : esc_html__( 'Add a rule', 'vcns-security-automation-manager' ); ?>
+		</h2>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<?php wp_nonce_field( 'wp_sam_custom_rule_save' ); ?>
+			<input type="hidden" name="action" value="wp_sam_custom_rule_save" />
+			<?php if ( null !== $editing ) : ?>
+			<input type="hidden" name="rule_id" value="<?php echo esc_attr( (string) $editing['id'] ); ?>" />
+			<?php endif; ?>
+			<table class="form-table">
+				<tr>
+					<th><label for="wp_sam_cr_name"><?php esc_html_e( 'Name', 'vcns-security-automation-manager' ); ?></label></th>
+					<td><input type="text" id="wp_sam_cr_name" name="name" required maxlength="128" style="width:100%;max-width:400px" value="<?php echo esc_attr( (string) $form_values['name'] ); ?>" /></td>
+				</tr>
+				<tr>
+					<th><label for="wp_sam_cr_pattern"><?php esc_html_e( 'Pattern', 'vcns-security-automation-manager' ); ?></label></th>
+					<td>
+						<input type="text" id="wp_sam_cr_pattern" name="pattern" required maxlength="500" style="width:100%;max-width:500px;font-family:monospace" placeholder="/wp-config\.bak$/i" value="<?php echo esc_attr( (string) $form_values['pattern'] ); ?>" />
+						<p class="description"><?php esc_html_e( 'A PHP-style regular expression, including its delimiters and any flags (e.g. /pattern/i).', 'vcns-security-automation-manager' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="wp_sam_cr_subject_field"><?php esc_html_e( 'Matches against', 'vcns-security-automation-manager' ); ?></label></th>
+					<td>
+						<select id="wp_sam_cr_subject_field" name="subject_field">
+							<?php foreach ( $subject_field_labels as $value => $label ) : ?>
+							<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $form_values['subject_field'], $value ); ?>><?php echo esc_html( $label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="wp_sam_cr_severity"><?php esc_html_e( 'Severity', 'vcns-security-automation-manager' ); ?></label></th>
+					<td>
+						<select id="wp_sam_cr_severity" name="severity">
+							<?php foreach ( $severity_labels as $value => $label ) : ?>
+							<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $form_values['severity'], $value ); ?>><?php echo esc_html( $label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Surfaces', 'vcns-security-automation-manager' ); ?></th>
+					<td>
+						<?php foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $s ) : ?>
+						<label style="margin-right:1em">
+							<input type="checkbox" name="surfaces[]" value="<?php echo esc_attr( $s ); ?>" <?php checked( in_array( $s, (array) $form_values['surfaces'], true ) ); ?> />
+							<?php echo esc_html( ucfirst( $s ) ); ?>
+						</label>
+						<?php endforeach; ?>
+						<p class="description"><?php esc_html_e( 'Leave every box unchecked to apply this rule to every surface.', 'vcns-security-automation-manager' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="wp_sam_cr_description"><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></label></th>
+					<td><textarea id="wp_sam_cr_description" name="description" rows="2" style="width:100%;max-width:500px"><?php echo esc_textarea( (string) $form_values['description'] ); ?></textarea></td>
+				</tr>
+			</table>
+			<?php submit_button( null !== $editing ? __( 'Save changes', 'vcns-security-automation-manager' ) : __( 'Add rule', 'vcns-security-automation-manager' ) ); ?>
+			<?php if ( null !== $editing ) : ?>
+			<a href="<?php echo esc_url( add_query_arg( 'tab', 'custom-rules', $base_url ) ); ?>" class="button"><?php esc_html_e( 'Cancel', 'vcns-security-automation-manager' ); ?></a>
+			<?php endif; ?>
+		</form>
+
+		<h2 style="margin-top:2em"><?php esc_html_e( 'Test a pattern', 'vcns-security-automation-manager' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Paste a pattern and a sample value (e.g. a real request path you\'ve seen in your logs) to check whether it matches, without saving anything.', 'vcns-security-automation-manager' ); ?></p>
+		<table class="form-table">
+			<tr>
+				<th><label for="wp_sam_cr_test_pattern"><?php esc_html_e( 'Pattern', 'vcns-security-automation-manager' ); ?></label></th>
+				<td><input type="text" id="wp_sam_cr_test_pattern" style="width:100%;max-width:500px;font-family:monospace" placeholder="/wp-config\.bak$/i" /></td>
+			</tr>
+			<tr>
+				<th><label for="wp_sam_cr_test_sample"><?php esc_html_e( 'Sample value', 'vcns-security-automation-manager' ); ?></label></th>
+				<td><input type="text" id="wp_sam_cr_test_sample" style="width:100%;max-width:500px;font-family:monospace" placeholder="/old-backups/wp-config.bak" /></td>
+			</tr>
+		</table>
+		<p>
+			<button type="button" class="button" id="wp-sam-custom-rule-test-button"><?php esc_html_e( 'Test', 'vcns-security-automation-manager' ); ?></button>
+			<span id="wp-sam-custom-rule-test-result" role="status" style="margin-left:1em;font-weight:600"></span>
+		</p>
 
 	<?php endif; ?>
 </div>
