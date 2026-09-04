@@ -3,10 +3,12 @@ name: Deploy to WordPress.org
 on:
   # Deliberately separate from release-package.yml's v*.*.* trigger: pushing
   # a plain version tag (v2.9.33) builds and publishes a GitHub release only
-  # -- it never touches WordPress.org. Publishing to WordPress.org's
-  # human-reviewed, once-a-day queue is a second, explicit decision: push a
-  # wporg-vX.Y.Z tag at the SAME commit once you've decided that specific
-  # version is ready (e.g. `git tag wporg-v2.9.33 v2.9.33`).
+  # -- it never touches WordPress.org. Publishing to WordPress.org is a
+  # second, explicit decision: push a wporg-vX.Y.Z tag at the SAME commit
+  # once you've decided that specific version is ready (e.g. `git tag
+  # wporg-v2.9.33 v2.9.33`). This workflow additionally applies its own 24h
+  # submission-cadence convention (see the rate-limit step below) -- a team
+  # choice, not a WordPress.org platform requirement.
   push:
     tags:
       - 'wporg-v*.*.*'
@@ -20,6 +22,11 @@ on:
         options:
           - development
           - production
+      bypass_cadence_convention:
+        description: 'Skip the 24h submission-cadence convention for this one run. Not a WordPress.org requirement (see the rate-limit step''s own comment) -- an already-approved plugin''s SVN commits go live immediately, no review queue. Use sparingly; the convention stays the default.'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -38,8 +45,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      # WordPress.org human-reviews every SVN submission -- this must never
-      # fire from an untracked commit. Requires the wporg-vX.Y.Z tag's
+      # A public SVN push goes live immediately with no WordPress.org review
+      # (see the rate-limit step's own comment) -- all the more reason this
+      # must never fire from an untracked commit. Requires the wporg-vX.Y.Z tag's
       # underlying version (vX.Y.Z, stripping the wporg- prefix) to be the
       # merge commit of an actual pull request from release/v<version> into
       # main (not a direct push to main, and not any other branch name) --
@@ -117,18 +125,33 @@ jobs:
             echo "::warning::WordPress.org SVN repository for 'vcns-security-automation-manager' does not exist yet (plugin review pending?). Skipping SVN deploy; GitHub Release and update feed are unaffected."
           fi
 
-      # WordPress.org reviews every submission by hand and does not allow
-      # more than one per day. The live SVN log is the authoritative record
-      # of when a deploy last actually happened -- no separate state file to
-      # keep in sync. A graceful skip (like the repo-existence check above),
-      # not a hard failure: tagging twice in a day isn't a mistake worth a
-      # red X, it just means this one waits.
-      - name: Enforce WordPress.org's one-submission-per-day limit
+      # Once a plugin is approved and its SVN repo provisioned, WordPress.org
+      # itself imposes no submission-frequency limit -- a commit to trunk/
+      # tags goes live immediately, with no human review queue (that queue
+      # is specific to the initial plugin submission, not ongoing version
+      # pushes). The daily cadence here is this team's own convention, not
+      # a platform requirement -- kept as the default because pushing
+      # updates too eagerly is still poor practice, but explicitly
+      # bypassable per-run (workflow_dispatch's bypass_cadence_convention
+      # input) rather than a hard rule. The live SVN log is the
+      # authoritative record of when a deploy last actually happened -- no
+      # separate state file to keep in sync. A graceful skip (like the
+      # repo-existence check above), not a hard failure: tagging twice in a
+      # day isn't a mistake worth a red X, it just means this one waits
+      # unless bypassed.
+      - name: Enforce the submission-cadence convention
         id: rate_limit
         if: steps.svn_check.outputs.exists == 'true'
         shell: bash
         run: |
           set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.bypass_cadence_convention }}" = "true" ]; then
+            echo "ok=true" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Bypassing the submission-cadence convention for this manual run (bypass_cadence_convention=true). This is a team convention, not a WordPress.org platform requirement."
+            exit 0
+          fi
+
           LAST_COMMIT_DATE="$(
             svn log -l 1 "https://plugins.svn.wordpress.org/vcns-security-automation-manager" --non-interactive 2>/dev/null \
               | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -1 || true
@@ -146,7 +169,7 @@ jobs:
 
           if [ "${ELAPSED_HOURS}" -lt 24 ]; then
             echo "ok=false" >> "${GITHUB_OUTPUT}"
-            echo "::warning::Skipping WordPress.org SVN deploy: the last submission was ${ELAPSED_HOURS}h ago (${LAST_COMMIT_DATE} UTC). WordPress.org reviews submissions by hand and does not allow more than one per day. GitHub Release and update feed are unaffected -- re-run this workflow (workflow_dispatch) once 24 hours have passed."
+            echo "::warning::Skipping WordPress.org SVN deploy: the last submission was ${ELAPSED_HOURS}h ago (${LAST_COMMIT_DATE} UTC), under this team's own 24h cadence convention (not a WordPress.org requirement). GitHub Release and update feed are unaffected -- re-run this workflow (workflow_dispatch) once 24 hours have passed, or with bypass_cadence_convention=true to skip this convention for one run."
           else
             echo "ok=true" >> "${GITHUB_OUTPUT}"
             echo "Last SVN submission was ${ELAPSED_HOURS}h ago -- clear to deploy."
