@@ -46,6 +46,32 @@ class BotClassifierTest extends TestCase {
 		$this->assertSame( 'admin_authorisation_expired', $this->classifier->classify( $identity, null ) );
 	}
 
+	// ── Loopback recognition ──────────────────────────────────────────────────
+
+	public function test_loopback_state_classifies_as_loopback(): void {
+		$identity = $this->identity( array( 'verification_state' => 'loopback' ) );
+
+		$this->assertSame( 'loopback', $this->classifier->classify( $identity, null ) );
+	}
+
+	public function test_loopback_state_is_checked_ahead_of_a_rate_escalated_block(): void {
+		// A loopback self-request can't sensibly be "aggressive" -- the
+		// loopback recognition takes priority over the traffic block.
+		$identity = $this->identity( array( 'verification_state' => 'loopback' ) );
+		$block    = array( 'stage' => 'persistent_block' );
+
+		$this->assertSame( 'loopback', $this->classifier->classify( $identity, $block ) );
+	}
+
+	public function test_admin_decision_wins_over_loopback_recognition(): void {
+		// An administrator can still explicitly deny a loopback source (e.g.
+		// a site where a reverse proxy makes every visitor look like
+		// loopback) -- a decision always wins over automatic recognition.
+		$identity = $this->identity( array( 'verification_state' => 'explicitly_denied' ) );
+
+		$this->assertSame( 'admin_denied', $this->classifier->classify( $identity, null ) );
+	}
+
 	public function test_known_crawler_with_network_match_is_verified(): void {
 		$identity = $this->identity( array( 'verification_state' => 'known_crawler', 'network_match' => 1 ) );
 

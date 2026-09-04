@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.71] - 2026-09-04
+
+### Added
+
+- Automatic recognition of loopback traffic (127.0.0.0/8, RFC 5735; `::1`) on the Continuous Intelligence Identities tab, user-requested after a loopback source (`127.0.0.1`) showed up as "Unclassified" with dozens of occurrences on a real install. `Identity_Resolver::resolve()` now checks the request's source IP against the loopback ranges before anything user-agent-based, returning a new `loopback` verification state -- a genuinely new automatic *recognition* category, not a silent authorisation: `Scanner_Identity_Store::AUTOMATIC_STATES` gained `'loopback'` alongside the existing automatic states, and `Bot_Classifier::classify()` maps it straight to a `loopback` classification, checked ahead of the known-vendor and rate-escalation checks. An administrator's explicit decision (`customer_authorised`/`explicitly_denied`) still always wins over this recognition, exactly like every other automatic signal in this plugin -- deliberate, since a request's source IP being `127.0.0.1` doesn't always mean the same thing on every site: a common hosting pattern (a local reverse proxy terminating every visitor's connection and re-proxying via loopback) would make *every* visitor appear as loopback, so this had to stay overridable, not an unconditional bypass.
+- `claimed_identity` stays `''` for a loopback recognition, deliberately matching the existing `'unknown'` convention -- `Scanner_Identity_Store::record()`'s fingerprint is `hash('sha256', ip . '|' . claimed_identity)`, so a non-empty (and, worse, translated) value here would have forked every already-tracked, pre-upgrade loopback row into a brand-new one instead of updating it in place. Caught live in Docker during verification (a real loopback HTTP request created a second row instead of updating the existing one) before shipping -- fixed and re-verified end-to-end: a single existing row now transitions from `unknown`/Unclassified to `loopback`/"Loopback (this server)" on its next observed hit, with `occurrence_count` continuing to increment on the same row.
+- No schema change (`verification_state varchar(32)` already accommodates the new value); confirmed live in Docker end-to-end, including the Identities tab rendering the new state and classification labels.
+
 ## [2.9.70] - 2026-09-04
 
 ### Added

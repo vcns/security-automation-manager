@@ -17,8 +17,20 @@
  *
  * Whatever resolve() returns is only ever a *recognition* signal
  * (known_commercial_scanner / known_research_scanner / known_crawler /
- * unknown) -- it is Scanner_Identity_Store's job, not this class's, to make
- * sure recognition never silently becomes authorisation.
+ * loopback / unknown) -- it is Scanner_Identity_Store's job, not this
+ * class's, to make sure recognition never silently becomes authorisation.
+ *
+ * The loopback check (127.0.0.0/8, ::1) is its own recognition category,
+ * checked before the user-agent match and independent of it: this is the
+ * server calling itself (wp-cron's own loopback POST, Site Health's
+ * "Loopback request" check, or an administrator testing from the same
+ * machine), identified from the connection's own source address, which
+ * cannot be spoofed by request content the way a header or user-agent can.
+ * It is deliberately its own state rather than reusing 'known_crawler' or a
+ * decision state -- an administrator can still explicitly deny a loopback
+ * source (e.g. a host where a reverse proxy terminates every visitor's
+ * connection via loopback, making this recognition wrong for that specific
+ * site) and that decision, like any other, wins over this automatic one.
  */
 
 declare( strict_types=1 );
@@ -52,6 +64,23 @@ final class Identity_Resolver {
 	 * @return array{claimed_identity:string, vendor_key:string, verification_state:string, network_match:?bool}
 	 */
 	public function resolve( string $ip, string $user_agent ): array {
+		if ( self::is_loopback( $ip ) ) {
+			// claimed_identity stays '', matching the 'unknown' convention --
+			// Scanner_Identity_Store::record()'s fingerprint is hash(ip . '|'
+			// . claimed_identity), so a translated label here would fork a
+			// fresh row per admin locale, and every existing '' -fingerprint
+			// row from before this recognition existed would silently stop
+			// being the row future loopback traffic updates. The state and
+			// classification labels (Admin_UI's own display layer) already
+			// say "Loopback" without this field needing to.
+			return array(
+				'claimed_identity'   => '',
+				'vendor_key'         => '',
+				'verification_state' => 'loopback',
+				'network_match'      => null,
+			);
+		}
+
 		if ( '' === trim( $user_agent ) ) {
 			return array(
 				'claimed_identity'   => '',
@@ -127,6 +156,11 @@ final class Identity_Resolver {
 		$result['forward_confirmed'] = ( ( $this->forward_lookup )( $hostname ) === $ip );
 
 		return $result;
+	}
+
+	/** RFC 5735 IPv4 loopback block (127.0.0.0/8) and the IPv6 loopback address (::1). */
+	private static function is_loopback( string $ip ): bool {
+		return Cidr_Matcher::ip_in_any_cidr( $ip, array( '127.0.0.0/8', '::1/128' ) );
 	}
 
 	private function state_for_category( string $category ): string {

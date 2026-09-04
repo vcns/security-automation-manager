@@ -12,7 +12,8 @@
  * authorisation (§9, "Recognition is not authorisation"). record() -- the
  * automatic, per-request path Identity_Resolver calls -- only ever writes
  * an automatic verification_state (unknown / known_commercial_scanner /
- * known_research_scanner / known_crawler / identity_conflict). If a row
+ * known_research_scanner / known_crawler / identity_conflict / loopback).
+ * If a row
  * already carries an administrator decision (customer_authorised /
  * explicitly_denied / previously_authorised_expired), record() refreshes
  * occurrence/last_seen bookkeeping only and leaves that decision alone --
@@ -46,7 +47,7 @@ final class Scanner_Identity_Store {
 	/** Bounded so recent_paths can never grow without limit -- see class docblock. */
 	public const MAX_RECENT_PATHS = 10;
 
-	public const AUTOMATIC_STATES = array( 'unknown', 'known_commercial_scanner', 'known_research_scanner', 'known_crawler', 'identity_conflict' );
+	public const AUTOMATIC_STATES = array( 'unknown', 'known_commercial_scanner', 'known_research_scanner', 'known_crawler', 'identity_conflict', 'loopback' );
 
 	public const DECISION_STATES = array( 'customer_authorised', 'explicitly_denied', 'previously_authorised_expired' );
 
