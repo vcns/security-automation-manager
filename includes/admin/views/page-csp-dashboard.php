@@ -264,6 +264,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			}
 		}
 		?>
+	<p class="description">
+		<?php esc_html_e( "Mode is what's actually happening on each surface right now -- report-only (nothing blocked, violations logged), enforce (the policy actually blocks what it doesn't allow), or disabled. Automation controls how much of the review-and-approve work is done for you; Manual leaves every decision to you. Trusted Types and Bypass Best Practices are advanced, opt-in exceptions -- Trusted Types adds a stricter defense on top of CSP (pinned to report-only, since enforcing it needs application code most WordPress sites don't have), and a Bypass Best Practices toggle only appears once this surface has actually needed one, each deliberately weakening the policy in one narrow way to stop something that was really breaking.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat fixed striped wp-sam-profiles-table">
 		<thead>
 			<tr>
@@ -521,6 +524,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$sources_raw = $wpdb->get_results( $data_sql, ARRAY_A );
 		$sources     = ! empty( $sources_raw ) ? $sources_raw : array();
 		?>
+	<p class="description">
+		<?php esc_html_e( 'Every discovered source lands here with a risk rating before it ever reaches the policy -- approve the ones that belong, reject the ones that don\'t. Each decision needs a short reason and is written to the permanent ledger on the Policy Changes tab. See Start Here for the full report-only-to-enforce workflow this queue is part of.', 'vcns-security-automation-manager' ); ?>
+	</p>
 	<details class="wp-sam-filter-form">
 		<summary><?php esc_html_e( 'Filters', 'vcns-security-automation-manager' ); ?></summary>
 		<form method="get" action="">
@@ -960,6 +966,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$audit_pending_table  = $wpdb->prefix . 'csp_source_inventory';
 		$profiles_by_surface  = array_column( $profiles, null, 'surface' );
 		?>
+	<p class="description">
+		<?php esc_html_e( "One row per surface, summarising what's actually live right now: the enforced Mode, how much of Automation you've delegated, which Policy Version last locked in, and how many discovered sources are still waiting in For Review -- High Risk narrows that to the ones worth checking first. Effective Header is the literal CSP string currently being sent for that surface.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat striped wp-sam-audit-table">
 		<thead>
 			<tr>
@@ -1127,6 +1136,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 			'7d'  => array( 24 * 7, __( 'Last 7 days', 'vcns-security-automation-manager' ) ),
 		);
 		?>
+	<p class="description">
+		<?php esc_html_e( "Each row is a distinct surface + directive + blocked-source combination a visitor's browser actually reported -- not a visitor count, and Occurrences never resets even when the date filters below narrow what's shown. A sudden spike on a surface you haven't touched usually means something on the page changed (a new script, a theme update), not that something is wrong with this plugin.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<p class="wp-sam-quick-ranges">
 		<?php foreach ( $viol_quick_ranges as [ $viol_range_hours_ago, $viol_range_label ] ) : ?>
 			<?php
@@ -1293,6 +1305,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$scan_logs_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}sam_scan_logs ORDER BY started_at DESC LIMIT 20", ARRAY_A );
 		$scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		?>
+	<p class="description">
+		<?php esc_html_e( "A scan checks the site's current file inventory (theme, active plugins, and any content this plugin can reach) against the source and hash inventory it already knows about, adding or removing entries as things change. Scans run automatically on the schedule below and after most site changes, or you can trigger one manually from the button at the top of this page. Policy Changed means the scan's findings actually altered a surface's locked-in policy version, not just that something was discovered.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat fixed striped">
 		<thead>
 			<tr>
@@ -1344,6 +1359,9 @@ $scan_logs     = ! empty( $scan_logs_raw ) ? $scan_logs_raw : array();
 		$automation_directives      = array( 'default-src', 'img-src', 'font-src', 'media-src', 'manifest-src' );
 		$automation_schemes         = array( 'https', 'wss' );
 		?>
+	<p class="description">
+		<?php esc_html_e( "Everything below is grouped by what it governs: when a surface is allowed to promote itself to enforce mode, how much decision-making the deterministic engine can do without you, how this plugin's CSP header reaches visitors when a proxy or CDN sits in front of the site, how it learns from browser reports, and when it re-scans the site automatically.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<form method="post" action="options.php">
 		<?php settings_fields( 'wp_sam_settings_group' ); ?>
 
