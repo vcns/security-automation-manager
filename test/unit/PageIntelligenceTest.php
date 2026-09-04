@@ -117,7 +117,82 @@ class PageIntelligenceTest extends TestCase {
 		$this->assertStringNotContainsString( 'tablenav-pages', $output );
 	}
 
+	// ── Vendors tab ──────────────────────────────────────────────────────────────
+
+	public function test_vendors_tab_shows_an_edit_link_for_a_builtin_vendor_but_no_delete(): void {
+		$_GET['tab']                   = 'vendors';
+		$GLOBALS['_wpdb_get_results'] = array( $this->vendor_row( array( 'vendor_key' => 'googlebot', 'vendor_name' => 'Googlebot', 'is_builtin' => 1 ) ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Googlebot', $output );
+		$this->assertStringContainsString( 'edit=googlebot', $output );
+		$this->assertStringNotContainsString( 'wp_sam_scanner_vendor_delete', $output );
+	}
+
+	public function test_vendors_tab_shows_edit_and_delete_for_a_custom_vendor(): void {
+		$_GET['tab']                   = 'vendors';
+		$GLOBALS['_wpdb_get_results'] = array( $this->vendor_row( array( 'vendor_key' => 'qualys', 'vendor_name' => 'Qualys', 'is_builtin' => 0 ) ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'edit=qualys', $output );
+		$this->assertStringContainsString( 'wp_sam_scanner_vendor_delete', $output );
+	}
+
+	public function test_vendors_tab_prefills_the_form_when_editing(): void {
+		$_GET['tab']  = 'vendors';
+		$_GET['edit'] = 'googlebot';
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = $this->vendor_row(
+			array(
+				'vendor_key'  => 'googlebot',
+				'vendor_name' => 'Googlebot',
+				'is_builtin'  => 1,
+				'notes'       => 'Seeded on activation.',
+			)
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['edit'] );
+
+		$this->assertStringContainsString( 'Edit vendor: Googlebot', $output );
+		$this->assertStringContainsString( 'value="Googlebot"', $output );
+		$this->assertStringContainsString( 'Seeded on activation.', $output );
+		$this->assertStringContainsString( 'Delete and re-add under a new key instead.', $output );
+	}
+
 	// ── Fixtures ─────────────────────────────────────────────────────────────────
+
+	/** @param array<string, mixed> $overrides */
+	private function vendor_row( array $overrides = array() ): array {
+		return array_merge(
+			array(
+				'vendor_key'           => 'googlebot',
+				'vendor_name'          => 'Googlebot',
+				'category'             => 'known_crawler',
+				'ua_pattern'           => 'Googlebot',
+				'rdns_suffixes'        => '["googlebot.com"]',
+				'cidr_ranges'          => '[]',
+				'source_url'           => 'https://example.test/verify',
+				'verification_method'  => 'fcrdns',
+				'notes'                => '',
+				'is_builtin'           => 1,
+			),
+			$overrides
+		);
+	}
 
 	/** @return array<int, array<string, mixed>> */
 	private function event_rows( int $count ): array {

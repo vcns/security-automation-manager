@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.72] - 2026-09-04
+
+### Added
+
+- Edit action on Continuous Intelligence > Vendors, user-requested after noticing every built-in vendor row's Actions column showed nothing but a bare "—". `Scanner_Vendor_Store::upsert()` already fully supported updating an existing vendor (including a built-in row -- its own class docblock says so explicitly: "Built-in rows... can be edited... but not deleted") without disturbing `is_builtin`, but `page-intelligence.php` never exposed a way to reach that path -- only a hidden-for-built-ins Delete action existed. The "Add a vendor" form now doubles as an edit form when reached via a new per-row Edit link (`?tab=vendors&edit=<vendor_key>`), matching the same pre-fill-and-lock-the-key pattern Custom Rules already uses on Traffic Controls: all fields pre-filled from the existing row, the Key field locked (read-only, since `upsert()` matches on it -- changing it would silently create a new row instead of updating), and the submit button relabels to "Save changes" with a "Cancel" link back to the plain list.
+- Confirmed live in Docker: editing a built-in vendor (Googlebot) through `upsert()` preserves `is_builtin = true` and updates its CIDR ranges/verification notes correctly; the shared Docker verification instance was restored to its original values afterward.
+- No schema change.
+
 ## [2.9.71] - 2026-09-04
 
 ### Added
