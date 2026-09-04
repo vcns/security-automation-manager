@@ -188,7 +188,14 @@ $status_badge       = static function ( string $status ): void {
 
 	<?php if ( 'overview' === $tab ) : ?>
 
+	<p>
+		<?php esc_html_e( "Everything below is organised into five layers, roughly ordered from foundational to visible: whether the plugin itself is healthy, how much it's trusted to act on your behalf, what it's watching for right now, what it tells visitors' browsers to do, and whether the connection to your site can be trusted in the first place. A problem in an earlier layer can undermine every layer listed after it -- if something here looks wrong, it's usually worth checking the layers above it first.", 'vcns-security-automation-manager' ); ?>
+	</p>
+
 	<h2><?php esc_html_e( 'Layer 1: Governance and Operations', 'vcns-security-automation-manager' ); ?></h2>
+	<p class="description">
+		<?php esc_html_e( "This is a check on the plugin itself, not on your site. It confirms the database matches what the running code expects, the environment meets requirements, and no schema rollback is stuck half-finished. Treat every other layer's status with suspicion until a Fail here is resolved -- they all read from the same tables this layer is verifying.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
@@ -252,6 +259,9 @@ $status_badge       = static function ( string $status ): void {
 	</table>
 
 	<h2><?php esc_html_e( 'Layer 2: Controlled Automation', 'vcns-security-automation-manager' ); ?></h2>
+	<p class="description">
+		<?php esc_html_e( 'Writing a Content Security Policy by hand means listing every script, style, and font your site is allowed to load -- get it wrong and you either break the site or leave a gap wide open. Deterministic automation builds that list for you from what your site is actually running (its active theme, plugins, and known integrations), worked out separately for each surface below, so a strict policy can exist here without you writing it line by line.', 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
@@ -279,6 +289,9 @@ $status_badge       = static function ( string $status ): void {
 	</table>
 
 	<h2><?php esc_html_e( 'Layer 3: Continuous Intelligence', 'vcns-security-automation-manager' ); ?></h2>
+	<p class="description">
+		<?php esc_html_e( 'Every request your site receives passes through a set of pattern-matching detectors that recognise the signature of common attacks -- SQL injection attempts, path traversal, malicious bots, and more. Each detector can simply watch and record evidence, or actively block, entirely under your control from the Continuous Intelligence page; the row below just shows how many are switched on right now.', 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
@@ -323,6 +336,9 @@ $status_badge       = static function ( string $status ): void {
 	</table>
 
 	<h2><?php esc_html_e( 'Layer 4: Browser Security Policies', 'vcns-security-automation-manager' ); ?></h2>
+	<p class="description">
+		<?php esc_html_e( "These are instructions sent to every visitor's browser, telling it how to defend your site on their end -- for example, refusing to run a script you haven't approved, or refusing to let another site frame your pages inside a hidden iframe for a clickjacking attack. Content Security Policy is the most capable of these; the rest are narrower, single-purpose headers. Most can run in report-only mode first, so you can see what would have been blocked before anything actually is.", 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
@@ -385,6 +401,9 @@ $status_badge       = static function ( string $status ): void {
 	</p>
 
 	<h2><?php esc_html_e( 'Layer 5: Transport & Certificate Trust', 'vcns-security-automation-manager' ); ?></h2>
+	<p class="description">
+		<?php esc_html_e( 'Every layer above assumes visitors reach your site over a trusted, encrypted connection -- this is where that trust comes from. If a TLS certificate expires or was never issued, browsers show visitors a warning page before any of your other protections get a chance to matter.', 'vcns-security-automation-manager' ); ?>
+	</p>
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>
 			<tr>
@@ -411,6 +430,10 @@ $status_badge       = static function ( string $status ): void {
 	</table>
 
 	<?php elseif ( 'readiness' === $tab ) : ?>
+
+	<p>
+		<?php esc_html_e( "These checks are about the plugin itself, not your site's security posture -- they confirm the database schema is current, required tables exist, and the runtime environment (PHP version, required extensions, WordPress version) meets what this plugin needs to run correctly. A Fail here means something needs fixing before the rest of this plugin can be trusted; a Warning is usually safe to leave for now, but worth understanding.", 'vcns-security-automation-manager' ); ?>
+	</p>
 
 	<h2><?php esc_html_e( 'Plugin and Database', 'vcns-security-automation-manager' ); ?></h2>
 	<table class="widefat striped wp-sam-readiness-table">
@@ -479,6 +502,10 @@ $status_badge       = static function ( string $status ): void {
 	</table>
 
 	<?php elseif ( 'health' === $tab ) : ?>
+
+	<p>
+		<?php esc_html_e( 'This is the plain-language version of everything else in this plugin: are your defenses actually enforcing, is anything drifting away from your known-good baseline, are certificates on track to renew, and are there any open exceptions somebody still needs to review? Hover the info icon next to a row for the detail behind its status.', 'vcns-security-automation-manager' ); ?>
+	</p>
 
 	<table class="widefat striped wp-sam-readiness-table">
 		<thead>

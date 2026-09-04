@@ -151,6 +151,22 @@ This is the phase most directly shaped by the commercial-direction shift: the pr
 
 Lowest priority in this document, deliberately -- §22's own text and the original Phase 3J framing both suggest recommendation-quality work benefits from more operational data existing first (more detector families live, more traffic-control dimensions live, more real drift/campaign history accumulated). Revisit sequencing once Phase 4A-4C have shipped and there's real evidence to recommend against.
 
+## Phase 4G: UI Documentation Retrofit and Guided Onboarding
+
+**Status: In progress. First increment (Settings/Overview page) delivered v2.9.67 (4 September 2026).**
+
+**Addresses:** a direct user request, not tied to any numbered section in `.roadmap/phase3_early_plan.md` -- the admin UI covers a subject area "few technicians know the full domain of, and even more people know absolutely nothing about at all," and needs UI text that actually teaches, not just labels. User confirmed via clarifying question: retrofit existing pages first, then build a separate guided onboarding/getting-started flow.
+
+- Settings/Overview page (v2.9.67) -- `includes/admin/views/page-overview.php`'s Overview, Readiness, and Security Health tabs gained explainer paragraphs: a framing paragraph for the five-layer model, one paragraph per layer (what it covers, why it matters, how it relates to the layers around it), and short intros for the Readiness and Security Health tabs explaining what their checks are actually for. Established the voice for the rest of this retrofit: concrete stakes over jargon-dropping (e.g. explain what deterministic automation buys an administrator, not just name it), matching the tone already used successfully in the existing About tab and the X-Frame-Options/Referrer-Policy pillar intros -- both used as a reference rather than invented from scratch. No behaviour change, `<p class="description">` copy only, confirmed live in Docker across all three tabs.
+
+**Remaining pages, not yet started** (rough order -- CSP dashboard and Traffic Controls first since they're the most complex/highest-traffic pages after Overview):
+- CSP Dashboard (`page-csp-dashboard.php`) -- Sources, Policy Changes, Violations tabs.
+- Traffic Controls (`page-traffic.php`) -- Policy, IP Rules, Blocks, Network Intelligence, Detectors, Custom Rules tabs.
+- The 14 pillar pages -- both the shared `page-pillar-simple.php` template's per-pillar `$intro_html` (set in `Admin_UI`'s `render_*` methods, several already reasonably detailed) and the dedicated pillar view files (HSTS, Cross-Origin, Reverse Tabnabbing, Cache-Control, Permissions-Policy, Information Masking, Scripts internal/external).
+- Continuous Intelligence (`page-intelligence.php`), Baseline & Drift (`page-baseline.php`), Certificates (`page-certificates.php`).
+
+**Not started:** guided onboarding/getting-started flow (second half of the original request, deliberately sequenced after the retrofit) -- no design work done yet.
+
 ---
 
 # 4. Explicitly Not In Scope for Phase 4
