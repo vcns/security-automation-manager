@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.68
+Stable tag: 2.9.69
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.69 =
+
+* Added: plain-language explainer text on the Content Security Policy dashboard's Profiles, For Review, Policy Audit, Violations, Scan Log, and Settings tabs. Second installment of the UI documentation retrofit -- explains what each tab's data actually means and why it matters (e.g. why Occurrences never resets, what a "scan" actually checks, what the Trusted Types and Bypass Best Practices toggles are for) rather than leaving the reader to infer it from column headers and filter fields alone. Start Here already had this treatment and was left unchanged.
 
 = 2.9.68 =
 

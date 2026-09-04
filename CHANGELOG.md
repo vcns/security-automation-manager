@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.69] - 2026-09-04
+
+### Added
+
+- Second installment of the UI documentation retrofit (Phase 4G): `includes/admin/views/page-csp-dashboard.php`'s Profiles, For Review (Sources), Policy Audit, Violations, Scan Log, and Settings tabs each gained a `<p class="description">` explainer paragraph. Start Here already carried this level of detail from earlier work and was left unchanged. Written to explain what the data on each tab actually means and why, not just what the column headers say -- e.g. Profiles explains what Trusted Types and Bypass Best Practices actually are and why enforcing Trusted Types isn't the default; Violations explains that Occurrences is a lifetime count that never resets even when the date filter narrows what's shown; Scan Log explains what a scan actually inspects and what "Policy Changed" means. No behaviour change; explanatory copy only, confirmed live in Docker across all six tabs.
+
 ## [2.9.68] - 2026-09-04
 
 ### Fixed
