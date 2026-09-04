@@ -99,4 +99,44 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringContainsString( 'value="Old backup file probe"', $output );
 		$this->assertStringContainsString( 'Notes here', $output );
 	}
+
+	// ── Network Intelligence tab -- Network Rules section ───────────────────
+
+	public function test_network_intelligence_tab_renders_without_a_network_rule(): void {
+		$_GET['tab'] = 'network-intelligence';
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Network Rules', $output );
+		$this->assertStringContainsString( 'No network rules yet.', $output );
+		$this->assertStringContainsString( 'wp_sam_network_rule_add', $output );
+	}
+
+	public function test_network_intelligence_tab_lists_a_stored_network_rule(): void {
+		$_GET['tab'] = 'network-intelligence';
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'        => 4,
+				'rule_type' => 'asn',
+				'value'     => '15169',
+				'surface'   => '',
+				'reason'    => 'Known scraper network',
+			),
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'AS15169', $output );
+		$this->assertStringContainsString( 'Known scraper network', $output );
+		$this->assertStringContainsString( 'wp_sam_network_rule_delete', $output );
+	}
 }

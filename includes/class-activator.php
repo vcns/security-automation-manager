@@ -300,6 +300,7 @@ class Activator {
 			'sam_geoip_cache',
 			'sam_detector_policies',
 			'sam_custom_detector_rules',
+			'sam_network_rules',
 		);
 	}
 
@@ -1271,6 +1272,30 @@ class Activator {
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   PRIMARY KEY  (id)
+) {$cc};"
+		);
+
+		// sam_network_rules: administrator-entered ASN/country block list
+		// (Phase 4A extension -- the "traffic control filtering" half of
+		// Geo-IP/ASN/Tor awareness that Phase 4A itself deliberately left as
+		// evidence-only). A deliberate admin decision, so Traffic_Guard
+		// applies a match regardless of the surface's observe/enforce mode --
+		// the same reasoning sam_ip_rules already follows. Unlike sam_ip_
+		// rules there is no 'allow' list_type here: an ASN/country is too
+		// coarse a unit to usefully "allow" (a single trusted IP within a
+		// blocked country already works via a narrower sam_ip_rules allow
+		// entry, which Traffic_Guard checks first).
+		dbDelta(
+			"CREATE TABLE {$p}sam_network_rules (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  rule_type varchar(10) NOT NULL,
+  value varchar(32) NOT NULL,
+  surface varchar(32) NOT NULL DEFAULT '',
+  reason longtext NOT NULL,
+  created_by bigint(20) UNSIGNED DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY rule_type (rule_type)
 ) {$cc};"
 		);
 

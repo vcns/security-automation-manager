@@ -32,6 +32,7 @@ use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
 use WP_SAM\Intelligence\Detectors\Login_Cookie_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Compliance_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
+use WP_SAM\Intelligence\Detectors\Tor_Exit_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
 use WP_SAM\Intelligence\Change_Log_Store;
@@ -40,6 +41,7 @@ use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Network_Intelligence_Resolver;
+use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Rate_Limiter;
 use WP_SAM\Intelligence\Request_Observer;
 use WP_SAM\Intelligence\Robots_Rules_Store;
@@ -294,7 +296,9 @@ final class Plugin {
 			new Traffic_Policy_Store(),
 			new Ip_Rule_Store(),
 			$traffic_block_store,
-			new Rate_Limiter()
+			new Rate_Limiter(),
+			new Network_Rule_Store(),
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store(), new Geo_Ip_Store() )
 		) )->register();
 
 		// Change Attribution (Phase 3F). Records real plugin/theme/core
@@ -408,6 +412,16 @@ final class Plugin {
 		foreach ( ( new Custom_Rule_Store() )->all() as $rule ) {
 			Detector_Registry::register( new Custom_Rule_Detector( $rule ) );
 		}
+
+		// Tor exit-node traffic filtering (Phase 4A extension, user-requested):
+		// registered separately for the same reason as the others above --
+		// not one of §11's 13 named families, and not a Pattern_Detector. A
+		// local, indexed table lookup (not a network call), so this can run
+		// on every request like any other detector -- unlike ASN/Geo-IP,
+		// which stay lazy and are handled as an opt-in Network_Rule_Store
+		// block-list in Traffic_Guard instead. See Tor_Exit_Detector's own
+		// docblock.
+		Detector_Registry::register( new Tor_Exit_Detector() );
 
 		do_action( 'wp_sam_register_detectors' );
 	}

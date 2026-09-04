@@ -24,6 +24,7 @@ use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Custom_Rule_Detector;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
@@ -454,6 +455,87 @@ $tab_help = array(
 			<?php wp_nonce_field( 'wp_sam_robots_rules_refresh' ); ?>
 			<input type="hidden" name="action" value="wp_sam_robots_rules_refresh" />
 			<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+		</form>
+
+		<?php $network_rules = ( new Network_Rule_Store() )->all(); ?>
+
+		<h2 style="margin-top:2em"><?php esc_html_e( 'Network Rules', 'vcns-security-automation-manager' ); ?></h2>
+		<p class="description" style="max-width:600px">
+			<?php esc_html_e( "Block traffic by ASN or country, checked alongside IP Rules -- an explicit decision, applied regardless of a surface's observe/enforce mode. Adding the first rule here is what switches ASN/Geo-IP resolution on for every request; with no rules configured, nothing here costs anything.", 'vcns-security-automation-manager' ); ?>
+		</p>
+
+		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php foreach ( $network_rules as $network_rule ) : ?>
+			<tr>
+				<td><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? __( 'ASN', 'vcns-security-automation-manager' ) : __( 'Country', 'vcns-security-automation-manager' ) ); ?></td>
+				<td><code><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? 'AS' . (string) $network_rule['value'] : (string) $network_rule['value'] ); ?></code></td>
+				<td><?php echo esc_html( '' !== (string) $network_rule['surface'] ? ucfirst( (string) $network_rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+				<td><?php echo esc_html( (string) $network_rule['reason'] ); ?></td>
+				<td>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
+						<?php wp_nonce_field( 'wp_sam_network_rule_delete' ); ?>
+						<input type="hidden" name="action" value="wp_sam_network_rule_delete" />
+						<input type="hidden" name="rule_id" value="<?php echo esc_attr( (string) $network_rule['id'] ); ?>" />
+						<?php submit_button( __( 'Delete', 'vcns-security-automation-manager' ), 'link-delete small', '', false ); ?>
+					</form>
+				</td>
+			</tr>
+			<?php endforeach; ?>
+			<?php if ( empty( $network_rules ) ) : ?>
+			<tr>
+				<td colspan="5"><p><?php esc_html_e( 'No network rules yet.', 'vcns-security-automation-manager' ); ?></p></td>
+			</tr>
+			<?php endif; ?>
+			</tbody>
+		</table>
+
+		<h3 style="margin-top:1.5em"><?php esc_html_e( 'Add a network rule', 'vcns-security-automation-manager' ); ?></h3>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<?php wp_nonce_field( 'wp_sam_network_rule_add' ); ?>
+			<input type="hidden" name="action" value="wp_sam_network_rule_add" />
+			<table class="form-table">
+				<tr>
+					<th><label for="rule_type"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></label></th>
+					<td>
+						<select id="rule_type" name="rule_type">
+							<option value="asn"><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></option>
+							<option value="country"><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="value"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></label></th>
+					<td>
+						<input type="text" id="value" name="value" required placeholder="<?php esc_attr_e( 'AS15169, or a two-letter country code such as CN', 'vcns-security-automation-manager' ); ?>" style="width:100%;max-width:300px" />
+					</td>
+				</tr>
+				<tr>
+					<th><label for="network_rule_surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></label></th>
+					<td>
+						<select id="network_rule_surface" name="surface">
+							<option value=""><?php esc_html_e( 'All surfaces', 'vcns-security-automation-manager' ); ?></option>
+							<?php foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $network_rule_surface ) : ?>
+							<option value="<?php echo esc_attr( $network_rule_surface ); ?>"><?php echo esc_html( ucfirst( $network_rule_surface ) ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="network_rule_reason"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></label></th>
+					<td><input type="text" id="network_rule_reason" name="reason" required style="width:100%;max-width:300px" /></td>
+				</tr>
+			</table>
+			<?php submit_button( __( 'Add rule', 'vcns-security-automation-manager' ) ); ?>
 		</form>
 
 	<?php elseif ( 'detectors' === $tab ) : ?>

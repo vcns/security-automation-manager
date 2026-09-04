@@ -38,7 +38,7 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 
 ## Phase 4A: Traffic Intelligence Data Sourcing
 
-**Status: Delivered, v2.9.45-v2.9.47 (2 September 2026).** All three increments shipped sequentially, each through the full schema-bump/class/admin-UI/tests/lint/live-Docker-verification/release cycle, following the provider decisions below.
+**Status: Delivered, v2.9.45-v2.9.47 (2 September 2026), plus v2.9.74 (4 September 2026) closing the traffic-control-filtering gap below.** All increments shipped sequentially, each through the full schema-bump/class/admin-UI/tests/lint/live-Docker-verification/release cycle, following the provider decisions below.
 
 **Addresses:** `.roadmap/phase3_early_plan.md` §13.4 (Geo-IP), §13.5 (ASN), §13.6 (Tor Awareness), §8's missing ASN identity field, §31's missing `Network_Intelligence_Resolver`.
 
@@ -49,11 +49,13 @@ Full detail lives in `.roadmap/phase3_early_plan.md`'s per-section status notes 
 - `includes/intelligence/class-geo-ip-store.php` (`Geo_Ip_Store`, v2.9.47, PR #327) -- opt-in, customer-supplied IPinfo token sealed via `WP_SAM\Certificates\Credential_Vault`, 30-day cache including negative results.
 - `includes/intelligence/class-network-intelligence-resolver.php` (`Network_Intelligence_Resolver`) -- merges all three into one `resolve(string $ip): array` call, wired into `includes/intelligence/class-request-observer.php` as a lazy enrichment (only resolved when some other detector already produced a finding, per §33 Performance Requirements) that adds `is_tor_exit`/`asn`/`asn_org`/`geo_country`/`geo_region`/`geo_city` to `Event_Store` evidence. Pure Observe -- no default blocking, matching §30's Default-Safety Requirements.
 
+- **Traffic control filtering (v2.9.74, user-requested -- "why is there no GUI for this?"):** the §13.3 gap below was never actually closed by Phase 4B despite this document's own note that it would be -- Phase 4B's control-action framework shipped per-detector observe/enforce controls, not network-intelligence-based ones, and the gap survived unnoticed until flagged directly. `Tor_Exit_Detector` (new detector, cheap local table lookup, runs unconditionally like any other) and `Network_Rule_Store` (new admin-entered ASN/country block-list, schema v38, checked by `Traffic_Guard` alongside `Ip_Rule_Store`) close it. ASN/Geo-IP resolution stays lazy -- `Traffic_Guard` only resolves it at all when `Network_Rule_Store::has_any()` is true, so the §33 performance requirement below is preserved: zero added cost until an administrator actually adds a rule. Confirmed live in Docker with real data (a real Tor exit node, a real ASN block against `8.8.8.8` via live Team Cymru DNS).
+
 **Exit criteria -- all met:**
 - ~~A verified data source is selected and its licensing confirmed compatible with this product's distribution model.~~ Done (see provider decisions above).
 - ~~Geo-IP/ASN/Tor identification is available as evidence (§3.1 Observe) with no default blocking, per `.roadmap/phase3_early_plan.md` §30's Default-Safety Requirements.~~ Done.
+- ~~§13.1/§13.3's rate-limiting and firewalling dimensions extend to ASN/country/Tor.~~ Done, v2.9.74 (see above).
 - **Not done, carried forward:** §8's identity record does not yet gain a persisted ASN field on the identity record itself (ASN is resolved and recorded in `Event_Store` evidence per-request, not yet merged into `Scanner_Identity_Store`'s identity model).
-- **Not done, carried forward:** §13.1/§13.3's rate-limiting and firewalling dimensions do not yet extend to subnet/ASN/country -- `Traffic_Guard` remains generic rate/IP-based. This is exactly what Phase 4B's control-action framework is for; §13.3's "firewalling by detector family" and network-intelligence-aware controls are explicitly in Phase 4B's scope below.
 
 ## Phase 4B: Remaining Detector Families and Control-Action Wiring
 
