@@ -4,11 +4,11 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.75
+Stable tag: 2.9.76
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
+Security headers that learn before enforcing so nothing breaks, plus attack detection, traffic filtering, and free TLS certs. No paywall.
 
 == Description ==
 
@@ -114,6 +114,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.76 =
+
+* Fixed: the short "tagline" description WordPress.org shows in plugin-directory search results and the "Add Plugins" install screen (user-flagged from a live install) still said "Ten security headers that learn your site before enforcing" with no mention of Continuous Intelligence, traffic filtering, or Baseline & Drift -- all shipped since that line was written. Updated to "Security headers that learn before enforcing so nothing breaks, plus attack detection, traffic filtering, and free TLS certs. No paywall." (137 characters, within WordPress.org's ~150-character directory-tagline budget). Added an automated test so this line and the plugin header's own Description: field can't silently drift apart again.
 
 = 2.9.75 =
 
