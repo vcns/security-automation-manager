@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.73] - 2026-09-04
+
+### Fixed
+
+- The Settings/Overview page's About tab (`includes/admin/views/page-overview.php`) had drifted well behind the actual product, user-flagged as "referring to a much younger product-build." Its "What this plugin covers" bullet list still said "Nine further HTTP security headers" -- stale since Information Masking (v2.9.59) and Cache-Control (v2.9.60) shipped two more, verified against `Pillar_Registry::pillars()`'s current 14-entry list (CSP is handled separately) -- and never mentioned Continuous Intelligence or Baseline & Drift at all, despite both being fully shipped, independently-menued features (Continuous Intelligence: Phase 3B-3D and 4A-4C, request observation + 19 built-in detectors, verified by counting `Detector_Registry::register_defaults()`'s 13 plus the 6 more `Plugin::register_detectors()` registers outside it, plus admin-authored Custom Rules; Baseline & Drift: Phase 3F, v2.9.42).
+- Added two new bullets (Continuous Intelligence, Baseline & Drift) and updated the header-pillar bullet's count and list. Folded a mention of CSP's deterministic automation into the CSP bullet, since it wasn't called out as its own capability before. "The gap this fills" paragraph gained a clause naming an unnoticed file change as one more thing this plugin exists to catch. `Learn more` and `Why we built this` sections were reviewed and found still accurate -- untouched.
+- No behaviour change; explanatory copy only, confirmed live in Docker.
+
 ## [2.9.72] - 2026-09-04
 
 ### Added
