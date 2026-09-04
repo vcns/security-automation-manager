@@ -27,6 +27,27 @@
  * hook target, which acts on decide()'s verdict. The blocking response
  * itself is behind an injectable callable (like Identity_Resolver's DNS
  * lookups) so tests never need to trigger a real wp_die()/exit().
+ *
+ * Network_Rule_Store (Phase 4A extension, user-requested: the "traffic
+ * control filtering" half of Geo-IP/ASN/Tor awareness Phase 4A itself
+ * shipped as evidence-only) is checked the same way Ip_Rule_Store is -- a
+ * deliberate admin decision, applies regardless of observe/enforce mode,
+ * even to a privileged session. Unlike Ip_Rule_Store, resolving what it
+ * needs to check against (ASN, Geo-IP country) is NOT free: Network_
+ * Intelligence_Resolver's own docblock notes its cost is only ever paid
+ * rarely (cached) once some other detector has already flagged a request.
+ * Calling it unconditionally here, on every single request regardless of
+ * whether any admin has ever configured a network rule, would silently
+ * reintroduce exactly the per-request network-lookup cost that laziness
+ * was designed to avoid. So this only resolves network intelligence at all
+ * when Network_Rule_Store::has_any() says at least one rule exists --
+ * zero added cost on the (default) site with none configured, and the
+ * lookup cost becomes an explicit trade-off only once an administrator has
+ * actually opted in by adding a rule. Tor exit-node filtering needed none
+ * of this: it shipped as its own detector (Tor_Exit_Detector) instead,
+ * since Tor_Exit_List_Store's membership check is a local, indexed lookup,
+ * not a network call, and is therefore cheap enough to run unconditionally
+ * like any other detector.
  */
 
 declare( strict_types=1 );
@@ -43,6 +64,8 @@ final class Traffic_Guard {
 	private Ip_Rule_Store $ip_rules;
 	private Traffic_Block_Store $blocks;
 	private Rate_Limiter $rate_limiter;
+	private Network_Rule_Store $network_rules;
+	private Network_Intelligence_Resolver $network_intelligence;
 
 	/** @var callable(string):bool Real is_user_logged_in()+manage_options check by default; injectable for tests. */
 	private $is_privileged_user;
@@ -58,19 +81,23 @@ final class Traffic_Guard {
 		Ip_Rule_Store $ip_rules,
 		Traffic_Block_Store $blocks,
 		Rate_Limiter $rate_limiter,
+		Network_Rule_Store $network_rules,
+		Network_Intelligence_Resolver $network_intelligence,
 		?callable $is_privileged_user = null,
 		?callable $respond_blocked = null,
 		?callable $throttle_delay = null
 	) {
-		$this->policies           = $policies;
-		$this->ip_rules           = $ip_rules;
-		$this->blocks             = $blocks;
-		$this->rate_limiter       = $rate_limiter;
-		$this->is_privileged_user = $is_privileged_user ?? static function (): bool {
+		$this->policies             = $policies;
+		$this->ip_rules             = $ip_rules;
+		$this->blocks               = $blocks;
+		$this->rate_limiter         = $rate_limiter;
+		$this->network_rules        = $network_rules;
+		$this->network_intelligence = $network_intelligence;
+		$this->is_privileged_user   = $is_privileged_user ?? static function (): bool {
 			return is_user_logged_in() && current_user_can( 'manage_options' );
 		};
-		$this->respond_blocked    = $respond_blocked ?? array( $this, 'real_respond_blocked' );
-		$this->throttle_delay     = $throttle_delay ?? static function ( int $microseconds ): void {
+		$this->respond_blocked      = $respond_blocked ?? array( $this, 'real_respond_blocked' );
+		$this->throttle_delay       = $throttle_delay ?? static function ( int $microseconds ): void {
 			usleep( $microseconds ); // phpcs:ignore WordPress.WP.AlternativeFunctions.usleep_usleep -- deliberate progressive-response throttle, not a busy-wait.
 		};
 	}
@@ -159,6 +186,22 @@ final class Traffic_Guard {
 				'stage'               => 'persistent_block',
 				'retry_after_seconds' => null,
 			);
+		}
+
+		// Network (ASN/country) rules -- see class docblock for why this
+		// only resolves ASN/Geo-IP at all when at least one rule exists.
+		if ( $this->network_rules->has_any() ) {
+			$network      = $this->network_intelligence->resolve( $ip );
+			$network_rule = $this->network_rules->match( $network['asn'] ?? null, $network['country'] ?? null, $surface );
+			if ( null !== $network_rule ) {
+				return array(
+					'action'              => 'block',
+					'would_block'         => true,
+					'reason'              => 'network_rule_block',
+					'stage'               => 'persistent_block',
+					'retry_after_seconds' => null,
+				);
+			}
 		}
 
 		$is_enforcing = $this->policies->is_enforcing( $surface );

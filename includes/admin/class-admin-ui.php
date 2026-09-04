@@ -83,6 +83,7 @@ use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
@@ -181,6 +182,8 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_information_masking_check', array( $this, 'handle_information_masking_check' ) );
 		add_action( 'admin_post_wp_sam_cache_control_cdn_acknowledge', array( $this, 'handle_cache_control_cdn_acknowledge' ) );
 		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
+		add_action( 'admin_post_wp_sam_network_rule_add', array( $this, 'handle_network_rule_add' ) );
+		add_action( 'admin_post_wp_sam_network_rule_delete', array( $this, 'handle_network_rule_delete' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -1616,6 +1619,42 @@ class Admin_UI {
 		} elseif ( isset( $_POST['clear_token'] ) ) {
 			( new Geo_Ip_Store() )->save_token( '' );
 		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		exit;
+	}
+
+	/**
+	 * Adds an ASN/country block-list entry (Phase 4A extension, user-
+	 * requested -- the "traffic control filtering" half of Geo-IP/ASN/Tor
+	 * awareness Phase 4A itself shipped as evidence-only). See Network_Rule_
+	 * Store's own docblock.
+	 */
+	public function handle_network_rule_add(): void {
+		check_admin_referer( 'wp_sam_network_rule_add' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Network_Rule_Store() )->add(
+			sanitize_key( wp_unslash( $_POST['rule_type'] ?? 'asn' ) ),
+			sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) ),
+			sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) ),
+			sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) ),
+			get_current_user_id()
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		exit;
+	}
+
+	public function handle_network_rule_delete(): void {
+		check_admin_referer( 'wp_sam_network_rule_delete' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Network_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
 		exit;

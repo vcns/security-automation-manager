@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.73
+ * Version:           2.9.74
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.73' );
+define( 'WP_SAM_VERSION', '2.9.74' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -238,8 +238,18 @@ define( 'WP_SAM_VERSION', '2.9.73' );
  *        same Detector_Registry/Detector_Policy_Store/Detector_Engine
  *        pipeline every built-in §11 family already uses. See Intelligence\
  *        Custom_Rule_Store and Intelligence\Detectors\Custom_Rule_Detector.
+ *   v38: adds sam_network_rules (Phase 4A extension, user-requested: the
+ *        "traffic control filtering" half of Geo-IP/ASN/Tor awareness that
+ *        Phase 4A itself shipped as evidence-only). Administrator-entered
+ *        ASN/country block-list entries, checked by Traffic_Guard alongside
+ *        sam_ip_rules. Tor exit-node filtering needed no new table -- it
+ *        shipped as a new detector (Tor_Exit_Detector) instead, since a
+ *        local, already-refreshed exit-node table is cheap to check on
+ *        every request. ASN/country resolution stays lazy (no live DNS/
+ *        API lookup) unless at least one sam_network_rules row exists --
+ *        see Intelligence\Traffic_Guard's own docblock.
  */
-define( 'WP_SAM_DB_VERSION', '37' );
+define( 'WP_SAM_DB_VERSION', '38' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

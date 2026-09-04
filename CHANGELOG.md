@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.74] - 2026-09-04
+
+### Added
+
+- Real traffic-control filtering by Tor exit-node status, ASN, and country -- user-requested after noticing Phase 4A's Geo-IP/ASN/Tor work never actually closed the loop into blocking, only ever enriching evidence on a finding some other detector had already produced. Confirmed by grep: nothing in the codebase read `is_tor_exit`/`asn`/`geo_country` except the producer classes themselves, `Request_Observer` (writing them into evidence), and `page-traffic.php`'s Network Intelligence tab (display only).
+- `Tor_Exit_Detector` (`includes/intelligence/detectors/class-tor-exit-detector.php`) -- a new detector, registered alongside the other 19 in `Plugin::register_detectors()`, flowing through the exact same `Detector_Registry`/`Detector_Policy_Store`/`Detector_Engine` pipeline. Not a `Pattern_Detector` (no regex) -- checks `Tor_Exit_List_Store::is_exit_node()`, a local indexed table lookup, so unlike ASN/Geo-IP it's cheap enough to run on every request unconditionally, matching every other detector's cost profile. Enforce-capable; observe by default.
+- `Network_Rule_Store` (`includes/intelligence/class-network-rule-store.php`, schema v38, new `sam_network_rules` table) -- administrator-entered ASN/country block-list entries. Block-only (no `list_type`/allow, unlike `Ip_Rule_Store` -- an ASN/country is too coarse a unit to usefully "allow"; a narrower `Ip_Rule_Store` allow entry already covers that case and is checked first). `Traffic_Guard::decide()` checks it right after `Ip_Rule_Store`, applying regardless of a surface's observe/enforce mode and even to a privileged session -- the same "explicit decision always wins" rule `Ip_Rule_Store` already follows.
+- **Performance-conscious wiring, the key design constraint this whole feature turned on:** `Network_Intelligence_Resolver`'s own docblock notes ASN/Geo-IP resolution is deliberately lazy, paid rarely (cached) and only after some other detector has already flagged a request -- a documented performance requirement. Blocking by ASN/country needs to check *every* request, which would mean resolving network intelligence unconditionally on every request too, silently reintroducing exactly the per-request cost that laziness exists to avoid. Fixed by gating on `Network_Rule_Store::has_any()` first: zero added cost on the (default) site with no rules configured; the lookup cost becomes an explicit, opt-in trade-off only once an administrator has actually added a rule.
+- New "Network Rules" section on Traffic Controls > Network Intelligence (list/add/delete), and a new admin-post handler pair (`wp_sam_network_rule_add`/`wp_sam_network_rule_delete`) in `Admin_UI`.
+- Confirmed live in Docker with real data, not just staged unit tests: `Tor_Exit_Detector` correctly flagged a real current Tor exit node (from the container's own refreshed 1,413-entry list) and correctly ignored an ordinary IP; a real ASN block rule against `AS15169` (Google) correctly blocked a live request from `8.8.8.8` (including for a privileged session -- an explicit rule is never exempted) via a real, live Team Cymru DNS lookup, while `1.1.1.1` (a different ASN) correctly passed through.
+- 27 new tests across `NetworkRuleStoreTest`, `TorExitDetectorTest`, `TrafficGuardTest`, and `PageTrafficTest` (2074 -> 2101).
+
 ## [2.9.73] - 2026-09-04
 
 ### Fixed

@@ -10,8 +10,13 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
+use WP_SAM\Intelligence\Asn_Lookup_Store;
+use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Network_Intelligence_Resolver;
+use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Rate_Limiter;
+use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Guard;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
@@ -26,7 +31,9 @@ class TrafficGuardTest extends TestCase {
 			new Traffic_Policy_Store(),
 			new Ip_Rule_Store(),
 			new Traffic_Block_Store(),
-			new Rate_Limiter()
+			new Rate_Limiter(),
+			new Network_Rule_Store(),
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store(), new Geo_Ip_Store() )
 		);
 	}
 
@@ -84,6 +91,39 @@ class TrafficGuardTest extends TestCase {
 		// Allow rule short-circuits before any block-store lookup happens.
 		$GLOBALS['_wpdb_get_results'] = array(
 			array( 'id' => 1, 'list_type' => 'allow', 'cidr' => '203.0.113.42', 'surface' => '', 'expires_at' => null ),
+		);
+
+		$verdict = $this->guard->decide( '203.0.113.42', 'frontend', false );
+
+		$this->assertSame( 'allow', $verdict['action'] );
+	}
+
+	// ── Network (ASN/country) rules ──────────────────────────────────────────
+
+	public function test_network_rule_blocks_a_matching_asn_even_for_a_privileged_user(): void {
+		$GLOBALS['_wpdb_get_var_queue']     = array( 1, 1 ); // Network_Rule_Store::has_any() => true; Tor_Exit_List_Store::is_exit_node() (inside resolve(), irrelevant to this test) => true.
+		$GLOBALS['_wpdb_get_row']           = array( 'asn' => 15169, 'asn_org' => 'GOOGLE' ); // Asn_Lookup_Store cache hit -- no live DNS lookup.
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(), // Ip_Rule_Store::all() -- no IP rules.
+			array( array( 'id' => 1, 'rule_type' => 'asn', 'value' => '15169', 'surface' => '' ) ), // Network_Rule_Store::all().
+		);
+
+		$verdict = $this->guard->decide( '203.0.113.42', 'frontend', true );
+
+		$this->assertSame( 'block', $verdict['action'] );
+		$this->assertSame( 'network_rule_block', $verdict['reason'] );
+		$this->assertSame( 'persistent_block', $verdict['stage'] );
+	}
+
+	public function test_no_network_rules_configured_never_calls_the_network_resolver(): void {
+		// has_any() => false (default null): the ASN/Geo-IP lookup this
+		// would otherwise trigger must never run -- see Traffic_Guard's own
+		// docblock for why that cost must stay opt-in.
+		$GLOBALS['_wpdb_get_results_queue'] = array( array() ); // Ip_Rule_Store::all() -- no IP rules.
+		$GLOBALS['_wpdb_get_row_queue']     = array(
+			$this->policy_row( array( 'mode' => 'observe' ) ), // is_enforcing()
+			null, // Traffic_Block_Store::get() -- no existing block.
+			$this->policy_row( array( 'mode' => 'observe' ) ), // get(surface) for thresholds.
 		);
 
 		$verdict = $this->guard->decide( '203.0.113.42', 'frontend', false );
