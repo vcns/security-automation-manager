@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.67] - 2026-09-04
+
+### Added
+
+- First installment of a wider UI documentation retrofit (user-requested): the Settings/Overview page's Overview, Readiness, and Security Health tabs now carry plain-language explainer paragraphs, not just table headings. The Overview tab gets a framing paragraph up front ("everything below is organised into five layers, roughly ordered from foundational to visible") plus one paragraph per layer explaining what it covers, why it matters, and how it relates to the layers around it -- e.g. Layer 2 (Controlled Automation) explains what "deterministic automation" actually buys an administrator who doesn't want to hand-author a Content Security Policy, and Layer 5 (Transport & Certificate Trust) explains why every layer above it depends on this one being right. Readiness and Security Health each get a short intro explaining what the checks below them are actually for and what a Fail/Warning means in practice. Written for an administrator who may know nothing about CSP, clickjacking, or MIME-sniffing, not just for someone who already does -- existing technical copy (e.g. the About tab, the per-pillar intro text on X-Frame-Options/Referrer-Policy/etc.) was already reasonably strong and used as the voice/tone reference for this pass. No behaviour change; explanatory copy only. Remaining admin pages (CSP dashboard, Traffic Controls, the individual pillar pages, Continuous Intelligence, Baseline & Drift, Certificates) follow in subsequent releases, then a separate guided onboarding flow.
+
 ## [2.9.66] - 2026-09-04
 
 ### Added
