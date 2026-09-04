@@ -74,6 +74,7 @@ use WP_SAM\Intelligence\Campaign_Detector;
 use WP_SAM\Intelligence\Campaign_Store;
 use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Change_Window_Store;
+use WP_SAM\Intelligence\Custom_Rule_Store;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Drift_Scanner;
@@ -162,6 +163,9 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_traffic_block_release', array( $this, 'handle_traffic_block_release' ) );
 		add_action( 'admin_post_wp_sam_traffic_block_persist', array( $this, 'handle_traffic_block_persist' ) );
 		add_action( 'admin_post_wp_sam_detector_policy_update', array( $this, 'handle_detector_policy_update' ) );
+		add_action( 'admin_post_wp_sam_custom_rule_save', array( $this, 'handle_custom_rule_save' ) );
+		add_action( 'admin_post_wp_sam_custom_rule_delete', array( $this, 'handle_custom_rule_delete' ) );
+		add_action( 'wp_ajax_wp_sam_test_custom_rule', array( $this, 'ajax_test_custom_rule' ) );
 		add_action( 'admin_post_wp_sam_baseline_capture', array( $this, 'handle_baseline_capture' ) );
 		add_action( 'admin_post_wp_sam_drift_scan', array( $this, 'handle_drift_scan' ) );
 		add_action( 'admin_post_wp_sam_drift_disposition', array( $this, 'handle_drift_disposition' ) );
@@ -1250,6 +1254,80 @@ class Admin_UI {
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=detectors' ) );
 		exit;
+	}
+
+	/**
+	 * Creates or updates a custom regex detection rule (Phase 4C extension).
+	 * On validation failure (e.g. a pattern that doesn't compile), the
+	 * errors and the admin's submitted values are stashed in short-lived,
+	 * per-user transients so the redirected-to form can show what went
+	 * wrong and not lose what was typed -- Custom_Rule_Store::create()/
+	 * update() never partially save, so there is nothing to roll back here.
+	 */
+	public function handle_custom_rule_save(): void {
+		check_admin_referer( 'wp_sam_custom_rule_save' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		$input = array(
+			'name'          => sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) ),
+			'pattern'       => wp_unslash( $_POST['pattern'] ?? '' ),
+			'subject_field' => wp_unslash( $_POST['subject_field'] ?? '' ),
+			'severity'      => wp_unslash( $_POST['severity'] ?? '' ),
+			'surfaces'      => isset( $_POST['surfaces'] ) && is_array( $_POST['surfaces'] ) ? wp_unslash( $_POST['surfaces'] ) : array(),
+			'description'   => wp_unslash( $_POST['description'] ?? '' ),
+		);
+
+		$rule_store = new Custom_Rule_Store();
+		$rule_id    = isset( $_POST['rule_id'] ) ? absint( $_POST['rule_id'] ) : 0;
+		$result     = $rule_id > 0 ? $rule_store->update( $rule_id, $input ) : $rule_store->create( $input );
+
+		if ( ! $result['success'] ) {
+			set_transient( 'wp_sam_custom_rule_errors_' . get_current_user_id(), $result['errors'], MINUTE_IN_SECONDS );
+			set_transient( 'wp_sam_custom_rule_input_' . get_current_user_id(), $input, MINUTE_IN_SECONDS );
+			$redirect = admin_url( 'admin.php?page=security-automation-manager-traffic&tab=custom-rules' );
+			if ( $rule_id > 0 ) {
+				$redirect = add_query_arg( 'edit', $rule_id, $redirect );
+			}
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=custom-rules' ) );
+		exit;
+	}
+
+	public function handle_custom_rule_delete(): void {
+		check_admin_referer( 'wp_sam_custom_rule_delete' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Custom_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=custom-rules' ) );
+		exit;
+	}
+
+	/**
+	 * "Test a pattern" tool on the Custom Rules tab -- compiles $pattern
+	 * against $sample without persisting anything. Returns null (rendered
+	 * as neither a match nor a non-match) for an invalid pattern, exactly
+	 * like Custom_Rule_Store::test()'s own contract.
+	 */
+	public function ajax_test_custom_rule(): void {
+		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+
+		$pattern = (string) wp_unslash( $_POST['pattern'] ?? '' );
+		$sample  = (string) wp_unslash( $_POST['sample'] ?? '' );
+
+		$matched = ( new Custom_Rule_Store() )->test( $pattern, $sample );
+
+		wp_send_json_success( array( 'matched' => $matched ) );
 	}
 
 	// ── Baseline and Drift (Phase 3F) ─────────────────────────────────────────

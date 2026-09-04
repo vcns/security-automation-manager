@@ -299,6 +299,7 @@ class Activator {
 			'sam_asn_cache',
 			'sam_geoip_cache',
 			'sam_detector_policies',
+			'sam_custom_detector_rules',
 		);
 	}
 
@@ -1248,6 +1249,28 @@ class Activator {
   updated_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY detector_id (detector_id)
+) {$cc};"
+		);
+
+		// Custom, admin-authored regex detection rules (fail2ban-style
+		// filters) -- Phase 4C extension. One row per rule; Plugin::
+		// register_detectors() constructs one Custom_Rule_Detector per row
+		// on every request and registers it into the exact same Detector_
+		// Registry/Detector_Policy_Store/Detector_Engine pipeline every
+		// built-in §11 family already flows through. See Custom_Rule_Store's
+		// own docblock for validation and regex-safety reasoning.
+		dbDelta(
+			"CREATE TABLE {$p}sam_custom_detector_rules (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  name varchar(128) NOT NULL,
+  pattern varchar(500) NOT NULL,
+  subject_field varchar(20) NOT NULL DEFAULT 'request_uri',
+  severity varchar(16) NOT NULL DEFAULT 'medium',
+  surfaces varchar(64) NOT NULL DEFAULT '',
+  description text NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id)
 ) {$cc};"
 		);
 

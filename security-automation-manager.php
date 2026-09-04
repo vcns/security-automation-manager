@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Ten security headers that learn your site before enforcing -- nothing breaks. Plus free automatic TLS certificates and script integrity. No paywall.
- * Version:           2.9.65
+ * Version:           2.9.66
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.65' );
+define( 'WP_SAM_VERSION', '2.9.66' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -231,8 +231,15 @@ define( 'WP_SAM_VERSION', '2.9.65' );
  *        answer §10's "log the fact they're hitting the endpoint" plainly
  *        on the Identities admin view. See Intelligence\Scanner_Identity_
  *        Store and Intelligence\Uri_Pattern_Analyzer.
+ *   v37: adds sam_custom_detector_rules (Phase 4C extension: admin-authored,
+ *        fail2ban-style custom regex detection rules). One row per rule;
+ *        Plugin::register_detectors() constructs and registers a Custom_
+ *        Rule_Detector per row on every request, flowing through the exact
+ *        same Detector_Registry/Detector_Policy_Store/Detector_Engine
+ *        pipeline every built-in §11 family already uses. See Intelligence\
+ *        Custom_Rule_Store and Intelligence\Detectors\Custom_Rule_Detector.
  */
-define( 'WP_SAM_DB_VERSION', '36' );
+define( 'WP_SAM_DB_VERSION', '37' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

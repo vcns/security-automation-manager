@@ -21,9 +21,11 @@ use WP_SAM\CSP\Scheduler;
 use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Intelligence\Account_Integrity_Recorder;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
+use WP_SAM\Intelligence\Custom_Rule_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Detectors\Custom_Rule_Detector;
 use WP_SAM\Intelligence\Detectors\Header_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
@@ -397,6 +399,15 @@ final class Plugin {
 		// half of the robots.txt behaviour signal, alongside Robots_Txt_
 		// Detector above. See Robots_Compliance_Detector's own docblock.
 		Detector_Registry::register( new Robots_Compliance_Detector( new Robots_Rules_Store() ) );
+
+		// Custom, admin-authored regex detection rules (Phase 4C extension --
+		// fail2ban-style custom filters): one Custom_Rule_Detector per stored
+		// row, registered fresh every request the same way every detector
+		// above is. See Custom_Rule_Store's and Custom_Rule_Detector's own
+		// docblocks.
+		foreach ( ( new Custom_Rule_Store() )->all() as $rule ) {
+			Detector_Registry::register( new Custom_Rule_Detector( $rule ) );
+		}
 
 		do_action( 'wp_sam_register_detectors' );
 	}
