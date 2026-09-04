@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.68] - 2026-09-04
+
+### Fixed
+
+- The "Settings" link `Admin_UI::add_plugin_action_links()` adds to this plugin's row on the Plugins list page pointed at `admin.php?page=security-automation-manager-dashboard&tab=settings` (the CSP dashboard's own Settings tab) instead of the plugin's actual top-level landing page. Now points at `admin.php?page=security-automation-manager` (Settings/Overview), matching the top-level admin menu's own first submenu entry, which is also labelled "Settings" and renders the same page. No schema change; behaviour-only fix confirmed live in Docker.
+
 ## [2.9.67] - 2026-09-04
 
 ### Added
