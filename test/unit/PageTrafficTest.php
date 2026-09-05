@@ -100,17 +100,18 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringContainsString( 'Notes here', $output );
 	}
 
-	// ── Network Intelligence tab -- Network Rules section ───────────────────
+	// ── Network Intelligence tab -- Network Rules sub-tab ───────────────────
 
 	public function test_network_intelligence_tab_renders_without_a_network_rule(): void {
-		$_GET['tab'] = 'network-intelligence';
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'network-rules';
 		$GLOBALS['_wpdb_get_results'] = array();
 
 		ob_start();
 		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
 		$output = (string) ob_get_clean();
 
-		unset( $_GET['tab'] );
+		unset( $_GET['tab'], $_GET['subtab'] );
 
 		$this->assertStringContainsString( 'Network Rules', $output );
 		$this->assertStringContainsString( 'No network rules yet.', $output );
@@ -118,7 +119,8 @@ class PageTrafficTest extends TestCase {
 	}
 
 	public function test_network_intelligence_tab_lists_a_stored_network_rule(): void {
-		$_GET['tab'] = 'network-intelligence';
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'network-rules';
 		$GLOBALS['_wpdb_get_results'] = array(
 			array(
 				'id'        => 4,
@@ -133,10 +135,75 @@ class PageTrafficTest extends TestCase {
 		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
 		$output = (string) ob_get_clean();
 
-		unset( $_GET['tab'] );
+		unset( $_GET['tab'], $_GET['subtab'] );
 
 		$this->assertStringContainsString( 'AS15169', $output );
 		$this->assertStringContainsString( 'Known scraper network', $output );
 		$this->assertStringContainsString( 'wp_sam_network_rule_delete', $output );
+	}
+
+	// ── Network Intelligence tab -- Geo-IP sub-tab's Country Block List ─────
+
+	public function test_geoip_subtab_renders_country_grid_with_nothing_blocked(): void {
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'geoip';
+		$GLOBALS['_wpdb_get_results'] = array(); // Network_Rule_Store::all() -- no rules.
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'Country Block List', $output );
+		$this->assertStringContainsString( 'wp_sam_geoip_country_block_save', $output );
+		$this->assertStringContainsString( 'value="CN"', $output );
+		$this->assertStringNotContainsString( 'checked', $output );
+	}
+
+	public function test_geoip_subtab_pre_checks_an_existing_all_surface_country_block(): void {
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'geoip';
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'id'        => 9,
+				'rule_type' => 'country',
+				'value'     => 'CN',
+				'surface'   => '',
+				'reason'    => 'Blocked via Geo-IP country list',
+			),
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertMatchesRegularExpression( '/value="CN"\s+checked/', $output );
+	}
+
+	public function test_geoip_subtab_shows_the_lockout_warning_from_a_pending_transient(): void {
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'geoip';
+		$GLOBALS['_wpdb_get_results'] = array();
+		set_transient(
+			'wp_sam_geoip_lockout_pending_' . get_current_user_id(),
+			array(
+				'countries' => array( 'CN' ),
+				'message'   => 'Your own current IP address (203.0.113.42) resolves to China.',
+			)
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'This could lock you out of wp-admin', $output );
+		$this->assertStringContainsString( 'resolves to China', $output );
+		$this->assertStringContainsString( 'confirm_lockout_risk', $output );
+		$this->assertMatchesRegularExpression( '/value="CN"\s+checked/', $output );
 	}
 }

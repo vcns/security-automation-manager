@@ -17,15 +17,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Intelligence\Ads_Txt_Store;
+use WP_SAM\Intelligence\Agents_Rules_Store;
+use WP_SAM\Intelligence\App_Ads_Txt_Store;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Custom_Rule_Store;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Detectors\Custom_Rule_Detector;
 use WP_SAM\Intelligence\Geo_Ip_Store;
+use WP_SAM\Intelligence\Humans_Txt_Store;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Iso_Countries;
 use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
+use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
@@ -92,48 +98,59 @@ $tab_help = array(
 		<?php $policies = ( new Traffic_Policy_Store() )->all(); ?>
 
 		<?php foreach ( $policies as $policy ) : ?>
-		<h2 style="margin-top:2em"><?php echo esc_html( ucfirst( (string) $policy['surface'] ) ); ?></h2>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form id="wp-sam-policy-form-<?php echo esc_attr( (string) $policy['surface'] ); ?>" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'wp_sam_traffic_policy_update' ); ?>
 			<input type="hidden" name="action" value="wp_sam_traffic_policy_update" />
 			<input type="hidden" name="surface" value="<?php echo esc_attr( (string) $policy['surface'] ); ?>" />
-			<table class="form-table">
+			<?php if ( 'login' !== $policy['surface'] ) : ?>
+			<input type="hidden" name="login_max_failed_attempts" value="<?php echo esc_attr( (string) $policy['login_max_failed_attempts'] ); ?>" />
+			<input type="hidden" name="login_lockout_seconds" value="<?php echo esc_attr( (string) $policy['login_lockout_seconds'] ); ?>" />
+			<?php endif; ?>
+		</form>
+		<?php endforeach; ?>
+
+		<table class="widefat fixed striped wp-sam-policy-table" style="margin-top:1em">
+			<thead>
 				<tr>
+					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
 					<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Rate limit', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Failed login lockout', 'vcns-security-automation-manager' ); ?></th>
+					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php foreach ( $policies as $policy ) : ?>
+				<?php $form_id = 'wp-sam-policy-form-' . (string) $policy['surface']; ?>
+				<tr>
+					<td><?php echo esc_html( ucfirst( (string) $policy['surface'] ) ); ?></td>
 					<td>
-						<select name="mode">
+						<select form="<?php echo esc_attr( $form_id ); ?>" name="mode">
 							<option value="observe" <?php selected( $policy['mode'], 'observe' ); ?>><?php esc_html_e( 'Observe (never blocks)', 'vcns-security-automation-manager' ); ?></option>
 							<option value="enforce" <?php selected( $policy['mode'], 'enforce' ); ?>><?php esc_html_e( 'Enforce', 'vcns-security-automation-manager' ); ?></option>
 						</select>
 					</td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Rate limit', 'vcns-security-automation-manager' ); ?></th>
 					<td>
-						<input type="number" min="1" name="rate_limit_max_requests" style="width:90px" value="<?php echo esc_attr( (string) $policy['rate_limit_max_requests'] ); ?>" />
-						<?php esc_html_e( 'requests per', 'vcns-security-automation-manager' ); ?>
-						<input type="number" min="1" name="rate_limit_window_seconds" style="width:90px" value="<?php echo esc_attr( (string) $policy['rate_limit_window_seconds'] ); ?>" />
-						<?php esc_html_e( 'seconds', 'vcns-security-automation-manager' ); ?>
+						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="rate_limit_max_requests" style="width:80px" value="<?php echo esc_attr( (string) $policy['rate_limit_max_requests'] ); ?>" />
+						<?php esc_html_e( 'per', 'vcns-security-automation-manager' ); ?>
+						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="rate_limit_window_seconds" style="width:80px" value="<?php echo esc_attr( (string) $policy['rate_limit_window_seconds'] ); ?>" />
+						<?php esc_html_e( 'sec', 'vcns-security-automation-manager' ); ?>
 					</td>
-				</tr>
-				<?php if ( 'login' === $policy['surface'] ) : ?>
-				<tr>
-					<th><?php esc_html_e( 'Failed login lockout', 'vcns-security-automation-manager' ); ?></th>
 					<td>
-						<input type="number" min="1" name="login_max_failed_attempts" style="width:90px" value="<?php echo esc_attr( (string) $policy['login_max_failed_attempts'] ); ?>" />
-						<?php esc_html_e( 'failed attempts within', 'vcns-security-automation-manager' ); ?>
-						<input type="number" min="1" name="login_lockout_seconds" style="width:90px" value="<?php echo esc_attr( (string) $policy['login_lockout_seconds'] ); ?>" />
-						<?php esc_html_e( 'seconds', 'vcns-security-automation-manager' ); ?>
+						<?php if ( 'login' === $policy['surface'] ) : ?>
+						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="login_max_failed_attempts" style="width:70px" value="<?php echo esc_attr( (string) $policy['login_max_failed_attempts'] ); ?>" />
+							<?php esc_html_e( 'in', 'vcns-security-automation-manager' ); ?>
+						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="login_lockout_seconds" style="width:80px" value="<?php echo esc_attr( (string) $policy['login_lockout_seconds'] ); ?>" />
+							<?php esc_html_e( 'sec', 'vcns-security-automation-manager' ); ?>
+						<?php else : ?>
+						&#8212;
+						<?php endif; ?>
 					</td>
+					<td><button type="submit" form="<?php echo esc_attr( $form_id ); ?>" class="button button-primary"><?php esc_html_e( 'Save', 'vcns-security-automation-manager' ); ?></button></td>
 				</tr>
-				<?php else : ?>
-					<input type="hidden" name="login_max_failed_attempts" value="<?php echo esc_attr( (string) $policy['login_max_failed_attempts'] ); ?>" />
-					<input type="hidden" name="login_lockout_seconds" value="<?php echo esc_attr( (string) $policy['login_lockout_seconds'] ); ?>" />
-				<?php endif; ?>
-			</table>
-			<?php submit_button( __( 'Save', 'vcns-security-automation-manager' ) ); ?>
-		</form>
-		<?php endforeach; ?>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
 
 	<?php elseif ( 'ip-rules' === $tab ) : ?>
 
@@ -221,7 +238,7 @@ $tab_help = array(
 
 		<?php $blocks = ( new Traffic_Block_Store() )->all_active(); ?>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat fixed striped wp-sam-violations-table wp-sam-blocks-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
@@ -278,265 +295,551 @@ $tab_help = array(
 
 	<?php elseif ( 'network-intelligence' === $tab ) : ?>
 
-		<?php $tor_store = new Tor_Exit_List_Store(); ?>
-
-		<h2><?php esc_html_e( 'Tor Exit List', 'vcns-security-automation-manager' ); ?></h2>
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
-			<tbody>
-				<tr>
-					<th style="width:200px"><?php esc_html_e( 'Known exit nodes', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( number_format( $tor_store->count() ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $tor_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
-					<td>
-						<?php
-						$status = $tor_store->last_fetch_status();
-						echo esc_html( '' !== $status ? ucfirst( $status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
-						?>
-					</td>
-				</tr>
-			</tbody>
-		</table>
-
-		<p class="description" style="margin-top:1em;max-width:600px">
-			<?php esc_html_e( 'Refreshed automatically once a day from the Tor Project\'s own public exit-node list. Tor identity is recorded as context on evidence a detector already produced -- it never implies malicious intent on its own, and nothing here blocks a visitor.', 'vcns-security-automation-manager' ); ?>
-		</p>
-
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
-			<?php wp_nonce_field( 'wp_sam_tor_list_refresh' ); ?>
-			<input type="hidden" name="action" value="wp_sam_tor_list_refresh" />
-			<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
-		</form>
-
-		<h2 style="margin-top:2em"><?php esc_html_e( 'ASN Lookup', 'vcns-security-automation-manager' ); ?></h2>
-		<p class="description" style="max-width:600px">
-			<?php esc_html_e( 'Free, unauthenticated lookup via Team Cymru -- no account needed. Results are cached for 30 days once looked up, so this only costs a real DNS query the first time a given IP is involved in a detector match.', 'vcns-security-automation-manager' ); ?>
-		</p>
-
-		<form method="get" style="margin-top:1em">
-			<input type="hidden" name="page" value="security-automation-manager-traffic" />
-			<input type="hidden" name="tab" value="network-intelligence" />
-			<label for="lookup_ip" class="screen-reader-text"><?php esc_html_e( 'IP address to look up', 'vcns-security-automation-manager' ); ?></label>
-			<input type="text" id="lookup_ip" name="lookup_ip" placeholder="203.0.113.42" value="<?php echo esc_attr( isset( $_GET['lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['lookup_ip'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>" style="width:220px" />
-			<?php submit_button( __( 'Look Up', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
-		</form>
-
 		<?php
-		$lookup_ip = isset( $_GET['lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['lookup_ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( '' !== $lookup_ip ) :
-			$lookup_result = ( new Asn_Lookup_Store() )->resolve( $lookup_ip );
-			?>
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
-			<tbody>
-				<tr>
-					<th style="width:200px"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
-					<td><code><?php echo esc_html( $lookup_ip ); ?></code></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( null !== $lookup_result['asn'] ? 'AS' . (string) $lookup_result['asn'] : __( 'Not found', 'vcns-security-automation-manager' ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Organisation', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $lookup_result['asn_org'] ?? '—' ); ?></td>
-				</tr>
-			</tbody>
-		</table>
-		<?php endif; ?>
+		$ni_subtab          = isset( $_GET['subtab'] ) ? sanitize_text_field( wp_unslash( $_GET['subtab'] ) ) : 'tor'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$ni_allowed_subtabs = array( 'tor', 'asn', 'geoip', 'well-known', 'network-rules' );
+		if ( ! in_array( $ni_subtab, $ni_allowed_subtabs, true ) ) {
+			$ni_subtab = 'tor';
+		}
+		$ni_subtab_labels = array(
+			'tor'           => __( 'Tor Exit List', 'vcns-security-automation-manager' ),
+			'asn'           => __( 'ASN Lookup', 'vcns-security-automation-manager' ),
+			'geoip'         => __( 'Geo-IP', 'vcns-security-automation-manager' ),
+			'well-known'    => __( 'Well-Known Files', 'vcns-security-automation-manager' ),
+			'network-rules' => __( 'Network Rules', 'vcns-security-automation-manager' ),
+		);
+		$ni_base_url      = add_query_arg( 'tab', 'network-intelligence', $base_url );
+		?>
 
-		<?php $geo_store = new Geo_Ip_Store(); ?>
+		<nav class="nav-tab-wrapper wp-sam-tab-wrapper wp-sam-subtab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Network Intelligence sections', 'vcns-security-automation-manager' ); ?>">
+			<?php foreach ( $ni_subtab_labels as $ni_subtab_key => $ni_subtab_label ) : ?>
+			<a class="nav-tab<?php echo $ni_subtab_key === $ni_subtab ? ' nav-tab-active' : ''; ?>"
+				href="<?php echo esc_url( add_query_arg( 'subtab', $ni_subtab_key, $ni_base_url ) ); ?>"
+				role="tab"
+				<?php echo $ni_subtab_key === $ni_subtab ? 'aria-selected="true" aria-current="page"' : 'aria-selected="false"'; ?>>
+				<?php echo esc_html( $ni_subtab_label ); ?>
+			</a>
+			<?php endforeach; ?>
+		</nav>
 
-		<h2 style="margin-top:2em"><?php esc_html_e( 'Geo-IP', 'vcns-security-automation-manager' ); ?></h2>
-		<p class="description" style="max-width:600px">
-			<?php esc_html_e( 'Opt-in, using your own IPinfo (ipinfo.io) account -- never a shared VCNS credential. Disabled until you add a token below. MaxMind support is a deliberate later decision, not built yet -- its free tier is a downloaded database, not a live lookup service.', 'vcns-security-automation-manager' ); ?>
-		</p>
+		<div class="wp-sam-subtab-content">
 
-		<?php if ( $geo_store->token_undecryptable() ) : ?>
-		<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;max-width:600px">
-			<p style="margin-top:0;"><?php esc_html_e( 'A saved IPinfo token could not be decrypted (likely because the site\'s secret keys changed since it was saved). Geo-IP is currently disabled -- re-enter the token below to restore it.', 'vcns-security-automation-manager' ); ?></p>
-		</div>
-		<?php endif; ?>
+		<?php if ( 'tor' === $ni_subtab ) : ?>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
-			<tbody>
-				<tr>
-					<th style="width:200px"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $geo_store->is_configured() ? __( 'Enabled', 'vcns-security-automation-manager' ) : __( 'Disabled -- no token configured', 'vcns-security-automation-manager' ) ); ?></td>
-				</tr>
-			</tbody>
-		</table>
+			<?php $tor_store = new Tor_Exit_List_Store(); ?>
 
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
-			<?php wp_nonce_field( 'wp_sam_geoip_save_token' ); ?>
-			<input type="hidden" name="action" value="wp_sam_geoip_save_token" />
-			<label for="ipinfo_token"><?php esc_html_e( 'IPinfo API token', 'vcns-security-automation-manager' ); ?></label><br />
-			<input type="password" id="ipinfo_token" name="ipinfo_token" autocomplete="off" placeholder="<?php echo $geo_store->is_configured() ? esc_attr__( 'Saved -- leave blank to keep', 'vcns-security-automation-manager' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr__() already escapes. ?>" style="width:100%;max-width:400px" />
-			<p>
-				<?php submit_button( __( 'Save Token', 'vcns-security-automation-manager' ), 'primary', '', false ); ?>
-				<?php if ( $geo_store->is_configured() ) : ?>
-				<button type="submit" name="clear_token" value="1" class="button"><?php esc_html_e( 'Clear and Disable', 'vcns-security-automation-manager' ); ?></button>
-				<?php endif; ?>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Known exit nodes', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( number_format( $tor_store->count() ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $tor_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$status = $tor_store->last_fetch_status();
+							echo esc_html( '' !== $status ? ucfirst( $status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'Refreshed automatically once a day from the Tor Project\'s own public exit-node list. Tor identity is recorded as context on evidence a detector already produced -- it never implies malicious intent on its own, and nothing here blocks a visitor.', 'vcns-security-automation-manager' ); ?>
 			</p>
-		</form>
 
-		<?php if ( $geo_store->is_configured() ) : ?>
-		<h3 style="margin-top:1.5em"><?php esc_html_e( 'Geo-IP Lookup', 'vcns-security-automation-manager' ); ?></h3>
-		<form method="get" style="margin-top:0.5em">
-			<input type="hidden" name="page" value="security-automation-manager-traffic" />
-			<input type="hidden" name="tab" value="network-intelligence" />
-			<label for="geo_lookup_ip" class="screen-reader-text"><?php esc_html_e( 'IP address to look up', 'vcns-security-automation-manager' ); ?></label>
-			<input type="text" id="geo_lookup_ip" name="geo_lookup_ip" placeholder="203.0.113.42" value="<?php echo esc_attr( isset( $_GET['geo_lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['geo_lookup_ip'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>" style="width:220px" />
-			<?php submit_button( __( 'Look Up', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
-		</form>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_tor_list_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_tor_list_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+		<?php elseif ( 'asn' === $ni_subtab ) : ?>
+
+			<p class="description">
+				<?php esc_html_e( 'Free, unauthenticated lookup via Team Cymru -- no account needed. Results are cached for 30 days once looked up, so this only costs a real DNS query the first time a given IP is involved in a detector match.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="get" style="margin-top:1em">
+				<input type="hidden" name="page" value="security-automation-manager-traffic" />
+				<input type="hidden" name="tab" value="network-intelligence" />
+				<input type="hidden" name="subtab" value="asn" />
+				<label for="lookup_ip" class="screen-reader-text"><?php esc_html_e( 'IP address to look up', 'vcns-security-automation-manager' ); ?></label>
+				<input type="text" id="lookup_ip" name="lookup_ip" placeholder="203.0.113.42" value="<?php echo esc_attr( isset( $_GET['lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['lookup_ip'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>" style="width:220px" />
+				<?php submit_button( __( 'Look Up', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
 
 			<?php
-			$geo_lookup_ip = isset( $_GET['geo_lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['geo_lookup_ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			if ( '' !== $geo_lookup_ip ) :
-				$geo_result = $geo_store->resolve( $geo_lookup_ip );
+			$lookup_ip = isset( $_GET['lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['lookup_ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			if ( '' !== $lookup_ip ) :
+				$lookup_result = ( new Asn_Lookup_Store() )->resolve( $lookup_ip );
 				?>
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
-			<tbody>
-				<tr>
-					<th style="width:200px"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
-					<td><code><?php echo esc_html( $geo_lookup_ip ); ?></code></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $geo_result['country'] ?? __( 'Not found', 'vcns-security-automation-manager' ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Region', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $geo_result['region'] ?? '—' ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'City', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $geo_result['city'] ?? '—' ); ?></td>
-				</tr>
-			</tbody>
-		</table>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
+						<td><code><?php echo esc_html( $lookup_ip ); ?></code></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( null !== $lookup_result['asn'] ? 'AS' . (string) $lookup_result['asn'] : __( 'Not found', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Organisation', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $lookup_result['asn_org'] ?? '—' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
 			<?php endif; ?>
+
+		<?php elseif ( 'geoip' === $ni_subtab ) : ?>
+
+			<?php $geo_store = new Geo_Ip_Store(); ?>
+
+			<p class="description">
+				<?php esc_html_e( 'Opt-in, using your own IPinfo (ipinfo.io) account -- never a shared VCNS credential. Disabled until you add a token below. MaxMind support is a deliberate later decision, not built yet -- its free tier is a downloaded database, not a live lookup service.', 'vcns-security-automation-manager' ); ?>
+				<?php if ( ! $geo_store->is_configured() ) : ?>
+				<a href="https://ipinfo.io/signup" target="_blank" rel="noopener noreferrer"><?php esc_html_e( "Don't have a token? Sign up free at ipinfo.io.", 'vcns-security-automation-manager' ); ?></a>
+				<?php endif; ?>
+			</p>
+
+			<?php if ( $geo_store->token_undecryptable() ) : ?>
+			<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0">
+				<p style="margin-top:0;"><?php esc_html_e( 'A saved IPinfo token could not be decrypted (likely because the site\'s secret keys changed since it was saved). Geo-IP is currently disabled -- re-enter the token below to restore it.', 'vcns-security-automation-manager' ); ?></p>
+			</div>
+			<?php endif; ?>
+
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $geo_store->is_configured() ? __( 'Enabled', 'vcns-security-automation-manager' ) : __( 'Disabled -- no token configured', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_geoip_save_token' ); ?>
+				<input type="hidden" name="action" value="wp_sam_geoip_save_token" />
+				<label for="ipinfo_token"><?php esc_html_e( 'IPinfo API token', 'vcns-security-automation-manager' ); ?></label><br />
+				<input type="password" id="ipinfo_token" name="ipinfo_token" autocomplete="off" placeholder="<?php echo $geo_store->is_configured() ? esc_attr__( 'Saved -- leave blank to keep', 'vcns-security-automation-manager' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr__() already escapes. ?>" style="width:100%;max-width:400px" />
+				<p>
+					<?php submit_button( __( 'Save Token', 'vcns-security-automation-manager' ), 'primary', '', false ); ?>
+					<?php if ( $geo_store->is_configured() ) : ?>
+					<button type="submit" name="clear_token" value="1" class="button"><?php esc_html_e( 'Clear and Disable', 'vcns-security-automation-manager' ); ?></button>
+					<?php endif; ?>
+				</p>
+			</form>
+
+			<?php if ( $geo_store->is_configured() ) : ?>
+			<h3 style="margin-top:1.5em"><?php esc_html_e( 'Geo-IP Lookup', 'vcns-security-automation-manager' ); ?></h3>
+			<form method="get" style="margin-top:0.5em">
+				<input type="hidden" name="page" value="security-automation-manager-traffic" />
+				<input type="hidden" name="tab" value="network-intelligence" />
+				<input type="hidden" name="subtab" value="geoip" />
+				<label for="geo_lookup_ip" class="screen-reader-text"><?php esc_html_e( 'IP address to look up', 'vcns-security-automation-manager' ); ?></label>
+				<input type="text" id="geo_lookup_ip" name="geo_lookup_ip" placeholder="203.0.113.42" value="<?php echo esc_attr( isset( $_GET['geo_lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['geo_lookup_ip'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>" style="width:220px" />
+				<?php submit_button( __( 'Look Up', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+				<?php
+				$geo_lookup_ip = isset( $_GET['geo_lookup_ip'] ) ? sanitize_text_field( wp_unslash( $_GET['geo_lookup_ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				if ( '' !== $geo_lookup_ip ) :
+					$geo_result = $geo_store->resolve( $geo_lookup_ip );
+					?>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
+						<td><code><?php echo esc_html( $geo_lookup_ip ); ?></code></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $geo_result['country'] ?? __( 'Not found', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Region', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $geo_result['region'] ?? '—' ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'City', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $geo_result['city'] ?? '—' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+				<?php endif; ?>
+			<?php endif; ?>
+
+			<h3 style="margin-top:2em"><?php esc_html_e( 'Country Block List', 'vcns-security-automation-manager' ); ?></h3>
+
+			<?php if ( ! $geo_store->is_configured() ) : ?>
+			<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0">
+				<p style="margin-top:0"><?php esc_html_e( 'Blocking by country has no effect until a Geo-IP token is configured above -- there is no way to resolve a visitor\'s country without one. Self-lockout protection below is also unavailable until then, for the same reason.', 'vcns-security-automation-manager' ); ?></p>
+			</div>
+			<?php endif; ?>
+
+			<?php
+			$geoip_lockout_key     = 'wp_sam_geoip_lockout_pending_' . get_current_user_id();
+			$geoip_lockout_pending = get_transient( $geoip_lockout_key );
+			delete_transient( $geoip_lockout_key );
+			$geoip_confirming = is_array( $geoip_lockout_pending );
+
+			$geoip_country_rules = array_filter(
+				( new Network_Rule_Store() )->all(),
+				static fn( $rule ) => 'country' === $rule['rule_type'] && '' === (string) $rule['surface']
+			);
+			$geoip_blocked_codes = array_map( static fn( $rule ) => (string) $rule['value'], $geoip_country_rules );
+			$geoip_checked_codes = $geoip_confirming ? (array) $geoip_lockout_pending['countries'] : $geoip_blocked_codes;
+			?>
+
+			<p class="description">
+				<?php esc_html_e( 'Every country defaults to Allow. Tick a country to Block it -- nothing changes until you click Save below.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_geoip_country_block_save' ); ?>
+				<input type="hidden" name="action" value="wp_sam_geoip_country_block_save" />
+				<?php if ( $geoip_confirming ) : ?>
+				<div class="notice notice-warning inline" style="padding:12px 16px;margin-bottom:1em">
+					<p style="margin-top:0"><strong><?php esc_html_e( 'This could lock you out of wp-admin:', 'vcns-security-automation-manager' ); ?></strong> <?php echo esc_html( (string) $geoip_lockout_pending['message'] ); ?></p>
+					<p>
+						<label>
+							<input type="checkbox" name="confirm_lockout_risk" value="1" />
+							<?php esc_html_e( 'I understand this may lock me out of wp-admin -- save anyway.', 'vcns-security-automation-manager' ); ?>
+						</label>
+					</p>
+				</div>
+				<?php endif; ?>
+				<div class="wp-sam-country-grid">
+					<?php foreach ( Iso_Countries::all() as $code => $name ) : ?>
+					<label>
+						<input type="checkbox" name="blocked_countries[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $geoip_checked_codes, true ) ); ?> />
+						<?php echo esc_html( $name ); ?> <code><?php echo esc_html( $code ); ?></code>
+					</label>
+					<?php endforeach; ?>
+				</div>
+				<?php submit_button( __( 'Save Country Block List', 'vcns-security-automation-manager' ) ); ?>
+			</form>
+
+		<?php elseif ( 'well-known' === $ni_subtab ) : ?>
+
+			<?php $robots_rules_store = new Robots_Rules_Store(); ?>
+
+			<h2><?php esc_html_e( 'Robots.txt', 'vcns-security-automation-manager' ); ?></h2>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Cached disallow rules', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( number_format( count( $robots_rules_store->rules() ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $robots_rules_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$robots_status = $robots_rules_store->last_fetch_status();
+							echo esc_html( '' !== $robots_status ? ucfirst( $robots_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'Refreshed automatically once a day from this site\'s own /robots.txt, fetched the same way a real crawler would. Used only to check whether a source already recognised as a known crawler/scanner vendor is requesting a path this site disallows -- an ordinary visitor is never evaluated against these rules.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_robots_rules_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_robots_rules_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+			<?php $agents_rules_store = new Agents_Rules_Store(); ?>
+
+			<h2 style="margin-top:2em"><?php esc_html_e( 'Agents.txt', 'vcns-security-automation-manager' ); ?></h2>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Cached disallow rules', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( number_format( count( $agents_rules_store->rules() ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $agents_rules_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$agents_status = $agents_rules_store->last_fetch_status();
+							echo esc_html( '' !== $agents_status ? ucfirst( $agents_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'agents.txt is an emerging convention some AI crawlers support for scoping what an AI agent may access, using the same syntax as robots.txt. Refreshed automatically once a day; used the same way robots.txt rules are, only against a source already recognised as a known crawler/scanner vendor.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_agents_rules_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_agents_rules_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+			<?php $security_txt_store = new Security_Txt_Store(); ?>
+
+			<h2 style="margin-top:2em"><?php esc_html_e( 'Security.txt', 'vcns-security-automation-manager' ); ?></h2>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Present', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $security_txt_store->is_present() ? __( 'Yes', 'vcns-security-automation-manager' ) : __( 'No', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Expires', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$security_txt_expires = $security_txt_store->fields()['Expires'][0] ?? null;
+							if ( null === $security_txt_expires ) {
+								echo esc_html( '—' );
+							} else {
+								echo esc_html( $security_txt_expires );
+								if ( $security_txt_store->is_expired() ) {
+									echo ' <strong style="color:#a94442">' . esc_html__( '(expired)', 'vcns-security-automation-manager' ) . '</strong>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html__() already escapes; the surrounding markup is a static literal.
+								}
+							}
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $security_txt_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$security_txt_status = $security_txt_store->last_fetch_status();
+							echo esc_html( '' !== $security_txt_status ? ucfirst( $security_txt_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'Refreshed automatically once a day from this site\'s own /.well-known/security.txt (falling back to the legacy /security.txt location). Recorded for visibility only -- an expired file is a hygiene signal worth acting on, but nothing here evaluates or blocks a visitor.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_security_txt_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_security_txt_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+			<?php $humans_txt_store = new Humans_Txt_Store(); ?>
+
+			<h2 style="margin-top:2em"><?php esc_html_e( 'Humans.txt', 'vcns-security-automation-manager' ); ?></h2>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Present', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $humans_txt_store->is_present() ? __( 'Yes', 'vcns-security-automation-manager' ) : __( 'No', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $humans_txt_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$humans_txt_status = $humans_txt_store->last_fetch_status();
+							echo esc_html( '' !== $humans_txt_status ? ucfirst( $humans_txt_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'An informal credits/colophon convention with no rules of its own -- recorded only for the same presence/last-fetch visibility every well-known file here gets, so a source examining it is correlatable against its other activity.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_humans_txt_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_humans_txt_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+			<?php $ads_txt_store = new Ads_Txt_Store(); ?>
+
+			<h2 style="margin-top:2em"><?php esc_html_e( 'Ads.txt', 'vcns-security-automation-manager' ); ?></h2>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Authorised-seller records', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( number_format( count( $ads_txt_store->records() ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $ads_txt_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$ads_txt_status = $ads_txt_store->last_fetch_status();
+							echo esc_html( '' !== $ads_txt_status ? ucfirst( $ads_txt_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'Refreshed automatically once a day. A sudden drop in record count or a fetch failure can indicate unauthorised tampering (a known ad-fraud vector) as easily as a legitimate change -- worth a look either way.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_ads_txt_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_ads_txt_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+			<?php $app_ads_txt_store = new App_Ads_Txt_Store(); ?>
+
+			<h2 style="margin-top:2em"><?php esc_html_e( 'App-Ads.txt', 'vcns-security-automation-manager' ); ?></h2>
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<tbody>
+					<tr>
+						<th style="width:200px"><?php esc_html_e( 'Authorised-seller records', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( number_format( count( $app_ads_txt_store->records() ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+						<td><?php echo esc_html( $app_ads_txt_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+						<td>
+							<?php
+							$app_ads_txt_status = $app_ads_txt_store->last_fetch_status();
+							echo esc_html( '' !== $app_ads_txt_status ? ucfirst( $app_ads_txt_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
+							?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<p class="description" style="margin-top:1em">
+				<?php esc_html_e( 'The same IAB authorised-sellers format as Ads.txt above, applied to mobile-app inventory. Refreshed automatically once a day; tracked separately since it is a distinct file this site serves.', 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
+				<?php wp_nonce_field( 'wp_sam_app_ads_txt_refresh' ); ?>
+				<input type="hidden" name="action" value="wp_sam_app_ads_txt_refresh" />
+				<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
+			</form>
+
+		<?php elseif ( 'network-rules' === $ni_subtab ) : ?>
+
+			<?php $network_rules = ( new Network_Rule_Store() )->all(); ?>
+
+			<p class="description">
+				<?php esc_html_e( "Block traffic by ASN or country, checked alongside IP Rules -- an explicit decision, applied regardless of a surface's observe/enforce mode. Adding the first rule here is what switches ASN/Geo-IP resolution on for every request; with no rules configured, nothing here costs anything. The Geo-IP tab's Country Block List above manages all-surfaces country rules with a friendlier toggle grid; use this form for ASN rules or a per-surface country exception.", 'vcns-security-automation-manager' ); ?>
+			</p>
+
+			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
+						<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ( $network_rules as $network_rule ) : ?>
+				<tr>
+					<td><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? __( 'ASN', 'vcns-security-automation-manager' ) : __( 'Country', 'vcns-security-automation-manager' ) ); ?></td>
+					<td><code><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? 'AS' . (string) $network_rule['value'] : (string) $network_rule['value'] ); ?></code></td>
+					<td><?php echo esc_html( '' !== (string) $network_rule['surface'] ? ucfirst( (string) $network_rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+					<td><?php echo esc_html( (string) $network_rule['reason'] ); ?></td>
+					<td>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
+							<?php wp_nonce_field( 'wp_sam_network_rule_delete' ); ?>
+							<input type="hidden" name="action" value="wp_sam_network_rule_delete" />
+							<input type="hidden" name="rule_id" value="<?php echo esc_attr( (string) $network_rule['id'] ); ?>" />
+							<?php submit_button( __( 'Delete', 'vcns-security-automation-manager' ), 'link-delete small', '', false ); ?>
+						</form>
+					</td>
+				</tr>
+				<?php endforeach; ?>
+				<?php if ( empty( $network_rules ) ) : ?>
+				<tr>
+					<td colspan="5"><p><?php esc_html_e( 'No network rules yet.', 'vcns-security-automation-manager' ); ?></p></td>
+				</tr>
+				<?php endif; ?>
+				</tbody>
+			</table>
+
+			<h3 style="margin-top:1.5em"><?php esc_html_e( 'Add a network rule', 'vcns-security-automation-manager' ); ?></h3>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<?php wp_nonce_field( 'wp_sam_network_rule_add' ); ?>
+				<input type="hidden" name="action" value="wp_sam_network_rule_add" />
+				<table class="form-table">
+					<tr>
+						<th><label for="rule_type"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></label></th>
+						<td>
+							<select id="rule_type" name="rule_type">
+								<option value="asn"><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></option>
+								<option value="country"><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="value"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></label></th>
+						<td>
+							<input type="text" id="value" name="value" required placeholder="<?php esc_attr_e( 'AS15169, or a two-letter country code such as CN', 'vcns-security-automation-manager' ); ?>" style="width:100%;max-width:300px" />
+						</td>
+					</tr>
+					<tr>
+						<th><label for="network_rule_surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></label></th>
+						<td>
+							<select id="network_rule_surface" name="surface">
+								<option value=""><?php esc_html_e( 'All surfaces', 'vcns-security-automation-manager' ); ?></option>
+								<?php foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $network_rule_surface ) : ?>
+								<option value="<?php echo esc_attr( $network_rule_surface ); ?>"><?php echo esc_html( ucfirst( $network_rule_surface ) ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="network_rule_reason"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></label></th>
+						<td><input type="text" id="network_rule_reason" name="reason" required style="width:100%;max-width:300px" /></td>
+					</tr>
+				</table>
+				<?php submit_button( __( 'Add rule', 'vcns-security-automation-manager' ) ); ?>
+			</form>
+
 		<?php endif; ?>
 
-		<?php $robots_rules_store = new Robots_Rules_Store(); ?>
-
-		<h2 style="margin-top:2em"><?php esc_html_e( 'Robots.txt Rules', 'vcns-security-automation-manager' ); ?></h2>
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
-			<tbody>
-				<tr>
-					<th style="width:200px"><?php esc_html_e( 'Cached disallow rules', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( number_format( count( $robots_rules_store->rules() ) ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
-					<td><?php echo esc_html( $robots_rules_store->last_refreshed_at() ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
-					<td>
-						<?php
-						$robots_status = $robots_rules_store->last_fetch_status();
-						echo esc_html( '' !== $robots_status ? ucfirst( $robots_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) );
-						?>
-					</td>
-				</tr>
-			</tbody>
-		</table>
-
-		<p class="description" style="margin-top:1em;max-width:600px">
-			<?php esc_html_e( 'Refreshed automatically once a day from this site\'s own /robots.txt, fetched the same way a real crawler would. Used only to check whether a source already recognised as a known crawler/scanner vendor is requesting a path this site disallows -- an ordinary visitor is never evaluated against these rules.', 'vcns-security-automation-manager' ); ?>
-		</p>
-
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
-			<?php wp_nonce_field( 'wp_sam_robots_rules_refresh' ); ?>
-			<input type="hidden" name="action" value="wp_sam_robots_rules_refresh" />
-			<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary', '', false ); ?>
-		</form>
-
-		<?php $network_rules = ( new Network_Rule_Store() )->all(); ?>
-
-		<h2 style="margin-top:2em"><?php esc_html_e( 'Network Rules', 'vcns-security-automation-manager' ); ?></h2>
-		<p class="description" style="max-width:600px">
-			<?php esc_html_e( "Block traffic by ASN or country, checked alongside IP Rules -- an explicit decision, applied regardless of a surface's observe/enforce mode. Adding the first rule here is what switches ASN/Geo-IP resolution on for every request; with no rules configured, nothing here costs anything.", 'vcns-security-automation-manager' ); ?>
-		</p>
-
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-			<?php foreach ( $network_rules as $network_rule ) : ?>
-			<tr>
-				<td><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? __( 'ASN', 'vcns-security-automation-manager' ) : __( 'Country', 'vcns-security-automation-manager' ) ); ?></td>
-				<td><code><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? 'AS' . (string) $network_rule['value'] : (string) $network_rule['value'] ); ?></code></td>
-				<td><?php echo esc_html( '' !== (string) $network_rule['surface'] ? ucfirst( (string) $network_rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
-				<td><?php echo esc_html( (string) $network_rule['reason'] ); ?></td>
-				<td>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
-						<?php wp_nonce_field( 'wp_sam_network_rule_delete' ); ?>
-						<input type="hidden" name="action" value="wp_sam_network_rule_delete" />
-						<input type="hidden" name="rule_id" value="<?php echo esc_attr( (string) $network_rule['id'] ); ?>" />
-						<?php submit_button( __( 'Delete', 'vcns-security-automation-manager' ), 'link-delete small', '', false ); ?>
-					</form>
-				</td>
-			</tr>
-			<?php endforeach; ?>
-			<?php if ( empty( $network_rules ) ) : ?>
-			<tr>
-				<td colspan="5"><p><?php esc_html_e( 'No network rules yet.', 'vcns-security-automation-manager' ); ?></p></td>
-			</tr>
-			<?php endif; ?>
-			</tbody>
-		</table>
-
-		<h3 style="margin-top:1.5em"><?php esc_html_e( 'Add a network rule', 'vcns-security-automation-manager' ); ?></h3>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<?php wp_nonce_field( 'wp_sam_network_rule_add' ); ?>
-			<input type="hidden" name="action" value="wp_sam_network_rule_add" />
-			<table class="form-table">
-				<tr>
-					<th><label for="rule_type"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></label></th>
-					<td>
-						<select id="rule_type" name="rule_type">
-							<option value="asn"><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></option>
-							<option value="country"><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></option>
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<th><label for="value"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></label></th>
-					<td>
-						<input type="text" id="value" name="value" required placeholder="<?php esc_attr_e( 'AS15169, or a two-letter country code such as CN', 'vcns-security-automation-manager' ); ?>" style="width:100%;max-width:300px" />
-					</td>
-				</tr>
-				<tr>
-					<th><label for="network_rule_surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></label></th>
-					<td>
-						<select id="network_rule_surface" name="surface">
-							<option value=""><?php esc_html_e( 'All surfaces', 'vcns-security-automation-manager' ); ?></option>
-							<?php foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $network_rule_surface ) : ?>
-							<option value="<?php echo esc_attr( $network_rule_surface ); ?>"><?php echo esc_html( ucfirst( $network_rule_surface ) ); ?></option>
-							<?php endforeach; ?>
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<th><label for="network_rule_reason"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></label></th>
-					<td><input type="text" id="network_rule_reason" name="reason" required style="width:100%;max-width:300px" /></td>
-				</tr>
-			</table>
-			<?php submit_button( __( 'Add rule', 'vcns-security-automation-manager' ) ); ?>
-		</form>
+		</div>
 
 	<?php elseif ( 'detectors' === $tab ) : ?>
 

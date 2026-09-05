@@ -188,6 +188,27 @@ final class Traffic_Guard {
 			);
 		}
 
+		// A loopback source (127.0.0.0/8, ::1) is the server calling itself
+		// -- wp-cron's own loopback requests, Site Health's "Loopback
+		// request" check, or an administrator testing from the same machine
+		// -- never a remote attacker (see Identity_Resolver's own docblock
+		// for the same recognition applied to identity/classification).
+		// Automatic rate-limit escalation must never block it: doing so
+		// risks self-inflicted breakage of wp-cron/Site Health, which both
+		// depend on a working loopback request, for no security benefit --
+		// there is no remote source to defend against here. Checked after
+		// the explicit Ip_Rule_Store lookup above, not before: an
+		// administrator can still explicitly deny a loopback source (e.g. a
+		// host where a reverse proxy terminates every visitor's connection
+		// via loopback, making this recognition wrong for that specific
+		// site) and that deliberate decision still wins, exactly as
+		// Identity_Resolver's docblock promises elsewhere. This also makes
+		// any already-existing automatic block record for a loopback
+		// address inert going forward, without needing a data migration.
+		if ( Cidr_Matcher::ip_in_any_cidr( $ip, array( '127.0.0.0/8', '::1/128' ) ) ) {
+			return $allow;
+		}
+
 		// Network (ASN/country) rules -- see class docblock for why this
 		// only resolves ASN/Geo-IP at all when at least one rule exists.
 		if ( $this->network_rules->has_any() ) {

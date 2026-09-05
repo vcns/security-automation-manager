@@ -68,6 +68,9 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
 use WP_SAM\CSP\Scheduler;
+use WP_SAM\Intelligence\Ads_Txt_Store;
+use WP_SAM\Intelligence\Agents_Rules_Store;
+use WP_SAM\Intelligence\App_Ads_Txt_Store;
 use WP_SAM\Intelligence\Baseline_State_Builder;
 use WP_SAM\Intelligence\Baseline_Store;
 use WP_SAM\Intelligence\Campaign_Detector;
@@ -82,9 +85,13 @@ use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
+use WP_SAM\Intelligence\Humans_Txt_Store;
+use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
+use WP_SAM\Intelligence\Iso_Countries;
 use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
+use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
@@ -182,8 +189,14 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_information_masking_check', array( $this, 'handle_information_masking_check' ) );
 		add_action( 'admin_post_wp_sam_cache_control_cdn_acknowledge', array( $this, 'handle_cache_control_cdn_acknowledge' ) );
 		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
+		add_action( 'admin_post_wp_sam_geoip_country_block_save', array( $this, 'handle_geoip_country_block_save' ) );
 		add_action( 'admin_post_wp_sam_network_rule_add', array( $this, 'handle_network_rule_add' ) );
 		add_action( 'admin_post_wp_sam_network_rule_delete', array( $this, 'handle_network_rule_delete' ) );
+		add_action( 'admin_post_wp_sam_agents_rules_refresh', array( $this, 'handle_agents_rules_refresh' ) );
+		add_action( 'admin_post_wp_sam_security_txt_refresh', array( $this, 'handle_security_txt_refresh' ) );
+		add_action( 'admin_post_wp_sam_humans_txt_refresh', array( $this, 'handle_humans_txt_refresh' ) );
+		add_action( 'admin_post_wp_sam_ads_txt_refresh', array( $this, 'handle_ads_txt_refresh' ) );
+		add_action( 'admin_post_wp_sam_app_ads_txt_refresh', array( $this, 'handle_app_ads_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -1545,7 +1558,7 @@ class Admin_UI {
 
 		( new Tor_Exit_List_Store() )->refresh();
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=tor' ) );
 		exit;
 	}
 
@@ -1557,7 +1570,73 @@ class Admin_UI {
 
 		( new Robots_Rules_Store() )->refresh();
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
+	/**
+	 * Manual "Refresh Now" handlers for the four well-known files tracked
+	 * alongside robots.txt (Phase 4C extension, user-requested). Same shape
+	 * as handle_robots_rules_refresh() above -- see each store's own
+	 * docblock.
+	 */
+	public function handle_agents_rules_refresh(): void {
+		check_admin_referer( 'wp_sam_agents_rules_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh agents.txt rules.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Agents_Rules_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
+	public function handle_security_txt_refresh(): void {
+		check_admin_referer( 'wp_sam_security_txt_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh security.txt.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Security_Txt_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
+	public function handle_humans_txt_refresh(): void {
+		check_admin_referer( 'wp_sam_humans_txt_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh humans.txt.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Humans_Txt_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
+	public function handle_ads_txt_refresh(): void {
+		check_admin_referer( 'wp_sam_ads_txt_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh ads.txt.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Ads_Txt_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
+	public function handle_app_ads_txt_refresh(): void {
+		check_admin_referer( 'wp_sam_app_ads_txt_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh app-ads.txt.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new App_Ads_Txt_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
 		exit;
 	}
 
@@ -1620,7 +1699,97 @@ class Admin_UI {
 			( new Geo_Ip_Store() )->save_token( '' );
 		}
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
+		exit;
+	}
+
+	/**
+	 * Saves the administrator's Geo-IP country block/allow selections
+	 * (Phase 4A extension, user-requested friendlier alternative to typing
+	 * codes into the generic Network Rule form) as a batch of Network_Rule_
+	 * Store rows scoped to every surface -- nothing is written until this
+	 * single Save is clicked.
+	 *
+	 * Before writing a newly-blocked country, checks whether the requesting
+	 * administrator's own current IP resolves to that country (via the same
+	 * Geo_Ip_Store the live request path uses) and has no narrower Ip_Rule_
+	 * Store allow entry for the admin surface protecting it -- the one case
+	 * Network_Rule_Store's own docblock notes an allow rule is needed for.
+	 * If so, the save is held (nothing is written) and the admin is shown a
+	 * warning with a "save anyway" checkbox, rather than silently locking
+	 * them out of wp-admin. This check is only possible when Geo-IP itself
+	 * is configured -- with no token, there is no way to resolve anyone's
+	 * country, this admin's own included.
+	 */
+	public function handle_geoip_country_block_save(): void {
+		check_admin_referer( 'wp_sam_geoip_country_block_save' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
+		}
+
+		$valid_codes = array_keys( Iso_Countries::all() );
+		$raw         = isset( $_POST['blocked_countries'] ) && is_array( $_POST['blocked_countries'] ) ? wp_unslash( $_POST['blocked_countries'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- wp_unslash() is applied here; each element is still sanitized below.
+		$submitted   = array_values( array_intersect( array_map( 'strtoupper', array_map( 'sanitize_text_field', $raw ) ), $valid_codes ) );
+
+		$network_rules = new Network_Rule_Store();
+		$existing      = array_map(
+			static fn( $rule ) => (string) $rule['value'],
+			array_filter(
+				$network_rules->all(),
+				static fn( $rule ) => 'country' === $rule['rule_type'] && '' === (string) $rule['surface']
+			)
+		);
+
+		$to_add  = array_diff( $submitted, $existing );
+		$user_id = get_current_user_id();
+
+		if ( ! empty( $to_add ) && empty( $_POST['confirm_lockout_risk'] ) ) {
+			$geo_store = new Geo_Ip_Store();
+			$own_ip    = Ip_Resolver::resolve();
+
+			if ( $geo_store->is_configured() && '' !== $own_ip ) {
+				$own_country = $geo_store->resolve( $own_ip )['country'];
+				$own_rule    = ( new Ip_Rule_Store() )->match( $own_ip, 'admin' );
+				$has_allow   = null !== $own_rule && 'allow' === $own_rule['list_type'];
+
+				if ( null !== $own_country && in_array( strtoupper( $own_country ), $to_add, true ) && ! $has_allow ) {
+					$country_name = Iso_Countries::all()[ strtoupper( $own_country ) ] ?? strtoupper( $own_country );
+
+					set_transient(
+						'wp_sam_geoip_lockout_pending_' . $user_id,
+						array(
+							'countries' => $submitted,
+							'message'   => sprintf(
+								/* translators: 1: country name, 2: IP address */
+								__( 'Your own current IP address (%2$s) resolves to %1$s, one of the countries you just selected to block, and no IP-allow rule for wp-admin covers it -- saving this would lock you out. Tick the box below and save again if you\'re sure (e.g. you have another way to reach this site), or add an IP-allow rule for your own address on the IP Rules tab first.', 'vcns-security-automation-manager' ),
+								$country_name,
+								$own_ip
+							),
+						),
+						5 * MINUTE_IN_SECONDS
+					);
+
+					wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
+					exit;
+				}
+			}
+		}
+
+		foreach ( $to_add as $code ) {
+			$network_rules->add( 'country', $code, '', __( 'Blocked via Geo-IP country list', 'vcns-security-automation-manager' ), $user_id );
+		}
+
+		foreach ( array_diff( $existing, $submitted ) as $code ) {
+			foreach ( $network_rules->all() as $rule ) {
+				if ( 'country' === $rule['rule_type'] && '' === (string) $rule['surface'] && $code === (string) $rule['value'] ) {
+					$network_rules->delete( (int) $rule['id'] );
+				}
+			}
+		}
+
+		delete_transient( 'wp_sam_geoip_lockout_pending_' . $user_id );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
 		exit;
 	}
 
@@ -1644,7 +1813,7 @@ class Admin_UI {
 			get_current_user_id()
 		);
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=network-rules' ) );
 		exit;
 	}
 
@@ -1656,7 +1825,7 @@ class Admin_UI {
 
 		( new Network_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=network-rules' ) );
 		exit;
 	}
 
