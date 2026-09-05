@@ -108,8 +108,14 @@ final class Agents_Rules_Store {
 		$in_wildcard_block = false;
 
 		foreach ( $lines as $line ) {
-			$line = trim( $line );
-			if ( '' === $line || str_starts_with( $line, '#' ) ) {
+			// Strips a trailing inline comment (e.g. "User-agent: * # note")
+			// before parsing, not just a whole-line one -- without this, an
+			// inline comment on a User-agent line silently defeats
+			// $in_wildcard_block's exact-match against '*', and one on a
+			// Disallow line becomes part of the stored rule, which then
+			// never matches any real request path.
+			$line = trim( (string) preg_replace( '/#.*$/', '', $line ) );
+			if ( '' === $line ) {
 				continue;
 			}
 
@@ -120,13 +126,16 @@ final class Agents_Rules_Store {
 
 			if ( $in_wildcard_block && 1 === preg_match( '/^disallow:\s*(.*)$/i', $line, $matches ) ) {
 				$rule = trim( $matches[1] );
-				if ( '' !== $rule ) {
+				if ( '' !== $rule && ! in_array( $rule, $rules, true ) ) {
 					$rules[] = $rule;
+					if ( count( $rules ) >= self::MAX_RULES ) {
+						break;
+					}
 				}
 			}
 		}
 
-		return array_slice( array_values( array_unique( $rules ) ), 0, self::MAX_RULES );
+		return $rules;
 	}
 
 	/** @return array{status:string, count:int, message:string} */

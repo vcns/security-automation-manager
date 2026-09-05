@@ -36,8 +36,14 @@ final class Humans_Txt_Store {
 		);
 	}
 
+	/**
+	 * True once a fetch has ever succeeded -- deliberately NOT "is content()
+	 * non-empty": a 0-byte or whitespace-only humans.txt is a legitimate,
+	 * successfully-fetched file, and reporting it as "not present" would be
+	 * indistinguishable from the file never having been fetched at all.
+	 */
 	public function is_present(): bool {
-		return '' !== $this->content();
+		return 'success' === $this->last_fetch_status();
 	}
 
 	public function content(): string {

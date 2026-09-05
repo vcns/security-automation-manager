@@ -51,8 +51,16 @@ final class Ads_Txt_Store {
 		return is_array( $stored ) ? $stored : array();
 	}
 
+	/**
+	 * True once a fetch has ever succeeded -- deliberately NOT "is records()
+	 * non-empty": a successful fetch that finds zero seller records (e.g.
+	 * an ads.txt that is comment/variable-only) is a real, checkable state
+	 * this class's own docblock treats as a tampering signal worth
+	 * surfacing, which "not present" would make indistinguishable from the
+	 * file never having been fetched at all.
+	 */
 	public function is_present(): bool {
-		return array() !== $this->records();
+		return 'success' === $this->last_fetch_status();
 	}
 
 	public function last_refreshed_at(): ?string {

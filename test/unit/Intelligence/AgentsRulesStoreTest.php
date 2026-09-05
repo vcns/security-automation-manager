@@ -55,6 +55,30 @@ class AgentsRulesStoreTest extends TestCase {
 		$this->assertSame( array( '/private/' ), get_option( 'wp_sam_agents_disallow_rules' ) );
 	}
 
+	public function test_refresh_strips_an_inline_comment_from_a_user_agent_line(): void {
+		// Without stripping, "* # applies to everyone" never equals '*',
+		// so $in_wildcard_block would never be set and every Disallow line
+		// under it would be silently dropped.
+		$body  = "User-agent: * # applies to everyone\nDisallow: /private/\n";
+		$store = new Agents_Rules_Store( fn( string $url ) => $this->http_response( $body ) );
+
+		$store->refresh();
+
+		$this->assertSame( array( '/private/' ), $store->rules() );
+	}
+
+	public function test_refresh_strips_an_inline_comment_from_a_disallow_line(): void {
+		// Without stripping, the stored rule would be "/private/ # internal
+		// only", which str_starts_with() would never match against any
+		// real request path.
+		$body  = "User-agent: *\nDisallow: /private/ # internal only\n";
+		$store = new Agents_Rules_Store( fn( string $url ) => $this->http_response( $body ) );
+
+		$store->refresh();
+
+		$this->assertTrue( $store->is_disallowed( '/private/page' ) );
+	}
+
 	public function test_last_fetch_status_reflects_a_successful_refresh(): void {
 		$store = new Agents_Rules_Store( fn( string $url ) => $this->http_response( "User-agent: *\nDisallow: /x/\n" ) );
 

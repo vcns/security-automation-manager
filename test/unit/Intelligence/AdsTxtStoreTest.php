@@ -63,6 +63,23 @@ class AdsTxtStoreTest extends TestCase {
 		$this->assertNull( $store->records()[0]['certification_id'] );
 	}
 
+	public function test_is_present_is_false_before_any_refresh(): void {
+		$this->assertFalse( ( new Ads_Txt_Store() )->is_present() );
+	}
+
+	public function test_is_present_is_true_after_a_successful_fetch_with_zero_records(): void {
+		// A 200 response containing only comments/variable assignments is
+		// still a successfully-fetched file -- and the class's own docblock
+		// frames a drop to zero records as a tampering signal worth
+		// distinguishing from "never fetched".
+		$store = new Ads_Txt_Store( fn( string $url ) => $this->http_response( "CONTACT=adops@example.com\n" ) );
+
+		$store->refresh();
+
+		$this->assertTrue( $store->is_present() );
+		$this->assertSame( array(), $store->records() );
+	}
+
 	public function test_refresh_keeps_existing_records_on_a_non_200_response(): void {
 		update_option( 'wp_sam_ads_txt_records', array( array( 'domain' => 'example.com', 'publisher_id' => 'pub-1', 'relationship' => 'DIRECT', 'certification_id' => null ) ) );
 		$store = new Ads_Txt_Store( fn( string $url ) => $this->http_response( '', 404 ) );

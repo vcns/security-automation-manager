@@ -6,9 +6,11 @@
  * (every surface starts in 'observe' mode; nothing blocks until an
  * administrator explicitly promotes a surface to 'enforce').
  *
- * Three tabs: Policy (per-surface mode + thresholds), IP Rules (manual
- * allow/block list), Blocks (live view of automatic progressive-response
- * state, with Release/Make Persistent admin actions).
+ * Tabs: Policy (per-surface mode + thresholds), IP Rules (manual allow/
+ * block list), Blocks (live view of automatic progressive-response state,
+ * with Release/Make Persistent admin actions), Network Intelligence (its
+ * own Tor/ASN/Geo-IP/Well-Known Files/Network Rules sub-tabs), Detectors,
+ * and Custom Rules.
  *
  * Rendered by Admin_UI::render_traffic().
  */
@@ -17,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Admin\Admin_UI;
 use WP_SAM\Intelligence\Ads_Txt_Store;
 use WP_SAM\Intelligence\Agents_Rules_Store;
 use WP_SAM\Intelligence\App_Ads_Txt_Store;
@@ -296,7 +299,21 @@ $tab_help = array(
 	<?php elseif ( 'network-intelligence' === $tab ) : ?>
 
 		<?php
-		$ni_subtab          = isset( $_GET['subtab'] ) ? sanitize_text_field( wp_unslash( $_GET['subtab'] ) ) : 'tor'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		// A pre-existing bookmarked/scripted link carrying ?lookup_ip= or
+		// ?geo_lookup_ip= (both valid before Network Intelligence had
+		// sub-tabs) has no way to also carry a &subtab= it never needed --
+		// defaulting to the sub-tab that param actually belongs to, rather
+		// than always 'tor', keeps such a link doing what it always did
+		// instead of silently landing on the wrong section with the lookup
+		// parameter never even read.
+		$ni_default_subtab = 'tor';
+		if ( isset( $_GET['geo_lookup_ip'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$ni_default_subtab = 'geoip';
+		} elseif ( isset( $_GET['lookup_ip'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$ni_default_subtab = 'asn';
+		}
+
+		$ni_subtab          = isset( $_GET['subtab'] ) ? sanitize_text_field( wp_unslash( $_GET['subtab'] ) ) : $ni_default_subtab; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$ni_allowed_subtabs = array( 'tor', 'asn', 'geoip', 'well-known', 'network-rules' );
 		if ( ! in_array( $ni_subtab, $ni_allowed_subtabs, true ) ) {
 			$ni_subtab = 'tor';
@@ -485,10 +502,18 @@ $tab_help = array(
 			<?php endif; ?>
 
 			<?php
-			$geoip_lockout_key     = 'wp_sam_geoip_lockout_pending_' . get_current_user_id();
-			$geoip_lockout_pending = get_transient( $geoip_lockout_key );
-			delete_transient( $geoip_lockout_key );
-			$geoip_confirming = is_array( $geoip_lockout_pending );
+			// Deliberately never deleted here: this is a GET render, and an
+			// admin can easily re-view this page without acting on the
+			// warning yet (a refresh, a second tab, following the
+			// warning's own advice to check the IP Rules tab first and
+			// coming back) -- clearing it on every such incidental view
+			// would silently discard the warning and the pending selection
+			// before the admin ever got to confirm or reconsider it. The
+			// 5-minute TTL set when this was written is what actually
+			// expires it; the only explicit delete_transient() for this key
+			// is handle_geoip_country_block_save()'s own successful save.
+			$geoip_lockout_pending = get_transient( Admin_UI::GEOIP_LOCKOUT_TRANSIENT_PREFIX . get_current_user_id() );
+			$geoip_confirming      = is_array( $geoip_lockout_pending );
 
 			$geoip_country_rules = array_filter(
 				( new Network_Rule_Store() )->all(),
@@ -799,6 +824,32 @@ $tab_help = array(
 			</table>
 
 			<h3 style="margin-top:1.5em"><?php esc_html_e( 'Add a network rule', 'vcns-security-automation-manager' ); ?></h3>
+
+			<?php
+			// Same "never delete on a GET render" reasoning as the Geo-IP
+			// tab's pending-lockout transient (see that block's own
+			// comment) -- only handle_network_rule_add()'s own successful
+			// add clears this key; the 5-minute TTL handles the rest.
+			$network_rule_lockout_pending = get_transient( Admin_UI::NETWORK_RULE_LOCKOUT_TRANSIENT_PREFIX . get_current_user_id() );
+			$network_rule_confirming      = is_array( $network_rule_lockout_pending );
+
+			$network_rule_form_defaults = array(
+				'rule_type' => 'asn',
+				'value'     => '',
+				'surface'   => '',
+				'reason'    => '',
+			);
+			if ( $network_rule_confirming ) {
+				$network_rule_form_defaults = array_merge( $network_rule_form_defaults, $network_rule_lockout_pending );
+			}
+			?>
+
+			<?php if ( $network_rule_confirming ) : ?>
+			<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0">
+				<p style="margin-top:0"><strong><?php esc_html_e( 'This could lock you out of wp-admin:', 'vcns-security-automation-manager' ); ?></strong> <?php echo esc_html( (string) $network_rule_lockout_pending['message'] ); ?></p>
+			</div>
+			<?php endif; ?>
+
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<?php wp_nonce_field( 'wp_sam_network_rule_add' ); ?>
 				<input type="hidden" name="action" value="wp_sam_network_rule_add" />
@@ -807,32 +858,43 @@ $tab_help = array(
 						<th><label for="rule_type"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></label></th>
 						<td>
 							<select id="rule_type" name="rule_type">
-								<option value="asn"><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></option>
-								<option value="country"><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></option>
+								<option value="asn" <?php selected( $network_rule_form_defaults['rule_type'], 'asn' ); ?>><?php esc_html_e( 'ASN', 'vcns-security-automation-manager' ); ?></option>
+								<option value="country" <?php selected( $network_rule_form_defaults['rule_type'], 'country' ); ?>><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></option>
 							</select>
 						</td>
 					</tr>
 					<tr>
 						<th><label for="value"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></label></th>
 						<td>
-							<input type="text" id="value" name="value" required placeholder="<?php esc_attr_e( 'AS15169, or a two-letter country code such as CN', 'vcns-security-automation-manager' ); ?>" style="width:100%;max-width:300px" />
+							<input type="text" id="value" name="value" required placeholder="<?php esc_attr_e( 'AS15169, or a two-letter country code such as CN', 'vcns-security-automation-manager' ); ?>" style="width:100%;max-width:300px" value="<?php echo esc_attr( (string) $network_rule_form_defaults['value'] ); ?>" />
 						</td>
 					</tr>
 					<tr>
 						<th><label for="network_rule_surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></label></th>
 						<td>
 							<select id="network_rule_surface" name="surface">
-								<option value=""><?php esc_html_e( 'All surfaces', 'vcns-security-automation-manager' ); ?></option>
+								<option value="" <?php selected( $network_rule_form_defaults['surface'], '' ); ?>><?php esc_html_e( 'All surfaces', 'vcns-security-automation-manager' ); ?></option>
 								<?php foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $network_rule_surface ) : ?>
-								<option value="<?php echo esc_attr( $network_rule_surface ); ?>"><?php echo esc_html( ucfirst( $network_rule_surface ) ); ?></option>
+								<option value="<?php echo esc_attr( $network_rule_surface ); ?>" <?php selected( $network_rule_form_defaults['surface'], $network_rule_surface ); ?>><?php echo esc_html( ucfirst( $network_rule_surface ) ); ?></option>
 								<?php endforeach; ?>
 							</select>
 						</td>
 					</tr>
 					<tr>
 						<th><label for="network_rule_reason"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></label></th>
-						<td><input type="text" id="network_rule_reason" name="reason" required style="width:100%;max-width:300px" /></td>
+						<td><input type="text" id="network_rule_reason" name="reason" required style="width:100%;max-width:300px" value="<?php echo esc_attr( (string) $network_rule_form_defaults['reason'] ); ?>" /></td>
 					</tr>
+					<?php if ( $network_rule_confirming ) : ?>
+					<tr>
+						<th></th>
+						<td>
+							<label>
+								<input type="checkbox" name="confirm_lockout_risk" value="1" />
+								<?php esc_html_e( 'I understand this may lock me out of wp-admin -- save anyway.', 'vcns-security-automation-manager' ); ?>
+							</label>
+						</td>
+					</tr>
+					<?php endif; ?>
 				</table>
 				<?php submit_button( __( 'Add rule', 'vcns-security-automation-manager' ) ); ?>
 			</form>

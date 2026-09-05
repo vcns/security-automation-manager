@@ -10,6 +10,7 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
+use WP_SAM\Admin\Admin_UI;
 
 class PageTrafficTest extends TestCase {
 
@@ -205,5 +206,113 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringContainsString( 'resolves to China', $output );
 		$this->assertStringContainsString( 'confirm_lockout_risk', $output );
 		$this->assertMatchesRegularExpression( '/value="CN"\s+checked/', $output );
+	}
+
+	public function test_geoip_lockout_warning_survives_a_plain_get_render(): void {
+		// The transient must only ever be cleared by a real save (success
+		// or an explicit resubmission), never by the view simply being
+		// rendered again -- an admin refreshing the page, opening a second
+		// tab, or following the warning's own advice to check IP Rules
+		// first and coming back must not silently lose the warning.
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'geoip';
+		$GLOBALS['_wpdb_get_results'] = array();
+		set_transient(
+			Admin_UI::GEOIP_LOCKOUT_TRANSIENT_PREFIX . get_current_user_id(),
+			array(
+				'countries' => array( 'CN' ),
+				'message'   => 'Your own current IP address (203.0.113.42) resolves to China.',
+			)
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		ob_get_clean();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$second_render = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'This could lock you out of wp-admin', $second_render );
+	}
+
+	// ── Network Intelligence tab -- legacy lookup URL params ────────────────
+
+	public function test_lookup_ip_param_without_an_explicit_subtab_lands_on_asn(): void {
+		$_GET['tab']       = 'network-intelligence';
+		$_GET['lookup_ip'] = '203.0.113.42';
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = array( 'asn' => 15169, 'asn_org' => 'GOOGLE' ); // Asn_Lookup_Store cache hit -- no live DNS lookup.
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['lookup_ip'] );
+
+		$this->assertStringContainsString( 'AS15169', $output );
+		$this->assertStringNotContainsString( 'IPinfo API token', $output );
+	}
+
+	public function test_geo_lookup_ip_param_without_an_explicit_subtab_lands_on_geoip(): void {
+		$_GET['tab']           = 'network-intelligence';
+		$_GET['geo_lookup_ip'] = '203.0.113.42';
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['geo_lookup_ip'] );
+
+		$this->assertStringContainsString( 'IPinfo API token', $output );
+		$this->assertStringContainsString( 'Country Block List', $output );
+	}
+
+	public function test_subtab_param_still_wins_over_a_legacy_lookup_ip_param(): void {
+		$_GET['tab']       = 'network-intelligence';
+		$_GET['subtab']    = 'tor';
+		$_GET['lookup_ip'] = '203.0.113.42';
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'], $_GET['lookup_ip'] );
+
+		$this->assertStringContainsString( 'Known exit nodes', $output );
+		$this->assertStringNotContainsString( 'AS15169', $output );
+	}
+
+	// ── Network Intelligence tab -- network-rules self-lockout warning ──────
+
+	public function test_network_rules_subtab_shows_the_lockout_warning_from_a_pending_transient(): void {
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'network-rules';
+		$GLOBALS['_wpdb_get_results'] = array();
+		set_transient(
+			Admin_UI::NETWORK_RULE_LOCKOUT_TRANSIENT_PREFIX . get_current_user_id(),
+			array(
+				'rule_type' => 'country',
+				'value'     => 'CN',
+				'surface'   => '',
+				'reason'    => 'Testing',
+				'message'   => 'Your own current IP address (203.0.113.42) resolves to China.',
+			)
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'This could lock you out of wp-admin', $output );
+		$this->assertStringContainsString( 'resolves to China', $output );
+		$this->assertStringContainsString( 'confirm_lockout_risk', $output );
+		$this->assertStringContainsString( 'value="CN"', $output );
 	}
 }

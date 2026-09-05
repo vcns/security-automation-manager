@@ -71,6 +71,7 @@ use WP_SAM\CSP\Scheduler;
 use WP_SAM\Intelligence\Ads_Txt_Store;
 use WP_SAM\Intelligence\Agents_Rules_Store;
 use WP_SAM\Intelligence\App_Ads_Txt_Store;
+use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Baseline_State_Builder;
 use WP_SAM\Intelligence\Baseline_Store;
 use WP_SAM\Intelligence\Campaign_Detector;
@@ -1704,22 +1705,34 @@ class Admin_UI {
 	}
 
 	/**
+	 * Shared transient-key prefixes for the two self-lockout warning flows
+	 * below (see network_rule_lockout_warning()'s own docblock) -- public so
+	 * page-traffic.php's view can read the same pending state this class
+	 * writes, without a second, independently-typo-able copy of the string.
+	 */
+	public const GEOIP_LOCKOUT_TRANSIENT_PREFIX        = 'wp_sam_geoip_lockout_pending_';
+	public const NETWORK_RULE_LOCKOUT_TRANSIENT_PREFIX = 'wp_sam_network_rule_lockout_pending_';
+
+	/**
 	 * Saves the administrator's Geo-IP country block/allow selections
 	 * (Phase 4A extension, user-requested friendlier alternative to typing
 	 * codes into the generic Network Rule form) as a batch of Network_Rule_
 	 * Store rows scoped to every surface -- nothing is written until this
 	 * single Save is clicked.
 	 *
-	 * Before writing a newly-blocked country, checks whether the requesting
-	 * administrator's own current IP resolves to that country (via the same
-	 * Geo_Ip_Store the live request path uses) and has no narrower Ip_Rule_
-	 * Store allow entry for the admin surface protecting it -- the one case
-	 * Network_Rule_Store's own docblock notes an allow rule is needed for.
-	 * If so, the save is held (nothing is written) and the admin is shown a
-	 * warning with a "save anyway" checkbox, rather than silently locking
-	 * them out of wp-admin. This check is only possible when Geo-IP itself
-	 * is configured -- with no token, there is no way to resolve anyone's
-	 * country, this admin's own included.
+	 * Before writing a newly-blocked country, uses network_rule_lockout_
+	 * warning() (shared with handle_network_rule_add() below) to check
+	 * whether it would lock the requesting administrator out. If so, the
+	 * save is held (nothing is written) and the admin is shown a warning
+	 * with a "save anyway" checkbox, rather than silently locking them out
+	 * of wp-admin.
+	 *
+	 * Only ever adds/removes rows whose value is one of Iso_Countries::
+	 * all()'s known codes: a pre-existing all-surfaces country rule added
+	 * via the generic form with a value outside that list (e.g. a non-
+	 * standard code some Geo-IP providers return) can never be rendered as
+	 * checked in this grid, so it must never be treated as "unchecked" and
+	 * silently deleted just because a save touched something else.
 	 */
 	public function handle_geoip_country_block_save(): void {
 		check_admin_referer( 'wp_sam_geoip_country_block_save' );
@@ -1729,49 +1742,41 @@ class Admin_UI {
 
 		$valid_codes = array_keys( Iso_Countries::all() );
 		$raw         = isset( $_POST['blocked_countries'] ) && is_array( $_POST['blocked_countries'] ) ? wp_unslash( $_POST['blocked_countries'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- wp_unslash() is applied here; each element is still sanitized below.
-		$submitted   = array_values( array_intersect( array_map( 'strtoupper', array_map( 'sanitize_text_field', $raw ) ), $valid_codes ) );
+		$submitted   = array_unique( array_intersect( array_map( 'strtoupper', array_map( 'sanitize_text_field', $raw ) ), $valid_codes ) );
 
-		$network_rules = new Network_Rule_Store();
-		$existing      = array_map(
-			static fn( $rule ) => (string) $rule['value'],
-			array_filter(
-				$network_rules->all(),
-				static fn( $rule ) => 'country' === $rule['rule_type'] && '' === (string) $rule['surface']
-			)
-		);
+		$network_rules  = new Network_Rule_Store();
+		$existing_by_id = array();
+		foreach ( $network_rules->all() as $rule ) {
+			if ( 'country' === $rule['rule_type'] && '' === (string) $rule['surface'] && in_array( (string) $rule['value'], $valid_codes, true ) ) {
+				$existing_by_id[ (string) $rule['value'] ] = (int) $rule['id'];
+			}
+		}
+		$existing = array_keys( $existing_by_id );
 
-		$to_add  = array_diff( $submitted, $existing );
+		$to_add  = array_values( array_diff( $submitted, $existing ) );
 		$user_id = get_current_user_id();
 
 		if ( ! empty( $to_add ) && empty( $_POST['confirm_lockout_risk'] ) ) {
-			$geo_store = new Geo_Ip_Store();
-			$own_ip    = Ip_Resolver::resolve();
-
-			if ( $geo_store->is_configured() && '' !== $own_ip ) {
-				$own_country = $geo_store->resolve( $own_ip )['country'];
-				$own_rule    = ( new Ip_Rule_Store() )->match( $own_ip, 'admin' );
-				$has_allow   = null !== $own_rule && 'allow' === $own_rule['list_type'];
-
-				if ( null !== $own_country && in_array( strtoupper( $own_country ), $to_add, true ) && ! $has_allow ) {
-					$country_name = Iso_Countries::all()[ strtoupper( $own_country ) ] ?? strtoupper( $own_country );
-
-					set_transient(
-						'wp_sam_geoip_lockout_pending_' . $user_id,
-						array(
-							'countries' => $submitted,
-							'message'   => sprintf(
-								/* translators: 1: country name, 2: IP address */
-								__( 'Your own current IP address (%2$s) resolves to %1$s, one of the countries you just selected to block, and no IP-allow rule for wp-admin covers it -- saving this would lock you out. Tick the box below and save again if you\'re sure (e.g. you have another way to reach this site), or add an IP-allow rule for your own address on the IP Rules tab first.', 'vcns-security-automation-manager' ),
-								$country_name,
-								$own_ip
-							),
-						),
-						5 * MINUTE_IN_SECONDS
-					);
-
-					wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
-					exit;
+			$lockout_message = null;
+			foreach ( $to_add as $code ) {
+				$lockout_message = $this->network_rule_lockout_warning( 'country', $code, '' );
+				if ( null !== $lockout_message ) {
+					break;
 				}
+			}
+
+			if ( null !== $lockout_message ) {
+				set_transient(
+					self::GEOIP_LOCKOUT_TRANSIENT_PREFIX . $user_id,
+					array(
+						'countries' => array_values( $submitted ),
+						'message'   => $lockout_message,
+					),
+					5 * MINUTE_IN_SECONDS
+				);
+
+				wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
+				exit;
 			}
 		}
 
@@ -1780,14 +1785,10 @@ class Admin_UI {
 		}
 
 		foreach ( array_diff( $existing, $submitted ) as $code ) {
-			foreach ( $network_rules->all() as $rule ) {
-				if ( 'country' === $rule['rule_type'] && '' === (string) $rule['surface'] && $code === (string) $rule['value'] ) {
-					$network_rules->delete( (int) $rule['id'] );
-				}
-			}
+			$network_rules->delete( $existing_by_id[ $code ] );
 		}
 
-		delete_transient( 'wp_sam_geoip_lockout_pending_' . $user_id );
+		delete_transient( self::GEOIP_LOCKOUT_TRANSIENT_PREFIX . $user_id );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
 		exit;
@@ -1798,6 +1799,13 @@ class Admin_UI {
 	 * requested -- the "traffic control filtering" half of Geo-IP/ASN/Tor
 	 * awareness Phase 4A itself shipped as evidence-only). See Network_Rule_
 	 * Store's own docblock.
+	 *
+	 * Runs the same network_rule_lockout_warning() check as the Geo-IP
+	 * country grid above before writing a country or ASN rule -- this
+	 * generic form is a second, still-present entry point into the same
+	 * table, and offering the friendlier grid's protection there but not
+	 * here would leave an administrator just as able to lock themselves out
+	 * through this form with no warning at all.
 	 */
 	public function handle_network_rule_add(): void {
 		check_admin_referer( 'wp_sam_network_rule_add' );
@@ -1805,16 +1813,124 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Network_Rule_Store() )->add(
-			sanitize_key( wp_unslash( $_POST['rule_type'] ?? 'asn' ) ),
-			sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) ),
-			sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) ),
-			sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) ),
-			get_current_user_id()
-		);
+		$rule_type = sanitize_key( wp_unslash( $_POST['rule_type'] ?? 'asn' ) );
+		$value     = sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) );
+		$surface   = sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) );
+		$reason    = sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) );
+		$user_id   = get_current_user_id();
+
+		if ( empty( $_POST['confirm_lockout_risk'] ) ) {
+			$lockout_message = $this->network_rule_lockout_warning( $rule_type, $value, $surface );
+			if ( null !== $lockout_message ) {
+				set_transient(
+					self::NETWORK_RULE_LOCKOUT_TRANSIENT_PREFIX . $user_id,
+					array(
+						'rule_type' => $rule_type,
+						'value'     => $value,
+						'surface'   => $surface,
+						'reason'    => $reason,
+						'message'   => $lockout_message,
+					),
+					5 * MINUTE_IN_SECONDS
+				);
+
+				wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=network-rules' ) );
+				exit;
+			}
+		}
+
+		( new Network_Rule_Store() )->add( $rule_type, $value, $surface, $reason, $user_id );
+
+		delete_transient( self::NETWORK_RULE_LOCKOUT_TRANSIENT_PREFIX . $user_id );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=network-rules' ) );
 		exit;
+	}
+
+	/**
+	 * Checks whether writing a Network_Rule_Store row of the given type/
+	 * value/surface would block the requesting administrator's own current
+	 * network, with no covering Ip_Rule_Store allow entry -- shared by
+	 * handle_geoip_country_block_save() and handle_network_rule_add() so
+	 * both entry points into the same table get the same protection.
+	 *
+	 * A covering allow rule must itself apply to every surface $surface
+	 * would apply to: an allow rule scoped to a single surface (e.g.
+	 * 'admin') does not protect a DIFFERENT surface (e.g. 'login') the same
+	 * rule would also affect. Querying Ip_Rule_Store::match() with $surface
+	 * itself (rather than a fixed 'admin') mirrors exactly what Traffic_
+	 * Guard::decide() will actually check against a real request to that
+	 * surface.
+	 *
+	 * A country lookup that fails to resolve (Geo_Ip_Store::resolve()
+	 * returning a null country -- an API outage, an invalid token, or a
+	 * rate limit, cached for that store's own full TTL) is treated as its
+	 * own reason to warn, not as "safe": silently trusting an inconclusive
+	 * result would defeat the point of this check for as long as that
+	 * cached failure lasts. An ASN lookup failure is not held to the same
+	 * standard -- Asn_Lookup_Store's free, unauthenticated DNS-based lookup
+	 * has no comparable failure-caching or rate-limit exposure, so a rare
+	 * lookup failure here is treated as inconclusive-but-not-worth-blocking,
+	 * same as "no rule configured" would be.
+	 *
+	 * @return string|null A warning message if this save should be held for confirmation, or null if it's safe to proceed (or the check can't run at all, e.g. Geo-IP unconfigured for a country rule -- a documented limitation stated in the admin UI, not a silent bypass).
+	 */
+	private function network_rule_lockout_warning( string $rule_type, string $value, string $surface ): ?string {
+		$own_ip = Ip_Resolver::resolve();
+		if ( '' === $own_ip ) {
+			return null;
+		}
+
+		$own_rule = ( new Ip_Rule_Store() )->match( $own_ip, $surface );
+		if ( null !== $own_rule && 'allow' === $own_rule['list_type'] ) {
+			return null;
+		}
+
+		if ( 'country' === $rule_type ) {
+			$geo_store = new Geo_Ip_Store();
+			if ( ! $geo_store->is_configured() ) {
+				return null;
+			}
+
+			$own_country = $geo_store->resolve( $own_ip )['country'];
+			if ( null === $own_country ) {
+				return __( "Your own current IP address couldn't be resolved to a country just now (the Geo-IP lookup failed or is rate-limited), so this save can't be confirmed safe. Tick the box below and save again if you're sure, or add an IP-allow rule for your own address on the IP Rules tab first.", 'vcns-security-automation-manager' );
+			}
+
+			if ( strtoupper( $own_country ) !== strtoupper( trim( $value ) ) ) {
+				return null;
+			}
+
+			$country_name = Iso_Countries::all()[ strtoupper( $own_country ) ] ?? strtoupper( $own_country );
+
+			return sprintf(
+				/* translators: 1: country name, 2: IP address */
+				__( 'Your own current IP address (%2$s) resolves to %1$s, the country you just selected to block, and no IP-allow rule covering this surface protects it -- saving this would lock you out. Tick the box below and save again if you\'re sure (e.g. you have another way to reach this site), or add an IP-allow rule for your own address on the IP Rules tab first.', 'vcns-security-automation-manager' ),
+				$country_name,
+				$own_ip
+			);
+		}
+
+		if ( 'asn' === $rule_type ) {
+			$own_asn = ( new Asn_Lookup_Store() )->resolve( $own_ip )['asn'];
+			if ( null === $own_asn ) {
+				return null;
+			}
+
+			$submitted_asn = ltrim( strtoupper( trim( $value ) ), 'AS' );
+			if ( ! ctype_digit( $submitted_asn ) || (int) $submitted_asn !== $own_asn ) {
+				return null;
+			}
+
+			return sprintf(
+				/* translators: 1: ASN number, 2: IP address */
+				__( 'Your own current IP address (%2$s) belongs to AS%1$d, the network you just selected to block, and no IP-allow rule covering this surface protects it -- saving this would lock you out. Tick the box below and save again if you\'re sure (e.g. you have another way to reach this site), or add an IP-allow rule for your own address on the IP Rules tab first.', 'vcns-security-automation-manager' ),
+				$own_asn,
+				$own_ip
+			);
+		}
+
+		return null;
 	}
 
 	public function handle_network_rule_delete(): void {

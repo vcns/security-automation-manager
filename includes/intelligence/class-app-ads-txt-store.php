@@ -42,8 +42,12 @@ final class App_Ads_Txt_Store {
 		return is_array( $stored ) ? $stored : array();
 	}
 
+	/**
+	 * True once a fetch has ever succeeded -- deliberately NOT "is records()
+	 * non-empty"; see Ads_Txt_Store::is_present()'s own docblock for why.
+	 */
 	public function is_present(): bool {
-		return array() !== $this->records();
+		return 'success' === $this->last_fetch_status();
 	}
 
 	public function last_refreshed_at(): ?string {

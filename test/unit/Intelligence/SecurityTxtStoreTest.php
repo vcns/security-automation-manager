@@ -60,6 +60,22 @@ class SecurityTxtStoreTest extends TestCase {
 		$this->assertTrue( $store->is_present() );
 	}
 
+	public function test_is_present_is_false_before_any_refresh(): void {
+		$this->assertFalse( ( new Security_Txt_Store() )->is_present() );
+	}
+
+	public function test_is_present_is_true_after_a_successful_fetch_even_with_no_parseable_fields(): void {
+		// A 200 response that is comment-only (or doesn't match the field
+		// regex) is still a successfully-fetched file -- "present" must not
+		// be indistinguishable from "never fetched".
+		$store = new Security_Txt_Store( fn( string $url ) => $this->http_response( "# nothing else here\n" ) );
+
+		$store->refresh();
+
+		$this->assertTrue( $store->is_present() );
+		$this->assertSame( array(), $store->fields() );
+	}
+
 	public function test_is_expired_is_false_with_no_expires_field(): void {
 		$store = new Security_Txt_Store( fn( string $url ) => $this->http_response( "Contact: mailto:security@example.com\n" ) );
 		$store->refresh();
