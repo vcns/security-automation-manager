@@ -20,6 +20,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Cidr_Matcher {
 
+	/**
+	 * RFC 5735 IPv4 loopback block (127.0.0.0/8) and the IPv6 loopback
+	 * address (::1) -- the single source of truth for "is this IP
+	 * loopback", shared by Identity_Resolver's identity/classification
+	 * recognition and Traffic_Guard's automatic-escalation exemption so the
+	 * two can never silently disagree on the definition.
+	 */
+	public const LOOPBACK_CIDRS = array( '127.0.0.0/8', '::1/128' );
+
 	public static function ip_in_cidr( string $ip, string $cidr ): bool {
 		$parts = explode( '/', $cidr, 2 );
 		if ( 2 !== count( $parts ) ) {

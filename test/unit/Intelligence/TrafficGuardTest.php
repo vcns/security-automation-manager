@@ -98,6 +98,50 @@ class TrafficGuardTest extends TestCase {
 		$this->assertSame( 'allow', $verdict['action'] );
 	}
 
+	// ── Loopback exemption ────────────────────────────────────────────────────
+
+	public function test_loopback_ipv4_source_is_never_blocked_by_automatic_escalation(): void {
+		$GLOBALS['_wpdb_get_results'] = array(); // No IP rules.
+
+		$verdict = $this->guard->decide( '127.0.0.1', 'frontend', false );
+
+		$this->assertSame( 'allow', $verdict['action'] );
+	}
+
+	public function test_loopback_ipv6_source_is_never_blocked_by_automatic_escalation(): void {
+		$GLOBALS['_wpdb_get_results'] = array(); // No IP rules.
+
+		$verdict = $this->guard->decide( '::1', 'frontend', false );
+
+		$this->assertSame( 'allow', $verdict['action'] );
+	}
+
+	public function test_loopback_source_never_reaches_the_rate_limiter_even_when_already_escalated(): void {
+		// An existing stray block record for a loopback address (e.g. from
+		// before this exemption existed) must become inert, not just future
+		// escalations -- no _wpdb_get_row_queue entries means the test fails
+		// loudly if decide() ever reaches Traffic_Block_Store::get().
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$verdict = $this->guard->decide( '127.0.0.1', 'admin', false );
+
+		$this->assertSame( 'allow', $verdict['action'] );
+		$this->assertFalse( $verdict['would_block'] );
+	}
+
+	public function test_explicit_block_rule_still_applies_to_a_loopback_source(): void {
+		// The one documented escape hatch (Identity_Resolver's own docblock):
+		// an administrator can still explicitly deny a loopback source.
+		$GLOBALS['_wpdb_get_results'] = array(
+			array( 'id' => 1, 'list_type' => 'block', 'cidr' => '127.0.0.1', 'surface' => '', 'expires_at' => null ),
+		);
+
+		$verdict = $this->guard->decide( '127.0.0.1', 'frontend', false );
+
+		$this->assertSame( 'block', $verdict['action'] );
+		$this->assertSame( 'ip_rule_block', $verdict['reason'] );
+	}
+
 	// ── Network (ASN/country) rules ──────────────────────────────────────────
 
 	public function test_network_rule_blocks_a_matching_asn_even_for_a_privileged_user(): void {

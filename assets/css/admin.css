@@ -604,3 +604,102 @@ details.wp-sam-filter-form form {
 	word-break: break-all;
 	white-space: normal;
 }
+
+/*
+ * Policy table (Traffic Controls > Policy): Rate limit and Failed login
+ * lockout each hold two number inputs plus label text and need real room;
+ * pin Surface/Mode/Actions to a fixed width and leave the other two unset
+ * so they split whatever's left, the same "fixed" plus "pin what's short"
+ * approach as the Profiles table above.
+ *
+ * Column order: 1 Surface, 2 Mode, 3 Rate limit, 4 Failed login lockout,
+ * 5 Actions.
+ */
+.wp-sam-policy-table th:nth-child(1),
+.wp-sam-policy-table td:nth-child(1) {
+	width: 100px;
+}
+
+.wp-sam-policy-table th:nth-child(2),
+.wp-sam-policy-table td:nth-child(2) {
+	width: 170px;
+}
+
+.wp-sam-policy-table th:nth-child(5),
+.wp-sam-policy-table td:nth-child(5) {
+	width: 90px;
+}
+
+/*
+ * Blocks table (Traffic Controls > Blocks): overrides the generic
+ * Violations table widths above -- that scheme was calibrated for a
+ * different 7-column layout and left Surface (short text) absorbing all
+ * the leftover space while Blocked Until and Actions (a timestamp and two
+ * buttons) were squeezed. Reason holds the most variable-length text here
+ * (e.g. "rate limit", a custom rule name), so it's the one left unset.
+ *
+ * Column order: 1 IP, 2 Surface, 3 Stage, 4 Reason, 5 Occurrences,
+ * 6 Blocked Until, 7 Actions. Loaded after .wp-sam-violations-table so
+ * these widths win the cascade on a table carrying both classes.
+ */
+.wp-sam-blocks-table th:nth-child(1),
+.wp-sam-blocks-table td:nth-child(1) {
+	width: 140px;
+}
+
+.wp-sam-blocks-table th:nth-child(2),
+.wp-sam-blocks-table td:nth-child(2) {
+	width: 90px;
+}
+
+.wp-sam-blocks-table th:nth-child(3),
+.wp-sam-blocks-table td:nth-child(3) {
+	width: 130px;
+}
+
+.wp-sam-blocks-table th:nth-child(5),
+.wp-sam-blocks-table td:nth-child(5) {
+	width: 110px;
+}
+
+.wp-sam-blocks-table th:nth-child(6),
+.wp-sam-blocks-table td:nth-child(6) {
+	width: 170px;
+}
+
+.wp-sam-blocks-table th:nth-child(7),
+.wp-sam-blocks-table td:nth-child(7) {
+	width: 200px;
+}
+
+/* ── Sub-tabs (e.g. Network Intelligence's Tor/ASN/Geo-IP/Well-Known/Network Rules) ── */
+.wp-sam-subtab-wrapper {
+	margin-top: 1.5em;
+}
+
+.wp-sam-subtab-content {
+	padding-top: 0.5em;
+}
+
+/*
+ * Geo-IP country grid (Traffic Controls > Network Intelligence > Geo-IP):
+ * a flowing multi-column list of checkboxes, one per ISO country, instead
+ * of a single narrow list -- wide enough to actually use the page instead
+ * of leaving most of it empty.
+ */
+.wp-sam-country-grid {
+	columns: 220px 4;
+	column-gap: 1.5em;
+	max-height: 420px;
+	overflow-y: auto;
+	border: 1px solid #dcdcde;
+	background: #fff;
+	padding: 12px 16px;
+	margin-top: 0.5em;
+}
+
+.wp-sam-country-grid label {
+	display: block;
+	white-space: nowrap;
+	padding: 2px 0;
+}

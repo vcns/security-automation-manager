@@ -158,9 +158,9 @@ final class Identity_Resolver {
 		return $result;
 	}
 
-	/** RFC 5735 IPv4 loopback block (127.0.0.0/8) and the IPv6 loopback address (::1). */
+	/** See Cidr_Matcher::LOOPBACK_CIDRS -- the single source of truth for "is this IP loopback". */
 	private static function is_loopback( string $ip ): bool {
-		return Cidr_Matcher::ip_in_any_cidr( $ip, array( '127.0.0.0/8', '::1/128' ) );
+		return Cidr_Matcher::ip_in_any_cidr( $ip, Cidr_Matcher::LOOPBACK_CIDRS );
 	}
 
 	private function state_for_category( string $category ): string {

@@ -13,6 +13,9 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+use WP_SAM\Intelligence\Ads_Txt_Store;
+use WP_SAM\Intelligence\Agents_Rules_Store;
+use WP_SAM\Intelligence\App_Ads_Txt_Store;
 use WP_SAM\Intelligence\Baseline_State_Builder;
 use WP_SAM\Intelligence\Baseline_Store;
 use WP_SAM\Intelligence\Campaign_Detector;
@@ -21,7 +24,9 @@ use WP_SAM\Intelligence\Change_Log_Store;
 use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
+use WP_SAM\Intelligence\Humans_Txt_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
+use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
@@ -89,6 +94,11 @@ class Scheduler {
 			$this->refresh_tor_exit_list();
 			$this->purge_stale_asn_cache();
 			$this->refresh_robots_rules();
+			$this->refresh_agents_rules();
+			$this->refresh_security_txt();
+			$this->refresh_humans_txt();
+			$this->refresh_ads_txt();
+			$this->refresh_app_ads_txt();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -371,6 +381,69 @@ class Scheduler {
 		$this->audit->log(
 			'scheduler',
 			'refreshed' === $result['status'] ? 'robots_rules_refreshed' : 'robots_rules_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
+	}
+
+	/**
+	 * Refreshes the remaining four well-known files this plugin tracks
+	 * alongside robots.txt (Phase 4C extension, user-requested): agents.txt,
+	 * security.txt, humans.txt, ads.txt, and app-ads.txt. Same daily cadence
+	 * and "never fatal to the rest of the scan" reasoning as refresh_robots_
+	 * rules() above -- each store's own refresh() already guarantees a fetch
+	 * failure never clears already-cached data.
+	 */
+	private function refresh_agents_rules(): void {
+		$result = ( new Agents_Rules_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'agents_rules_refreshed' : 'agents_rules_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
+	}
+
+	private function refresh_security_txt(): void {
+		$result = ( new Security_Txt_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'security_txt_refreshed' : 'security_txt_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
+	}
+
+	private function refresh_humans_txt(): void {
+		$result = ( new Humans_Txt_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'humans_txt_refreshed' : 'humans_txt_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
+	}
+
+	private function refresh_ads_txt(): void {
+		$result = ( new Ads_Txt_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'ads_txt_refreshed' : 'ads_txt_refresh_failed',
+			(string) $result['message'],
+			'refreshed' === $result['status'] ? 'info' : 'warning'
+		);
+	}
+
+	private function refresh_app_ads_txt(): void {
+		$result = ( new App_Ads_Txt_Store() )->refresh();
+
+		$this->audit->log(
+			'scheduler',
+			'refreshed' === $result['status'] ? 'app_ads_txt_refreshed' : 'app_ads_txt_refresh_failed',
 			(string) $result['message'],
 			'refreshed' === $result['status'] ? 'info' : 'warning'
 		);

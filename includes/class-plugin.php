@@ -20,18 +20,25 @@ use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Scheduler;
 use WP_SAM\CSP\Violation_Reporter;
 use WP_SAM\Intelligence\Account_Integrity_Recorder;
+use WP_SAM\Intelligence\Agents_Rules_Store;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Custom_Rule_Store;
 use WP_SAM\Intelligence\Detector_Engine;
 use WP_SAM\Intelligence\Detector_Policy_Store;
 use WP_SAM\Intelligence\Detector_Registry;
+use WP_SAM\Intelligence\Detectors\Ads_Txt_Detector;
+use WP_SAM\Intelligence\Detectors\Agents_Compliance_Detector;
+use WP_SAM\Intelligence\Detectors\Agents_Txt_Detector;
+use WP_SAM\Intelligence\Detectors\App_Ads_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Custom_Rule_Detector;
 use WP_SAM\Intelligence\Detectors\Header_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
+use WP_SAM\Intelligence\Detectors\Humans_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Login_Cookie_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Compliance_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
+use WP_SAM\Intelligence\Detectors\Security_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Tor_Exit_Detector;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Change_Attribution_Recorder;
@@ -403,6 +410,22 @@ final class Plugin {
 		// half of the robots.txt behaviour signal, alongside Robots_Txt_
 		// Detector above. See Robots_Compliance_Detector's own docblock.
 		Detector_Registry::register( new Robots_Compliance_Detector( new Robots_Rules_Store() ) );
+
+		// Well-known-file visit recognition (Phase 4C extension, user-
+		// requested): agents.txt, security.txt, humans.txt, ads.txt, and
+		// app-ads.txt, registered the same way and for the same reason as
+		// Robots_Txt_Detector above -- see each detector's own docblock.
+		// agents.txt is the only one of these five with Disallow-style
+		// directives, so it alone also gets a compliance detector, mirroring
+		// Robots_Compliance_Detector immediately above; security.txt/
+		// humans.txt/ads.txt/app-ads.txt have no such syntax to check
+		// compliance against -- see each store's own docblock.
+		Detector_Registry::register( new Agents_Txt_Detector() );
+		Detector_Registry::register( new Agents_Compliance_Detector( new Agents_Rules_Store() ) );
+		Detector_Registry::register( new Security_Txt_Detector() );
+		Detector_Registry::register( new Humans_Txt_Detector() );
+		Detector_Registry::register( new Ads_Txt_Detector() );
+		Detector_Registry::register( new App_Ads_Txt_Detector() );
 
 		// Custom, admin-authored regex detection rules (Phase 4C extension --
 		// fail2ban-style custom filters): one Custom_Rule_Detector per stored
