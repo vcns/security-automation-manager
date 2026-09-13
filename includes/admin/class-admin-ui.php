@@ -729,7 +729,6 @@ class Admin_UI {
 						'scanError'           => __( 'Scan failed. Check error log.', 'vcns-security-automation-manager' ),
 						'reasonRequired'      => __( 'A decision reason is required.', 'vcns-security-automation-manager' ),
 						'enforceReasonPrompt' => __( 'Reason for promoting this surface to enforce mode:', 'vcns-security-automation-manager' ),
-						'upgradeStarting'     => __( 'Starting checkout…', 'vcns-security-automation-manager' ),
 					),
 				)
 			);

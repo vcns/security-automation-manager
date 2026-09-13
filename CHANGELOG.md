@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.107] - 2026-09-14
+
+### Security
+
+- Removed `includes/extensions/fully-automatic-mode.php`'s direct-Stripe checkout path: the 8 plaintext Stripe secret/price/webhook option registrations, the `wp_ajax_wp_sam_create_checkout_session` handler, and the pricing-card/subscribe-button upgrade UI. Resolves `docs/threat-model.md`'s "Stripe secret storage" finding (previously "not mitigated -- live finding", the primary blocker on the public-hosting readiness gate, GitHub #156) and is the WordPress-side portion of `docs/sam-portal-requirements-spec.md` §21.2 ("WordPress direct-Stripe removal").
+- Confirmed via investigation before removal: neither public release channel (WordPress.org or GitHub) has ever shipped a working checkout path for this -- `offline/modules/` (which supplies the classes this depends on) is gitignored and empty in both, and the stale local copies that exist wouldn't satisfy the current class checks either. No evidence of real customer use.
+- New `Activator::migrate_remove_direct_stripe_options()` (schema v46, no new table) -- actively deletes any of the 8 option values a previous private/commercial build may have stored, rather than merely stopping new writes. `delete_option()` on an already-absent key is a no-op, so this runs unconditionally on every activation.
+- `fully_automatic` remains a registered automation-mode concept (unaffected -- it isn't itself a security issue) but is unreachable until a `sam-licensing-service`-backed entitlement source is built; `Feature_Gate`'s duck-typed `?object $entitlements` constructor already supports this without its own rewrite.
+- Also removed: the now-dead `.wp-sam-upgrade-button` click handler in `assets/js/admin.js`, its `upgradeStarting` localised string, and the `.wp-sam-product-card`/`.wp-sam-price` CSS -- all exclusively served the removed checkout UI.
+- 8 new tests in `FullyAutomaticModeTest.php` (new) confirming the Stripe settings/AJAX hooks no longer register and the upgrade notice never renders payment UI, plus `ActivatorTest.php` extended for the new migration.
+
 ## [2.9.106] - 2026-09-13
 
 ### Added
