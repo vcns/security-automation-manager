@@ -51,6 +51,10 @@ final class Recommendation_Registry {
 		self::register( new Recommendation_Rule_Unexplained_Drift() );
 		self::register( new Recommendation_Rule_Exception_Expiring() );
 
+		// Rule batch 2: CSP enforce-readiness -- the one new read method it
+		// needed (Violation_Reporter::count_since()) is now in place.
+		self::register( new Recommendation_Rule_Csp_Enforce_Ready() );
+
 		do_action( 'wp_sam_register_recommendation_rules' );
 	}
 

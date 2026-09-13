@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.104] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 2 -- `Intelligence\Recommendation_Rule_Csp_Enforce_Ready`: fires per surface when `csp_policy_profiles.mode` is `report-only`, no active `csp_enforce` exception exists for it (`Exception_Store::has_active_for()`), and zero violations have been reported on it in the last 30 days. Dismissible; the dismissal reopens if that surface's policy configuration changes again (`csp_policy_profiles.updated_at`), not on a fixed timer.
+- New `Violation_Reporter::count_since( string $surface, int $since_hours ): int` -- the one new read method this batch needed, added to a table (`csp_violation_reports`) that was previously write-only. Static, so it needs none of `Violation_Reporter`'s own REST-handler constructor dependencies.
+- 8 new tests across `RecommendationRuleCspEnforceReadyTest` (new) and `ViolationReporterTest`/`RecommendationRegistryTest` extended.
+- No schema change.
+
 ## [2.9.103] - 2026-09-13
 
 ### Added
