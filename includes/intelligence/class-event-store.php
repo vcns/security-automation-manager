@@ -169,4 +169,38 @@ final class Event_Store {
 
 		return ! empty( $rows ) ? $rows : array();
 	}
+
+	/**
+	 * Total occurrences recorded for $detector_id (any surface, any source)
+	 * among rows with activity in the last $since_hours -- used by
+	 * Recommendation_Rule_Detector_Disabled_But_Firing (Phase 4F) to judge
+	 * whether a disabled detector had real matches recently.
+	 *
+	 * Sums each qualifying row's own occurrence_count rather than counting
+	 * rows: a single noisy source upserts into one row, and that row's
+	 * occurrence_count is exactly "how many times this detector+surface+
+	 * source combination has matched," so summing across the (typically
+	 * few) rows active in the window is a truthful activity total, not a
+	 * row-count-as-proxy. occurrence_count is lifetime-cumulative per row,
+	 * not itself windowed, so a row last touched years ago but still within
+	 * $since_hours would contribute its full historical count -- the same
+	 * known, accepted staleness-at-the-edges tradeoff distinct_ips()/
+	 * active_detector_surfaces() above already carry, not a new compromise
+	 * introduced here.
+	 */
+	public function occurrences_since( string $detector_id, int $since_hours ): int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_request_events';
+		$since = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, $since_hours ) * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COALESCE(SUM(occurrence_count), 0) FROM {$table} WHERE detector_id = %s AND last_seen_at >= %s",
+				$detector_id,
+				$since
+			)
+		);
+	}
 }

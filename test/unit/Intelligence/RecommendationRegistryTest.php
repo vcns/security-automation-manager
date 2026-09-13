@@ -56,6 +56,7 @@ class RecommendationRegistryTest extends TestCase {
 		$this->assertContains( 'exception_expiring_soon', $ids );
 		$this->assertContains( 'csp_enforce_ready', $ids );
 		$this->assertContains( 'pillar_enforce_ready', $ids );
+		$this->assertContains( 'detector_disabled_but_firing', $ids );
 	}
 
 	public function test_register_defaults_is_idempotent(): void {
