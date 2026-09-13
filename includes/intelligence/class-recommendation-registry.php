@@ -60,6 +60,11 @@ final class Recommendation_Registry {
 		// is now in place.
 		self::register( new Recommendation_Rule_Pillar_Enforce_Ready() );
 
+		// Rule batch 4 (final planned batch for Phase 4F): a disabled
+		// detector with real recent match history -- Event_Store::
+		// occurrences_since() is now in place.
+		self::register( new Recommendation_Rule_Detector_Disabled_But_Firing() );
+
 		do_action( 'wp_sam_register_recommendation_rules' );
 	}
 

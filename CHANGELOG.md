@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.106] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 4 -- `Intelligence\Recommendation_Rule_Detector_Disabled_But_Firing`, the last of Phase 4F's planned rule batches: fires when an explicitly-disabled detector had real recorded matches in the 7 days before (or up to) being disabled. Built around the correctness fact that `Detector_Engine::evaluate()` skips a disabled detector entirely -- it can never be "silently matching live traffic right now" while disabled, so this rule only ever reflects real, already-recorded history, and naturally stops firing once that activity ages out of the lookback window.
+- New `Event_Store::occurrences_since( string $detector_id, int $since_hours ): int` -- the one new read method this batch needed, summing each qualifying row's own `occurrence_count` (documented tradeoff: lifetime-cumulative per row, same known staleness-at-the-edges limitation `distinct_ips()`/`active_detector_surfaces()` already carry).
+- Dismissible; `evidence_changed_at` is `Detector_Policy_Store`'s own `updated_at` for that detector, so a dismissal reopens if the admin touches that detector's configuration again.
+- **This completes all four rule batches planned for Phase 4F.** Six recommendation rule classes now ship by default across the four batches (certificate renewal, unexplained drift, exception expiry, CSP enforce-readiness, pillar enforce-readiness, and this one).
+- 15 new tests across `RecommendationRuleDetectorDisabledButFiringTest` (new) and `EventStoreTest`/`RecommendationRegistryTest` extended.
+- No schema change.
+
 ## [2.9.105] - 2026-09-13
 
 ### Added
