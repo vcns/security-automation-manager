@@ -98,6 +98,34 @@ class Violation_Reporter {
 		$this->rate_limiter      = null !== $rate_limiter ? $rate_limiter : new Rate_Limiter();
 	}
 
+	// ── Read access (Phase 4F, Recommendations Engine) ────────────────────────
+
+	/**
+	 * Count of distinct violation fingerprints on $surface last reported
+	 * within $since_hours. Static, and needs no constructor dependencies
+	 * (unlike the rest of this class, a REST ingestion handler) -- a purely
+	 * additive read against the table this class already owns, so a caller
+	 * doesn't need to wire up Audit_Log just to check whether a surface has
+	 * been quiet. Used by Recommendation_Rule_Csp_Enforce_Ready to judge
+	 * whether a report-only surface has run long enough without a violation
+	 * to suggest promoting it to enforce.
+	 */
+	public static function count_since( string $surface, int $since_hours ): int {
+		global $wpdb;
+		$table  = $wpdb->prefix . 'csp_violation_reports';
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $since_hours * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$table} WHERE profile_surface = %s AND last_reported_at >= %s",
+				$surface,
+				$cutoff
+			)
+		);
+	}
+
 	// ── REST handler ──────────────────────────────────────────────────────────
 
 	/**
