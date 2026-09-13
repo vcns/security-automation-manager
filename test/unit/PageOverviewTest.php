@@ -121,11 +121,44 @@ class PageOverviewTest extends TestCase {
 		return $output;
 	}
 
-	public function test_recommendations_tab_shows_the_empty_state_when_no_rules_are_registered(): void {
+	public function test_recommendations_tab_shows_the_empty_state_when_nothing_needs_attention(): void {
+		// Every registered rule's own bare-defaults condition is "don't fire"
+		// (no certificate configured, no drift, no exception due) -- asserted
+		// per-rule in each rule's own test; this just confirms the view
+		// handles an all-quiet result set correctly.
 		$output = $this->render_recommendations();
 
 		$this->assertStringContainsString( 'Recommendations', $output );
 		$this->assertStringContainsString( 'Nothing to suggest right now', $output );
+	}
+
+	public function test_recommendations_tab_renders_a_populated_recommendation(): void {
+		// Drives Recommendation_Rule_Unexplained_Drift (no domain/cert config
+		// needed, so this is the simplest rule to populate live through the
+		// view -- its own isolated behaviour is covered by
+		// RecommendationRuleUnexplainedDriftTest). Queued in rule-evaluation
+		// order (Certificate_Renewal_Rule makes no wpdb call at all when no
+		// domain is configured; Unexplained_Drift_Rule's get_results() is
+		// first, Exception_Expiring_Rule's is second).
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(
+				array(
+					'category'     => 'pillar',
+					'surface'      => 'frontend',
+					'item_key'     => 'x-frame-options.enabled',
+					'risk_level'   => 'high',
+					'last_seen_at' => '2026-01-01 00:00:00',
+				),
+			),
+			array(), // Exception_Expiring_Rule -- nothing due.
+		);
+
+		$output = $this->render_recommendations();
+
+		$this->assertStringNotContainsString( 'Nothing to suggest right now', $output );
+		$this->assertStringContainsString( 'high or critical risk', $output );
+		$this->assertStringContainsString( 'High risk', $output );
+		$this->assertStringContainsString( 'Go there', $output );
 	}
 
 	public function test_other_tabs_still_render_and_link_to_getting_started(): void {
