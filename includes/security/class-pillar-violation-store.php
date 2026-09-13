@@ -97,4 +97,29 @@ class Pillar_Violation_Store {
 			)
 		);
 	}
+
+	/**
+	 * Count of distinct violation fingerprints for $pillar on $surface last
+	 * seen within $since_hours -- a lightweight read used by Recommendation_
+	 * Rule_Pillar_Enforce_Ready (Phase 4F) to judge whether a report-only
+	 * COOP/COEP surface has run quiet long enough to suggest promoting it to
+	 * enforce. The only new read method this table needed -- store() above
+	 * was, until now, the only public method on this class.
+	 */
+	public function count_since( string $pillar, string $surface, int $since_hours ): int {
+		global $wpdb;
+		$table  = $wpdb->prefix . 'sam_pillar_violation_reports';
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $since_hours * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$table} WHERE pillar = %s AND surface = %s AND last_seen_at >= %s",
+				$pillar,
+				$surface,
+				$cutoff
+			)
+		);
+	}
 }

@@ -55,6 +55,11 @@ final class Recommendation_Registry {
 		// needed (Violation_Reporter::count_since()) is now in place.
 		self::register( new Recommendation_Rule_Csp_Enforce_Ready() );
 
+		// Rule batch 3: the same enforce-readiness check for report-only-
+		// capable pillars (COOP/COEP) -- Pillar_Violation_Store::count_since()
+		// is now in place.
+		self::register( new Recommendation_Rule_Pillar_Enforce_Ready() );
+
 		do_action( 'wp_sam_register_recommendation_rules' );
 	}
 
