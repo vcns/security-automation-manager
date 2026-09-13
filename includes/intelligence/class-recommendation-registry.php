@@ -6,9 +6,9 @@
  * register_defaults() (called lazily, once, from Recommendation_Engine::
  * get_recommendations() -- this feature is admin-view-only, so there is no
  * reason to hook it into the per-request `init` bootstrap the way Detector_
- * Registry is) registers this build's own free rule catalogue. Empty in
- * this Foundation increment; filled in over the following increments as
- * each rule batch ships (see .roadmap/phase4_plan.md's Phase 4F entry).
+ * Registry is) registers this build's own free rule catalogue, filled in
+ * incrementally across rule batches (see .roadmap/phase4_plan.md's Phase 4F
+ * entry for what's shipped and what's still to come).
  *
  * Mirrors Detector_Registry's own shape for the same reason: extensions
  * (see includes/extensions/, physically absent from the WordPress.org-
@@ -45,8 +45,12 @@ final class Recommendation_Registry {
 		}
 		self::$defaults_registered = true;
 
-		// No rules yet -- this is the Foundation increment. Later increments
-		// register concrete rules here (see .roadmap/phase4_plan.md).
+		// Rule batch 1: no new store methods needed -- each reuses evidence
+		// already exposed by an existing store.
+		self::register( new Recommendation_Rule_Certificate_Renewal() );
+		self::register( new Recommendation_Rule_Unexplained_Drift() );
+		self::register( new Recommendation_Rule_Exception_Expiring() );
+
 		do_action( 'wp_sam_register_recommendation_rules' );
 	}
 

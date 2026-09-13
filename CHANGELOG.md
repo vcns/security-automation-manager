@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.103] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 1 -- the first three concrete rules, none needing a new store method:
+  - `Intelligence\Recommendation_Rule_Certificate_Renewal` -- fires when a configured domain's issued production certificate has expired or is within its 30-day renewal window (`Certificates\Certificate_Store::renewal_due()`). Scoped to renewal only; a domain with nothing issued yet is left to Getting Started's own issuance step. Dismissible.
+  - `Intelligence\Recommendation_Rule_Unexplained_Drift` -- fires when one or more high/critical-risk drift items are still unexplained (`Intelligence\Drift_Store::all('unexplained')`). One aggregate recommendation; not dismissible -- dispositioning each item on the Baseline & Drift page is what clears it.
+  - `Intelligence\Recommendation_Rule_Exception_Expiring` -- fires when one or more active exceptions are due for notice (`Intelligence\Exception_Store::due_for_notice()`), reusing the exact same admin-configurable notice window (`wp_sam_exception_notice_window_days`, default `Exception_Scheduler::DEFAULT_NOTICE_WINDOW_DAYS`) the existing expiry-notice email already uses. Risk is the highest `risk_classification` among the expiring exceptions themselves. Not dismissible -- extending or revoking on the Exceptions tab is what clears it.
+- All three registered by default in `Recommendation_Registry::register_defaults()`.
+- 17 new tests across `RecommendationRuleCertificateRenewalTest`, `RecommendationRuleUnexplainedDriftTest`, `RecommendationRuleExceptionExpiringTest` (all new), plus `RecommendationRegistryTest` and `PageOverviewTest` extended.
+- No schema change.
+
 ## [2.9.102] - 2026-09-12
 
 ### Added

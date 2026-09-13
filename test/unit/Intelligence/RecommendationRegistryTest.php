@@ -46,12 +46,24 @@ class RecommendationRegistryTest extends TestCase {
 		$this->assertSame( array( $rule ), Recommendation_Registry::all() );
 	}
 
+	public function test_register_defaults_registers_the_core_rule_catalogue(): void {
+		Recommendation_Registry::register_defaults();
+
+		$ids = array_map( static fn( Recommendation_Rule $rule ): string => $rule->id(), Recommendation_Registry::all() );
+
+		$this->assertContains( 'certificate_renewal_due', $ids );
+		$this->assertContains( 'unexplained_high_risk_drift', $ids );
+		$this->assertContains( 'exception_expiring_soon', $ids );
+	}
+
 	public function test_register_defaults_is_idempotent(): void {
 		Recommendation_Registry::register_defaults();
-		Recommendation_Registry::register( new Fixture_Recommendation_Rule() );
-		Recommendation_Registry::register_defaults(); // Second call must not wipe the manually-registered rule above.
+		$count_after_first_call = count( Recommendation_Registry::all() );
 
-		$this->assertCount( 1, Recommendation_Registry::all() );
+		Recommendation_Registry::register( new Fixture_Recommendation_Rule() );
+		Recommendation_Registry::register_defaults(); // Second call must not wipe the manually-registered rule above, nor duplicate the defaults.
+
+		$this->assertCount( $count_after_first_call + 1, Recommendation_Registry::all() );
 	}
 
 	public function test_register_defaults_fires_the_extension_point(): void {
