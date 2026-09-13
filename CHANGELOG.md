@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.105] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 3 -- `Intelligence\Recommendation_Rule_Pillar_Enforce_Ready`: the same enforce-readiness check as rule batch 2's CSP rule, generalised to any pillar with a genuine report-only learning mode. Detected generically via `Pillar_Registry::pillars()`'s own `mode_status_map` (currently matches Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy, the only two with one today) rather than a hardcoded pillar-key list, so a future pillar gaining the same capability is picked up automatically.
+- New `Security\Pillar_Violation_Store::count_since( string $pillar, string $surface, int $since_hours ): int` -- the one new read method this batch needed, added to a table that was previously write-only (`store()` was its only public method).
+- Exception control strings follow `{pillar-key}_enforce` (e.g. `cross-origin-opener-policy_enforce`), mechanically derived rather than a separate abbreviation table -- an administrator can record a deliberate exception against either pillar the same way `csp_enforce` already works for CSP.
+- 12 new tests across `RecommendationRulePillarEnforceReadyTest` (new) and `PillarViolationStoreTest`/`RecommendationRegistryTest` extended.
+- No schema change.
+
 ## [2.9.104] - 2026-09-13
 
 ### Added

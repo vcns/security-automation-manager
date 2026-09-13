@@ -93,4 +93,18 @@ class PillarViolationStoreTest extends TestCase {
 		$this->assertNotEmpty( $first_match );
 		$this->assertSame( $first_match[1], $second_match[1] );
 	}
+
+	// ── count_since() (Phase 4F, Recommendations Engine read access) ─────────
+
+	public function test_count_since_returns_the_query_result(): void {
+		$GLOBALS['_wpdb_get_var'] = 4;
+
+		$this->assertSame( 4, $this->store->count_since( 'cross-origin-opener-policy', 'frontend', 720 ) );
+	}
+
+	public function test_count_since_defaults_to_zero_with_nothing_stored(): void {
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		$this->assertSame( 0, $this->store->count_since( 'cross-origin-embedder-policy', 'admin', 24 ) );
+	}
 }

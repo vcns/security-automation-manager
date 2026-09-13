@@ -165,8 +165,9 @@ Lowest priority in this document, deliberately -- §22's own text and the origin
 
 **Rule batch 2 delivered, v2.9.104 (13 September 2026).** `Recommendation_Rule_Csp_Enforce_Ready` -- fires per surface when `csp_policy_profiles.mode` is `report-only`, no active `csp_enforce` exception exists for it, and zero violations have been reported on it in the last 30 days. Needed one new read method, now in place: `Violation_Reporter::count_since( string $surface, int $since_hours ): int` -- static, so it needs none of that class's own REST-handler constructor dependencies. Dismissible; reopens if the surface's `csp_policy_profiles.updated_at` changes again.
 
+**Rule batch 3 delivered, v2.9.105 (13 September 2026).** `Recommendation_Rule_Pillar_Enforce_Ready` -- the same enforce-readiness check, generalised to any pillar with a genuine report-only learning mode via `Pillar_Registry::pillars()`'s own `mode_status_map` rather than a hardcoded pillar-key list (currently matches Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy, the only two with one today -- a future pillar gaining the capability is picked up automatically). Needed one new read method, now in place: `Pillar_Violation_Store::count_since( string $pillar, string $surface, int $since_hours ): int`. Exception control strings follow `{pillar-key}_enforce`, mechanically derived rather than a separate abbreviation table.
+
 Remaining increments (each its own PR, per this document's established per-phase cadence):
-- Rule batch 3 -- the same enforce-readiness check for COOP/COEP (the two pillars with their own report-only + Reporting API delivery). Needs the equivalent new read method against `sam_pillar_violation_reports` (currently write-only via `Pillar_Violation_Store`).
 - Rule batch 4 -- detector disabled but firing recently. Needs a new `Event_Store::occurrences_since()` aggregate (today's read methods are only `distinct_ips()`/`active_detector_surfaces()`).
 - Docs/roadmap closeout once all rule batches ship.
 
