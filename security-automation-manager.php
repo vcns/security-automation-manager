@@ -321,14 +321,19 @@ define( 'WP_SAM_VERSION', '2.9.107' );
  *        always recomputed from existing evidence on each admin page load.
  *        See Intelligence\Recommendation_Engine, Intelligence\
  *        Recommendation_Registry, Intelligence\Recommendation_Dismissal_Store.
- *   v46: no new table -- bumped purely to re-run Activator::migrate_remove_
- *        direct_stripe_options() on every already-upgraded site. Removes any
- *        previously-stored Stripe secret/price/webhook option values now that
- *        includes/extensions/fully-automatic-mode.php no longer has a direct-
- *        Stripe checkout path (docs/threat-model.md "Stripe secret storage"
- *        finding; docs/sam-portal-requirements-spec.md §21.2). Only ever
- *        mattered on a private/commercial build -- neither public release
- *        channel has ever shipped a working checkout path.
+ *   v46: no new table -- bumped purely to re-run activate()'s new generic
+ *        wp_sam_extension_migrations hook on every already-upgraded site.
+ *        includes/extensions/fully-automatic-mode.php listens on it to
+ *        remove any previously-stored Stripe secret/price/webhook option
+ *        values now that it no longer has a direct-Stripe checkout path
+ *        (docs/threat-model.md "Stripe secret storage" finding; docs/
+ *        sam-portal-requirements-spec.md §21.2). That cleanup deliberately
+ *        lives in the extension, not in Activator itself -- a core
+ *        migration referencing those exact option-name strings would put
+ *        them in a file every channel ships, defeating .github/scripts/
+ *        verify-wporg-package.sh's whole purpose. Only ever mattered on a
+ *        private/commercial build -- neither public release channel has
+ *        ever shipped a working checkout path.
  */
 define( 'WP_SAM_DB_VERSION', '46' );
 

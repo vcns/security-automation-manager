@@ -93,4 +93,42 @@ class FullyAutomaticModeTest extends TestCase {
 
 		$this->assertSame( '', $output );
 	}
+
+	/**
+	 * Schema v46: any of these left over from a previously-configured
+	 * private/commercial build must be scrubbed, not just stop being
+	 * written to going forward. This lives here, not ActivatorTest.php --
+	 * see this file's own docblock and Activator::activate()'s call-site
+	 * comment for why the deletion logic itself lives in this extension.
+	 */
+	public function test_activation_cleanup_removes_any_previously_stored_stripe_options(): void {
+		require WP_SAM_DIR . 'includes/extensions/fully-automatic-mode.php';
+		update_option( 'wp_sam_stripe_mode', 'live' );
+		update_option( 'wp_sam_stripe_secret_key_test', 'sk_test_example' );
+		update_option( 'wp_sam_stripe_secret_key_live', 'sk_live_example' );
+		update_option( 'wp_sam_stripe_price_id_monthly_test', 'price_example' );
+		update_option( 'wp_sam_stripe_price_id_annual_test', 'price_example' );
+		update_option( 'wp_sam_stripe_price_id_monthly_live', 'price_example' );
+		update_option( 'wp_sam_stripe_price_id_annual_live', 'price_example' );
+		update_option( 'wp_sam_webhook_secret', 'whsec_example' );
+
+		do_action( 'wp_sam_extension_migrations' );
+
+		$this->assertFalse( get_option( 'wp_sam_stripe_mode' ) );
+		$this->assertFalse( get_option( 'wp_sam_stripe_secret_key_test' ) );
+		$this->assertFalse( get_option( 'wp_sam_stripe_secret_key_live' ) );
+		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_monthly_test' ) );
+		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_annual_test' ) );
+		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_monthly_live' ) );
+		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_annual_live' ) );
+		$this->assertFalse( get_option( 'wp_sam_webhook_secret' ) );
+	}
+
+	public function test_activation_cleanup_is_a_noop_when_no_stripe_options_were_ever_stored(): void {
+		require WP_SAM_DIR . 'includes/extensions/fully-automatic-mode.php';
+
+		do_action( 'wp_sam_extension_migrations' ); // Must not error/warn when none of these keys exist at all.
+
+		$this->assertFalse( get_option( 'wp_sam_stripe_secret_key_live' ) );
+	}
 }

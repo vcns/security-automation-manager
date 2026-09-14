@@ -84,38 +84,27 @@ class ActivatorTest extends TestCase {
 	}
 
 	/**
-	 * Schema v46: includes/extensions/fully-automatic-mode.php no longer has
-	 * a direct-Stripe checkout path -- see Activator::
-	 * migrate_remove_direct_stripe_options()'s own docblock. Any of these
-	 * left over from a previously-configured private/commercial build must
-	 * be scrubbed, not just stop being written to going forward.
+	 * Schema v46: activate() fires a generic, empty-by-default extension
+	 * point so an extension (see includes/extensions/, physically absent
+	 * from the WordPress.org-channel build) can run its own one-time
+	 * activation cleanup -- e.g. fully-automatic-mode.php removing any
+	 * previously-stored direct-Stripe option values (see
+	 * FullyAutomaticModeTest.php for that specific behaviour). Deliberately
+	 * not itself an Activator migration -- see this hook's own call-site
+	 * comment in activate().
 	 */
-	public function test_activate_removes_any_previously_stored_stripe_options(): void {
-		update_option( 'wp_sam_stripe_mode', 'live' );
-		update_option( 'wp_sam_stripe_secret_key_test', 'sk_test_example' );
-		update_option( 'wp_sam_stripe_secret_key_live', 'sk_live_example' );
-		update_option( 'wp_sam_stripe_price_id_monthly_test', 'price_example' );
-		update_option( 'wp_sam_stripe_price_id_annual_test', 'price_example' );
-		update_option( 'wp_sam_stripe_price_id_monthly_live', 'price_example' );
-		update_option( 'wp_sam_stripe_price_id_annual_live', 'price_example' );
-		update_option( 'wp_sam_webhook_secret', 'whsec_example' );
+	public function test_activate_fires_the_generic_extension_migrations_hook(): void {
+		$fired = false;
+		add_action(
+			'wp_sam_extension_migrations',
+			static function () use ( &$fired ): void {
+				$fired = true;
+			}
+		);
 
 		Activator::activate();
 
-		$this->assertFalse( get_option( 'wp_sam_stripe_mode' ) );
-		$this->assertFalse( get_option( 'wp_sam_stripe_secret_key_test' ) );
-		$this->assertFalse( get_option( 'wp_sam_stripe_secret_key_live' ) );
-		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_monthly_test' ) );
-		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_annual_test' ) );
-		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_monthly_live' ) );
-		$this->assertFalse( get_option( 'wp_sam_stripe_price_id_annual_live' ) );
-		$this->assertFalse( get_option( 'wp_sam_webhook_secret' ) );
-	}
-
-	public function test_activate_is_a_noop_when_no_stripe_options_were_ever_stored(): void {
-		Activator::activate(); // Must not error/warn when none of these keys exist at all.
-
-		$this->assertFalse( get_option( 'wp_sam_stripe_secret_key_live' ) );
+		$this->assertTrue( $fired );
 	}
 
 	public function test_activate_seeds_enforce_gate_violation_window_option(): void {

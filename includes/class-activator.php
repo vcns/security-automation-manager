@@ -40,7 +40,18 @@ class Activator {
 		self::migrate_loosen_media_src_default();
 		self::migrate_consolidate_bypass_flags_into_json();
 		self::migrate_default_reporting_transport_to_both();
-		self::migrate_remove_direct_stripe_options();
+
+		// Generic, empty-by-default extension point: an extension (see
+		// includes/extensions/, physically absent from the WordPress.org-
+		// channel build) may run its own one-time activation cleanup here.
+		// Deliberately not a core Activator migration -- a migration that
+		// needs to reference a commercial extension's own option names (e.g.
+		// fully-automatic-mode.php's former Stripe settings) would put those
+		// exact strings in a file every channel ships, which is exactly what
+		// .github/scripts/verify-wporg-package.sh's forbidden-string scan
+		// exists to catch. Firing this from core keeps that boundary real.
+		do_action( 'wp_sam_extension_migrations' );
+
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();
@@ -178,37 +189,6 @@ class Activator {
 
 		if ( 'report-uri' === get_option( 'wp_sam_reporting_transport', false ) ) {
 			update_option( 'wp_sam_reporting_transport', 'both' );
-		}
-	}
-
-	/**
-	 * Schema v46: includes/extensions/fully-automatic-mode.php's direct-Stripe
-	 * checkout path (test/live secret keys, price IDs, webhook signing secret)
-	 * was removed -- see that file's own docblock, docs/threat-model.md's
-	 * "Stripe secret storage" finding, and docs/sam-portal-requirements-spec.md
-	 * §21.2. A site that had previously configured these (a private/commercial
-	 * build only -- neither public release channel has ever shipped a working
-	 * checkout path) would otherwise keep live Stripe key material sitting in
-	 * wp_options indefinitely with no plugin-provided way to clear it, once
-	 * the settings form that wrote them no longer exists. delete_option() on
-	 * an already-absent key is a harmless no-op, so this runs unconditionally
-	 * on every activation, the same as migrate_remove_fenced_frame_src_directive()
-	 * above -- no version-marker guard needed.
-	 */
-	private static function migrate_remove_direct_stripe_options(): void {
-		foreach (
-			array(
-				'wp_sam_stripe_mode',
-				'wp_sam_stripe_secret_key_test',
-				'wp_sam_stripe_secret_key_live',
-				'wp_sam_stripe_price_id_monthly_test',
-				'wp_sam_stripe_price_id_annual_test',
-				'wp_sam_stripe_price_id_monthly_live',
-				'wp_sam_stripe_price_id_annual_live',
-				'wp_sam_webhook_secret',
-			) as $stale_option
-		) {
-			delete_option( $stale_option );
 		}
 	}
 

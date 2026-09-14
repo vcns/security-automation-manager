@@ -188,9 +188,11 @@ the free/commercial feature boundary.
   its plaintext-storage pattern were real, and removing them removes the
   finding regardless of whether it was reachable in practice. `includes/
   extensions/fully-automatic-mode.php` no longer stores any Stripe key
-  material or calls the Stripe API; `Activator::migrate_remove_direct_
-  stripe_options()` (schema v46) actively deletes any previously-stored
-  values rather than merely stopping new writes. `docs/sam-portal-
+  material or calls the Stripe API; it listens on `Activator`'s new generic
+  `wp_sam_extension_migrations` hook (schema v46) to actively delete any
+  previously-stored values rather than merely stopping new writes -- kept
+  out of `Activator` itself so the option-name strings don't ship in a file
+  every channel includes. `docs/sam-portal-
   requirements-spec.md` §21.2 ("WordPress direct-Stripe removal") is the
   authoritative successor to `docs/checkout-proxy-design.md`/#172 for how a
   future paid-tier checkout flow should work instead (via `vcns/sam-

@@ -20,13 +20,17 @@
  * secret storage" finding and docs/sam-portal-requirements-spec.md §21.2
  * ("WordPress direct-Stripe removal"), which requires any direct-Stripe
  * compatibility path in a commercial build to be migrated to
- * vcns/sam-licensing-service and removed. See Activator::
- * migrate_remove_direct_stripe_options() (schema v46) for the one-time
- * cleanup of any previously-stored values. `fully_automatic` is therefore
- * unreachable in every build today -- Feature_Gate::is_allowed() has no
- * entitlement source to grant it (see commercial-services.php's own
- * docblock) -- until a sam-licensing-service-backed entitlement source is
- * built and wired the same way that file wires today's dormant one.
+ * vcns/sam-licensing-service and removed. The one-time cleanup of any
+ * previously-stored values (schema v46) lives right here, listening on
+ * Activator's generic wp_sam_extension_migrations hook, rather than in
+ * Activator itself -- a core migration referencing these exact option-name
+ * strings would put them in a file every channel ships, defeating
+ * .github/scripts/verify-wporg-package.sh's whole purpose. `fully_automatic`
+ * is therefore unreachable in every build today -- Feature_Gate::
+ * is_allowed() has no entitlement source to grant it (see commercial-
+ * services.php's own docblock) -- until a sam-licensing-service-backed
+ * entitlement source is built and wired the same way that file wires
+ * today's dormant one.
  */
 
 declare( strict_types=1 );
@@ -59,6 +63,28 @@ add_action(
 			static fn(): bool => $gate->is_allowed( WP_SAM_FA_MODE_KEY )
 		);
 		Automation_Mode_Registry::register_legacy_alias( 'expert', WP_SAM_FA_MODE_KEY );
+	}
+);
+
+// ── One-time cleanup: any previously-stored direct-Stripe values ───────────
+
+add_action(
+	'wp_sam_extension_migrations',
+	static function (): void {
+		foreach (
+			array(
+				'wp_sam_stripe_mode',
+				'wp_sam_stripe_secret_key_test',
+				'wp_sam_stripe_secret_key_live',
+				'wp_sam_stripe_price_id_monthly_test',
+				'wp_sam_stripe_price_id_annual_test',
+				'wp_sam_stripe_price_id_monthly_live',
+				'wp_sam_stripe_price_id_annual_live',
+				'wp_sam_webhook_secret',
+			) as $stale_option
+		) {
+			delete_option( $stale_option );
+		}
 	}
 );
 
