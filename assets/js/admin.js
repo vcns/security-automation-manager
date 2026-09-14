@@ -499,33 +499,6 @@
 		} );
 	} );
 
-	$( document ).on( 'click', '.wp-sam-upgrade-button', function () {
-		const $button  = $( this );
-		const $status  = $( '#wp-sam-upgrade-status' );
-		const interval = $button.data( 'interval' ) || 'monthly';
-
-		$( '.wp-sam-upgrade-button' ).prop( 'disabled', true );
-		$status.text( wpSamAdmin.i18n.upgradeStarting || 'Starting checkout…' );
-
-		$.post( wpSamAdmin.ajaxUrl, {
-			action:   'wp_sam_create_checkout_session',
-			nonce:    wpSamAdmin.nonce,
-			interval: interval,
-		} )
-		.done( function ( res ) {
-			if ( res.success && res.data.url ) {
-				window.location.href = res.data.url;
-				return;
-			}
-			$status.text( ( res.data && res.data.message ) || 'Unable to start checkout.' );
-			$( '.wp-sam-upgrade-button' ).prop( 'disabled', false );
-		} )
-		.fail( function () {
-			$status.text( 'Unable to start checkout.' );
-			$( '.wp-sam-upgrade-button' ).prop( 'disabled', false );
-		} );
-	} );
-
 	// Custom Rules tab: "Test a pattern" tool -- Traffic Controls -> Custom Rules.
 	$( '#wp-sam-custom-rule-test-button' ).on( 'click', function () {
 		const $btn     = $( this );

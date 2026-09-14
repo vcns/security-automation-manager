@@ -83,6 +83,30 @@ class ActivatorTest extends TestCase {
 		$this->assertSame( 'report-uri', get_option( 'wp_sam_reporting_transport' ) );
 	}
 
+	/**
+	 * Schema v46: activate() fires a generic, empty-by-default extension
+	 * point so an extension (see includes/extensions/, physically absent
+	 * from the WordPress.org-channel build) can run its own one-time
+	 * activation cleanup -- e.g. fully-automatic-mode.php removing any
+	 * previously-stored direct-Stripe option values (see
+	 * FullyAutomaticModeTest.php for that specific behaviour). Deliberately
+	 * not itself an Activator migration -- see this hook's own call-site
+	 * comment in activate().
+	 */
+	public function test_activate_fires_the_generic_extension_migrations_hook(): void {
+		$fired = false;
+		add_action(
+			'wp_sam_extension_migrations',
+			static function () use ( &$fired ): void {
+				$fired = true;
+			}
+		);
+
+		Activator::activate();
+
+		$this->assertTrue( $fired );
+	}
+
 	public function test_activate_seeds_enforce_gate_violation_window_option(): void {
 		Activator::activate();
 

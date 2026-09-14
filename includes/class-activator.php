@@ -40,6 +40,18 @@ class Activator {
 		self::migrate_loosen_media_src_default();
 		self::migrate_consolidate_bypass_flags_into_json();
 		self::migrate_default_reporting_transport_to_both();
+
+		// Generic, empty-by-default extension point: an extension (see
+		// includes/extensions/, physically absent from the WordPress.org-
+		// channel build) may run its own one-time activation cleanup here.
+		// Deliberately not a core Activator migration -- a migration that
+		// needs to reference a commercial extension's own option names (e.g.
+		// fully-automatic-mode.php's former Stripe settings) would put those
+		// exact strings in a file every channel ships, which is exactly what
+		// .github/scripts/verify-wporg-package.sh's forbidden-string scan
+		// exists to catch. Firing this from core keeps that boundary real.
+		do_action( 'wp_sam_extension_migrations' );
+
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();

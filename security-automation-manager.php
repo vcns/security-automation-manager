@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Self-learning security headers, built-in attack detection and rate limiting, file-integrity monitoring, and free TLS certificates. No paywall.
- * Version:           2.9.106
+ * Version:           2.9.107
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.106' );
+define( 'WP_SAM_VERSION', '2.9.107' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -321,8 +321,21 @@ define( 'WP_SAM_VERSION', '2.9.106' );
  *        always recomputed from existing evidence on each admin page load.
  *        See Intelligence\Recommendation_Engine, Intelligence\
  *        Recommendation_Registry, Intelligence\Recommendation_Dismissal_Store.
+ *   v46: no new table -- bumped purely to re-run activate()'s new generic
+ *        wp_sam_extension_migrations hook on every already-upgraded site.
+ *        includes/extensions/fully-automatic-mode.php listens on it to
+ *        remove any previously-stored Stripe secret/price/webhook option
+ *        values now that it no longer has a direct-Stripe checkout path
+ *        (docs/threat-model.md "Stripe secret storage" finding; docs/
+ *        sam-portal-requirements-spec.md §21.2). That cleanup deliberately
+ *        lives in the extension, not in Activator itself -- a core
+ *        migration referencing those exact option-name strings would put
+ *        them in a file every channel ships, defeating .github/scripts/
+ *        verify-wporg-package.sh's whole purpose. Only ever mattered on a
+ *        private/commercial build -- neither public release channel has
+ *        ever shipped a working checkout path.
  */
-define( 'WP_SAM_DB_VERSION', '45' );
+define( 'WP_SAM_DB_VERSION', '46' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );
