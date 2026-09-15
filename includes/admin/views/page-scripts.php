@@ -81,6 +81,11 @@ $base_url = admin_url( 'admin.php?page=security-automation-manager-scripts' );
 	<p>
 		<?php esc_html_e( 'This plugin never fetches a third-party script in the background or on its own initiative. A pinned SRI hash only ever comes from a URL you yourself provide: paste in a hash you already have (a local copy of the file, the vendor\'s own published value), or use the "Suggest" helper, which fetches the exact URL you type and hashes what it gets back. Suggest saves that hash immediately as the pinned value -- there is no separate confirmation step -- so only fetch a URL you already trust to represent the real, correct file, the same way you\'d only paste in a hash from a source you trust. The fetch itself is restricted to an origin this plugin has already seen this site load, so it can\'t be turned into a general-purpose fetch tool.', 'vcns-security-automation-manager' ); ?>
 	</p>
+	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
+		<p style="margin:0;">
+			<?php esc_html_e( 'On the External tab, only the Frontend surface has any observable effect. This control works by rewriting a completed page response rather than by sending a header, and that rewrite step is never reached at all for a request to wp-admin, wp-login.php, the REST API, AJAX, XML-RPC, cron, or CLI. The Admin, Login, and Api rows can be switched on, but doing so changes nothing today. Reverse Tabnabbing Protection shares this same limitation, for the same underlying reason -- see that page for the full explanation.', 'vcns-security-automation-manager' ); ?>
+		</p>
+	</div>
 
 	<h2><?php esc_html_e( 'Internal scripts and stylesheets', 'vcns-security-automation-manager' ); ?></h2>
 	<p>
@@ -90,7 +95,7 @@ $base_url = admin_url( 'admin.php?page=security-automation-manager-scripts' );
 		<?php esc_html_e( 'This is safe in a way a third-party hash never can be: it never trusts a remote party to compute anything, so there is no compromised-CDN scenario to worry about. What it does protect against is the file being altered after this server serves it -- a tampered cache, a compromised CDN sitting in front of this site, or similar -- the same class of threat SRI addresses for third-party assets, just without ever needing a third party in the loop.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<p class="description">
-		<?php esc_html_e( 'Off by default per surface, like every other pillar in this plugin -- nothing changes until you turn it on for a surface on the Internal tab.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Off by default per surface, like every other pillar in this plugin -- nothing changes until you turn it on for a surface on the Internal tab. Unlike External above, Internal hooks WordPress\'s own script and stylesheet output directly rather than rewriting a completed page response, so -- unusually for this plugin -- it genuinely is live on every surface you enable it for: Frontend, Admin, Login, and Api alike.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<?php elseif ( 'external' === $tab ) : ?>

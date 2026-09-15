@@ -43,7 +43,10 @@ $token_labels = array(
 	<h1><?php esc_html_e( 'Permissions-Policy', 'vcns-security-automation-manager' ); ?></h1>
 
 	<p>
-		<?php esc_html_e( 'Controls which browser features (camera, geolocation, and similar) this site allows, per surface. A directive left at "(browser default)" is not emitted for that surface -- the browser applies its own default policy for that feature.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( "Permissions-Policy controls which of the browser's own hardware and sensor features -- camera, microphone, precise location, and similar -- a page, and anything embedded inside it (a third-party ad, an embedded widget), is even allowed to ask the visitor for. It never asks the visitor anything itself: a feature set to None here is refused by the browser before any permission prompt would appear, the same way a locked door doesn't need a receptionist to turn people away.", 'vcns-security-automation-manager' ); ?>
+	</p>
+	<p>
+		<?php esc_html_e( "Most of what runs in wp-admin, on the login screen, or against the REST API has no legitimate reason to touch a camera, a microphone, or a visitor's location -- so locking every directive to None on those surfaces closes off a capability a compromised plugin or an injected script could otherwise try to use, without taking anything away from what an administrator actually does there. The frontend is the surface most likely to need an exception carved out -- a store locator using geolocation, an embedded payment form using the Payment Request API -- which is why each surface and each directive is decided separately rather than all at once. A directive left at \"(browser default)\" is not emitted for that surface -- the browser applies its own default policy for that feature.", 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
@@ -96,6 +99,6 @@ $token_labels = array(
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Changes apply immediately. "(browser default)" emits nothing for that surface, leaving the browser\'s own default policy in place. "None" blocks the feature entirely. "Self" allows it for this origin only. "All" allows any origin, including third-party iframes and embeds -- not recommended unless a specific integration needs it. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Changes apply immediately. "(browser default)" emits nothing for that surface, leaving the browser\'s own default policy in place. "None" blocks the feature entirely. "Self" allows it for this origin only. "All" allows any origin, including a third-party iframe or embed running alongside this site\'s own pages -- not just this site\'s own code -- so it is not recommended unless a specific integration genuinely needs it. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>

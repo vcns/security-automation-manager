@@ -166,6 +166,40 @@ class PageIntelligenceTest extends TestCase {
 		$this->assertStringContainsString( 'dir=desc', $output );
 	}
 
+	public function test_identities_shows_asn_and_country_when_recorded(): void {
+		$_GET['tab']              = 'identities';
+		$GLOBALS['_wpdb_get_var'] = 1;
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(
+				$this->identity_rows( 1, array( 'asn' => 15169, 'asn_org' => 'Google LLC', 'geo_country' => 'US' ) )[0],
+			),
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'AS15169', $output );
+		$this->assertStringContainsString( 'Google LLC', $output );
+		$this->assertStringContainsString( 'US', $output );
+	}
+
+	public function test_identities_omits_the_network_line_when_asn_was_never_resolved(): void {
+		$_GET['tab']              = 'identities';
+		$GLOBALS['_wpdb_get_var'] = 1;
+		$GLOBALS['_wpdb_get_results_queue'] = array( $this->identity_rows( 1 ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertDoesNotMatchRegularExpression( '/AS\d/', $output );
+	}
+
 	public function test_identities_loopback_row_is_auto_authorised_without_decision_buttons(): void {
 		$_GET['tab']              = 'identities';
 		$GLOBALS['_wpdb_get_var'] = 1;

@@ -46,7 +46,12 @@ $tabs = array(
 		'label'          => __( 'Cross-Origin-Embedder-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'     => Cross_Origin_Embedder_Policy_Builder::PILLAR_KEY,
 		'header_name'    => 'Cross-Origin-Embedder-Policy',
-		'intro_html'     => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'vcns-security-automation-manager' ) . '</p>',
+		'intro_html'     => '<p>' . esc_html__( 'Required for cross-origin isolation (SharedArrayBuffer, high-resolution timers, and similar browser APIs). Most WordPress sites do not need this at all.', 'vcns-security-automation-manager' ) . '</p><p>' .
+			sprintf(
+				/* translators: %s: the header's spec-defined no-op value, wrapped in <code> */
+				__( 'Every surface below starts out with this header already switched on in Enforce mode, but set to %s -- the specification\'s no-op value, which enforces nothing. That is enough to satisfy an external security scanner checking for the header\'s presence; getting the actual isolation benefit means deliberately choosing a stronger Value below, through Report-Only first, per the warning above.', 'vcns-security-automation-manager' ),
+				'<code>unsafe-none</code>'
+			) . '</p>',
 		'value_options'  => array(
 			'unsafe-none'    => __( 'unsafe-none -- no restriction (browser default)', 'vcns-security-automation-manager' ),
 			'credentialless' => __( 'credentialless -- cross-origin resources load without credentials instead of being blocked', 'vcns-security-automation-manager' ),
@@ -60,7 +65,12 @@ $tabs = array(
 		'label'          => __( 'Cross-Origin-Opener-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'     => Cross_Origin_Opener_Policy_Builder::PILLAR_KEY,
 		'header_name'    => 'Cross-Origin-Opener-Policy',
-		'intro_html'     => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'vcns-security-automation-manager' ) . '</p>',
+		'intro_html'     => '<p>' . esc_html__( 'Isolates this site\'s browsing context group from cross-origin windows it opens or is opened by, closing off cross-window/Spectre-style leaks.', 'vcns-security-automation-manager' ) . '</p><p>' .
+			sprintf(
+				/* translators: %s: the header's spec-defined no-op value, wrapped in <code> */
+				__( 'Every surface below starts out with this header already switched on in Enforce mode, but set to %s -- the specification\'s no-op value, which enforces nothing. That is enough to satisfy an external security scanner checking for the header\'s presence; getting the actual isolation benefit means deliberately choosing a stronger Value below, through Report-Only first, per the warning above.', 'vcns-security-automation-manager' ),
+				'<code>unsafe-none</code>'
+			) . '</p>',
 		'value_options'  => array(
 			'unsafe-none'              => __( 'unsafe-none -- no isolation (browser default)', 'vcns-security-automation-manager' ),
 			'same-origin-allow-popups' => __( 'same-origin-allow-popups -- isolate, but let popups keep a restricted opener reference', 'vcns-security-automation-manager' ),
@@ -74,7 +84,7 @@ $tabs = array(
 		'label'         => __( 'Cross-Origin-Resource-Policy', 'vcns-security-automation-manager' ),
 		'pillar_key'    => Cross_Origin_Resource_Policy_Builder::PILLAR_KEY,
 		'header_name'   => 'Cross-Origin-Resource-Policy',
-		'intro_html'    => '<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via image tags, script tags, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'vcns-security-automation-manager' ) . '</p>',
+		'intro_html'    => '<p>' . esc_html__( 'Controls whether other origins may load this site\'s own resources (scripts, images, fonts) via image tags, script tags, fetch(), and similar. The lowest-risk of the cross-origin headers to enable: a misconfiguration can stop a legitimate third party from loading this site\'s own resource, but it never breaks resources this site itself loads from elsewhere.', 'vcns-security-automation-manager' ) . '</p><p>' . esc_html__( 'Without it, a malicious page can still load this site\'s images, scripts, or API responses cross-origin purely to measure their size or timing -- a side-channel technique often grouped with Spectre-class attacks, capable of leaking information a same-origin check alone would not catch. Restricting this closes that door for any resource that does not need to be embeddable elsewhere.', 'vcns-security-automation-manager' ) . '</p>',
 		'value_options' => array(
 			'same-site'    => __( 'same-site -- allow same-site origins only', 'vcns-security-automation-manager' ),
 			'same-origin'  => __( 'same-origin -- allow only this exact origin', 'vcns-security-automation-manager' ),
@@ -142,6 +152,10 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		</a>
 		<?php endforeach; ?>
 	</nav>
+
+	<p>
+		<?php esc_html_e( "These four headers are unrelated to each other and to Content Security Policy in mechanism, but each restricts something about how this site interacts with other origins -- its own resources being loaded elsewhere, a legacy Flash/PDF cross-domain policy file, or its browsing context's isolation from cross-origin windows and subresources. The browser evaluates each independently, so changing one here never affects the others.", 'vcns-security-automation-manager' ); ?>
+	</p>
 
 	<?php if ( ! empty( $active['warning_html'] ) ) : ?>
 	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">

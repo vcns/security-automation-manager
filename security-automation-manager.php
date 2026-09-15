@@ -3,7 +3,7 @@
  * Plugin Name:       VCNS Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Self-learning security headers, built-in attack detection and rate limiting, file-integrity monitoring, and free TLS certificates. No paywall.
- * Version:           2.9.92
+ * Version:           2.9.107
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.92' );
+define( 'WP_SAM_VERSION', '2.9.107' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -270,8 +270,72 @@ define( 'WP_SAM_VERSION', '2.9.92' );
  *        DuckDuckBot, Applebot, Sogou web spider, SeznamBot,
  *        OAI-SearchBot, Amazonbot, DuckAssistBot, and Meta-ExternalAgent.
  *        See seed_default_scanner_vendors()'s own docblock for sourcing.
+ *   v42: adds asn, asn_org, geo_country, geo_region, geo_city to
+ *        sam_scanner_identities (Phase 4A carried-forward item -- ASN was
+ *        resolved and recorded in Event_Store evidence per-request but
+ *        never merged onto the identity record itself). Populated the same
+ *        way Event_Store's evidence already is: Network_Intelligence_
+ *        Resolver::resolve() only runs when at least one detector already
+ *        produced a finding this request (Request_Observer's existing
+ *        §33 performance gate, unchanged) -- so an identity that never
+ *        triggers a detector keeps these columns null, same zero-added-
+ *        cost guarantee as before, and a repeat offender's row fills in
+ *        opportunistically as soon as any of its requests does trigger a
+ *        finding. See Intelligence\Scanner_Identity_Store::record() and
+ *        Intelligence\Request_Observer.
+ *   v43: adds recent_seen_at to sam_scanner_identities (Phase 4C carried-
+ *        forward item -- the "timing" signal §10's own signal list names,
+ *        never built). Bounded JSON array (Scanner_Identity_Store::
+ *        MAX_RECENT_PATHS, oldest dropped first) of this identity's recent
+ *        request timestamps, appended in lockstep with the existing
+ *        recent_paths on every record() call. Read by the new Request_
+ *        Timing_Analyzer, wired into Bot_Classifier as a third signal for
+ *        an unrecognised source (alongside URI-pattern enumeration and
+ *        rate escalation): a new 'scripted_timing' classification state
+ *        when the last several requests arrived at a suspiciously uniform
+ *        interval, distinct from enumeration (which is about *what* a
+ *        source requests; this is about *when*).
+ *   v44: adds recent_errors to sam_scanner_identities (Phase 4C carried-
+ *        forward item -- the "repeated errors" signal §10's own list
+ *        names, the second and last of the two). Bounded JSON array of
+ *        0/1 ints, appended in lockstep with recent_paths/recent_seen_at,
+ *        recording whether each request's eventual HTTP response was
+ *        >= 400. Required moving Scanner_Identity_Store::record() itself
+ *        from Request_Observer's main observe() flow to a new 'shutdown'
+ *        hook (flush_identity_write()) -- the eventual response status
+ *        isn't known yet at send_headers time, since WordPress hasn't run
+ *        query_posts()/handle_404() yet at that point in WP::main().
+ *        Identity *resolution* (Identity_Resolver::resolve()) stays where
+ *        it was, unchanged -- only the *write* is deferred. Read by the
+ *        new Repeated_Error_Analyzer, wired into Bot_Classifier as a
+ *        fourth signal for an unrecognised source: a new
+ *        'error_probing_scanner' classification state when a
+ *        disproportionate share of a source's recent requests were
+ *        4xx/5xx -- the classic signature of a scanner probing for paths
+ *        that don't exist or aren't allowed.
+ *   v45: adds sam_recommendation_dismissals (Phase 4F, Recommendations
+ *        Engine -- .roadmap/phase3_early_plan.md §22, Foundation increment).
+ *        The only new table this feature needs: one row per administrator
+ *        decision not to act on a live recommendation yet, with a required
+ *        reason. Recommendation content itself is never persisted -- it is
+ *        always recomputed from existing evidence on each admin page load.
+ *        See Intelligence\Recommendation_Engine, Intelligence\
+ *        Recommendation_Registry, Intelligence\Recommendation_Dismissal_Store.
+ *   v46: no new table -- bumped purely to re-run activate()'s new generic
+ *        wp_sam_extension_migrations hook on every already-upgraded site.
+ *        includes/extensions/fully-automatic-mode.php listens on it to
+ *        remove any previously-stored Stripe secret/price/webhook option
+ *        values now that it no longer has a direct-Stripe checkout path
+ *        (docs/threat-model.md "Stripe secret storage" finding; docs/
+ *        sam-portal-requirements-spec.md §21.2). That cleanup deliberately
+ *        lives in the extension, not in Activator itself -- a core
+ *        migration referencing those exact option-name strings would put
+ *        them in a file every channel ships, defeating .github/scripts/
+ *        verify-wporg-package.sh's whole purpose. Only ever mattered on a
+ *        private/commercial build -- neither public release channel has
+ *        ever shipped a working checkout path.
  */
-define( 'WP_SAM_DB_VERSION', '41' );
+define( 'WP_SAM_DB_VERSION', '46' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

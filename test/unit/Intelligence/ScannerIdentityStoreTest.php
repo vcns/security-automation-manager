@@ -152,6 +152,176 @@ class ScannerIdentityStoreTest extends TestCase {
 		$this->assertStringContainsString( "'[]'", $GLOBALS['_wpdb_queries'][0] );
 	}
 
+	// ── recent_seen_at (schema v43, Phase 4C carried-forward item -- timing) ─
+
+	public function test_record_appends_a_timestamp_on_first_insert(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '/product/101' );
+
+		// current_time( 'mysql', true ) is whatever "now" resolves to in the
+		// stub -- just prove a single-entry JSON timestamp array landed
+		// (the same escaped-quote shape recent_paths' own single entry
+		// already uses), rather than pin an exact, time-dependent value.
+		$this->assertMatchesRegularExpression( '/\[\\\\"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\\\\"\]/', $GLOBALS['_wpdb_queries'][0] );
+		$this->assertStringContainsString( 'recent_seen_at = VALUES(recent_seen_at)', $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_appends_to_existing_recent_seen_at(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'verification_state' => 'known_crawler',
+			'recent_paths'       => wp_json_encode( array( '/product/101' ) ),
+			'recent_seen_at'     => wp_json_encode( array( '2026-01-01 00:00:00' ) ),
+		);
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '/product/102' );
+
+		$this->assertStringContainsString( addslashes( '2026-01-01 00:00:00' ), $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_trims_recent_seen_at_to_the_configured_maximum(): void {
+		$existing = array();
+		for ( $i = 1; $i <= Scanner_Identity_Store::MAX_RECENT_PATHS; $i++ ) {
+			$existing[] = sprintf( '2026-01-01 00:00:%02d', $i );
+		}
+		$GLOBALS['_wpdb_get_row'] = array(
+			'verification_state' => 'known_crawler',
+			'recent_paths'       => '[]',
+			'recent_seen_at'     => wp_json_encode( $existing ),
+		);
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true );
+
+		// Oldest entry (...:01) dropped to make room for the new one.
+		$this->assertStringNotContainsString( addslashes( '2026-01-01 00:00:01' ), $GLOBALS['_wpdb_queries'][0] );
+		$this->assertStringContainsString( addslashes( '2026-01-01 00:00:10' ), $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_still_appends_a_timestamp_when_a_decision_state_blocks_the_verification_state_update(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'verification_state' => 'customer_authorised',
+			'recent_paths'       => '[]',
+			'recent_seen_at'     => '[]',
+		);
+
+		$this->store->record( '203.0.113.42', 'Qualys', 'ua', 'qualys', 'frontend', 'known_commercial_scanner', true, '/scan-target' );
+
+		$this->assertStringContainsString( 'recent_seen_at', $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	// ── recent_errors (schema v44, Phase 4C carried-forward item) ───────────
+
+	public function test_record_appends_a_1_for_an_error_on_first_insert(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '', null, null, null, null, null, true );
+
+		$this->assertStringContainsString( "'[1]'", $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_appends_a_0_for_a_non_error_on_first_insert(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '', null, null, null, null, null, false );
+
+		$this->assertStringContainsString( "'[0]'", $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_defaults_is_error_to_false_when_not_provided(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true );
+
+		$this->assertStringContainsString( "'[0]'", $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_appends_to_existing_recent_errors(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'verification_state' => 'known_crawler',
+			'recent_paths'       => '[]',
+			'recent_seen_at'     => '[]',
+			'recent_errors'      => wp_json_encode( array( 0, 1 ) ),
+		);
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '', null, null, null, null, null, true );
+
+		$this->assertStringContainsString( "'[0,1,1]'", $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_trims_recent_errors_to_the_configured_maximum(): void {
+		$existing = array_fill( 0, Scanner_Identity_Store::MAX_RECENT_PATHS, 0 );
+		$GLOBALS['_wpdb_get_row'] = array(
+			'verification_state' => 'known_crawler',
+			'recent_paths'       => '[]',
+			'recent_seen_at'     => '[]',
+			'recent_errors'      => wp_json_encode( $existing ),
+		);
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '', null, null, null, null, null, true );
+
+		// Still MAX_RECENT_PATHS entries -- the oldest 0 dropped to make
+		// room for the new 1.
+		$count = Scanner_Identity_Store::MAX_RECENT_PATHS;
+		$expected = wp_json_encode( array_merge( array_fill( 0, $count - 1, 0 ), array( 1 ) ) );
+		$this->assertStringContainsString( addslashes( (string) $expected ), $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	public function test_record_still_appends_an_error_flag_when_a_decision_state_blocks_the_verification_state_update(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'verification_state' => 'customer_authorised',
+			'recent_paths'       => '[]',
+			'recent_seen_at'     => '[]',
+			'recent_errors'      => '[]',
+		);
+
+		$this->store->record( '203.0.113.42', 'Qualys', 'ua', 'qualys', 'frontend', 'known_commercial_scanner', true, '', null, null, null, null, null, true );
+
+		$this->assertStringContainsString( "'[1]'", $GLOBALS['_wpdb_queries'][0] );
+	}
+
+	// ── asn/asn_org/geo_* (schema v42, Phase 4A carried-forward item) ───────
+
+	public function test_record_persists_network_fields_when_provided_on_first_insert(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true, '', 15169, 'Google LLC', 'US', 'California', 'Mountain View' );
+
+		$query = $GLOBALS['_wpdb_queries'][0];
+		$this->assertStringContainsString( '15169', $query );
+		$this->assertStringContainsString( "'Google LLC'", $query );
+		$this->assertStringContainsString( "'US'", $query );
+		$this->assertStringContainsString( "'California'", $query );
+		$this->assertStringContainsString( "'Mountain View'", $query );
+	}
+
+	public function test_record_insert_path_never_overwrites_network_fields_with_a_null_value(): void {
+		$GLOBALS['_wpdb_get_row'] = null;
+
+		$this->store->record( '203.0.113.42', 'Googlebot', 'ua', 'googlebot', 'frontend', 'known_crawler', true );
+
+		// No detector finding this request => no network resolution => these
+		// arguments default to null -- the ON DUPLICATE KEY UPDATE clause must
+		// still guard with COALESCE/NULLIF so a *later* row with real data
+		// isn't clobbered back to unknown on a subsequent request that has none.
+		$query = $GLOBALS['_wpdb_queries'][0];
+		$this->assertStringContainsString( 'asn = COALESCE(NULLIF(VALUES(asn), 0), asn)', $query );
+		$this->assertStringContainsString( "asn_org = COALESCE(NULLIF(VALUES(asn_org), ''), asn_org)", $query );
+		$this->assertStringContainsString( "geo_country = COALESCE(NULLIF(VALUES(geo_country), ''), geo_country)", $query );
+	}
+
+	public function test_record_decision_state_path_also_updates_network_fields_via_coalesce(): void {
+		$GLOBALS['_wpdb_get_row'] = array( 'verification_state' => 'customer_authorised', 'recent_paths' => '[]' );
+
+		$this->store->record( '203.0.113.42', 'Qualys', 'ua', 'qualys', 'frontend', 'known_commercial_scanner', true, '', 12345, 'Some ISP', 'GB' );
+
+		$query = $GLOBALS['_wpdb_queries'][0];
+		// Still must not touch verification_state -- an admin decision stands.
+		$this->assertStringNotContainsString( 'verification_state', $query );
+		$this->assertStringContainsString( 'asn = COALESCE(', $query );
+		$this->assertStringContainsString( "'Some ISP'", $query );
+		$this->assertStringContainsString( "'GB'", $query );
+	}
+
 	public function test_authorise_requires_a_non_empty_note(): void {
 		$this->assertFalse( $this->store->authorise( 1, 5, '' ) );
 		$this->assertFalse( $this->store->authorise( 1, 5, '   ' ) );

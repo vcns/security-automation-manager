@@ -38,7 +38,7 @@ This document was written as a forward-looking spec. Most of it has since shippe
 | 22 | Recommendations | **Real remaining work**, not started -- kept in full |
 | 23 | Federated Intelligence Service | **Deferred by explicit decision**, 2 September 2026 -- kept in full |
 | 24 | Managed Intelligence Updates | **Deferred by explicit decision**, 2 September 2026 -- kept in full |
-| 25 | Commercial Product Boundary | **Real remaining work** (packaging design undone) -- kept in full |
+| 25 | Commercial Product Boundary | **Decided, 10 September 2026** (Phase 4E.1) -- kept in full |
 | 26 | Evidence and Assurance | Delivered |
 | 27 | Fleet Management | **Deferred by explicit decision** (unchanged since original write) -- kept in full |
 | 28-34 | UX, Explainability, Default-Safety, Architecture, Testing, Performance, Privacy | Living cross-cutting requirements -- kept in full |
@@ -954,46 +954,57 @@ The value proposition should centre on maintained security intelligence and assu
 
 # 25. Commercial Product Boundary
 
-**Status: real remaining work.** Only legacy, single-tier entitlement plumbing exists (`includes/extensions/commercial-services.php`'s `sam_entitlements` table, `tier varchar(32) DEFAULT 'free'` -- one free/paid distinction, not the Community/Professional/Managed taxonomy below). `Detector_Registry::is_available()` and each `Detector::is_available()` are a real, reusable per-detector entitlement gate extension point, ready to wire up once tiers are actually defined. **Not done:** mapping any specific capability below to a tier -- largely moot until the capabilities themselves exist (most of Professional/Managed's list is still §10/§13.4-13.6/§22/§23/§27, all elsewhere marked as remaining work). See `docs/sam-portal-requirements-spec.md` for the checkout/entitlement-delivery infrastructure question, which is related but distinct from the tier-packaging design this section is about.
+**Status: Decided, 10 September 2026 (Phase 4E.1).** Superseded the "potential packaging" sketch below (kept, struck through, for history) with a concrete decision, grounded in what has actually shipped since this section was first written and in the architecture already fixed by `docs/sam-portal-requirements-spec.md` §24 ("Decisions Fixed by This Specification").
 
-Phase 3 should allow for future product tiers without requiring the entire architecture to be duplicated.
+**The constraint that shapes everything below:** `readme.txt` publicly and repeatedly commits that "the WordPress.org edition is a complete free plugin with no subscription-locked functionality" -- tested by `VersionConsistencyTest`, restated independently in the platform spec ("Commercial value should be delivered through the separate hosted intelligence, assurance, fleet and automation services rather than by placing dormant paid code inside the WordPress.org package"). That makes Community not a curated subset to design, but a fixed floor: everything this repository does today, unconditionally, forever. Professional and Managed are not "what do we lock behind a paywall" -- they're "what value can only be delivered by something other than local WordPress code."
 
-Potential packaging:
+**No forking.** Neither paid tier is a fork of this repository:
 
-## Community
+- **Professional reuses the mechanism already shipping for Fully Automatic CSP mode** -- one codebase (this repo), split at build time into two distributable packages. The WordPress.org-channel build has paid code physically absent (stripped by the packaging pipeline, not merely deactivated); the GitHub-channel build includes it, gated at runtime by `Feature_Gate::is_allowed()` against an entitlement from `vcns/sam-licensing-service`. Professional capability means more files under `includes/extensions/`, gated the same way `fully-automatic-mode.php` already is -- not a new mechanism, not a separate repository. A fork would mean every CSP/pillar/detector fix gets cherry-picked into a second codebase forever, and would undermine the WordPress.org listing's own guarantee of being the complete, free product.
+- **Managed is a genuinely different application, not more plugin code** -- fleet management, external verification, and federated intelligence are things a single WordPress install cannot do by definition (verifying what an external client receives, or correlating patterns across other customers' sites, isn't possible from code running inside one site). This is exactly why the platform spec already scoped `vcns/sam-portal` as its own repository (§2, §24 decisions 3-5), talking to this plugin over the Secure Component Protocol (§8) rather than sharing source. A customer's WordPress install stays on the same Community codebase everyone runs; a Managed subscription connects it to the portal, it doesn't fork it.
 
-- local baseline security controls;
-- local observation;
-- local deterministic detection;
-- manual/assisted workflows;
-- core certificate management;
-- core browser-security controls.
+**Current gating reality, for grounding:** only one feature is gated anywhere in the code today -- Fully Automatic CSP mode, via `Feature_Gate::is_allowed('fully_automatic')` (a binary free/pro check; `FREE_FEATURES` lists ten always-free CSP capabilities). Every other subsystem shipped since this section was written -- all 14 header pillars, all 26 built-in detector families plus admin Custom Rules, Traffic Controls, Bot/crawler classification, Network Intelligence (Geo-IP/ASN/Tor), Baseline & Drift, Certificates (48 DNS providers) -- has zero `Feature_Gate` reference anywhere and is fully free today. `Detector_Registry::is_available()` and each `Detector::is_available()` remain a real, reusable per-detector gate extension point if a future Professional detector pack is ever added, but nothing currently uses it.
 
-## Professional
+## Community (free, WordPress.org + GitHub channel, no subscription, no remote calls)
 
-Potential future capabilities:
+Everything in this repository today, unconditionally:
 
-- advanced detector packs;
-- richer automated controls;
-- advanced request intelligence;
-- extended Geo-IP/ASN policy;
-- deeper integrity monitoring;
-- advanced baseline/drift workflows.
+- CSP automation (report-only learning, nonce injection, discovery, policy review, all three free approval levels -- manual, medium+high approval, high approval);
+- all 14 header pillars (X-Frame-Options through Cross-Origin-Embedder-Policy);
+- all 26 built-in detector families plus admin-authored Custom Rules;
+- Traffic Controls (rate limiting, progressive blocking, IP/ASN/country rules);
+- Bot/crawler classification and Network Intelligence (Geo-IP/ASN/Tor);
+- Baseline & Drift;
+- Certificates (ACME, 48 DNS providers);
+- Security Health, evidence export, audit log.
 
-## Managed
+## Professional (paid, single-site, no portal dependency, delivered via the GitHub-channel build)
 
-Potential future capabilities:
+- Fully Automatic CSP mode (already shipping, unchanged).
+- A faster/curated detector-signature update cadence than the open community release cycle, once that pipeline exists -- the one plausible near-term addition; genuinely thin otherwise. Honest about this: there is no large hidden Professional feature list waiting to be unlocked -- most of what earlier "potential packaging" imagined for this tier (advanced request intelligence, deeper integrity monitoring, advanced baseline/drift workflows) turned out, once built, to belong in Community, because none of it needed anything beyond the single site it runs on.
 
-- federated intelligence;
-- external verification;
-- central reporting;
-- fleet posture;
-- cross-site pattern intelligence;
-- managed detector updates;
-- evidence aggregation;
-- managed recommendations.
+## Managed (paid, requires `vcns/sam-portal`)
 
-Exact commercial boundaries remain a packaging decision and must be reconciled with WordPress.org distribution requirements.
+- External Verification (§10 of the platform spec, formerly Phase 3G) -- needs a central vantage point outside the customer's own server.
+- Federated Intelligence (formerly Phase 3H) -- needs cross-tenant data no single site can see.
+- Fleet posture and management across multiple sites (formerly Phase 3/GitHub #189) -- needs a control plane above any one WordPress install.
+- Central reporting and evidence aggregation.
+- Recommendations (Phase 4F), once built, enhanced with cross-fleet pattern data only a central service has access to.
+
+The useful property of this split: Managed's list is exactly the set of capabilities already deferred elsewhere in this document for the same underlying reason (3G, 3H, fleet management, and 4F all need central infrastructure this repository deliberately doesn't have) -- not a boundary invented for pricing purposes, a boundary that already existed for architectural reasons and pricing follows it.
+
+<details>
+<summary>Superseded 2026-09-10 -- original "potential packaging" sketch, kept for history</summary>
+
+Potential packaging (written before most of Professional/Managed's candidate list existed as real capability):
+
+**Community:** local baseline security controls; local observation; local deterministic detection; manual/assisted workflows; core certificate management; core browser-security controls.
+
+**Professional** (potential future capabilities): advanced detector packs; richer automated controls; advanced request intelligence; extended Geo-IP/ASN policy; deeper integrity monitoring; advanced baseline/drift workflows.
+
+**Managed** (potential future capabilities): federated intelligence; external verification; central reporting; fleet posture; cross-site pattern intelligence; managed detector updates; evidence aggregation; managed recommendations.
+
+</details>
 
 ---
 

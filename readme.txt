@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.92
+Stable tag: 2.9.107
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,69 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.9.107 =
+
+* Security: removed the direct-Stripe checkout path from the commercial-only Fully Automatic upgrade extension (Stripe secret/price/webhook key storage and the checkout AJAX handler). This path was never functional in either public release channel and has no evidence of real customer use, but its plaintext-secret storage was flagged as an unmitigated finding in this project's own threat model. Any values from a previous private/commercial build are actively removed on upgrade. Fully Automatic mode remains registered as a product concept but is unreachable until a replacement entitlement source is built.
+
+= 2.9.106 =
+
+* Added: Recommendations Engine (Phase 4F) gains a fifth and final rule for this phase -- a detector an administrator has disabled that had real matches recorded in the week before (or up to) being switched off now surfaces a suggestion to confirm that was deliberate, since a disabled detector is never evaluated at all going forward.
+
+= 2.9.105 =
+
+* Added: Recommendations Engine (Phase 4F) gains the same enforce-readiness suggestion for Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy -- the two other header pillars with their own report-only learning mode -- as CSP already had: report-only, no violations for 30 days, and no deliberate exception recorded, now suggests promoting that surface to Enforce.
+
+= 2.9.104 =
+
+* Added: Recommendations Engine (Phase 4F) gains a fourth rule -- a report-only Content Security Policy surface that's stayed quiet (no violations) for 30 days, with no deliberate exception recorded against it, now suggests promoting that surface to Enforce.
+
+= 2.9.103 =
+
+* Added: Recommendations Engine (Phase 4F) gains its first three rules -- certificate renewal due, unexplained high/critical-risk configuration drift, and exceptions expiring soon. Each reuses evidence this plugin already collects (no new data source), links straight to where to act on it, and explains why it matters and what to do instead if the suggestion doesn't fit.
+
+= 2.9.102 =
+
+* Added: Recommendations Engine (Phase 4F) -- foundation increment. A new "Recommendations" tab on Settings/Overview, right after Security Health, for prioritised, evidence-backed suggestions drawn from what this plugin already observes. Nothing is ever applied automatically; every suggestion links to where to act on it, and can be dismissed with a reason until the underlying evidence actually changes. This increment ships the engine and admin UI with no rules registered yet -- concrete rules (certificate renewal, unexplained drift, expiring exceptions, and more) land in the following increments.
+
+= 2.9.101 =
+
+* Added: Continuous Intelligence's bot/crawler classification gains a "repeated errors" signal (Phase 4C carried-forward item, the second and last of the two named alongside "timing") -- an unrecognised source whose recent requests were disproportionately HTTP errors (most often 404) is now classified as "Error probing (repeated 4xx/5xx)" on the Identities tab, the classic signature of a scanner probing for paths that don't exist or aren't allowed. Independent of enumeration and timing -- a source can be flagged for any of the three without the others.
+
+= 2.9.100 =
+
+* Added: Continuous Intelligence's bot/crawler classification gains a "timing" signal (Phase 4C carried-forward item) -- an unrecognised source whose last several requests arrived at a suspiciously uniform interval (a script sleeping a fixed duration between requests, rather than a person's naturally irregular browsing) is now classified as "Scripted timing (uniform request interval)" on the Identities tab. Independent of the existing sequential-path-enumeration signal -- a source can be flagged for one without needing the other.
+
+= 2.9.99 =
+
+* Added: Continuous Intelligence's Identities table now persists ASN and Geo-IP (country/region/city) directly on the identity record, not just as per-event evidence. This was a known gap: ASN/Geo-IP were already resolved and recorded against individual detector findings, but never merged onto the identity itself. Populated only when that resolution was already happening anyway (a detector already found something on that request), so this adds no extra cost to ordinary traffic -- a repeat source's identity fills in the network details over time as it keeps triggering findings.
+* Fixed: a real bug found in live testing, not shipped before release -- WordPress's own `wpdb::prepare()` doesn't preserve a blank value as a true database NULL for number/text placeholders, so the first version of this feature's "don't overwrite what we already know" logic could have reset a source's ASN back to blank on a later request with no new data. Fixed before release.
+
+= 2.9.98 =
+
+* Added: a new "Getting Started" tab on Settings/Overview -- a short, suggested-order checklist for a new install (Configure CSP, turn on the other header pillars, review Traffic Controls, capture a security baseline, issue a free TLS certificate). Each step shows a live status pulled straight from the actual configuration, not a static list, and nothing here is required or enforced -- skipping a step or doing them in a different order doesn't break anything. Completes the Phase 4G UI documentation retrofit.
+
+= 2.9.97 =
+
+* Added: the public GitHub Pages help site's user guide and FAQ now explain what Content Security Policy actually defends against -- cross-site scripting -- rather than only describing configuration mechanics. The FAQ's most-read general answers (what the plugin does, why enforce mode can break a site, whether wp-admin is safe to enforce, what "high risk" means, whether reports can be spoofed, caching-plugin compatibility, and more) each gained a concrete consequence, not just a restated fact. Completes the Phase 4G UI documentation retrofit's public-docs track.
+
+= 2.9.96 =
+
+* Added: the Phase 4G UI documentation retrofit now covers every remaining admin page -- all 14 pillar pages (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Information Masking, Cache-Control, Permissions-Policy, HSTS, Reverse Tabnabbing, External Scripts, Internal Script Integrity, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy) plus Continuous Intelligence and Baseline & Drift. Certificates was reviewed and already met the bar, so it's unchanged.
+* Two real, previously-undocumented gaps were surfaced while researching this: (1) Reverse Tabnabbing Protection and External Script Integrity share an exclusion gate that means their Admin/Login/Api toggles can be switched on but never actually take effect -- only Frontend is live for either; both pages now say so plainly. (2) Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy ship pre-enabled in Enforce mode on every surface, but at the specification's no-op `unsafe-none` value -- enough to satisfy a scanner checking for the header's presence, but genuinely isolating anything requires deliberately choosing a stronger value; both pages now explain this rather than leaving an administrator to wonder why "enabled" seems to do nothing.
+* No behaviour change anywhere in this release -- explainer copy only.
+
+= 2.9.95 =
+
+* Fixed: `.roadmap/phase4_plan.md`'s note on the Traffic Controls retrofit (v2.9.94) described this page's other recent growth (Network Intelligence's new ASN/Geo-IP/Well-Known-Files/Network-Rules sub-tabs) as "unrelated work" -- user-corrected: that work was explicitly requested, not unrelated, just not something this document's own increment list happened to track. Reworded to attribute it correctly. Documentation only, no behaviour change.
+
+= 2.9.94 =
+
+* Added: Traffic Controls (Policy, IP Rules, and Blocks tabs) gained the same guided explainer text already shipped for Settings/Overview and the CSP Dashboard -- what a surface's rate limit and Observe/Enforce mode actually do, what the Warn/Throttle/Temporary-block/Extended-block ladder means, what a CIDR range is and when to use Allow vs. Block, and what Release and Make Permanent actually change. The Network Intelligence, Detectors, and Custom Rules tabs already had this level of detail from when those features were built. No behaviour change.
+
+= 2.9.93 =
+
+* Added: a "Development Build" GitHub Actions workflow that publishes a rolling pre-release (tag `development-latest`, always overwritten) containing the same self-updating GitHub-channel ZIP a real release ships, rebuilt automatically on every merge to the `development` branch -- a stable, bookmarkable download for testing what's currently on `development` without a numbered release.
 
 = 2.9.92 =
 

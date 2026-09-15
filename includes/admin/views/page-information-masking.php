@@ -58,6 +58,10 @@ $item_labels = array(
 		<?php esc_html_e( 'Removes headers that disclose the server stack, PHP version, or this site\'s own hostname -- reconnaissance a scanner or attacker would otherwise get for free before ever sending a single probe.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
+	<p class="description">
+		<?php esc_html_e( 'X-Powered-By hands a scanner the exact PHP version this site runs, an instant shortlist of known vulnerabilities to try against it. Server does the same for the web-server software itself -- Apache, Nginx, LiteSpeed -- and often its version too. X-Pingback exposes this site\'s own xmlrpc.php URL, the endpoint pingback-based amplification and enumeration abuse targets, confirming both that it\'s reachable and exactly where to send it.', 'vcns-security-automation-manager' ); ?>
+	</p>
+
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
@@ -87,9 +91,16 @@ $item_labels = array(
 		<?php esc_html_e( 'Changes apply immediately. X-Powered-By and X-Pingback are removed directly from PHP and this always works. Server is best-effort -- see the readiness check below.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
+	<p class="description">
+		<?php esc_html_e( "X-Generator, WordPress's own version tag, is a related disclosure this pillar deliberately doesn't cover: it's emitted as part of your site's RSS/Atom feed content, not as an HTTP header, so a header-removal control like this one has no mechanism to mask it.", 'vcns-security-automation-manager' ); ?>
+	</p>
+
 	<h2 style="margin-top:2em"><?php esc_html_e( 'Readiness Check', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
 		<?php esc_html_e( 'Probes this site\'s own front page over real HTTP and reports whether each header is actually absent from the response. Server is set by the web server itself on most hosts, before PHP ever runs -- a "Present" result for Server is a real limit of this hosting environment, not necessarily a plugin fault; Apache\'s ServerTokens/ServerSignature or Nginx\'s server_tokens off; are the host-level fix in that case.', 'vcns-security-automation-manager' ); ?>
+	</p>
+	<p class="description">
+		<?php esc_html_e( 'This check only runs when you click Check Now below -- nothing here is scheduled automatically, so re-run it after changing hosts, upgrading PHP, or editing server configuration. If a check fails outright (a timeout, a brief outage), the results below are left exactly as they were after the last successful check rather than cleared or reported as newly present; only Last check status changes to reflect the failure.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">

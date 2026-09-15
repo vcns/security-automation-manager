@@ -170,29 +170,41 @@ the free/commercial feature boundary.
   browser-redirect query parameter (invariant #1 below).
 - **Webhook replay.** Mitigated - 5-minute timestamp tolerance window in
   webhook signature verification.
-- **Stripe secret exposure on customer installs.** **Not mitigated - live
-  finding.** The commercial build's checkout flow requires VCNS's own
-  account-wide Stripe API secret key to be entered into the CSP dashboard's
-  Settings tab and stored as a plaintext WordPress option
-  (`wp_sam_stripe_secret_key_live`) on whichever site runs checkout. This key
-  can create charges and issue refunds against VCNS's entire Stripe account,
-  not just that one site's entitlement - it is not a per-customer or
-  scoped credential. Any attacker who obtains database access to that one
-  site (a separate plugin vulnerability, a leaked backup, a malicious
-  co-admin, a compromised host) obtains the key. This is a regression from an
-  earlier architecture (a Cloudflare Worker holding the same key as a Worker
-  secret, never transmitted to the WordPress install - see `SECURITY.md` and
-  PR #143's removal of it). Remediation is designed in
-  `docs/checkout-proxy-design.md` and tracked as #172; until implemented,
-  this is the single highest-severity open item in this threat model and the
-  primary blocker on the public-hosting readiness gate (#156).
-- **Webhook secret exposure.** Lower severity than the API secret key (a
-  webhook secret can only be used to forge a *verification* of a fake event
-  toward the one endpoint it's configured for, not to call the Stripe API
-  directly), but it has the same storage-location problem - plaintext
-  WordPress option, no rotation tooling. Also addressed by the checkout-proxy
-  design, which moves webhook receipt to VCNS-controlled infrastructure
-  entirely.
+- **Stripe secret exposure on customer installs.** **Resolved, v2.9.107 (14
+  September 2026).** The commercial build's checkout flow previously required
+  VCNS's own account-wide Stripe API secret key to be entered into the CSP
+  dashboard's Settings tab and stored as a plaintext WordPress option
+  (`wp_sam_stripe_secret_key_live`) on whichever site ran checkout - a key
+  that could create charges and issue refunds against VCNS's entire Stripe
+  account, not a per-customer or scoped credential, exposed to any attacker
+  who obtained database access to that one site. This was a regression from
+  an earlier architecture (a Cloudflare Worker holding the same key as a
+  Worker secret, never transmitted to the WordPress install - see
+  `SECURITY.md` and PR #143's removal of it). Investigated before removal:
+  neither public release channel (WordPress.org or GitHub) has ever shipped
+  the classes this path depends on (`offline/modules/` is gitignored and
+  empty in both), so this was never actually exploitable via a distributed
+  build, and no evidence of real customer use was found - but the code and
+  its plaintext-storage pattern were real, and removing them removes the
+  finding regardless of whether it was reachable in practice. `includes/
+  extensions/fully-automatic-mode.php` no longer stores any Stripe key
+  material or calls the Stripe API; it listens on `Activator`'s new generic
+  `wp_sam_extension_migrations` hook (schema v46) to actively delete any
+  previously-stored values rather than merely stopping new writes -- kept
+  out of `Activator` itself so the option-name strings don't ship in a file
+  every channel includes. `docs/sam-portal-
+  requirements-spec.md` §21.2 ("WordPress direct-Stripe removal") is the
+  authoritative successor to `docs/checkout-proxy-design.md`/#172 for how a
+  future paid-tier checkout flow should work instead (via `vcns/sam-
+  licensing-service`, a separate repository) - `Feature_Gate`'s duck-typed
+  `?object $entitlements` constructor already supports wiring that in
+  without its own rewrite, whenever that entitlement source is built. This
+  was the primary blocker on the public-hosting readiness gate (#156); with
+  it resolved, that gate should be re-assessed against its remaining
+  criteria.
+- **Webhook secret exposure.** Resolved alongside the above, same change -
+  `wp_sam_webhook_secret` and the webhook-registration code it supported are
+  both gone, and any previously-stored value is actively deleted on upgrade.
 - **Site-identity spoofing.** The entitlement's site-identity binding is a
   truncated SHA-256 hash of the site URL (`docs/stripe-operations.md`), not a
   secret - it is a low-assurance binding intended to catch accidental

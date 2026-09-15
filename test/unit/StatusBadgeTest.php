@@ -62,4 +62,26 @@ class StatusBadgeTest extends TestCase {
 		$this->assertStringContainsString( 'Frontend: Automatic (with high approvals only)', $html );
 		$this->assertStringNotContainsString( 'status-active', $html );
 	}
+
+	public function test_render_outcome_uses_the_built_in_label_when_none_is_given(): void {
+		$html = Status_Badge::render_outcome( 'warning' );
+
+		$this->assertStringContainsString( 'wp-sam-readiness-badge status-warning', $html );
+		$this->assertStringContainsString( 'Warning', $html );
+	}
+
+	public function test_render_outcome_accepts_a_custom_label(): void {
+		$html = Status_Badge::render_outcome( 'fail', 'Critical risk' );
+
+		$this->assertStringContainsString( 'wp-sam-readiness-badge status-fail', $html );
+		$this->assertStringContainsString( 'Critical risk', $html );
+		$this->assertStringNotContainsString( 'Fail', $html );
+	}
+
+	public function test_render_outcome_falls_back_to_unknown_for_an_unrecognised_status_with_no_label(): void {
+		$html = Status_Badge::render_outcome( 'some-future-status' );
+
+		$this->assertStringContainsString( 'status-some-future-status', $html );
+		$this->assertStringContainsString( 'Unknown', $html );
+	}
 }

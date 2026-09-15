@@ -183,4 +183,18 @@ class EventStoreTest extends TestCase {
 		$this->assertSame( 'sqli-probe', $combos[0]['detector_id'] );
 		$this->assertStringContainsString( 'DISTINCT detector_id', $GLOBALS['_wpdb_last_get_results_query'] );
 	}
+
+	// ── occurrences_since() (Phase 4F, Recommendations Engine read access) ───
+
+	public function test_occurrences_since_returns_the_summed_query_result(): void {
+		$GLOBALS['_wpdb_get_var'] = 12;
+
+		$this->assertSame( 12, $this->store->occurrences_since( 'sqli-probe', 168 ) );
+	}
+
+	public function test_occurrences_since_defaults_to_zero_with_no_matching_rows(): void {
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		$this->assertSame( 0, $this->store->occurrences_since( 'sqli-probe', 24 ) );
+	}
 }

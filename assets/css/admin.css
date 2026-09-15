@@ -208,35 +208,6 @@
 	display: block;
 }
 
-/* ── Product cards ───────────────────────────────────────────────────────── */
-.wp-sam-product-cards {
-	display: flex;
-	gap: 20px;
-	flex-wrap: wrap;
-	margin-top: 1em;
-}
-
-.wp-sam-product-card {
-	border: 1px solid #ccd0d4;
-	border-radius: 6px;
-	padding: 20px;
-	min-width: 240px;
-	max-width: 340px;
-	background: #fff;
-	box-shadow: 0 1px 3px rgba(0,0,0,.05);
-}
-
-.wp-sam-product-card h3 {
-	margin-top: 0;
-	font-size: 1.2em;
-}
-
-.wp-sam-price {
-	font-size: 2em;
-	font-weight: bold;
-	margin: 0 0 0.4em;
-}
-
 /* ── Scan status ─────────────────────────────────────────────────────────── */
 #wp-sam-scan-status {
 	color: #555;

@@ -50,6 +50,9 @@ $current        = $baseline_store->get_current();
 	<p>
 		<?php esc_html_e( 'Answers "what changed?" rather than only "what is configured?". Capture a baseline once you\'re happy with the current configuration, then run scans to see what drifted from it.', 'vcns-security-automation-manager' ); ?>
 	</p>
+	<p class="description">
+		<?php esc_html_e( "A baseline is a snapshot of this site's security-relevant configuration at a moment you choose: TLS certificate state, the effective CSP header for each surface, individual security header toggles, the review classification given to each external script/style source, the integrity hash of every first-party file this site tracks, and the installed version of WordPress core, the active theme, and every active plugin. It only covers what this WordPress install can see about itself -- it doesn't verify anything external, such as DNS records or what a visitor's browser actually receives.", 'vcns-security-automation-manager' ); ?>
+	</p>
 
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Baseline and Drift sections', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tab_help as $tab_key => $tab_data ) : ?>
@@ -82,6 +85,13 @@ $current        = $baseline_store->get_current();
 			<input type="hidden" name="action" value="wp_sam_drift_scan" />
 			<?php submit_button( __( 'Run Drift Scan', 'vcns-security-automation-manager' ), 'primary', '', false ); ?>
 		</form>
+
+		<p class="description">
+			<?php esc_html_e( "A scan compares the state above against your last approved baseline and lists everything that differs, each rated by risk. Low covers routine housekeeping -- a version number changing, or an already-known external source simply being reclassified. Medium covers surface-visible changes -- the effective CSP header or a security header toggle changing, a brand-new external script/style source appearing, or a first-party file this site was tracking no longer being found. High is reserved for the two changes most worth confirming were intentional: a first-party file's integrity hash changing -- confirm you or an update actually touched that file before dismissing it, since this is how a compromised file often first surfaces -- and a certificate's recorded state changing. A high-risk certificate row is very often just this plugin's own automatic renewal running as designed (the expiry date always changes at renewal), but there is no certificate-specific entry in the Change Log to correlate it against, so check the Certificates page directly rather than expecting this row to explain itself.", 'vcns-security-automation-manager' ); ?>
+		</p>
+		<p class="description">
+			<?php esc_html_e( "Correlation only ever reports that a recorded site change happened around the same time as the drift -- never that it caused it -- so treat it as a lead, not a conclusion. Newly-detected drift starts Unexplained. Once you've confirmed a change is fine -- you deliberately updated a plugin, or edited a policy yourself -- Approve it or Mark it Expected; either requires a short reason that is kept for the record, but neither changes what counts as known-good: the next scan still compares against the same baseline. If this is the new normal going forward, capture a new baseline from the Baseline History tab so future scans stop flagging it. An item only becomes Resolved automatically, when it reverts back to matching the baseline on its own.", 'vcns-security-automation-manager' ); ?>
+		</p>
 
 			<?php
 			$disposition_filter = isset( $_GET['disposition'] ) ? sanitize_key( wp_unslash( $_GET['disposition'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -165,6 +175,10 @@ $current        = $baseline_store->get_current();
 
 		<?php $all_baselines = $baseline_store->all(); ?>
 
+		<p class="description">
+			<?php esc_html_e( 'Every approved baseline is kept, not deleted, when you capture a new one -- capturing only changes which version is Current, the one drift scans actually compare against. Capturing is always a deliberate action taken here; nothing is ever baselined automatically, the same never-automatic principle used elsewhere in this plugin (CSP enforcement, traffic blocking), so there is always a known, chosen baseline rather than a moving target.', 'vcns-security-automation-manager' ); ?>
+		</p>
+
 		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
@@ -205,6 +219,10 @@ $current        = $baseline_store->get_current();
 	<?php elseif ( 'change-log' === $tab ) : ?>
 
 		<?php $change_log_entries = ( new Change_Log_Store() )->all(); ?>
+
+		<p class="description">
+			<?php esc_html_e( "Populated automatically as these events happen -- a plugin or theme updating, being activated or deactivated, WordPress core updating, a new administrator account appearing, or a role being granted -- there is nothing to configure here. Its only purpose is giving the Drift tab's Correlation column something concrete to check against; it is not itself an alert or a block on anything.", 'vcns-security-automation-manager' ); ?>
+		</p>
 
 		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
 			<thead>

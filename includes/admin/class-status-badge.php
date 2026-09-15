@@ -59,4 +59,40 @@ final class Status_Badge {
 	public static function render_automation( string $label ): string {
 		return '<span class="wp-sam-status-badge wp-sam-status-badge--automation">' . esc_html( $label ) . '</span>';
 	}
+
+	/**
+	 * Pass/warning/fail/info outcome badge -- promoted out of what used to
+	 * be an inline closure duplicated across page-overview.php's Readiness
+	 * and Security Health tabs (`.wp-sam-readiness-badge`, styled in
+	 * assets/css/admin.css). A third consumer, the Recommendations tab
+	 * (Phase 4F), is why this became a shared method instead of a third
+	 * copy of the same lookup.
+	 *
+	 * @param string      $status One of pass|warning|fail|info (an
+	 *                            unrecognised value still renders, labelled
+	 *                            "Unknown", matching the prior closure's
+	 *                            own forgiving behaviour).
+	 * @param string|null $label  Visible text. Null uses the built-in
+	 *                            Pass/Warning/Fail/Info label for $status --
+	 *                            what every existing Readiness/Security
+	 *                            Health call site wants. Pass an explicit
+	 *                            label when the badge needs to say
+	 *                            something more specific, e.g. a risk level
+	 *                            ("Critical risk") mapped onto one of these
+	 *                            four styles.
+	 * @return string Pre-escaped HTML.
+	 */
+	public static function render_outcome( string $status, ?string $label = null ): string {
+		if ( null === $label ) {
+			$labels = array(
+				'pass'    => __( 'Pass', 'vcns-security-automation-manager' ),
+				'warning' => __( 'Warning', 'vcns-security-automation-manager' ),
+				'fail'    => __( 'Fail', 'vcns-security-automation-manager' ),
+				'info'    => __( 'Info', 'vcns-security-automation-manager' ),
+			);
+			$label  = $labels[ $status ] ?? __( 'Unknown', 'vcns-security-automation-manager' );
+		}
+
+		return '<span class="wp-sam-readiness-badge status-' . esc_attr( $status ) . '">' . esc_html( $label ) . '</span>';
+	}
 }

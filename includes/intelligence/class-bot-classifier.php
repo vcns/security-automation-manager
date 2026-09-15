@@ -36,7 +36,7 @@
  * walking a site's posts is normal, expected crawler behaviour, not a
  * signal worth flagging.
  *
- * An unrecognised source (no vendor match) is classified across two
+ * An unrecognised source (no vendor match) is classified across four
  * further signals, checked in this order:
  * - Uri_Pattern_Analyzer::is_enumerating() against this identity's
  *   Scanner_Identity_Store::recent_paths (§10's "URI-pattern" signal):
@@ -44,6 +44,21 @@
  *   sequential pattern (e.g. /product/101, /product/102, /product/103) --
  *   checked first because a script walking IDs is worth flagging on its
  *   own, whether or not it has also tripped a rate limit yet.
+ * - Else, Request_Timing_Analyzer::is_scripted_timing() against this
+ *   identity's Scanner_Identity_Store::recent_seen_at (§10's "timing"
+ *   signal): 'scripted_timing' if its last several requests arrived at a
+ *   suspiciously uniform interval -- a script sleeping a fixed duration
+ *   between requests, distinct from enumeration (which is about *what*
+ *   it requests, this is about *when*) and checked independently so a
+ *   source can be flagged for one without needing the other.
+ * - Else, Repeated_Error_Analyzer::is_error_probing() against this
+ *   identity's Scanner_Identity_Store::recent_errors (§10's "repeated
+ *   errors" signal): 'error_probing_scanner' if a disproportionate share
+ *   of its last several requests came back as an HTTP error (most often
+ *   404) -- a source enumerating a real, existing ID sequence produces no
+ *   errors at all, and undirected probing for sensitive paths produces no
+ *   sequential pattern, so this is checked as its own, independent signal
+ *   rather than folded into either of the two above.
  * - Else, whether this source has actually escalated through Traffic_
  *   Block_Store's existing progressive-response ladder (throttle or
  *   worse): 'aggressive_unidentified' if so, else 'unclassified' -- the
@@ -66,9 +81,13 @@ final class Bot_Classifier {
 	private const ESCALATED_STAGES = array( 'throttle', 'temporary_block', 'extended_block', 'persistent_block' );
 
 	private Uri_Pattern_Analyzer $uri_patterns;
+	private Request_Timing_Analyzer $timing;
+	private Repeated_Error_Analyzer $errors;
 
-	public function __construct( ?Uri_Pattern_Analyzer $uri_patterns = null ) {
+	public function __construct( ?Uri_Pattern_Analyzer $uri_patterns = null, ?Request_Timing_Analyzer $timing = null, ?Repeated_Error_Analyzer $errors = null ) {
 		$this->uri_patterns = $uri_patterns ?? new Uri_Pattern_Analyzer();
+		$this->timing       = $timing ?? new Request_Timing_Analyzer();
+		$this->errors       = $errors ?? new Repeated_Error_Analyzer();
 	}
 
 	/**
@@ -99,6 +118,16 @@ final class Bot_Classifier {
 		$recent_paths = json_decode( (string) ( $identity['recent_paths'] ?? '' ), true );
 		if ( is_array( $recent_paths ) && $this->uri_patterns->is_enumerating( $recent_paths ) ) {
 			return 'enumerating_scraper';
+		}
+
+		$recent_seen_at = json_decode( (string) ( $identity['recent_seen_at'] ?? '' ), true );
+		if ( is_array( $recent_seen_at ) && $this->timing->is_scripted_timing( $recent_seen_at ) ) {
+			return 'scripted_timing';
+		}
+
+		$recent_errors = json_decode( (string) ( $identity['recent_errors'] ?? '' ), true );
+		if ( is_array( $recent_errors ) && $this->errors->is_error_probing( $recent_errors ) ) {
+			return 'error_probing_scanner';
 		}
 
 		$stage = null !== $traffic_block ? (string) ( $traffic_block['stage'] ?? 'observe' ) : 'observe';

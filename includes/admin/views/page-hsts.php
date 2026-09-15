@@ -51,7 +51,10 @@ $max_age_options = array(
 
 	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
 		<p style="margin-top:0;">
-			<?php esc_html_e( 'Unlike this plugin\'s other headers, HSTS is sticky. Once a browser receives this header, it remembers the Max-Age and refuses plain-HTTP connections to this site for that long -- disabling the header afterward does not undo that for browsers that already cached it. There is no report-only mode to rehearse a rollout with either.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'Unlike this plugin\'s other headers, HSTS is sticky. Once a browser receives this header, it remembers the Max-Age and refuses plain-HTTP connections to this site for that long -- disabling the header afterward does not undo that for browsers that already cached it. Unchecking every box on this page only stops the header from being sent again; it cannot reach into a visitor\'s browser and make it forget what it already cached. There is no report-only mode to rehearse a rollout with either, so this is the one pillar in this plugin where the safest move is genuinely to start small.', 'vcns-security-automation-manager' ); ?>
+		</p>
+		<p>
+			<?php esc_html_e( 'Include Subdomains widens that same stickiness to every subdomain this site has, whether or not each one is actually ready for HTTPS -- a subdomain a browser hasn\'t connected to over HTTPS yet is still bound by a cached Include Subdomains policy the moment it does. Only turn it on once every subdomain that exists today, and any you might stand up later, can genuinely serve HTTPS.', 'vcns-security-automation-manager' ); ?>
 		</p>
 		<p style="margin-bottom:0;">
 			<?php esc_html_e( 'Start with a short Max-Age while confirming every surface, subdomain, and asset genuinely works over HTTPS, then increase it once confident. Preload goes further still: submitting this domain to browsers\' built-in preload lists can take months to reverse, so it stays off until Max-Age and Include Subdomains already meet the submission requirements below.', 'vcns-security-automation-manager' ); ?>

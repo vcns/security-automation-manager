@@ -54,6 +54,10 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 
 	<?php echo wp_kses_post( $intro_html ); ?>
 
+	<p class="description">
+		<?php esc_html_e( 'The table below treats each row as a separate "surface" -- an area of your site that can be configured on its own: the public frontend, the wp-admin dashboard, the login screen, and the REST API. A setting that makes sense for the public frontend does not necessarily make sense for wp-admin or the REST API, and vice versa.', 'vcns-security-automation-manager' ); ?>
+	</p>
+
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>

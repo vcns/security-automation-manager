@@ -93,6 +93,7 @@ use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Iso_Countries;
 use WP_SAM\Intelligence\Network_Rule_Store;
+use WP_SAM\Intelligence\Recommendation_Dismissal_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -207,6 +208,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
 		add_action( 'admin_post_wp_sam_export_evidence', array( $this, 'handle_export_evidence' ) );
+		add_action( 'admin_post_wp_sam_dismiss_recommendation', array( $this, 'handle_dismiss_recommendation' ) );
 		add_action( 'wp_ajax_wp_sam_manual_scan', array( $this, 'ajax_manual_scan' ) );
 		add_action( 'wp_ajax_wp_sam_approve_source', array( $this, 'ajax_approve_source' ) );
 		add_action( 'wp_ajax_wp_sam_deny_source', array( $this, 'ajax_deny_source' ) );
@@ -727,7 +729,6 @@ class Admin_UI {
 						'scanError'           => __( 'Scan failed. Check error log.', 'vcns-security-automation-manager' ),
 						'reasonRequired'      => __( 'A decision reason is required.', 'vcns-security-automation-manager' ),
 						'enforceReasonPrompt' => __( 'Reason for promoting this surface to enforce mode:', 'vcns-security-automation-manager' ),
-						'upgradeStarting'     => __( 'Starting checkout…', 'vcns-security-automation-manager' ),
 					),
 				)
 			);
@@ -768,7 +769,7 @@ class Admin_UI {
 			X_Frame_Options_Builder::PILLAR_KEY,
 			__( 'X-Frame-Options', 'vcns-security-automation-manager' ),
 			'X-Frame-Options',
-			'<p>' . esc_html__( 'Controls whether this site may be embedded in a frame or iframe on another site, as a defense against clickjacking. CSP\'s frame-ancestors directive supersedes this header in browsers that support it; X-Frame-Options remains a fallback for older browsers that don\'t.', 'vcns-security-automation-manager' ) . '</p>',
+			'<p>' . esc_html__( 'Controls whether this site may be embedded in a frame or iframe on another site, as a defense against clickjacking -- an attack that hides this site inside an invisible frame on another page, so a visitor who thinks they are clicking something on that page is actually clicking a button or link on this site underneath. CSP\'s frame-ancestors directive supersedes this header in browsers that support it; X-Frame-Options remains a fallback for older browsers that don\'t.', 'vcns-security-automation-manager' ) . '</p>',
 			array(
 				'DENY'       => __( 'DENY -- never allow framing', 'vcns-security-automation-manager' ),
 				'SAMEORIGIN' => __( 'SAMEORIGIN -- allow framing only by pages on this same site', 'vcns-security-automation-manager' ),
@@ -781,7 +782,7 @@ class Admin_UI {
 			X_Content_Type_Options_Builder::PILLAR_KEY,
 			__( 'X-Content-Type-Options', 'vcns-security-automation-manager' ),
 			'X-Content-Type-Options',
-			'<p>' . esc_html__( 'Stops browsers from guessing ("MIME-sniffing") a response\'s content type away from what the server declared, closing off a class of content-sniffing attacks. nosniff is the only defined value for this header, so each surface is simply on or off.', 'vcns-security-automation-manager' ) . '</p>',
+			'<p>' . esc_html__( 'Stops browsers from guessing ("MIME-sniffing") a response\'s content type away from what the server declared. Without it, a browser can decide on its own that a response is actually HTML or a script -- based on what its content looks like, not the type the server sent -- and run it as code; a classic case is a file a visitor uploads (an image, a document) that gets served back and executed instead of staying inert data. nosniff is the only defined value for this header, so each surface is simply on or off.', 'vcns-security-automation-manager' ) . '</p>',
 			null
 		);
 	}
@@ -2234,6 +2235,24 @@ class Admin_UI {
 		header( 'Content-Type: application/json' );
 		header( 'Content-Disposition: attachment; filename="security-evidence-export-' . gmdate( 'Y-m-d' ) . '.json"' );
 		echo false !== $json ? $json : '{}'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON file download, not an HTML context.
+		exit;
+	}
+
+	// ── Recommendations (Phase 4F) ────────────────────────────────────────────
+
+	public function handle_dismiss_recommendation(): void {
+		check_admin_referer( 'wp_sam_dismiss_recommendation' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage recommendations.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Recommendation_Dismissal_Store() )->dismiss(
+			sanitize_key( wp_unslash( $_POST['recommendation_key'] ?? '' ) ),
+			get_current_user_id(),
+			sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager&tab=recommendations' ) );
 		exit;
 	}
 

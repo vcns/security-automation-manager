@@ -40,6 +40,12 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		<?php esc_html_e( 'A link with target="_blank" opens in a new tab that, unless prevented, can use window.opener to redirect the original tab to a phishing page -- while the new tab looks completely normal. When enabled for a surface, this plugin scans rendered pages for that surface and adds rel="noopener" to any target="_blank" link missing noopener or noreferrer, leaving every other attribute and any existing rel tokens untouched.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
+	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
+		<p style="margin:0;">
+			<?php esc_html_e( 'Only the Frontend row below has any observable effect. This protection works by rewriting a completed page response rather than by sending a header, and that rewrite step is never reached at all for a request to wp-admin, wp-login.php, the REST API, AJAX, XML-RPC, cron, or CLI -- before this pillar\'s own per-surface setting is even consulted. The Admin, Login, and Api rows exist for the same configuration shape every other surface-based pillar uses, and can be switched on, but doing so changes nothing today. External Scripts (on the Scripts page) shares this same limitation, for the same underlying reason.', 'vcns-security-automation-manager' ); ?>
+		</p>
+	</div>
+
 	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
@@ -66,6 +72,6 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Changes apply immediately. This is a content rewrite, not a header -- it never blocks or breaks a link, it only closes an opener-access gap. Only successful, non-streamed HTML page responses are rewritten; admin, login, AJAX, REST, XML-RPC, cron, and CLI requests are never touched.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Changes apply immediately. This is a content rewrite, not a header -- it never blocks or breaks a link, it only closes an opener-access gap. Only a successful, non-streamed HTML page response on the frontend is ever rewritten (see the notice above for why the other surfaces don\'t apply here).', 'vcns-security-automation-manager' ); ?>
 	</p>
 </div>

@@ -79,7 +79,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What does Security Automation Manager do?</h3>
-            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below. Reverse Tabnabbing, External Scripts, and Internal Script Integrity round it out as further protections that act on the page or its assets directly rather than emit a header; see <a href='#content-rewrites'>Content rewrite protections</a>.</p>
+            <p>It helps WordPress administrators roll out strict HTTP security headers. Content Security Policy is its most capable pillar -- it emits per-surface policies, injects nonces, collects browser reports, discovers sources, and requires administrator approval before new sources affect the policy. CSP exists to stop cross-site scripting: even when an attacker manages to inject a script into a page -- through a vulnerable plugin, a compromised third-party integration, or an unescaped comment field -- a correctly enforced policy stops the browser from running it. X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security are simpler per-surface pillars alongside it; see <a href='#other-pillars'>Other pillars</a> below. Reverse Tabnabbing, External Scripts, and Internal Script Integrity round it out as further protections that act on the page or its assets directly rather than emit a header; see <a href='#content-rewrites'>Content rewrite protections</a>.</p>
           </article>
           <article class='faq-item'>
             <h3>Who is it for?</h3>
@@ -95,7 +95,7 @@
           </article>
           <article class='faq-item'>
             <h3>Why not use one policy for the whole site?</h3>
-            <p>Different parts of WordPress need different resources. A frontend page, login page, REST response, and admin screen do not have the same risk profile or resource requirements.</p>
+            <p>Different parts of WordPress need different resources. A frontend page, login page, REST response, and admin screen do not have the same risk profile or resource requirements. A REST response is JSON with no HTML to render at all, so a <code>script-src</code> allowance that makes sense on the frontend is pure attack surface on the API; a login page has no business allowing the marketing team's tag-manager scripts a public blog post depends on.</p>
           </article>
           <article class='faq-item'>
             <h3>What are the minimum requirements?</h3>
@@ -114,7 +114,7 @@
           </article>
           <article class='faq-item'>
             <h3>Can enforce mode break a site?</h3>
-            <p>Yes. Enforce mode can block required scripts, styles, fonts, frames, media, form posts, and runtime API calls. Use enforce mode only after reviewing evidence.</p>
+            <p>Yes. Enforce mode can block required scripts, styles, fonts, frames, media, form posts, and runtime API calls. Use enforce mode only after reviewing evidence. A payment provider's iframe that was never approved, for example, will simply fail to render for every visitor at checkout -- silently, with nothing shown to them -- until someone notices the drop in completed orders.</p>
           </article>
           <article class='faq-item'>
             <h3>Which surface should I enforce first?</h3>
@@ -122,7 +122,7 @@
           </article>
           <article class='faq-item'>
             <h3>Should I enforce wp-admin?</h3>
-            <p>Use caution. WordPress admin screens and plugins may emit inline code outside the normal script API. Keep a rollback path and monitor violations carefully.</p>
+            <p>Use caution. WordPress admin screens and plugins may emit inline code outside the normal script API. Keep a rollback path and monitor violations carefully. Many admin-only plugins are older and rely on inline <code>onclick</code> handlers or ad-hoc <code>&lt;script&gt;</code> blocks never written with CSP in mind, which makes admin the surface most likely to break in a way that locks you out of the very screen you'd need to fix it from.</p>
           </article>
           <article class='faq-item'>
             <h3>What is the promotion gate?</h3>
@@ -149,7 +149,7 @@
           </article>
           <article class='faq-item'>
             <h3>What does high risk mean?</h3>
-            <p>High-risk proposals usually affect script, style, connection, form, frame, or worker behaviour, or use broad patterns such as wildcards, cleartext HTTP, broad schemes, or unsafe CSP keywords.</p>
+            <p>High-risk proposals usually affect script, style, connection, form, frame, or worker behaviour, or use broad patterns such as wildcards, cleartext HTTP, broad schemes, or unsafe CSP keywords. A wildcard host or an "unsafe" keyword doesn't just widen the policy slightly -- it can cancel out the exact protection CSP exists to provide, by allowing script from anywhere, or inline script from everywhere.</p>
           </article>
           <article class='faq-item'>
             <h3>Is a high-risk source always bad?</h3>
@@ -204,7 +204,7 @@
           </article>
           <article class='faq-item'>
             <h3>Can violation reports be spoofed?</h3>
-            <p>Browser reports are client-generated and should not be treated as trusted user input. The plugin validates content type, silently discards cross-origin document URIs, deduplicates reports, and rate-limits storage.</p>
+            <p>Browser reports are client-generated and should not be treated as trusted user input. The plugin validates content type, silently discards cross-origin document URIs, deduplicates reports, and rate-limits storage. Left unchecked, a flood of fabricated reports could be used to bury real violations in noise, or to nudge an inattentive administrator into approving a host the attacker actually controls.</p>
           </article>
           <article class='faq-item'>
             <h3>What does occurrence count mean?</h3>
@@ -305,7 +305,7 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Is it compatible with caching plugins?</h3>
-            <p>Usually, but nonce-based pages should not be served from a full-page cache unless the cache is nonce-aware or appropriate exclusions are configured.</p>
+            <p>Usually, but nonce-based pages should not be served from a full-page cache unless the cache is nonce-aware or appropriate exclusions are configured. A cached page freezes the nonce that was valid the moment it was cached; every later visitor is served that same stale value, and the browser correctly refuses to run any script whose nonce doesn't match the current header -- breaking the page for everyone until the cache entry is cleared or excluded.</p>
           </article>
           <article class='faq-item'>
             <h3>Can it work with tag managers?</h3>
@@ -321,7 +321,7 @@
           </article>
           <article class='faq-item'>
             <h3>Does it add <code>'unsafe-inline'</code>?</h3>
-            <p>No. The nonce workflow is intended to avoid relying on <code>'unsafe-inline'</code>.</p>
+            <p>No. The nonce workflow is intended to avoid relying on <code>'unsafe-inline'</code>. That keyword tells the browser to run any inline script regardless of where it came from -- precisely the behaviour CSP exists to prevent -- so adding it back would quietly undo the policy's main protection.</p>
           </article>
           <article class='faq-item'>
             <h3>What about older browsers?</h3>

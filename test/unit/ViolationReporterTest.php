@@ -818,6 +818,22 @@ class ViolationReporterTest extends TestCase {
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
 	}
 
+	// ── count_since() (Phase 4F, Recommendations Engine read access) ─────────
+
+	public function test_count_since_returns_the_query_result(): void {
+		$GLOBALS['_wpdb_get_var'] = 3;
+
+		$this->assertSame( 3, Violation_Reporter::count_since( 'frontend', 720 ) );
+	}
+
+	public function test_count_since_needs_no_constructor_dependencies(): void {
+		// Static and callable with zero setup beyond the reset globals --
+		// unlike the rest of this class, which requires Audit_Log.
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		$this->assertSame( 0, Violation_Reporter::count_since( 'login', 24 ) );
+	}
+
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	private function make_request( string $body ): WP_REST_Request {

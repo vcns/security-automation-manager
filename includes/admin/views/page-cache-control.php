@@ -63,6 +63,10 @@ $cdn_acknowledged = ! empty( get_option( Cache_Control_Conflict_Detector::CDN_AC
 		<?php esc_html_e( 'Sets the Cache-Control header on a per-surface basis. WordPress core already sends its own strict no-cache header on admin, login, and other dynamic pages -- this pillar lets that be made explicit and, optionally, lets the frontend be given an actual caching policy.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
+	<p class="description">
+		<?php esc_html_e( "Before any value below is ever sent, this pillar checks whether something else already manages caching for this site: a known caching plugin -- WP Rocket, W3 Total Cache, WP Super Cache, LiteSpeed Cache, WP Fastest Cache, Cache Enabler, SiteGround Speed Optimizer, WP-Optimize, or Breeze -- or a CDN/edge cache acknowledged below. If either is true, this pillar emits nothing at all on any surface, even one shown as enabled and saved, rather than risk its own value competing with whatever is already actually in charge of caching this site. The warning below only appears once that's actually the case; the rest of the time this check runs on every request and simply finds nothing to block.", 'vcns-security-automation-manager' ); ?>
+	</p>
+
 	<?php if ( $blocked ) : ?>
 	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
 		<p style="margin-top:0">
@@ -124,7 +128,7 @@ $cdn_acknowledged = ! empty( get_option( Cache_Control_Conflict_Detector::CDN_AC
 	</table>
 
 	<p class="description" style="margin-top: 1em;">
-		<?php esc_html_e( 'Unlike every other pillar on this page, Cache-Control is not enabled by default on any surface -- it is a caching/performance decision, not a universal security hardening default, and WordPress core already protects admin and login pages on its own.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Unlike every other pillar on this page, Cache-Control is not enabled by default on any surface -- it is a caching/performance decision, not a universal security hardening default, and WordPress core already protects admin and login pages on its own. Turning a surface on for the first time starts it at the safest preset, no-store, never an arbitrary or previously-selected value.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
 	<h2 style="margin-top:2em"><?php esc_html_e( 'CDN / Edge Cache Acknowledgement', 'vcns-security-automation-manager' ); ?></h2>

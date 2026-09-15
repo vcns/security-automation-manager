@@ -40,6 +40,18 @@ class Activator {
 		self::migrate_loosen_media_src_default();
 		self::migrate_consolidate_bypass_flags_into_json();
 		self::migrate_default_reporting_transport_to_both();
+
+		// Generic, empty-by-default extension point: an extension (see
+		// includes/extensions/, physically absent from the WordPress.org-
+		// channel build) may run its own one-time activation cleanup here.
+		// Deliberately not a core Activator migration -- a migration that
+		// needs to reference a commercial extension's own option names (e.g.
+		// fully-automatic-mode.php's former Stripe settings) would put those
+		// exact strings in a file every channel ships, which is exactly what
+		// .github/scripts/verify-wporg-package.sh's forbidden-string scan
+		// exists to catch. Firing this from core keeps that boundary real.
+		do_action( 'wp_sam_extension_migrations' );
+
 		self::set_default_options();
 		self::seed_default_profiles();
 		self::seed_default_pillar_profiles();
@@ -333,6 +345,7 @@ class Activator {
 			'sam_custom_detector_rules',
 			'sam_network_rules',
 			'sam_exceptions',
+			'sam_recommendation_dismissals',
 		);
 	}
 
@@ -916,6 +929,26 @@ class Activator {
 		// identity's last Scanner_Identity_Store::MAX_RECENT_PATHS request
 		// paths, oldest first. See that class's own docblock and Uri_
 		// Pattern_Analyzer.
+		// asn/asn_org/geo_country/geo_region/geo_city (schema v42, Phase 4A
+		// carried-forward item): populated only when Network_Intelligence_
+		// Resolver has already been resolved for this request (i.e. some
+		// detector already found something) -- same lazy gate Event_Store's
+		// per-event evidence already uses, so a benign identity that never
+		// trips a detector costs nothing extra. See Scanner_Identity_Store::
+		// record() for the COALESCE-based upsert that never overwrites an
+		// already-known value with a null one.
+		// recent_seen_at (schema v43, Phase 4C carried-forward item -- the
+		// "timing" signal §10's own list names): bounded JSON array of this
+		// identity's last MAX_RECENT_PATHS request timestamps, appended in
+		// lockstep with recent_paths. See Request_Timing_Analyzer.
+		// recent_errors (schema v44, Phase 4C carried-forward item -- the
+		// "repeated errors" signal §10's own list names, the last of the
+		// two): bounded JSON array of 0/1 ints, appended in lockstep with
+		// recent_paths/recent_seen_at, recording whether each request's
+		// eventual HTTP response was >= 400. See Request_Observer::
+		// flush_identity_write() (deferred to 'shutdown', since the
+		// eventual status isn't known yet when identity resolution itself
+		// happens) and Repeated_Error_Analyzer.
 		dbDelta(
 			"CREATE TABLE {$p}sam_scanner_identities (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -937,11 +970,19 @@ class Activator {
   first_seen_at datetime NOT NULL,
   last_seen_at datetime NOT NULL,
   recent_paths longtext NOT NULL,
+  recent_seen_at longtext NOT NULL,
+  recent_errors longtext NOT NULL,
+  asn int(10) UNSIGNED DEFAULT NULL,
+  asn_org varchar(255) NOT NULL DEFAULT '',
+  geo_country varchar(8) NOT NULL DEFAULT '',
+  geo_region varchar(128) NOT NULL DEFAULT '',
+  geo_city varchar(128) NOT NULL DEFAULT '',
   PRIMARY KEY  (id),
   KEY ip (ip),
   KEY vendor_key (vendor_key),
   KEY verification_state (verification_state),
   KEY last_seen_at (last_seen_at),
+  KEY asn (asn),
   UNIQUE KEY fingerprint (fingerprint)
 ) {$cc};"
 		);
@@ -1366,6 +1407,24 @@ class Activator {
   PRIMARY KEY  (id),
   KEY review_status (review_status),
   KEY control_surface (control, surface)
+) {$cc};"
+		);
+
+		// Schema v45: sam_recommendation_dismissals -- Phase 4F, Recommendations
+		// Engine (.roadmap/phase3_early_plan.md §22). The only new table this
+		// feature needs; recommendation content itself is always recomputed
+		// live from existing evidence, never persisted. One row per
+		// administrator decision not to act on a recommendation yet, with a
+		// required reason. See Intelligence\Recommendation_Dismissal_Store.
+		dbDelta(
+			"CREATE TABLE {$p}sam_recommendation_dismissals (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  recommendation_key varchar(191) NOT NULL,
+  dismissed_by bigint(20) UNSIGNED NOT NULL,
+  dismissed_at datetime NOT NULL,
+  reason text NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY recommendation_key (recommendation_key)
 ) {$cc};"
 		);
 

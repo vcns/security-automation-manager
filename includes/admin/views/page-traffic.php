@@ -100,6 +100,10 @@ $tab_help = array(
 
 		<?php $policies = ( new Traffic_Policy_Store() )->all(); ?>
 
+		<p class="description" style="max-width:700px">
+			<?php esc_html_e( "Each surface below -- frontend, admin, login, and the REST API -- gets its own rate limit, because what counts as normal traffic on one is an attack on another: a handful of requests a minute is unremarkable on the frontend but alarming against the login form. In Observe mode, crossing that limit is only ever recorded, never enforced. In Enforce mode, a source that crosses it climbs a progressive ladder instead -- warned, then throttled, then temporarily blocked, then blocked for longer -- visible per-source on the Blocks tab, so one burst of ordinary traffic isn't treated the same as a sustained attack. Login also gets a failed-attempt lockout, since brute-forcing a password is a pattern rate limiting alone doesn't fully capture.", 'vcns-security-automation-manager' ); ?>
+		</p>
+
 		<?php foreach ( $policies as $policy ) : ?>
 		<form id="wp-sam-policy-form-<?php echo esc_attr( (string) $policy['surface'] ); ?>" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'wp_sam_traffic_policy_update' ); ?>
@@ -158,6 +162,10 @@ $tab_help = array(
 	<?php elseif ( 'ip-rules' === $tab ) : ?>
 
 		<?php $rules = ( new Ip_Rule_Store() )->all(); ?>
+
+		<p class="description" style="max-width:700px">
+			<?php esc_html_e( 'Use this when you already know a specific address and want a decision that doesn\'t depend on rate limits or detectors at all: Allow permanently exempts a source you trust (a monitoring service, your own office) from every other control on this page; Block permanently shuts one out, regardless of what mode a surface is in. A CIDR range lets one rule cover a whole block of addresses at once -- 203.0.113.0/24 covers all 256 addresses from .0 to .255, useful when an attacker is rotating through a known range. Leave Expires blank (or 0) for a rule that should never lapse on its own; for the equivalent decision by ASN or country instead of by address, see Network Rules on the Network Intelligence tab.', 'vcns-security-automation-manager' ); ?>
+		</p>
 
 		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
 			<thead>
@@ -240,6 +248,10 @@ $tab_help = array(
 	<?php elseif ( 'blocks' === $tab ) : ?>
 
 		<?php $blocks = ( new Traffic_Block_Store() )->all_active(); ?>
+
+		<p class="description" style="max-width:700px">
+			<?php esc_html_e( "This is what automatic detection has done on its own, without you adding anything here -- crossing a rate limit or tripping an enforce-mode detector moves a source up a stage (Warn, Throttle, Temporary block, Extended block); Occurrences counts how many times that's happened. Release lifts a block immediately, useful when you recognise a source as a false positive; Make Permanent turns a temporary, auto-expiring block into one that stays until you remove it yourself -- functionally the same outcome as adding it to IP Rules by hand. Nothing here is a manual decision until you click one of those two buttons.", 'vcns-security-automation-manager' ); ?>
+		</p>
 
 		<table class="widefat fixed striped wp-sam-violations-table wp-sam-blocks-table" style="margin-top:1em">
 			<thead>

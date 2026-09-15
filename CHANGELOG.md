@@ -4,6 +4,169 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.9.107] - 2026-09-14
+
+### Security
+
+- Removed `includes/extensions/fully-automatic-mode.php`'s direct-Stripe checkout path: the 8 plaintext Stripe secret/price/webhook option registrations, the `wp_ajax_wp_sam_create_checkout_session` handler, and the pricing-card/subscribe-button upgrade UI. Resolves `docs/threat-model.md`'s "Stripe secret storage" finding (previously "not mitigated -- live finding", the primary blocker on the public-hosting readiness gate, GitHub #156) and is the WordPress-side portion of `docs/sam-portal-requirements-spec.md` §21.2 ("WordPress direct-Stripe removal").
+- Confirmed via investigation before removal: neither public release channel (WordPress.org or GitHub) has ever shipped a working checkout path for this -- `offline/modules/` (which supplies the classes this depends on) is gitignored and empty in both, and the stale local copies that exist wouldn't satisfy the current class checks either. No evidence of real customer use.
+- New generic `wp_sam_extension_migrations` hook in `Activator::activate()` (schema v46, no new table), with `fully-automatic-mode.php` listening on it to actively delete any of the 8 option values a previous private/commercial build may have stored, rather than merely stopping new writes -- kept out of `Activator` itself so the option-name strings don't end up in a file every channel ships (see `.github/scripts/verify-wporg-package.sh`). `delete_option()` on an already-absent key is a no-op, so this runs unconditionally on every activation.
+- `fully_automatic` remains a registered automation-mode concept (unaffected -- it isn't itself a security issue) but is unreachable until a `sam-licensing-service`-backed entitlement source is built; `Feature_Gate`'s duck-typed `?object $entitlements` constructor already supports this without its own rewrite.
+- Also removed: the now-dead `.wp-sam-upgrade-button` click handler in `assets/js/admin.js`, its `upgradeStarting` localised string, and the `.wp-sam-product-card`/`.wp-sam-price` CSS -- all exclusively served the removed checkout UI.
+- 8 new tests in `FullyAutomaticModeTest.php` (new) confirming the Stripe settings/AJAX hooks no longer register and the upgrade notice never renders payment UI, plus `ActivatorTest.php` extended for the new migration.
+
+## [2.9.106] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 4 -- `Intelligence\Recommendation_Rule_Detector_Disabled_But_Firing`, the last of Phase 4F's planned rule batches: fires when an explicitly-disabled detector had real recorded matches in the 7 days before (or up to) being disabled. Built around the correctness fact that `Detector_Engine::evaluate()` skips a disabled detector entirely -- it can never be "silently matching live traffic right now" while disabled, so this rule only ever reflects real, already-recorded history, and naturally stops firing once that activity ages out of the lookback window.
+- New `Event_Store::occurrences_since( string $detector_id, int $since_hours ): int` -- the one new read method this batch needed, summing each qualifying row's own `occurrence_count` (documented tradeoff: lifetime-cumulative per row, same known staleness-at-the-edges limitation `distinct_ips()`/`active_detector_surfaces()` already carry).
+- Dismissible; `evidence_changed_at` is `Detector_Policy_Store`'s own `updated_at` for that detector, so a dismissal reopens if the admin touches that detector's configuration again.
+- **This completes all four rule batches planned for Phase 4F.** Six recommendation rule classes now ship by default across the four batches (certificate renewal, unexplained drift, exception expiry, CSP enforce-readiness, pillar enforce-readiness, and this one).
+- 15 new tests across `RecommendationRuleDetectorDisabledButFiringTest` (new) and `EventStoreTest`/`RecommendationRegistryTest` extended.
+- No schema change.
+
+## [2.9.105] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 3 -- `Intelligence\Recommendation_Rule_Pillar_Enforce_Ready`: the same enforce-readiness check as rule batch 2's CSP rule, generalised to any pillar with a genuine report-only learning mode. Detected generically via `Pillar_Registry::pillars()`'s own `mode_status_map` (currently matches Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy, the only two with one today) rather than a hardcoded pillar-key list, so a future pillar gaining the same capability is picked up automatically.
+- New `Security\Pillar_Violation_Store::count_since( string $pillar, string $surface, int $since_hours ): int` -- the one new read method this batch needed, added to a table that was previously write-only (`store()` was its only public method).
+- Exception control strings follow `{pillar-key}_enforce` (e.g. `cross-origin-opener-policy_enforce`), mechanically derived rather than a separate abbreviation table -- an administrator can record a deliberate exception against either pillar the same way `csp_enforce` already works for CSP.
+- 12 new tests across `RecommendationRulePillarEnforceReadyTest` (new) and `PillarViolationStoreTest`/`RecommendationRegistryTest` extended.
+- No schema change.
+
+## [2.9.104] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 2 -- `Intelligence\Recommendation_Rule_Csp_Enforce_Ready`: fires per surface when `csp_policy_profiles.mode` is `report-only`, no active `csp_enforce` exception exists for it (`Exception_Store::has_active_for()`), and zero violations have been reported on it in the last 30 days. Dismissible; the dismissal reopens if that surface's policy configuration changes again (`csp_policy_profiles.updated_at`), not on a fixed timer.
+- New `Violation_Reporter::count_since( string $surface, int $since_hours ): int` -- the one new read method this batch needed, added to a table (`csp_violation_reports`) that was previously write-only. Static, so it needs none of `Violation_Reporter`'s own REST-handler constructor dependencies.
+- 8 new tests across `RecommendationRuleCspEnforceReadyTest` (new) and `ViolationReporterTest`/`RecommendationRegistryTest` extended.
+- No schema change.
+
+## [2.9.103] - 2026-09-13
+
+### Added
+
+- Phase 4F (Recommendations Engine) rule batch 1 -- the first three concrete rules, none needing a new store method:
+  - `Intelligence\Recommendation_Rule_Certificate_Renewal` -- fires when a configured domain's issued production certificate has expired or is within its 30-day renewal window (`Certificates\Certificate_Store::renewal_due()`). Scoped to renewal only; a domain with nothing issued yet is left to Getting Started's own issuance step. Dismissible.
+  - `Intelligence\Recommendation_Rule_Unexplained_Drift` -- fires when one or more high/critical-risk drift items are still unexplained (`Intelligence\Drift_Store::all('unexplained')`). One aggregate recommendation; not dismissible -- dispositioning each item on the Baseline & Drift page is what clears it.
+  - `Intelligence\Recommendation_Rule_Exception_Expiring` -- fires when one or more active exceptions are due for notice (`Intelligence\Exception_Store::due_for_notice()`), reusing the exact same admin-configurable notice window (`wp_sam_exception_notice_window_days`, default `Exception_Scheduler::DEFAULT_NOTICE_WINDOW_DAYS`) the existing expiry-notice email already uses. Risk is the highest `risk_classification` among the expiring exceptions themselves. Not dismissible -- extending or revoking on the Exceptions tab is what clears it.
+- All three registered by default in `Recommendation_Registry::register_defaults()`.
+- 17 new tests across `RecommendationRuleCertificateRenewalTest`, `RecommendationRuleUnexplainedDriftTest`, `RecommendationRuleExceptionExpiringTest` (all new), plus `RecommendationRegistryTest` and `PageOverviewTest` extended.
+- No schema change.
+
+## [2.9.102] - 2026-09-12
+
+### Added
+
+- Phase 4F (Recommendations Engine, `.roadmap/phase3_early_plan.md` §22) -- Foundation increment. New `Intelligence\Recommendation_Rule` interface, `Recommendation_Registry` (mirrors `Detector_Registry`'s registration/extension-point shape, fired via a new `wp_sam_register_recommendation_rules` action), and `Recommendation_Engine::get_recommendations()`, which aggregates every registered rule's output, drops still-validly-dismissed recommendations, and sorts by risk. No rules are registered yet in this increment -- concrete rules land in the increments that follow (see `.roadmap/phase4_plan.md`).
+- New `sam_recommendation_dismissals` table (schema v45), the only new table this feature needs: recommendation content is always recomputed live from existing evidence, never persisted -- only an administrator's explicit "not acting on this yet" decision, with a required reason, via the new `Intelligence\Recommendation_Dismissal_Store`. A dismissal is not permanent: it reopens automatically once the underlying evidence changes after the dismissal timestamp, the same pattern `Admin_UI::handle_dismiss_conflicts()` already uses for the CSP dashboard's conflict banner.
+- New "Recommendations" tab on Settings/Overview, positioned right after Security Health. Empty-state message until the first rule batch ships.
+- `Status_Badge::render_outcome()` -- promotes what used to be an inline `pass`/`warning`/`fail`/`info` badge closure duplicated across the Readiness and Security Health tabs into a single shared method (a third consumer, Recommendations' risk badges, is why this became worth sharing). Readiness and Security Health now call it instead of the old closure; no visible change.
+- 15 new tests across `RecommendationRegistryTest`, `RecommendationEngineTest`, `RecommendationDismissalStoreTest` (all new), plus `StatusBadgeTest` and `PageOverviewTest` extended.
+
+## [2.9.101] - 2026-09-12
+
+### Added
+
+- Phase 4C carried-forward item closed: the "repeated errors" signal §10's own signal list names, the second and last of the two (alongside "timing", v2.9.100). `sam_scanner_identities` (schema v44) gains `recent_errors`, a bounded JSON array of 0/1 ints appended in lockstep with the existing `recent_paths`/`recent_seen_at`, recording whether each request's eventual HTTP response was >= 400.
+- Required moving `Scanner_Identity_Store::record()` itself out of `Request_Observer`'s main `observe()` flow and into a new `shutdown` hook (`flush_identity_write()`): the eventual HTTP response status isn't known yet at `send_headers` time, since WordPress hasn't run `query_posts()`/`handle_404()` yet at that point in `WP::main()`. Identity *resolution* (`Identity_Resolver::resolve()`) is unchanged and still runs early, where detectors need it during `evaluate()` -- only the *write* is deferred. `flush_identity_write()` takes an optional `?int $status` parameter (falling back to the real `http_response_code()` only when omitted), the same testability convention `Content_Rewriter::is_processable_response()` already established, rather than stubbing a PHP global.
+- New `Intelligence\Repeated_Error_Analyzer` (mirrors the other analyzers exactly): `is_error_probing()` flags a source whose last several requests (minimum sample of 4) were at least 70% errors.
+- `Bot_Classifier` gains a fourth signal for an unrecognised source (checked after enumeration and timing, before rate escalation): a new `error_probing_scanner` classification state, shown on the Identities tab as "Error probing (repeated 4xx/5xx)".
+- 21 new/updated tests across `RepeatedErrorAnalyzerTest` (new), `BotClassifierTest`, `ScannerIdentityStoreTest`, and `RequestObserverTest` (updated for the deferred-write flow).
+- No behaviour change to detection or blocking -- a new read-only classification signal, computed on demand the same way the existing signals already are. The identity write itself still happens exactly once per request, just later.
+
+### Fixed
+
+- Caught during live-Docker verification, not shipped broken: `add_action( 'shutdown', array( $this, 'flush_identity_write' ) )` fatalled on every real request (`TypeError`: `?int $status` given a `string`). WordPress's own `do_action( 'shutdown' )` -- called with no extra arguments -- still pushes a filler `''` into its internal args array (a long-standing core quirk to guarantee at least one argument reaches a callback), which `WP_Hook` then passes straight through as this method's first parameter. Fixed by explicitly registering with `$accepted_args = 0`, which stops `WP_Hook` from passing that filler value through at all -- `$status` now genuinely defaults to `null` in production, falling back to the real `http_response_code()` as intended.
+
+## [2.9.100] - 2026-09-11
+
+### Added
+
+- Phase 4C carried-forward item closed: the "timing" signal §10's own signal list names, alongside "repeated errors" (still open -- needs a new response-status hook, tracked separately). `sam_scanner_identities` (schema v43) gains `recent_seen_at`, a bounded JSON array of this identity's recent request timestamps, appended in lockstep with the existing `recent_paths` on every `Scanner_Identity_Store::record()` call (same `MAX_RECENT_PATHS` bound, same index alignment).
+- New `Intelligence\Request_Timing_Analyzer` (mirrors `Uri_Pattern_Analyzer` exactly: pure, read-only, takes already-recorded history, returns a bool): `is_scripted_timing()` flags a run of at least 4 consecutive intervals whose coefficient of variation is at or below 0.15 (real browsing varies far more than this) and whose mean is under 5 minutes (a longer average cadence is ordinary infrequent traffic, not a timing signal, even if incidentally uniform).
+- `Bot_Classifier` gains a third signal for an unrecognised source (alongside URI-pattern enumeration, checked first, and rate escalation, checked last): a new `scripted_timing` classification state, shown on the Identities tab as "Scripted timing (uniform request interval)". Distinct from enumeration -- one is about *what* a source requests, this is about *when* -- so a source can be flagged for either independently.
+- 16 new tests across `RequestTimingAnalyzerTest` (new), `BotClassifierTest`, and `ScannerIdentityStoreTest`.
+- No behaviour change to detection or blocking -- purely a new read-only classification signal, computed on demand the same way the existing enumeration/rate signals already are.
+
+## [2.9.99] - 2026-09-11
+
+### Added
+
+- Phase 4A carried-forward item closed: `sam_scanner_identities` (schema v42) gains `asn`, `asn_org`, `geo_country`, `geo_region`, `geo_city` columns. ASN/Geo-IP were already resolved and recorded in `sam_request_events` evidence per-request, but never merged onto the identity record itself -- an admin reviewing the Identities tab had no way to see a source's network context without cross-referencing individual Events rows.
+- `Request_Observer::observe()` reordered: `Network_Intelligence_Resolver::resolve()` now runs (still gated on `!empty($findings)`, unchanged from before) *before* `Scanner_Identity_Store::record()` instead of after, so the same lazily-resolved result is reused for both the per-event evidence and the identity record -- no new resolution, no new cost, no change to when the lazy resolve itself happens.
+- `Scanner_Identity_Store::record()` gains five new optional trailing parameters (`asn`, `asn_org`, `geo_country`, `geo_region`, `geo_city`, all nullable, all defaulting to `null`) and upserts them via `COALESCE`/`NULLIF` on both write paths (the decision-state bookkeeping-only path and the normal `INSERT ... ON DUPLICATE KEY UPDATE` path) so a null/empty incoming value never overwrites an already-known one -- a source's identity only ever fills in over time, never flickers back to unknown.
+- The Identities admin tab (Continuous Intelligence) shows the ASN and country under a source's IP whenever recorded, with an explainer noting a blank line usually just means that source has never yet tripped a detector, not a failed lookup.
+- 8 new tests across `ScannerIdentityStoreTest`, `RequestObserverTest`, and `PageIntelligenceTest` covering the new columns' persistence, the reorder, and the admin display.
+
+### Fixed
+
+- Caught during live-Docker verification against a real database, not assumed: `wpdb::prepare()` does **not** preserve a PHP `null` as SQL `NULL` for `%d`/`%s` placeholders -- confirmed directly (`$wpdb->prepare("SELECT %d, %s", null, null)` returns `SELECT 0, ''`, not `SELECT NULL, NULL`). The initial `COALESCE(VALUES(asn), asn)` upsert therefore always "won" with `0` instead of falling back to the existing value. Fixed by using `0` (never a valid real-world ASN) as the sentinel via `NULLIF(..., 0)`, matching the pattern already used for the string columns via `NULLIF(..., '')`.
+- **Flagged, not fixed -- pre-existing, out of scope for this change:** the same `wpdb::prepare()` behavior means `sam_scanner_identities.network_match` (`tinyint(1) DEFAULT NULL`, shipped well before this release) can never actually store a real `NULL` either -- confirmed live: 0 rows with `network_match IS NULL`, several with `network_match = 0`. Every "unknown" case has silently been recorded as "confirmed not matching" since this column was introduced. Not touched here since fixing it is a behavior change to already-shipped data semantics that needs its own deliberate look at what (if anything) currently depends on the distinction, not a side effect of this release.
+
+No behaviour change to detection or blocking -- purely additive data on the identity record.
+
+## [2.9.98] - 2026-09-10
+
+### Added
+
+- Phase 4G guided onboarding flow: a new "Getting Started" tab on Settings/Overview (`includes/admin/views/page-overview.php`), the last piece of the Phase 4G UI documentation retrofit. Positioned as the second tab, right after Overview.
+- A five-step, suggested-order checklist for a new install: Configure Content Security Policy, turn on the other header pillars, review Traffic Controls (and consider Enforce mode), capture a security baseline, and issue a free TLS certificate (marked optional -- many hosts already provide HTTPS another way). A short note explains that Continuous Intelligence needs no setup step of its own, since it's already observing every request by default.
+- Each step's status is read live from the same store the relevant admin page itself reads from -- a `csp_policy_profiles` mode count for CSP, `Pillar_Registry::fetch_rows()` for the other pillars, `Traffic_Policy_Store::all()` for Traffic Controls, `Baseline_Store::get_current()` for Baseline & Drift, `Certificate_Store::latest_certificate()` for Certificates -- rather than a static list. No new state is persisted; nothing here is required, and there is no dismiss/hide mechanism to build or maintain -- the checklist simply reflects whatever is actually configured on every page load, matching this plugin's existing read-only status-display pattern (the Overview tab's own Layer 1-5 tables).
+- `test/unit/PageOverviewTest.php` (new, 3 tests) -- the first test coverage this admin page has ever had. Covers the not-started state, the fully-done state (all five signals present), and that every other Overview-page tab still renders and links to the new tab.
+- No behaviour change to any existing control -- this tab only reads and displays state, it never writes to it.
+- Confirmed live in Docker: all 8 existing Overview-page tabs (Overview, Getting Started, Security Health, Readiness, Recovery, Exceptions, Updates, About) render without error; the Getting Started tab correctly showed a mix of done/not-done states on a long-running test site with real configured data (CSP active, pillars enabled, and a baseline already captured, but Traffic Controls still Observe-only and no certificate issued).
+
+## [2.9.97] - 2026-09-10
+
+### Added
+
+- Phase 4G UI documentation retrofit, public-docs track completed: `docs/user-guide.html` and `docs/faq.html` (the GitHub Pages help site) now explain what Content Security Policy actually defends against -- cross-site scripting -- rather than only describing rollout mechanics. `docs/index.html` already had this from an earlier increment (v2.9.70); the other two pages never once mentioned XSS despite it being the entire reason CSP exists.
+- `docs/user-guide.html`: added a paragraph at the top of "First 30 minutes" (the first thing a reader hits) explaining the XSS threat model and framing the rollout steps that follow as building a safe allowlist against it. The three callouts from an earlier pass (HSTS stickiness, COOP/COEP breakage risk, Reverse Tabnabbing phishing mechanics) were re-verified intact and left unchanged.
+- `docs/faq.html`: enriched 8 of ~50 answers with a concrete-consequence sentence each, selected for reach and mechanism-relevance rather than attempting all of them -- what the plugin does (XSS framing), why one policy doesn't fit the whole site, what actually breaks in enforce mode (a silently-failing checkout iframe example), why wp-admin is the highest lockout risk, what a wildcard/unsafe keyword actually costs, the motive behind report spoofing, why `'unsafe-inline'` specifically undoes CSP, and the stale-nonce mechanism behind full-page-cache incompatibility (confirmed against `Nonce_Manager::generate()`'s actual per-request behavior).
+- `test/unit/VersionConsistencyTest.php`'s guarded exact-substring assertions (WP/PHP minimum-version wording, the subscription price) were confirmed untouched by these edits -- verified via `composer test:no-coverage -- --filter VersionConsistencyTest` (12 tests, 100 assertions, passing) both by the drafting agent and independently by me before shipping.
+- No behaviour change -- static HTML copy only.
+
+## [2.9.96] - 2026-09-10
+
+### Added
+
+- Phase 4G UI documentation retrofit: completed across every remaining admin page. Drafted by six parallel background agents (one per page/page-group, each independently briefed on the established voice and required to ground every claim in the actual current behavior of the relevant PHP class rather than assumption), then independently reviewed, verified, and shipped.
+- **Simple-template pillars** (`includes/admin/class-admin-ui.php`'s `render_x_frame_options()`/`render_x_content_type_options()`/`render_referrer_policy()`, plus `includes/admin/views/page-pillar-simple.php`): X-Frame-Options and X-Content-Type-Options intros expanded to explain the actual attack each stops (clickjacking via an invisible frame; MIME-sniffing letting an uploaded file get executed as code) rather than naming it without mechanism. Referrer-Policy was already at bar, left unchanged. The shared template gained a short framing paragraph explaining what "surface" (frontend/admin/login/API) means, previously only explained on the CSP Dashboard's Start Here tab.
+- **Information Masking / Cache-Control** (`page-information-masking.php`, `page-cache-control.php`): explained the concrete reconnaissance value each masked header denies an attacker; documented that X-Generator (WordPress's own version tag) is out of scope for this header-only pillar since it's emitted in feed content, not a header; explained the Readiness Check's manual-only, leave-last-good-result-on-failure behavior; made Cache-Control's core safety mechanism (a known caching plugin or acknowledged CDN always wins, emitting nothing rather than competing) visible up front instead of only appearing reactively in a warning banner.
+- **Permissions-Policy, HSTS, Reverse Tabnabbing, Scripts** (`page-permissions-policy.php`, `page-hsts.php`, `page-reverse-tabnabbing.php`, `page-scripts.php`): explained what refusing a browser feature actually buys (the browser refuses it before any permission prompt, no visitor interaction needed); strengthened HSTS's sticky-header warning with the Include Subdomains-specific risk (binds subdomains that don't exist yet or aren't HTTPS-ready, the moment a browser sees the header); added a warning notice to both Reverse Tabnabbing and External Scripts (Scripts page) that their Admin/Login/Api rows are configurable but structurally never take effect -- confirmed directly in `Content_Rewriter::request_exclusion_reason()`, which excludes those surfaces before either pillar's own per-surface check ever runs -- and confirmed by contrast that Internal Script Integrity, which hooks WordPress's own asset output directly rather than rewriting a completed response, genuinely is live on every surface.
+- **Cross-Origin** (`page-cross-origin.php`, covering CORP/XPCDP/COOP/COEP): added an orienting paragraph explaining the four headers are independent of each other and of CSP; explained CORP's actual threat (a cross-origin size/timing side-channel read of this site's own resources, XS-Leak/Spectre-class); documented -- confirmed against `class-activator.php`'s seeding logic -- that COOP and COEP ship pre-enabled in Enforce mode on every surface but at the no-op `unsafe-none` value, enough to satisfy a scanner's presence check but not providing real isolation until a stronger value is deliberately chosen.
+- **Continuous Intelligence** (`page-intelligence.php`): explained that a row on the Events tab is a deduplicated Finding, not a per-hit log, and that a match is never by itself proof of a block (that's the per-family Enforce setting on Traffic Controls); distinguished State (automatic recognition, overridden only by an explicit admin decision) from Classification (computed fresh per page load, never persisted, hence unsortable) on the Identities tab, and explained what promotes a claimed crawler identity to Verified (a network-data match, not just a User-Agent string); explained what the Vendors catalogue actually is and why built-in commercial-scanner rows are deliberately never seeded with guessed network ranges.
+- **Baseline & Drift** (`page-baseline.php`): explained exactly what a baseline captures (certificate state, per-surface CSP, header toggles, source classifications, first-party file hashes, WP core/theme/plugin versions) and its explicit scope limit (nothing external, like DNS or what a real browser receives); explained each drift risk tier in concrete terms so a fresh scan result reads as routine-vs-alarming immediately, including the specific gotcha that a legitimate certificate renewal always rates High with no Change Log correlation to explain it; explained the Approve/Mark Expected/Resolved disposition workflow and that history/change-log entries are informational only.
+- **Certificates** (`page-certificates.php`): reviewed and spot-checked against `Certificate_Store`/`Acme_Crypto`/`Certificate_Manager` -- already accurate and at the established bar from earlier work. No changes made.
+- One placement issue caught in review before shipping: a draft had referenced the internal PHP class name `Identity_Resolver` directly in user-facing copy on the Continuous Intelligence page -- fixed to plain language, matching every other page's convention of never naming an implementation class to the reader.
+- No behaviour change anywhere in this release -- explainer copy only, confirmed via the full test suite (2222 tests) and live rendering of every changed page/tab against a real WordPress bootstrap in Docker.
+
+## [2.9.95] - 2026-09-10
+
+### Fixed
+
+- `.roadmap/phase4_plan.md`'s note on the Traffic Controls retrofit (v2.9.94) described the page's other recent growth (Network Intelligence's new ASN/Geo-IP/Well-Known-Files/Network-Rules sub-tabs, landed via other work on `development`) as "unrelated work." User-corrected: that work was explicitly requested, not unrelated -- it just wasn't tracked in this document's own increment list. Reworded to attribute it correctly. Documentation only, no behaviour change.
+
+## [2.9.94] - 2026-09-09
+
+### Added
+
+- Phase 4G UI documentation retrofit, continued: Traffic Controls' Policy, IP Rules, and Blocks tabs gained explainer paragraphs matching the voice established on Settings/Overview (v2.9.67) and the CSP Dashboard (v2.9.69). The Network Intelligence, Detectors, and Custom Rules tabs on this same page already had this level of detail, written when those features originally shipped -- this closes the remaining gap on the page.
+- Policy tab: explains why each surface gets its own rate limit, what Observe vs. Enforce actually changes, and introduces the Warn -> Throttle -> Temporary block -> Extended block progressive ladder that the Blocks tab's Stage column and the Detectors tab's enforce-capable detectors both feed into -- previously only mentioned on the Detectors tab, never where the mode is actually set.
+- IP Rules tab: explains when to use Allow vs. Block, what a CIDR range is with a concrete worked example (`203.0.113.0/24` covers 256 addresses), and cross-references Network Rules (Network Intelligence tab) as the equivalent decision by ASN/country instead of by address.
+- Blocks tab: explains that this tab shows only what automatic detection has already done, what the Stage column means, and what Release vs. Make Permanent each actually change (Make Permanent converts an auto-expiring block into the functional equivalent of a manual IP Rules entry).
+- No behaviour change -- `<p class="description">` copy only. Confirmed live in Docker: all three tabs render without error via a real WordPress bootstrap (`wp-load.php` plus `wp-admin/includes/template.php` for `submit_button()`), with the new text present in the output.
+
+## [2.9.93] - 2026-09-09
+
+### Added
+
+- New `.github/workflows/development-build.yml`: on every push to `development`, builds the GitHub-channel ZIP (same build steps as `release-package.yml`, GitHub-channel only) and publishes/updates a single rolling pre-release at tag `development-latest` (title/notes include the plugin version and short commit SHA at build time). Gives a stable, bookmarkable download of "whatever's currently on development" for manual testing, without needing to find a specific PR's build artifact (which also already existed via `release-package.yml`'s own `pull_request` trigger, but expires after 30 days and isn't easily discoverable). The existing full CI matrix (`ci.yml`) already re-verifies every push to `development` independently; this workflow only builds and publishes, it does not re-run tests.
+
 ## [2.9.92] - 2026-09-09
 
 ### Fixed
