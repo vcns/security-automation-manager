@@ -22,6 +22,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Control', 'vcns-security-automation-manager' ); ?></h1>
 
+	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
+
 	<p>
 		<?php esc_html_e( '"Control" here means applying an explicitly permitted response: a header policy, a certificate action, or -- since Traffic Controls -- rate limiting and blocking. Every traffic-control surface starts in Observe mode and stays there until you explicitly switch it to Enforce.', 'vcns-security-automation-manager' ); ?>
 	</p>

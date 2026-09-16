@@ -945,3 +945,37 @@ details.wp-sam-filter-form form {
 .wp-sam-detectors-table td:nth-child(5) {
 	width: 240px;
 }
+
+/*
+ * Customer-Centred Administration Experience: the "Personal Preferences"
+ * link + presentation-depth indicator shown near the top of the five
+ * lifecycle pages, and the Welcome/editor page's own question groups.
+ */
+.wp-sam-personal-preferences {
+	display: flex;
+	justify-content: flex-end;
+	gap: 1em;
+	margin-top: -0.5em;
+	font-size: 0.9em;
+}
+
+.wp-sam-presentation-indicator {
+	color: #646970;
+}
+
+.wp-sam-welcome-question {
+	border: 1px solid #ccd0d4;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin: 1em 0;
+	background: #fff;
+}
+
+.wp-sam-welcome-question legend {
+	padding: 0 6px;
+}
+
+.wp-sam-welcome-actions {
+	display: flex;
+	gap: 0.5em;
+}

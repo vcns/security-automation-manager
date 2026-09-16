@@ -24,6 +24,8 @@ $intelligence_detector_count = count( Detector_Registry::keys() );
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Observe', 'vcns-security-automation-manager' ); ?></h1>
 
+	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
+
 	<p>
 		<?php esc_html_e( 'Collecting evidence -- request behaviour, browser policy violations, script and certificate changes -- without applying any control. Nothing here blocks or changes anything on its own.', 'vcns-security-automation-manager' ); ?>
 	</p>

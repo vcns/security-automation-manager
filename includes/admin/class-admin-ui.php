@@ -154,6 +154,7 @@ class Admin_UI {
 		add_action( 'admin_menu', array( $this, 'add_menu_pages' ) );
 		add_action( 'admin_head', array( $this, 'print_hidden_menu_css' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_init', array( $this, 'maybe_redirect_to_welcome' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_notices', array( $this, 'display_admin_notices' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WP_SAM_FILE ), array( $this, 'add_plugin_action_links' ) );
@@ -209,6 +210,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
 		add_action( 'admin_post_wp_sam_export_evidence', array( $this, 'handle_export_evidence' ) );
 		add_action( 'admin_post_wp_sam_dismiss_recommendation', array( $this, 'handle_dismiss_recommendation' ) );
+		add_action( 'admin_post_wp_sam_save_presentation_preferences', array( $this, 'handle_save_presentation_preferences' ) );
 		add_action( 'wp_ajax_wp_sam_manual_scan', array( $this, 'ajax_manual_scan' ) );
 		add_action( 'wp_ajax_wp_sam_approve_source', array( $this, 'ajax_approve_source' ) );
 		add_action( 'wp_ajax_wp_sam_deny_source', array( $this, 'ajax_deny_source' ) );
@@ -301,6 +303,21 @@ class Admin_UI {
 			'manage_options',
 			'security-automation-manager-verify',
 			array( $this, 'render_verify' )
+		);
+
+		// Welcome / Personal Preferences (Customer-Centred Administration
+		// Experience spec §4-§6): a per-user presentation-preference editor,
+		// not a sixth lifecycle stage -- hidden from the rendered left-nav
+		// the same CSS-only way as the technology-standard pages below, and
+		// reached via the "Personal Preferences" link on the five lifecycle
+		// pages or the first-run redirect in maybe_redirect_to_welcome().
+		add_submenu_page(
+			'security-automation-manager',
+			__( 'Personal Preferences', 'vcns-security-automation-manager' ),
+			__( 'Personal Preferences', 'vcns-security-automation-manager' ),
+			'manage_options',
+			'security-automation-manager-welcome',
+			array( $this, 'render_welcome' )
 		);
 
 		add_submenu_page(
@@ -474,6 +491,11 @@ class Admin_UI {
 	 */
 	public function print_hidden_menu_css(): void {
 		$hidden_slugs = array(
+			// Not a technology-standard page -- the Welcome/Personal
+			// Preferences editor (see add_menu_pages()) -- but hidden from
+			// the rendered nav for the same reason: it's reached by its own
+			// link/redirect, not meant to sit as a permanent nav entry.
+			'security-automation-manager-welcome',
 			'security-automation-manager-cache-control',
 			'security-automation-manager-certificates',
 			'security-automation-manager-intelligence',
@@ -527,6 +549,42 @@ class Admin_UI {
 		// Settings API supports more than one admin_init callback
 		// registering settings into the same options group. This file has
 		// no knowledge of what, if anything, that registration contains.
+	}
+
+	/**
+	 * First-run redirect for the Welcome / Personal Preferences page
+	 * (spec §4.2: "appear when a WordPress user first enters any SAM
+	 * administration area and has no stored SAM presentation preference
+	 * state"). Deliberately the only hook this behaviour needs -- every SAM
+	 * admin page shares the "security-automation-manager*" slug prefix, so
+	 * no individual render_*() method needs to know about onboarding state.
+	 *
+	 * Never redirects a request that couldn't reach a SAM page anyway (no
+	 * capability): that request already gets WordPress's own normal 403
+	 * handling further down the same admin.php load, and redirecting it to
+	 * yet another page it also can't use would only be confusing.
+	 */
+	public function maybe_redirect_to_welcome(): void {
+		if ( wp_doing_ajax() || wp_doing_cron() || ! is_admin() ) {
+			return;
+		}
+
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page-identity check, not a state-changing request.
+		if ( '' === $page || 0 !== strpos( $page, 'security-automation-manager' ) ) {
+			return;
+		}
+		if ( 'security-automation-manager-welcome' === $page ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		if ( Presentation_Preferences::has_completed_onboarding( get_current_user_id() ) ) {
+			return;
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-welcome' ) );
+		exit;
 	}
 
 	public function add_plugin_action_links( array $links ): array {
@@ -665,6 +723,7 @@ class Admin_UI {
 	private function plugin_page_hooks(): array {
 		return array(
 			'toplevel_page_security-automation-manager',
+			'security-automation-manager_page_security-automation-manager-welcome',
 			'security-automation-manager_page_security-automation-manager-observe',
 			'security-automation-manager_page_security-automation-manager-decide',
 			'security-automation-manager_page_security-automation-manager-control',
@@ -862,6 +921,23 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
 		}
 		require WP_SAM_DIR . 'includes/admin/views/page-verify.php';
+	}
+
+	/**
+	 * Renders the Welcome / Personal Preferences editor. $is_first_run only
+	 * changes the page's intro copy (view still shows the same four
+	 * questions either way) -- true when the current user has not yet
+	 * completed or skipped onboarding, so the view can greet a first-time
+	 * visitor differently from someone deliberately revisiting their
+	 * preferences later.
+	 */
+	public function render_welcome(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
+		}
+		$is_first_run = ! Presentation_Preferences::has_completed_onboarding( get_current_user_id() );
+		$wp_sam_prefs = Presentation_Preferences::get_for_user();
+		require WP_SAM_DIR . 'includes/admin/views/page-welcome.php';
 	}
 
 	public function render_referrer_policy(): void {
@@ -2253,6 +2329,42 @@ class Admin_UI {
 		);
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager&tab=recommendations' ) );
+		exit;
+	}
+
+	// ── Personal Preferences (Customer-Centred Administration Experience) ─────
+
+	/**
+	 * Saves or skips the current user's presentation preferences. Always
+	 * operates on get_current_user_id() -- the request can never target
+	 * another user's preferences (spec §16.3). Deliberately touches nothing
+	 * but the wp_sam_* user-meta keys Presentation_Preferences owns: no
+	 * option, pillar profile, or policy store is read or written here.
+	 */
+	public function handle_save_presentation_preferences(): void {
+		check_admin_referer( 'wp_sam_save_presentation_preferences' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage your preferences.', 'vcns-security-automation-manager' ) );
+		}
+
+		$user_id       = get_current_user_id();
+		$wp_sam_action = sanitize_key( wp_unslash( $_POST['wp_sam_action'] ?? '' ) );
+
+		if ( 'skip' === $wp_sam_action ) {
+			Presentation_Preferences::skip_for_user( $user_id );
+		} else {
+			Presentation_Preferences::save_for_user(
+				$user_id,
+				array(
+					'relationship'         => sanitize_key( wp_unslash( $_POST['relationship'] ?? '' ) ),
+					'security_familiarity' => sanitize_key( wp_unslash( $_POST['security_familiarity'] ?? '' ) ),
+					'presentation_depth'   => sanitize_key( wp_unslash( $_POST['presentation_depth'] ?? '' ) ),
+					'landing_emphasis'     => sanitize_key( wp_unslash( $_POST['landing_emphasis'] ?? '' ) ),
+				)
+			);
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager' ) );
 		exit;
 	}
 
