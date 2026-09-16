@@ -203,4 +203,34 @@ final class Event_Store {
 			)
 		);
 	}
+
+	/**
+	 * Total detections across every detector/surface/source active in the
+	 * last $since_hours -- backs the Customer-Centred Administration
+	 * Experience's Recent Activity strip (spec §9). Deliberately labelled
+	 * "detections," not "requests," on that strip: this sums each
+	 * qualifying row's occurrence_count exactly like occurrences_since()
+	 * does (same lifetime-cumulative-per-row caveat documented there), and
+	 * a single underlying request that matches more than one detector
+	 * family upserts into more than one row (fingerprint is detector_id +
+	 * surface + ip) -- so this total can legitimately exceed the number of
+	 * requests that actually occurred. Spec §9.1 requires exactly this
+	 * distinction: "A single request detected by multiple detector
+	 * families must not be presented as multiple suspicious requests unless
+	 * the label explicitly says 'detections'."
+	 */
+	public function total_occurrences_since( int $since_hours ): int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_request_events';
+		$since = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, $since_hours ) * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COALESCE(SUM(occurrence_count), 0) FROM {$table} WHERE last_seen_at >= %s",
+				$since
+			)
+		);
+	}
 }

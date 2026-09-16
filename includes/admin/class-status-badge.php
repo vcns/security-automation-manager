@@ -95,4 +95,43 @@ final class Status_Badge {
 
 		return '<span class="wp-sam-readiness-badge status-' . esc_attr( $status ) . '">' . esc_html( $label ) . '</span>';
 	}
+
+	/**
+	 * Renders one of the Customer-Centred Administration Experience's fixed
+	 * outcome states (Protected/Learning/Monitoring/Needs attention/Not in
+	 * use/Unavailable -- see WP_SAM\Admin\Protection_Status). Per spec §10.1,
+	 * "The UI shall not use colour alone to communicate state": every state
+	 * pairs a decorative, aria-hidden dashicon with a visible text label, so
+	 * the label -- not the icon or the colour -- carries the accessible name.
+	 *
+	 * @param string $state One of Protection_Status::STATE_* (an unrecognised
+	 *                      value still renders, with a neutral style).
+	 * @return string Pre-escaped HTML.
+	 */
+	public static function render_protection_state( string $state ): string {
+		$labels = array(
+			'protected'       => __( 'Protected', 'vcns-security-automation-manager' ),
+			'learning'        => __( 'Learning', 'vcns-security-automation-manager' ),
+			'monitoring'      => __( 'Monitoring', 'vcns-security-automation-manager' ),
+			'needs_attention' => __( 'Needs attention', 'vcns-security-automation-manager' ),
+			'not_in_use'      => __( 'Not in use', 'vcns-security-automation-manager' ),
+			'unavailable'     => __( 'Unavailable', 'vcns-security-automation-manager' ),
+		);
+		$icons  = array(
+			'protected'       => 'dashicons-yes-alt',
+			'learning'        => 'dashicons-book-alt',
+			'monitoring'      => 'dashicons-visibility',
+			'needs_attention' => 'dashicons-warning',
+			'not_in_use'      => 'dashicons-minus',
+			'unavailable'     => 'dashicons-editor-help',
+		);
+
+		$label = $labels[ $state ] ?? __( 'Unknown', 'vcns-security-automation-manager' );
+		$icon  = $icons[ $state ] ?? 'dashicons-editor-help';
+
+		return '<span class="wp-sam-protection-badge protection-state-' . esc_attr( $state ) . '">'
+			. '<span class="dashicons ' . esc_attr( $icon ) . '" aria-hidden="true"></span>'
+			. '<span class="wp-sam-protection-badge-label">' . esc_html( $label ) . '</span>'
+			. '</span>';
+	}
 }
