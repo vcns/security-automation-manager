@@ -20,7 +20,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\Admin\Action_Centre;
 use WP_SAM\Admin\Pillar_Registry;
+use WP_SAM\Admin\Presentation_Preferences;
+use WP_SAM\Admin\Protection_Status;
+use WP_SAM\Admin\Recent_Activity;
+use WP_SAM\Admin\Security_Scorecard;
 use WP_SAM\Admin\Status_Badge;
 use WP_SAM\Certificates\Certificate_Store;
 use WP_SAM\CSP\Automation_Config;
@@ -35,7 +40,7 @@ global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'overview';
-$allowed_tabs = array( 'overview', 'getting-started', 'health', 'recommendations', 'readiness', 'recovery', 'exceptions', 'updates', 'about' );
+$allowed_tabs = array( 'overview', 'getting-started', 'health', 'action-centre', 'recommendations', 'readiness', 'recovery', 'exceptions', 'updates', 'about' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'overview';
 }
@@ -53,6 +58,10 @@ $tab_help = array(
 	'health'          => array(
 		'label'       => __( 'Security Health', 'vcns-security-automation-manager' ),
 		'description' => __( 'A plain-language summary of security outcomes -- enforcement, drift, certificates, dependencies, and open exceptions -- plus an evidence export for reviews and audits.', 'vcns-security-automation-manager' ),
+	),
+	'action-centre'   => array(
+		'label'       => __( 'Action Centre', 'vcns-security-automation-manager' ),
+		'description' => __( 'Everything that currently needs your review or a decision, gathered from across SAM into one list -- what was found, why it matters, what SAM recommends, and what will happen if you act on it.', 'vcns-security-automation-manager' ),
 	),
 	'recommendations' => array(
 		'label'       => __( 'Recommendations', 'vcns-security-automation-manager' ),
@@ -90,11 +99,56 @@ if ( 'recommendations' === $tab ) {
 	$recommendations = ( new Recommendation_Engine() )->get_recommendations();
 }
 
+// ── Action Centre tab data ───────────────────────────────────────────────────
+if ( 'action-centre' === $tab ) {
+	$action_centre_items = ( new Action_Centre() )->items();
+}
+
 // ── Overview tab data ────────────────────────────────────────────────────────
 // Scoped to the Overview tab only -- Pillar_Registry::fetch_rows() and the
 // Certificate_Store/Certificate_Manager calls below have no reason to run
 // when e.g. the Updates or Recovery tab is what's actually being rendered.
 if ( 'overview' === $tab ) {
+	// Customer-Centred Administration Experience: scorecard, recent
+	// activity, outcome-oriented protection status, and the Action Centre
+	// preview -- rendered above the existing per-layer tables below, whose
+	// technical detail remains exactly as it was (spec §13.7: existing
+	// specialist views stay available, nothing here replaces them).
+	$wp_sam_home_prefs        = Presentation_Preferences::get_for_user();
+	$wp_sam_scorecard_counts  = ( new Security_Scorecard() )->counts();
+	$wp_sam_activity_metrics  = ( new Recent_Activity() )->metrics();
+	$wp_sam_activity_period   = ( new Recent_Activity() )->period_label();
+	$wp_sam_protection_areas  = ( new Protection_Status() )->areas();
+	$wp_sam_action_items      = ( new Action_Centre() )->items();
+	$wp_sam_action_centre_url = add_query_arg( 'tab', 'action-centre', $base_url );
+
+	// Landing-emphasis ordering (spec §5.4): affects order/emphasis only,
+	// and a critical item always overrides it -- an urgent condition must
+	// never be pushed down the page by a stored preference.
+	$wp_sam_has_critical_action = (bool) array_filter(
+		$wp_sam_action_items,
+		static fn( array $item ): bool => 'critical' === $item['risk']
+	);
+	$wp_sam_home_section_order  = array( 'activity', 'protection', 'action' );
+	if ( ! $wp_sam_has_critical_action ) {
+		switch ( $wp_sam_home_prefs['landing_emphasis'] ) {
+			case 'attention':
+				$wp_sam_home_section_order = array( 'action', 'protection', 'activity' );
+				break;
+			case 'activity':
+				$wp_sam_home_section_order = array( 'activity', 'protection', 'action' );
+				break;
+			case 'protection':
+			case 'technical':
+				$wp_sam_home_section_order = array( 'protection', 'activity', 'action' );
+				break;
+			default:
+				$wp_sam_home_section_order = array( 'activity', 'protection', 'action' );
+		}
+	} else {
+		$wp_sam_home_section_order = array( 'action', 'activity', 'protection' );
+	}
+
 	$surfaces = Automation_Config::SURFACES;
 
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -210,6 +264,26 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 	<h1><?php esc_html_e( 'Security Automation Manager', 'vcns-security-automation-manager' ); ?></h1>
 
 	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
+
+	<?php if ( 'overview' === $tab ) : ?>
+	<!-- ── Customer-Centred Administration Experience: scorecard + home sections ── -->
+		<?php require WP_SAM_DIR . 'includes/admin/views/partials/security-scorecard.php'; ?>
+		<?php
+		foreach ( $wp_sam_home_section_order as $wp_sam_section ) {
+			switch ( $wp_sam_section ) {
+				case 'activity':
+					require WP_SAM_DIR . 'includes/admin/views/partials/recent-activity.php';
+					break;
+				case 'protection':
+					require WP_SAM_DIR . 'includes/admin/views/partials/protection-status.php';
+					break;
+				case 'action':
+					require WP_SAM_DIR . 'includes/admin/views/partials/action-centre-preview.php';
+					break;
+			}
+		}
+		?>
+	<?php endif; ?>
 
 	<!-- ── Tabs ──────────────────────────────────────────────────────────── -->
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Overview sections', 'vcns-security-automation-manager' ); ?>">
@@ -705,6 +779,64 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		</p>
 		<?php submit_button( __( 'Download Evidence Export', 'vcns-security-automation-manager' ), 'primary', '', false ); ?>
 	</form>
+
+	<?php elseif ( 'action-centre' === $tab ) : ?>
+
+	<p>
+		<?php esc_html_e( 'Everything below is drawn from evidence SAM already collects elsewhere -- nothing here is a new signal source, and nothing is ever applied automatically. Each item explains what was found, why it matters, what SAM recommends, and what will happen if you act on it.', 'vcns-security-automation-manager' ); ?>
+	</p>
+
+		<?php if ( empty( $action_centre_items ) ) : ?>
+	<p class="description"><?php esc_html_e( 'Nothing currently needs your attention.', 'vcns-security-automation-manager' ); ?></p>
+	<?php else : ?>
+		<?php
+		$wp_sam_ac_risk_status = array(
+			'critical' => 'fail',
+			'high'     => 'warning',
+			'medium'   => 'warning',
+			'low'      => 'info',
+		);
+		$wp_sam_ac_risk_label  = array(
+			'critical' => __( 'Critical risk', 'vcns-security-automation-manager' ),
+			'high'     => __( 'High risk', 'vcns-security-automation-manager' ),
+			'medium'   => __( 'Medium risk', 'vcns-security-automation-manager' ),
+			'low'      => __( 'Low risk', 'vcns-security-automation-manager' ),
+		);
+		?>
+		<?php foreach ( $action_centre_items as $wp_sam_ac_item ) : ?>
+		<div class="wp-sam-action-centre-item">
+			<p>
+				<?php echo Status_Badge::render_outcome( $wp_sam_ac_risk_status[ $wp_sam_ac_item['risk'] ] ?? 'info', $wp_sam_ac_risk_label[ $wp_sam_ac_item['risk'] ] ?? ucfirst( $wp_sam_ac_item['risk'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
+				<strong><?php echo esc_html( $wp_sam_ac_item['what_found'] ); ?></strong>
+			</p>
+			<p class="description"><?php echo esc_html( $wp_sam_ac_item['why_it_matters'] ); ?></p>
+			<p>
+				<?php
+				printf(
+					/* translators: %s: the recommended action */
+					esc_html__( 'Recommended: %s', 'vcns-security-automation-manager' ),
+					esc_html( $wp_sam_ac_item['recommended_action'] )
+				);
+				?>
+			</p>
+			<?php if ( '' !== $wp_sam_ac_item['what_will_happen'] ) : ?>
+			<p class="description"><?php echo esc_html( $wp_sam_ac_item['what_will_happen'] ); ?></p>
+			<?php endif; ?>
+			<p>
+				<a class="button button-secondary" href="<?php echo esc_url( $wp_sam_ac_item['evidence_url'] ); ?>"><?php esc_html_e( 'Technical details', 'vcns-security-automation-manager' ); ?></a>
+				<?php if ( $wp_sam_ac_item['dismissible'] && null !== $wp_sam_ac_item['key'] ) : ?>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-flex;gap:0.3em;align-items:center;margin-left:0.5em;">
+					<?php wp_nonce_field( 'wp_sam_dismiss_recommendation' ); ?>
+					<input type="hidden" name="action" value="wp_sam_dismiss_recommendation" />
+					<input type="hidden" name="recommendation_key" value="<?php echo esc_attr( (string) $wp_sam_ac_item['key'] ); ?>" />
+					<input type="text" name="reason" placeholder="<?php esc_attr_e( 'Reason (required)', 'vcns-security-automation-manager' ); ?>" required style="width:14em;" />
+					<?php submit_button( __( 'Dismiss', 'vcns-security-automation-manager' ), 'secondary small', '', false ); ?>
+				</form>
+				<?php endif; ?>
+			</p>
+		</div>
+		<?php endforeach; ?>
+	<?php endif; ?>
 
 	<?php elseif ( 'recommendations' === $tab ) : ?>
 

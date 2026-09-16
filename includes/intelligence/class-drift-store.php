@@ -115,6 +115,30 @@ final class Drift_Store {
 		);
 	}
 
+	/**
+	 * Count of drift rows first detected within the last $since_hours --
+	 * backs the Customer-Centred Administration Experience's Recent
+	 * Activity "security changes detected" metric (spec §9). Filters on
+	 * first_seen_at, not last_seen_at: a row's first_seen_at is set once on
+	 * insert and never touched again (see record()'s own docblock), so this
+	 * counts newly-detected changes in the window, not still-open changes
+	 * from any time that merely matched again recently.
+	 */
+	public function count_detected_since( int $since_hours ): int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_drift_records';
+		$since = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, $since_hours ) * HOUR_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$table} WHERE first_seen_at >= %s",
+				$since
+			)
+		);
+	}
+
 	/** Marks a still-open drift row resolved -- only Drift_Scanner calls this, when an item reverts to match the baseline. */
 	public function resolve( string $category, string $surface, string $item_key ): void {
 		global $wpdb;
