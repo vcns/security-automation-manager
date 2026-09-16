@@ -19,6 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Verify', 'vcns-security-automation-manager' ); ?></h1>
 
+	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
+
 	<p>
 		<?php esc_html_e( 'Confirms state locally -- what this server is configured to send, and whether it has drifted from an approved baseline. Independently confirming what an external visitor actually receives is planned for a future phase and is not available yet.', 'vcns-security-automation-manager' ); ?>
 	</p>

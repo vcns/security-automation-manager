@@ -6,6 +6,26 @@ under the real filenames below -- the placeholders (`admin-overview-page.png`,
 `csp-profiles-tab.png`, etc.) never matched an actual file and rendered as
 broken images on the live site until this was fixed.
 
+## Stale -- needs recapture
+
+These are still embedded (their captions have been corrected so they no
+longer claim something false), but the pixels themselves are now materially
+outdated and should be retaken against a running 2.10.0+ install:
+
+| Filename | Used in | Why it's stale |
+|---|---|---|
+| `sam-overview.png` | user-guide.html (First 30 minutes) | Predates the Customer-Centred Administration Experience (2.10.0): doesn't show the new scorecard, Recent Activity strip, Protection Status table, or Action Centre preview that now render above this same Overview tab. No longer "the front door after activation" -- the Welcome page and the Home page's own scorecard/Protection Status are now the first things a user sees; this screenshot only shows the detailed per-pillar table further down the same page. |
+| `sam-navigation.png` | index.html (Dashboard) | Shows every pillar submenu expanded directly in the left-hand sidebar -- an older admin-menu architecture. The current menu shows only five entries (Settings, Observe, Decide, Control, Verify); every pillar and Certificates is reached via a link from Settings instead of its own sidebar item. Predates this release; flagged here because it was reviewed alongside the 2.10.0 documentation pass. |
+
+New screenshots to capture for 2.10.0 (not yet taken, so not referenced by
+any page yet -- add rows above and to "Wired into a page" below once they
+exist):
+
+- The Welcome / Personal Preferences page (all four questions).
+- Settings' new Home composition: scorecard, Recent Activity strip, Protection Status table, and Action Centre preview, above the existing tab bar.
+- The Action Centre tab (a populated item, showing What found / Why it matters / Recommended / What will happen / Technical details).
+- The current five-item left-hand admin menu, to replace `sam-navigation.png`.
+
 ## Wired into a page
 
 | Filename | Used in |

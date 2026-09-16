@@ -16,7 +16,7 @@
       <div class='hero-copy'>
         <p class='eyebrow'>FAQ</p>
         <h1>Questions before rolling out security headers on a live WordPress site.</h1>
-        <p class='lede'>These answers are written for administrators who need practical guidance across all ten pillars, not CSP theory alone.</p>
+        <p class='lede'>These answers are written for administrators who need practical guidance across all twelve pillars, not CSP theory alone.</p>
         <div class='hero-actions'>
           <a class='button primary' href='index.html'>Back to help home</a>
           <a class='button secondary' href='user-guide.html'>Read the user guide</a>
@@ -43,6 +43,12 @@
             <li><a href='user-guide.html'>User guide</a></li>
             <li><a href='faq.html' aria-current='page'>FAQ</a></li>
             <li><a href='https://github.com/vcns/security-automation-manager'>Repository</a></li>
+          </ul>
+        </div>
+        <div class='sidebar-group'>
+          <h3>Personal Preferences &amp; Home page</h3>
+          <ul>
+            <li><a href='#personal-preferences'>Welcome, depth &amp; Home page</a></li>
           </ul>
         </div>
         <div class='sidebar-group'>
@@ -104,9 +110,54 @@
         </div>
       </section>
 
+      <section id='personal-preferences' class='section'>
+        <p class='section-label'>Personal Preferences &amp; Home page</p>
+        <h2>The Welcome page, presentation depth, and the new Home experience.</h2>
+        <p class='section-note'>Edit these anytime from the "Personal Preferences" link near the top of <strong>Settings</strong>, <strong>Observe</strong>, <strong>Decide</strong>, <strong>Control</strong>, and <strong>Verify</strong>.</p>
+        <div class='faq-list'>
+          <article class='faq-item'>
+            <h3>What is the Welcome page, and can I skip it?</h3>
+            <p>It's a one-time, four-question page that appears the first time any WordPress user opens the plugin, asking your relationship to the site, security familiarity, presentation depth, and what to see first. Yes, it's fully skippable -- click <strong>Skip for now</strong> and the plugin uses Balanced presentation and an overall-status view by default. It never reappears automatically and never blocks access to anything.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does anything on the Welcome page change how my site is protected?</h3>
+            <p>No. It only changes what you personally see and how it's explained -- it has no toggle for any security control, automation setting, or policy/certificate configuration. Those live exactly where they always have.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Are these preferences shared with other administrators on the same site?</h3>
+            <p>No. They're stored per WordPress user, not site-wide. Two administrators can each choose a different presentation depth without affecting each other or the site's actual configuration.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What's the difference between Simple, Balanced, and Technical?</h3>
+            <p>They control how much technical detail is visible by default, never what's true. Simple leads with plain-language outcomes; Balanced (the default) adds recognisable technical terminology alongside them; Technical expands every "Technical details" disclosure automatically. Every depth can reach the same underlying evidence -- Simple mode means less technical presentation, not less visibility of risk, and critical warnings are always fully visible regardless of depth.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What do the Security Scorecard's Protected / Learning / Needs attention numbers mean?</h3>
+            <p><strong>Protected</strong> counts controls actively enforcing right now. <strong>Learning</strong> counts controls collecting evidence or monitoring without yet enforcing. <strong>Needs attention</strong> is the number of open Action Centre items. A control that's intentionally not in use (see Protection Status below) never counts toward any of the three -- it's not a failure, and it doesn't inflate Protected either. It's factual counts, not a score out of 100.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Why does Recent Activity show "Detections" instead of a total request count?</h3>
+            <p>No store in this plugin reliably counts every request it has ever seen -- only requests a detector actually flags are ever recorded. Showing an invented or approximate total would misrepresent real traffic volume, so it's left out entirely. "Detections" is the honest number available: every detector match in the last 24 hours. Because one request can match more than one detector, this can be a higher number than the actual request count -- that's exactly why it's labelled "Detections," not "requests."</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What are the six Protection Status states?</h3>
+            <p><strong>Protected</strong> (actively enforcing), <strong>Learning</strong> (collecting evidence in report-only/observation mode), <strong>Monitoring</strong> (watching without enforcing), <strong>Needs attention</strong> (needs your review), <strong>Not in use</strong> (deliberately not configured, e.g. your host manages TLS instead -- never a failure), and <strong>Unavailable</strong> (the capability can't run in this environment, e.g. a missing PHP extension -- different from a deliberate choice not to use it).</p>
+          </article>
+          <article class='faq-item'>
+            <h3>How is the Action Centre different from the Recommendations tab?</h3>
+            <p>It isn't a replacement -- it's the same Recommendations Engine and evidence, reused and presented as one consolidated list (plus the CSP source review queue and unclassified dependencies) so you don't have to know which subsystem an issue lives in. The Recommendations tab, and every technical page the Action Centre links out to (CSP's For Review and Policy Changes, Baseline &amp; Drift, Scripts, Certificates, and so on), still work exactly as before.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Where do I change my preferences after the first visit?</h3>
+            <p>Click <strong>Personal Preferences</strong> near the top of Settings, Observe, Decide, Control, or Verify. It opens the same four-question page, pre-filled with your current answers.</p>
+          </article>
+        </div>
+      </section>
+
       <section id='rollout' class='section'>
         <p class='section-label'>Rollout</p>
         <h2>Safe deployment questions.</h2>
+        <p class='section-note'>Mode (Report-only/Enforce) and the promotion gate live on <strong>Security Automation Manager -> CSP -> Profiles</strong>, per surface.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Will report-only mode block anything?</h3>
@@ -130,7 +181,7 @@
           </article>
           <article class='faq-item'>
             <h3>Why is the enforce button blocked?</h3>
-            <p>The promotion gate has failed. Check approved inventory, recent violations, and temporary override status for the surface.</p>
+            <p>The promotion gate has failed. On <strong>Security Automation Manager -> CSP -> Profiles</strong>, check approved inventory, recent violations (<strong>-> Violations</strong>), and temporary override status for the surface.</p>
           </article>
           <article class='faq-item'>
             <h3>How long should I stay in report-only mode?</h3>
@@ -142,6 +193,7 @@
       <section id='approvals' class='section'>
         <p class='section-label'>Approvals</p>
         <h2>Source inventory and policy decisions.</h2>
+        <p class='section-note'>Pending decisions (approve/reject) are made on <strong>Security Automation Manager -> CSP -> For Review</strong>; the resulting append-only decision ledger, including Undo, is on <strong>-> Policy Changes</strong>.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Should I approve every discovered source?</h3>
@@ -181,6 +233,7 @@
       <section id='violations' class='section'>
         <p class='section-label'>Violations</p>
         <h2>Browser reports and learning behaviour.</h2>
+        <p class='section-note'>Reports and occurrence counts are reviewed on <strong>Security Automation Manager -> CSP -> Violations</strong>; the reporting-endpoint URL and retention period are set on <strong>-> Settings</strong>.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Where are violation reports stored?</h3>
@@ -215,19 +268,28 @@
 
       <section id='other-pillars' class='section'>
         <p class='section-label'>Other pillars</p>
-        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and the four cross-origin/legacy headers.</h2>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, and the four cross-origin/legacy headers.</h2>
+        <p class='section-note'>None of these eleven pillars appear in the left-hand admin sidebar -- each has its own page, but it's reached with a "Manage" link from <strong>Security Automation Manager -> Settings -> Overview</strong> (or, for the two Cross-Origin Policies tabs, a single <strong>-> Cross-Origin Policies</strong> page), not by finding it in the menu directly.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What other headers does the plugin manage besides CSP?</h3>
-            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies. Each is configured per surface (frontend, admin, login, API) from its own page under the Security Automation Manager top-level menu.</p>
+            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies. Each is configured per surface (frontend, admin, login, API), reached from a "Manage" link on <strong>Security Automation Manager -> Settings -> Overview</strong> -- see the note above.</p>
           </article>
           <article class='faq-item'>
-            <h3>Do these nine pillars have a report-only mode like CSP?</h3>
-            <p>Seven of them, no -- X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies are each either sent exactly as configured, or not sent at all, with no intermediate learning state to roll through. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the exception: each has its own Mode selector (Disabled, Report-Only, Enforce) and a Report-Only Evidence table showing violations observed via the browser Reporting API over the last 7 days.</p>
+            <h3>Do these eleven pillars have a report-only mode like CSP?</h3>
+            <p>Nine of them, no -- X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, Cross-Origin-Resource-Policy, and X-Permitted-Cross-Domain-Policies are each either sent exactly as configured, or not sent at all, with no intermediate learning state to roll through. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the exception: each has its own Mode selector (Disabled, Report-Only, Enforce) and a Report-Only Evidence table showing violations observed via the browser Reporting API over the last 7 days.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Is Cache-Control enabled by default like the other pillars?</h3>
+            <p>No -- it's the one exception. WordPress core already sends a safe Cache-Control on wp-admin and wp-login.php, so this pillar ships disabled to avoid silently changing your site's frontend caching behaviour on upgrade. If you enable it and a caching plugin or CDN is already active, this plugin defers to that instead of sending a competing value.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does Information Masking's Server-header removal always work?</h3>
+            <p>Not guaranteed -- on most hosts, the Server header is set by the web server (Apache/Nginx/LiteSpeed) before PHP ever runs, which this plugin cannot override. X-Powered-By and X-Pingback removal is reliable since WordPress/PHP set those. <strong>Security Automation Manager -> Information Masking</strong> includes a live self-probe that reports whether Server removal actually took effect on this install; where it doesn't, host-level configuration (Apache <code>ServerTokens</code>/<code>ServerSignature</code>, Nginx <code>server_tokens off;</code>) is the fallback.</p>
           </article>
           <article class='faq-item'>
             <h3>Why don't they have a discovery workflow or automation like CSP does?</h3>
-            <p>They're single-value or small-allowlist headers with nothing to discover: there's no equivalent of "external sources this page happens to load." CSP's discovery, risk-scoring, and approval workflow exist because a CSP policy has to enumerate every legitimate external host; these nine pillars don't.</p>
+            <p>They're single-value or small-allowlist headers with nothing to discover: there's no equivalent of "external sources this page happens to load." CSP's discovery, risk-scoring, and approval workflow exist because a CSP policy has to enumerate every legitimate external host; these eleven pillars don't.</p>
           </article>
           <article class='faq-item'>
             <h3>Does X-Frame-Options duplicate CSP's frame-ancestors directive?</h3>
@@ -271,6 +333,7 @@
       <section id='content-rewrites' class='section'>
         <p class='section-label'>Content rewrite protections</p>
         <h2>Reverse Tabnabbing, External Scripts, and Internal Script Integrity.</h2>
+        <p class='section-note'>Reverse Tabnabbing is <strong>Security Automation Manager -> Reverse Tabnabbing</strong>; External Scripts and Internal Script Integrity are the External and Internal tabs on <strong>-> Scripts</strong>. Neither appears in the left-hand sidebar -- both are reached via a "Manage" link on <strong>-> Settings -> Overview</strong>.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>How are these different from the header pillars?</h3>
@@ -286,7 +349,7 @@
           </article>
           <article class='faq-item'>
             <h3>Does this plugin generate Subresource Integrity hashes for me?</h3>
-            <p>For third-party scripts, no, and deliberately so -- computing a hash by fetching the remote URL would defeat the point of SRI, since a compromised origin would just have its tampered file hashed and trusted. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust. For your own theme/plugin/core files it's different: Internal Script Integrity (Scripts page, Internal tab) reads the exact local file this site is about to serve and computes its hash automatically, since there's no third party in that loop to defeat SRI's trust model.</p>
+            <p>For third-party scripts, no, and deliberately so -- computing a hash by fetching the remote URL would defeat the point of SRI, since a compromised origin would just have its tampered file hashed and trusted. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust. For your own theme/plugin/core files it's different: Internal Script Integrity (<strong>Security Automation Manager -> Scripts -> Internal</strong> tab) reads the exact local file this site is about to serve and computes its hash automatically, since there's no third party in that loop to defeat SRI's trust model.</p>
           </article>
           <article class='faq-item'>
             <h3>What's stored in the External Scripts inventory?</h3>
@@ -336,11 +399,11 @@
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Does the plugin work without payment?</h3>
-            <p>Mostly, yes. All ten pillars, CSP's report-only rollout, discovery, violation reporting, policy-change review, and three of the four CSP automation modes (Manual, Automatic with medium+high approvals, Automatic with high approvals only) are free in every build, with no payment or remote entitlement checks. The exception is <strong>Fully Automatic</strong> CSP mode -- zero-review auto-apply -- which requires an active subscription: <strong>£1.99/month or £19.99/year</strong>. See the user guide's <a href='user-guide.html#automation-tiers'>Automation tiers</a> section.</p>
+            <p>Mostly, yes. All twelve pillars, CSP's report-only rollout, discovery, violation reporting, policy-change review, and three of the four CSP automation modes (Manual, Automatic with medium+high approvals, Automatic with high approvals only) are free in every build, with no payment or remote entitlement checks. The exception is <strong>Fully Automatic</strong> CSP mode -- zero-review auto-apply -- which requires an active subscription: <strong>£1.99/month or £19.99/year</strong>. See the user guide's <a href='user-guide.html#automation-tiers'>Automation tiers</a> section.</p>
           </article>
           <article class='faq-item'>
             <h3>What happens if I select Fully Automatic without a subscription?</h3>
-            <p>The surface is quietly kept on Automatic (high approvals only) instead -- it doesn't fail, error, or partially apply. The Settings tab marks the option "(requires upgrade)" and, where a checkout flow is available in your build, shows an Upgrade button.</p>
+            <p>The surface is quietly kept on Automatic (high approvals only) instead -- it doesn't fail, error, or partially apply. <strong>Security Automation Manager -> CSP -> Settings</strong> marks the option "(requires upgrade)" and, where a checkout flow is available in your build, shows an Upgrade button there.</p>
           </article>
           <article class='faq-item'>
             <h3>Does the plugin use a custom update endpoint?</h3>
@@ -348,7 +411,7 @@
           </article>
           <article class='faq-item'>
             <h3>Does the plugin contact a licensing service?</h3>
-            <p>Only if you use the Upgrade button to start a checkout for Fully Automatic mode, and only where that flow is available in your build. Nothing else described on this site contacts a third-party service for licensing, telemetry, or remote product configuration.</p>
+            <p>Only if you use the Upgrade button on <strong>Security Automation Manager -> CSP -> Settings</strong> to start a checkout for Fully Automatic mode, and only where that flow is available in your build. Nothing else described on this site contacts a third-party service for licensing, telemetry, or remote product configuration.</p>
           </article>
           <article class='faq-item'>
             <h3>Are CSP reports sent to VCNS or another provider?</h3>
@@ -387,14 +450,15 @@
       <section id='troubleshooting' class='section'>
         <p class='section-label'>Troubleshooting</p>
         <h2>Fast answers during incidents.</h2>
+        <p class='section-note'>Mode is changed on <strong>Security Automation Manager -> CSP -> Profiles</strong>; evidence to act on is reviewed on <strong>-> Violations</strong> and <strong>-> Policy Changes</strong>. Every non-CSP pillar is reverted the same way -- its own page, reached via a "Manage" link on <strong>-> Settings -> Overview</strong> -- there's no report-only mode to fall back to, just change the value back.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>My site broke after I enabled enforce mode. What should I do?</h3>
-            <p>Return the affected surface to report-only. Review the Violations tab. Approve only the required sources or hashes. Retest before enabling enforce mode again.</p>
+            <p>On <strong>Security Automation Manager -> CSP -> Profiles</strong>, return the affected surface to report-only. Review <strong>-> Violations</strong>. Approve only the required sources or hashes. Retest before enabling enforce mode again.</p>
           </article>
           <article class='faq-item'>
             <h3>I cannot access wp-admin after changing CSP. What now?</h3>
-            <p>Use an alternative administrator route or database access to return the admin surface to report-only. Then review recent violations and policy changes.</p>
+            <p>Use an alternative administrator route or database access to return the admin surface to report-only on <strong>Security Automation Manager -> CSP -> Profiles</strong>. Then review recent violations (<strong>-> Violations</strong>) and policy changes (<strong>-> Policy Changes</strong>).</p>
           </article>
           <article class='faq-item'>
             <h3>The manual scan finds no sources. Is that wrong?</h3>

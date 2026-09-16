@@ -945,3 +945,176 @@ details.wp-sam-filter-form form {
 .wp-sam-detectors-table td:nth-child(5) {
 	width: 240px;
 }
+
+/*
+ * Customer-Centred Administration Experience: the "Personal Preferences"
+ * link + presentation-depth indicator shown near the top of the five
+ * lifecycle pages, and the Welcome/editor page's own question groups.
+ */
+.wp-sam-personal-preferences {
+	display: flex;
+	justify-content: flex-end;
+	gap: 1em;
+	margin-top: -0.5em;
+	font-size: 0.9em;
+}
+
+.wp-sam-presentation-indicator {
+	color: #646970;
+}
+
+.wp-sam-welcome-question {
+	border: 1px solid #ccd0d4;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin: 1em 0;
+	background: #fff;
+}
+
+.wp-sam-welcome-question legend {
+	padding: 0 6px;
+}
+
+.wp-sam-welcome-actions {
+	display: flex;
+	gap: 0.5em;
+}
+
+/*
+ * Security scorecard (spec §8): three clickable tiles above the tab
+ * navigation. Real <a> elements throughout -- see personal-preferences-
+ * link's own convention -- with the accessible name carried by a
+ * screen-reader-text child, not by colour.
+ */
+.wp-sam-scorecard {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 1em 0;
+}
+
+.wp-sam-scorecard-tile {
+	flex: 1 1 200px;
+	min-width: 160px;
+	border: 1px solid #ccd0d4;
+	border-radius: 4px;
+	padding: 16px;
+	background: #fff;
+	text-decoration: none;
+	text-align: center;
+}
+
+.wp-sam-scorecard-tile:hover,
+.wp-sam-scorecard-tile:focus {
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.wp-sam-scorecard-value {
+	display: block;
+	font-size: 2em;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.wp-sam-scorecard-label {
+	display: block;
+	font-size: 0.95em;
+}
+
+.wp-sam-scorecard-tile--attention.wp-sam-scorecard-tile--has-items {
+	border-color: #dba617;
+	background: #fcf9e8;
+}
+
+.wp-sam-recent-activity {
+	margin: 1.5em 0;
+}
+
+/*
+ * Protection Status six-state badges (spec §10.1): icon + text always
+ * paired, never colour alone.
+ */
+.wp-sam-protection-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+}
+
+.wp-sam-protection-badge .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+.protection-state-protected .dashicons {
+	color: #00a32a;
+}
+
+.protection-state-needs_attention .dashicons {
+	color: #d63638;
+}
+
+.protection-state-learning .dashicons,
+.protection-state-monitoring .dashicons {
+	color: #2271b1;
+}
+
+.protection-state-not_in_use .dashicons,
+.protection-state-unavailable .dashicons {
+	color: #646970;
+}
+
+.wp-sam-action-centre-preview,
+.wp-sam-protection-status {
+	margin: 1.5em 0;
+}
+
+.wp-sam-action-centre-item {
+	border: 1px solid #ccd0d4;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin-bottom: 1em;
+	background: #fff;
+}
+
+@media (max-width: 782px) {
+	.wp-sam-scorecard {
+		flex-direction: column;
+	}
+
+	.wp-sam-stat-row {
+		flex-direction: column;
+	}
+}
+
+/*
+ * Progressive disclosure (spec §12): the technical name is always present
+ * in the markup (never removed for Simple users -- only de-emphasised),
+ * and every <details> "Technical details" block follows the same
+ * treatment regardless of which section it's in.
+ */
+.wp-sam-technical-name {
+	color: #646970;
+	font-weight: normal;
+	font-size: 0.9em;
+}
+
+.wp-sam-depth-technical .wp-sam-technical-name {
+	color: inherit;
+	font-weight: 600;
+}
+
+.wp-sam-protection-status details,
+.wp-sam-action-centre-item details {
+	margin-top: 0.5em;
+}
+
+.wp-sam-protection-status details code,
+.wp-sam-action-centre-item details code {
+	display: block;
+	margin-top: 0.3em;
+	padding: 8px;
+	background: #f6f7f7;
+	border-radius: 3px;
+	font-size: 0.9em;
+}

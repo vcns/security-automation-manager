@@ -106,6 +106,68 @@ class PageOverviewTest extends TestCase {
 		$this->assertStringContainsString( 'Issued', $output );
 	}
 
+	private function render_tab( string $tab ): string {
+		$_GET['tab'] = $tab;
+
+		$plugin = \WP_SAM\Plugin::instance();
+		// The overview tab's own cert-status logic (page-overview.php,
+		// pre-existing, not part of this change) reads $plugin->cert_manager
+		// ->last_run() -- Plugin::instance() alone never runs bootstrap(), so
+		// this typed property is otherwise uninitialized here. last_run()
+		// only reads a plain option, never its injected collaborators, so an
+		// uninitialized-but-typed-safe instance (no constructor run) is
+		// sufficient for this test without needing a real Certificate_Store/
+		// Challenge_Http/Deployer/Audit_Log chain.
+		if ( ! isset( $plugin->cert_manager ) ) {
+			$plugin->cert_manager = ( new \ReflectionClass( \WP_SAM\Certificates\Certificate_Manager::class ) )->newInstanceWithoutConstructor();
+		}
+		// Same reasoning: the overview tab's Layer 1 automation-mode badges
+		// read Automation_Mode_Registry, normally primed once by
+		// Plugin::bootstrap() (never run here). Idempotent -- safe alongside
+		// whatever state other test files' own reset()/register_defaults()
+		// calls leave the shared static registry in.
+		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
+		$admin_ui = new \WP_SAM\Admin\Admin_UI( $plugin );
+
+		ob_start();
+		$admin_ui->render_overview();
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		return $output;
+	}
+
+	public function test_overview_tab_renders_scorecard_and_zero_state_cleanly_on_a_fresh_install(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output = $this->render_tab( 'overview' );
+
+		$this->assertStringContainsString( 'wp-sam-scorecard', $output );
+		$this->assertStringContainsString( 'Protected', $output );
+		$this->assertStringContainsString( 'Learning', $output );
+		$this->assertStringContainsString( 'Needs attention', $output );
+		$this->assertStringContainsString( 'Recent activity', $output );
+		$this->assertStringContainsString( 'Protection status', $output );
+		// A quiet fresh install has nothing open -- no artificial task invented.
+		$this->assertStringContainsString( 'Nothing currently needs your attention.', $output );
+	}
+
+	public function test_action_centre_tab_appears_in_nav_and_shows_empty_state_when_quiet(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output = $this->render_tab( 'action-centre' );
+
+		$this->assertStringContainsString( 'Action Centre', $output );
+		$this->assertStringContainsString( 'Nothing currently needs your attention.', $output );
+	}
+
 	private function render_recommendations(): string {
 		$_GET['tab'] = 'recommendations';
 

@@ -25,8 +25,9 @@
       <aside class='hero-panel'>
         <h2>Read this first</h2>
         <ul>
+          <li>Your first visit shows a one-time, skippable Welcome page -- presentation preferences only, never a security setting.</li>
           <li>Use staging where practical.</li>
-          <li>Start CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy in report-only mode; the other seven pillars take effect immediately.</li>
+          <li>Start CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy in report-only mode; the other nine pillars take effect immediately.</li>
           <li>Browse real user journeys before enforcing CSP.</li>
           <li>Approve only sources with a clear purpose.</li>
           <li>Fully Automatic mode is the only paid feature; everything else is free.</li>
@@ -48,6 +49,8 @@
         <div class='sidebar-group'>
           <h3>Getting started</h3>
           <ul>
+            <li><a href='#welcome'>Welcome &amp; Personal Preferences</a></li>
+            <li><a href='#home-experience'>Your Home page</a></li>
             <li><a href='#first-30-minutes'>First 30 minutes</a></li>
             <li><a href='#how-it-works'>How it works</a></li>
             <li><a href='#concepts'>Concepts</a></li>
@@ -65,7 +68,7 @@
           </ul>
         </div>
         <div class='sidebar-group'>
-          <h3>The other nine pillars</h3>
+          <h3>The other eleven pillars</h3>
           <ul>
             <li><a href='#other-pillars'>X-Frame-Options and more</a></li>
             <li><a href='#content-rewrites'>Content rewrite protections</a></li>
@@ -93,6 +96,95 @@
       </nav>
 
       <main>
+      <section id='welcome' class='section section-grid'>
+        <div>
+          <p class='section-label'>Your first visit</p>
+          <h2>Welcome &amp; Personal Preferences.</h2>
+          <p>The very first time any WordPress user opens Security Automation Manager, the plugin shows a one-page Welcome screen before anything else. It asks four short questions -- your relationship to the site, how familiar you are with security, how much technical detail you want to see, and what you'd like the plugin to show you first -- and nothing on it is a security setting. Saving or skipping this page only changes what that one WordPress user sees; it never changes how the site is protected, and every existing control keeps whatever state it already had.</p>
+          <p>The Welcome page is fully skippable -- click <strong>Skip for now</strong> and the plugin defaults to the Balanced presentation and an overall-status landing view, with no assumptions made about your role or experience. It never reappears automatically once you've saved or skipped it, and it never blocks access to anything else in the plugin.</p>
+          <p>These preferences are <strong>personal, not site-wide</strong>: they're stored against your own WordPress user account, so two administrators on the same site can each see the same underlying evidence presented differently -- one in Simple mode, one in Technical mode -- without affecting each other or the site's actual configuration.</p>
+          <ul class='bullets'>
+            <li><strong>Relationship to the site</strong> -- own or manage the business, administer the site, develop it, create or edit content, or manage websites for clients. Only affects wording and emphasis, never access.</li>
+            <li><strong>Security familiarity</strong> -- new to it, comfortable with the basics, experienced, or specialist. Controls how much explanatory text accompanies each result; never hides a warning.</li>
+            <li><strong>Presentation depth</strong> -- Simple, Balanced (the default), or Technical. See <a href='#home-experience'>Your Home page</a> below.</li>
+            <li><strong>What to see first</strong> -- overall status (the default), items needing attention, recent activity, protection status, or a technical overview. Only changes ordering and emphasis on the Home page -- a critical item is always shown first regardless of this choice.</li>
+          </ul>
+          <p>Change any of these answers at any time from the <strong>Personal Preferences</strong> link shown near the top of Settings, Observe, Decide, Control, and Verify -- it opens the same four-question page you saw on first visit, with your current answers pre-selected.</p>
+        </div>
+        <div class='callout-stack'>
+          <div class='callout'>
+            <h3>Presentation only</h3>
+            <p>Nothing on the Welcome page or its Personal Preferences editor is a security-control toggle, an automation setting, or a policy or certificate configuration. Those all remain exactly where they've always been -- on Settings, Observe, Decide, Control, Verify, and each pillar's own page.</p>
+          </div>
+          <div class='callout'>
+            <h3>The new recommended first-use journey</h3>
+            <p>Answer the Welcome page (or skip it) -&gt; glance at the Home page's scorecard and Protection Status to see where the site stands today -&gt; open the Action Centre if anything Needs Attention -&gt; only then, if you're rolling out CSP for the first time, follow <a href='#first-30-minutes'>First 30 minutes</a> below.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id='home-experience' class='section'>
+        <p class='section-label'>Your Home page</p>
+        <h2>The scorecard, Recent Activity, Protection Status, and Action Centre.</h2>
+        <p><strong>Security Automation Manager -&gt; Settings</strong> (the default landing page) now leads with four things, shown above the Overview/Getting Started/Security Health/Action Centre/Recommendations tab bar described throughout the rest of this guide. None of it is new evidence or a new decision -- it's the same evidence you'd otherwise find scattered across those tabs, brought to the front and explained in plain language.</p>
+
+        <h3>The Security Scorecard</h3>
+        <p>Three clickable tiles answer "how is my site doing?" with factual counts, not a synthetic score out of 100:</p>
+        <div class='definition-grid'>
+          <div><h3>Protected</h3><p>Controls that are actively enforcing right now -- CSP in Enforce mode, Traffic Controls blocking or rate-limiting, and so on.</p></div>
+          <div><h3>Learning</h3><p>Controls collecting evidence or monitoring without yet enforcing -- a report-only CSP surface, Traffic Controls in observe mode, a certificate mid-issuance.</p></div>
+          <div><h3>Needs attention</h3><p>Items that need a decision or review right now. Click this tile to open the Action Centre.</p></div>
+        </div>
+        <p class='section-note'>A control that's intentionally not configured -- a TLS certificate you manage outside the plugin, for example -- is never counted as a failure, and never inflates the Protected count either. It simply doesn't appear in any of the three tiles.</p>
+
+        <h3>Recent Activity</h3>
+        <p>A short strip beneath the scorecard shows what SAM has actually been doing in the last 24 hours:</p>
+        <ul class='bullets'>
+          <li><strong>Detections</strong> -- every detector match across every source in the window. This is deliberately labelled "Detections," not "requests": a single request that matches more than one detector adds one detection per detector, and no store anywhere in this plugin keeps a reliable total count of every request it has ever seen -- so rather than show an approximate or misleading number, that total is left out entirely.</li>
+          <li><strong>Blocked or rate-limited</strong> -- how many sources Traffic Controls is currently blocking or throttling right now, not a running total.</li>
+          <li><strong>Security changes detected</strong> -- configuration changes newly found against your captured baseline in the last 24 hours.</li>
+        </ul>
+
+        <h3>Protection Status</h3>
+        <p>A table translating five areas of the plugin's evidence into one consistent, plain-language vocabulary -- the same six words everywhere, never colour alone:</p>
+        <div class='table-wrap'>
+          <table>
+            <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Protected</strong></td><td>Actively enforcing for this area.</td></tr>
+              <tr><td><strong>Learning</strong></td><td>Collecting evidence in a report-only or observation mode.</td></tr>
+              <tr><td><strong>Monitoring</strong></td><td>Watching traffic or behaviour without yet enforcing.</td></tr>
+              <tr><td><strong>Needs attention</strong></td><td>Something here needs your review or a decision.</td></tr>
+              <tr><td><strong>Not in use</strong></td><td>Deliberately not configured -- for example, TLS certificates when your host manages them instead. Never treated as a failure.</td></tr>
+              <tr><td><strong>Unavailable</strong></td><td>The underlying capability can't run in this environment right now -- for example, certificate automation when a required PHP extension is missing from the server. Different from "Not in use": this isn't a choice, it's an environment limitation.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The five areas covered are browser and content protection (CSP), malicious traffic (Traffic Controls), scripts and dependencies, configuration integrity (Baseline &amp; Drift), and the TLS certificate. Each row has its own "Technical details" disclosure with the exact underlying evidence -- open by default if your presentation depth is Technical, and one click away otherwise.</p>
+
+        <h3>Action Centre</h3>
+        <p>Clicking the Needs Attention tile, or the "Review now" link under it, opens a consolidated Action Centre tab -- one list, gathered from across the plugin, so you never have to work out which subsystem an issue actually lives in. Each item explains what was found, why it matters, what SAM recommends, and what will happen if you act on it, with a link through to full evidence and controls.</p>
+        <p>The Action Centre <strong>does not replace</strong> the existing Recommendations tab, or any of the plugin's technical review interfaces (CSP's For Review and Policy Changes tabs, Baseline &amp; Drift, Scripts, Certificates, and so on) -- it reuses exactly the same underlying Recommendations Engine and evidence those pages already show, presented as one prioritised list instead of requiring you to check each page in turn. The Recommendations tab, and every technical page it and the Action Centre link out to, still works exactly as described elsewhere in this guide.</p>
+
+        <h3>Simple, Balanced, and Technical</h3>
+        <p>Your presentation depth (set on the Welcome page or Personal Preferences) controls how much technical detail is visible by default on the Home page -- it never controls what's true, only how much of the underlying evidence you see without an extra click:</p>
+        <div class='card-grid'>
+          <article class='card'>
+            <h3>Simple</h3>
+            <p>Leads with whether the site is protected, what needs attention, and what to do next. Technical names (like "Content Security Policy (CSP)") are still shown, just de-emphasised, and every "Technical details" disclosure is one click away, never removed.</p>
+          </article>
+          <article class='card'>
+            <h3>Balanced<span class='tier-badge'>Default</span></h3>
+            <p>Plain-language outcomes alongside the technical terminology that helps you recognise what's being described, with the same one-click access to deeper evidence.</p>
+          </article>
+          <article class='card'>
+            <h3>Technical</h3>
+            <p>The same information, with every "Technical details" disclosure already expanded -- the exact store, field, and value behind each row, with no extra clicks.</p>
+          </article>
+        </div>
+        <p class='section-note'>Whatever your depth or familiarity setting, critical warnings and the consequence of any recommended action are always fully visible -- Simple mode means less technical presentation, not less visibility of risk.</p>
+      </section>
+
       <section id='first-30-minutes' class='section section-grid'>
         <div>
           <p class='section-label'>First 30 minutes</p>
@@ -100,7 +192,8 @@
           <p>Content Security Policy exists to stop cross-site scripting (XSS): the attack where a vulnerable plugin, a compromised ad network, a hijacked third-party script, or even an unescaped comment field gets its own JavaScript running on your site, indistinguishable from your own code once it executes. A correctly enforced policy tells the browser exactly which scripts, styles, fonts, and other resources this site is allowed to load -- anything else, including a script an attacker manages to inject directly into the page, is refused by the browser itself rather than caught after the fact. Everything below is about building that allowlist safely: wide enough that the site keeps working, narrow enough that an injected script has nowhere left to run.</p>
           <ol class='steps'>
             <li>Install and activate the plugin.</li>
-            <li>Open <strong>Security Automation Manager -> CSP</strong> in the WordPress admin.</li>
+            <li>On your first visit, answer or skip the <a href='#welcome'>Welcome page</a> -- presentation preferences only, not a security setting.</li>
+            <li>From <strong>Security Automation Manager -> Settings</strong>, open <strong>Security Automation Manager -> CSP</strong> in the WordPress admin.</li>
             <li>Confirm all profiles are in <strong>report-only</strong> mode.</li>
             <li>Run a manual scan.</li>
             <li>Open the For Review tab and review pending sources.</li>
@@ -108,7 +201,7 @@
             <li>Review the Violations tab and approve only required sources.</li>
             <li>Wait for the configured violation-free window before enforcing a surface.</li>
           </ol>
-          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other seven pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies) don't have a rollout workflow at all; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have a narrower one of their own -- a per-surface Report-Only mode with a violation-evidence table, but no discovery or automation -- see <a href='#other-pillars'>the other nine pillars</a> below.</p>
+          <p class='section-note'>This 30-minute path is specific to CSP, the plugin's most involved pillar. The other nine pillars (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies) don't have a rollout workflow at all; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have a narrower one of their own -- a per-surface Report-Only mode with a violation-evidence table, but no discovery or automation -- see <a href='#other-pillars'>the other eleven pillars</a> below.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -121,20 +214,31 @@
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/sam-overview.png' alt='WordPress admin screenshot of the Security Automation Manager Overview page, showing per-surface status for every pillar and content-rewrite protection, with a Manage link to each one.' loading='lazy'>
-          <figcaption>The Overview page (<strong>Security Automation Manager -> Overview</strong>) -- the front door after activation, showing every pillar's per-surface status at a glance.</figcaption>
+          <img src='images/sam-overview.png' alt='WordPress admin screenshot of the Security Automation Manager Overview tab, showing per-surface status for every pillar and content-rewrite protection, with a Manage link to each one. Captured before the 2.10.0 Home experience (Welcome page, scorecard, Protection Status, Action Centre) shipped, so it does not show those.' loading='lazy'>
+          <figcaption>The Overview tab (<strong>Security Automation Manager -> Settings</strong>), reached below the scorecard and Protection Status described in <a href='#home-experience'>Your Home page</a> -- still the detailed, per-pillar status view, with a "Manage" link to each one. <em>This screenshot predates 2.10.0's Home experience and is pending a refresh; see <a href='#home-experience'>Your Home page</a> for what actually appears above it now.</em></figcaption>
         </figure>
       </section>
 
       <section id='how-it-works' class='section'>
         <p class='section-label'>How it works</p>
-        <h2>Ten pillars, one dashboard.</h2>
-        <p>Security Automation Manager automates rollout of ten HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other seven pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy sit in between: still no discovery workflow or automation, but each has its own Report-Only mode to observe violations before enforcing.</p>
+        <h2>Twelve pillars, one dashboard.</h2>
+        <p>Security Automation Manager automates rollout of twelve HTTP security headers. Configuration, reporting, and the decision engine are shared plumbing; Content Security Policy is the most capable pillar built on top of it, with a conservative loop: start in report-only mode, collect evidence, propose changes, require administrator decisions, then enforce only when the promotion gate is satisfied. The other nine pillars are simpler by design -- no report-only mode, no discovery workflow, and no automation. Each one either sends its configured header value or doesn't; there's nothing to learn before it takes effect. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy sit in between: still no discovery workflow or automation, but each has its own Report-Only mode to observe violations before enforcing.</p>
         <div class='diagram' aria-label='Admin menu structure diagram'>
           <div class='mermaid'>
 flowchart TD
-    Menu["Security Automation Manager"] --> Overview["Overview<br/><small>per-pillar status</small>"]
-    Menu --> CSP["CSP<br/><small>tabbed dashboard</small>"]
+    FirstVisit["First-ever visit to any<br/>SAM admin page, this WordPress user"] -.->|"redirected once"| Welcome["Welcome / Personal Preferences<br/><small>not in the sidebar -- presentation only, skippable</small>"]
+    Welcome -.->|"Save or Skip"| Menu
+
+    Menu["Security Automation Manager<br/><small>left-hand admin menu</small>"] --> Settings["Settings<br/><small>default landing page -- scorecard, Recent Activity,<br/>Protection Status &amp; Action Centre preview above the tabs</small>"]
+    Menu --> Observe["Observe"]
+    Menu --> Decide["Decide"]
+    Menu --> Control["Control"]
+    Menu --> Verify["Verify"]
+
+    Settings -.->|"Personal Preferences link"| Welcome
+    Settings -.->|"Needs Attention tile / Action Centre tab"| ActionCentre["Action Centre<br/><small>tab on Settings -- consolidates Recommendations<br/>+ CSP review queue + dependency review</small>"]
+
+    Settings -.->|"Manage CSP"| CSP["CSP<br/><small>tabbed dashboard -- not in the sidebar</small>"]
     CSP --> T1["Start Here"]
     CSP --> T2["Profiles"]
     CSP --> T3["For Review"]
@@ -143,21 +247,20 @@ flowchart TD
     CSP --> T5["Violations"]
     CSP --> T6["Scan Log"]
     CSP --> T7["Settings"]
-    Menu --> XFO["X-Frame-Options"]
-    Menu --> XCTO["X-Content-Type-Options"]
-    Menu --> RP["Referrer-Policy"]
-    Menu --> PP["Permissions-Policy"]
-    Menu --> HSTS["Strict-Transport-Security"]
-    Menu --> RTP["Reverse Tabnabbing"]
-    Menu --> SCR["Scripts<br/><small>Start Here / External / Internal</small>"]
-    Menu --> CORP["Cross-Origin-Resource-Policy"]
-    Menu --> XPCDP["X-Permitted-Cross-Domain-Policies"]
-    Menu --> COOP["Cross-Origin-Opener-Policy"]
-    Menu --> COEP["Cross-Origin-Embedder-Policy"]
-    Menu --> RD["Readiness"]
+
+    Settings -.->|"one Manage link per row"| Pillars["11 simple header pillars -- not in the sidebar<br/><small>X-Frame-Options · X-Content-Type-Options · Referrer-Policy<br/>Permissions-Policy · Strict-Transport-Security · Cache-Control<br/>Information Masking · Cross-Origin-Resource-Policy<br/>Cross-Origin-Opener-Policy · Cross-Origin-Embedder-Policy<br/>X-Permitted-Cross-Domain-Policies</small>"]
+
+    Settings -.->|"Manage"| RTScr["Reverse Tabnabbing, Scripts -- not in the sidebar<br/><small>see Content rewrite protections below</small>"]
+
+    Settings -.->|"Manage"| Certs["Certificates -- not in the sidebar"]
+
+    Observe -.-> ContInt["Continuous Intelligence<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
+    Control -.-> Traffic["Traffic Controls<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
+    Verify -.-> Baseline["Baseline &amp; Drift<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
+    Verify -.-> AdvInt["Advanced Intelligence<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
           </div>
         </div>
-        <p class='section-note'>The real WordPress admin menu, for orientation. Every pillar except CSP is a single simple page; CSP alone has the eight-tab dashboard described in the rest of this section. Reverse Tabnabbing and Scripts aren't header pillars at all -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
+        <p class='section-note'>The real WordPress admin menu, for orientation. Only <strong>Settings</strong>, <strong>Observe</strong>, <strong>Decide</strong>, <strong>Control</strong>, and <strong>Verify</strong> appear in the left-hand sidebar. Every other page this plugin registers -- CSP, every header pillar, Certificates, Welcome / Personal Preferences, and more -- is deliberately hidden from the sidebar and reached only by clicking a link from <strong>Settings</strong> (a "Manage" link from the Overview tab, the "Personal Preferences" link, or the Action Centre tab) or a task-relevant link from Observe/Decide/Control/Verify, never by finding it in the menu directly. Every hidden page still works by direct URL if you already know its slug. Reverse Tabnabbing and Scripts aren't <em>header</em> pillars, but they share the same hidden-page mechanism -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>1. Initialise safely</h3>
@@ -204,11 +307,11 @@ flowchart TD
       <section id='concepts' class='section'>
         <p class='section-label'>Core concepts</p>
         <h2>The terms you need to understand.</h2>
-        <p class='section-note'>Most of these terms are specific to CSP -- the other nine pillars don't have promotion gates or suppression, and seven of the nine don't have report-only modes either; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the exception, with their own narrower report-only mode.</p>
+        <p class='section-note'>Most of these terms are specific to CSP -- the other eleven pillars don't have promotion gates or suppression, and nine of the eleven don't have report-only modes either; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the exception, with their own narrower report-only mode.</p>
         <div class='definition-grid'>
           <div><h3>Surface</h3><p>A part of the site with its own policy. Every pillar uses the same four: frontend, admin, login, and API.</p></div>
-          <div><h3>Pillar</h3><p>One of the ten HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies.</p></div>
-          <div><h3>Report-only mode</h3><p>The browser reports what would have been blocked without blocking it. CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy all support it; the other seven pillars don't.</p></div>
+          <div><h3>Pillar</h3><p>One of the twelve HTTP security headers the plugin manages: Content Security Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies.</p></div>
+          <div><h3>Report-only mode</h3><p>The browser reports what would have been blocked without blocking it. CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Embedder-Policy all support it; the other nine pillars don't.</p></div>
           <div><h3>Enforce mode</h3><p>CSP blocks resources that are not allowed by the policy. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have their own Enforce mode too, sending the header to actively isolate or block rather than just report.</p></div>
           <div><h3>Directive</h3><p>A CSP rule area, such as <code>script-src</code>, <code>img-src</code>, <code>connect-src</code>, or <code>form-action</code>.</p></div>
           <div><h3>Source</h3><p>A host, scheme, or keyword that a CSP directive allows.</p></div>
@@ -392,7 +495,7 @@ flowchart TD
           <p class='section-label'>Ongoing use</p>
           <h2>Use the plugin after normal site changes.</h2>
           <p>CSP is not a one-off task. WordPress sites change when plugins update, themes change, tracking tags are added, forms are altered, payment integrations change, or content editors embed third-party resources.</p>
-          <p>After meaningful changes, run a manual scan and use report-only evidence before adding new approvals. Keep the policy narrow and documented. The other nine pillars need no ongoing attention once set -- revisit them only if the site's framing, referrer, cross-origin, or browser-feature needs change. Strict-Transport-Security is one exception worth remembering: raising its Max-Age is easy to revisit, but browsers that already cached a long Max-Age keep enforcing HTTPS-only for that long even after you lower or remove the setting. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the other exception: revisit them whenever a new third-party embed, popup-based login, or payment flow is added to the site, since either header can silently break one that used to work.</p>
+          <p>After meaningful changes, run a manual scan and use report-only evidence before adding new approvals. Keep the policy narrow and documented. The other eleven pillars need no ongoing attention once set -- revisit them only if the site's framing, referrer, cross-origin, or browser-feature needs change. Strict-Transport-Security is one exception worth remembering: raising its Max-Age is easy to revisit, but browsers that already cached a long Max-Age keep enforcing HTTPS-only for that long even after you lower or remove the setting. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are the other exception: revisit them whenever a new third-party embed, popup-based login, or payment flow is added to the site, since either header can silently break one that used to work.</p>
         </div>
         <div class='callout-stack'>
           <div class='callout'>
@@ -407,9 +510,9 @@ flowchart TD
       </section>
 
       <section id='other-pillars' class='section'>
-        <p class='section-label'>The other nine pillars</p>
-        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, and the four cross-origin/legacy headers.</h2>
-        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. Seven of the other nine pillars don't work that way at all -- each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent on the very next request that matches that surface. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have their own narrower Report-Only mode instead: a per-surface Disabled/Report-Only/Enforce selector plus a table of violations observed over the last 7 days. None of the nine have a discovery workflow or automation.</p>
+        <p class='section-label'>The other eleven pillars</p>
+        <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, and the four cross-origin/legacy headers.</h2>
+        <p>Everything above this section is about CSP, which is deliberately the most involved pillar: report-only rollout, discovery, risk-ranked approvals, and staged enforcement. Nine of the other eleven pillars don't work that way at all -- each is a direct per-surface configuration change with no learning phase: pick a value in the WordPress admin and the header is sent (or removed) on the very next request that matches that surface. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy have their own narrower Report-Only mode instead: a per-surface Disabled/Report-Only/Enforce selector plus a table of violations observed over the last 7 days. None of the eleven have a discovery workflow or automation.</p>
         <div class='table-wrap'>
           <table>
             <thead>
@@ -425,6 +528,8 @@ flowchart TD
               <tr><td>Cross-Origin-Opener-Policy</td><td><strong>Security Automation Manager -> Cross-Origin-Opener-Policy</strong></td><td>Per surface: Unsafe-None, Same-Origin, or Same-Origin-Allow-Popups. Isolates this site's browsing context from cross-origin windows it opens or is opened by.</td></tr>
               <tr><td>Cross-Origin-Embedder-Policy</td><td><strong>Security Automation Manager -> Cross-Origin-Embedder-Policy</strong></td><td>Per surface: Unsafe-None, Require-Corp, or Credentialless. Blocks cross-origin subresources that don't explicitly opt in via CORP or CORS.</td></tr>
               <tr><td>X-Permitted-Cross-Domain-Policies</td><td><strong>Security Automation Manager -> X-Permitted-Cross-Domain-Policies</strong></td><td>Per surface: None, Master-Only, By-Content-Type, or All. A legacy Flash/Acrobat-era header; None is almost always correct for a modern site.</td></tr>
+              <tr><td>Cache-Control</td><td><strong>Security Automation Manager -> Cache-Control</strong></td><td>Per surface: one of four presets -- No-Store, Private/No-Cache, Public/Short (5 minutes), or Public/Long (1 hour). Unlike every other simple pillar, disabled by default -- see the callout below. Automatically defers to a detected caching plugin or CDN instead of sending a competing value.</td></tr>
+              <tr><td>Information Masking</td><td><strong>Security Automation Manager -> Information Masking</strong></td><td>Per surface: on or off, nothing else to choose -- same shape as X-Content-Type-Options. Removes the X-Powered-By (PHP version) and X-Pingback (this site's own XML-RPC URL) headers, and attempts to remove Server (web server name/version). Server removal is best-effort -- many hosts set it before PHP ever runs -- so the admin page includes a live self-probe reporting whether it actually took effect on this install.</td></tr>
             </tbody>
           </table>
         </div>
@@ -432,6 +537,10 @@ flowchart TD
           <div class='callout'>
             <h3>Nothing to roll out</h3>
             <p>Except for Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy's own Report-Only mode (see above), these headers are either sent exactly as configured or not sent at all, with no equivalent of CSP's report-only mode to reason about. If a change causes unexpected behaviour, undo it the same way you made it: change the value back in the admin page.</p>
+          </div>
+          <div class='callout'>
+            <h3>Cache-Control isn't enabled by default</h3>
+            <p>Every other simple pillar here ships enabled out of the box; Cache-Control doesn't. It's a performance/caching-behaviour decision rather than a universal hardening default -- WordPress core already sends a safe, strict Cache-Control on wp-admin and wp-login.php, and pre-enabling this pillar could silently change your site's frontend caching behaviour on upgrade. If a caching plugin or CDN is already active when you do enable it, this plugin defers to that instead of sending a competing value.</p>
           </div>
           <div class='warning-callout'>
             <h3>Test after changing X-Frame-Options or Permissions-Policy</h3>
@@ -474,7 +583,7 @@ flowchart TD
           <img src='images/sam-cross-origin-coep.png' alt='WordPress admin screenshot of the Cross-Origin-Embedder-Policy tab, showing per-surface mode and value pickers plus a warning that this is the highest-risk header the plugin manages.' loading='lazy'>
           <figcaption>The Cross-Origin-Embedder-Policy tab, flagged in-admin as the highest-risk header this plugin manages.</figcaption>
         </figure>
-        <p class='section-note'>All nine pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
+        <p class='section-note'>All eleven pillars are free in every build -- there's no tier distinction here at all. The subscription only affects one specific CSP automation mode; see <a href='#automation-tiers'>Automation tiers</a>.</p>
       </section>
 
       <section id='content-rewrites' class='section'>
@@ -680,7 +789,7 @@ flowchart TD
           </div>
           <div class='callout'>
             <h3>Upgrading</h3>
-            <p>Where an upgrade path is available in your build, an <strong>Upgrade</strong> button appears next to the automation setting on the CSP Settings tab, alongside a billing-interval choice (monthly or annual), and starts a checkout flow for a recurring subscription. Every other feature described in this guide -- all ten pillars, three of the four automation modes, discovery, violation reporting, and policy-change review -- is free and local regardless of subscription status.</p>
+            <p>Where an upgrade path is available in your build, an <strong>Upgrade</strong> button appears next to the automation setting on the CSP Settings tab, alongside a billing-interval choice (monthly or annual), and starts a checkout flow for a recurring subscription. Every other feature described in this guide -- all twelve pillars, three of the four automation modes, discovery, violation reporting, and policy-change review -- is free and local regardless of subscription status.</p>
           </div>
         </div>
       </section>

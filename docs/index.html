@@ -27,6 +27,7 @@
         <h2>At a glance</h2>
         <ul>
           <li>WordPress 6.4+ and PHP 8.1+</li>
+          <li>A one-time, skippable Welcome page personalises how the plugin explains itself to you -- never how it protects the site</li>
           <li>Ten pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies</li>
           <li>Automatic TLS certificate issuance and renewal via ACME (Let's Encrypt) -- free, no subscription</li>
           <li>Per-surface policies for frontend, admin, login, and API</li>
@@ -54,6 +55,7 @@
           <h3>On this page</h3>
           <ul>
             <li><a href='#start-here'>Start here</a></li>
+            <li><a href='#personal-preferences'>Welcome &amp; your Home page</a></li>
             <li><a href='#pillars'>Pillars</a></li>
             <li><a href='#content-rewrites'>Content rewrite protections</a></li>
             <li><a href='#how-it-works'>How it works</a></li>
@@ -92,6 +94,14 @@
             <p>Enforce mode can block scripts, styles, frames, fonts, media, and API calls. Move one surface at a time only after the dashboard evidence supports the change.</p>
           </div>
         </div>
+      </section>
+
+      <section id='personal-preferences' class='section'>
+        <p class='section-label'>Welcome &amp; your Home page</p>
+        <h2>The plugin explains itself in your own terms first.</h2>
+        <p>The first time any WordPress user opens Security Automation Manager, a short, skippable Welcome page asks four questions -- your relationship to the site, how familiar you are with security, whether you want Simple, Balanced, or Technical presentation, and what you'd like to see first. None of it is a security setting; it only changes what that one user sees, is stored per-user, and can be changed anytime from the "Personal Preferences" link on Settings, Observe, Decide, Control, and Verify.</p>
+        <p>From then on, <strong>Settings</strong> (the default landing page) leads with a factual <strong>Protected / Learning / Needs attention</strong> scorecard, a Recent Activity strip, an outcome-oriented <strong>Protection Status</strong> table (Protected, Learning, Monitoring, Needs attention, Not in use, or Unavailable -- never colour alone), and an <strong>Action Centre</strong> preview -- all above the detailed per-pillar tabs described in <a href='#dashboard'>Dashboard</a> below. Technical evidence is always one click away behind a "Technical details" disclosure, open by default for Technical-depth users and available to everyone else.</p>
+        <p class='section-note'>Full detail, including exactly what each Protection Status state means and how the Action Centre relates to the existing Recommendations tab, is in the user guide's <a href='user-guide.html#welcome'>Welcome &amp; Personal Preferences</a> and <a href='user-guide.html#home-experience'>Your Home page</a> sections.</p>
       </section>
 
       <section id='pillars' class='section'>
@@ -281,7 +291,7 @@ flowchart LR
         <div>
           <p class='section-label'>Dashboard</p>
           <h2>Where to look in the WordPress admin.</h2>
-          <p>Open <strong>Security Automation Manager</strong> in the WordPress admin. The top-level Overview page shows every pillar's per-surface status at a glance, with a link into each one. For CSP specifically, go to <strong>Security Automation Manager -> CSP</strong> -- that dashboard is split into tabs that match the product workflow.</p>
+          <p>Open <strong>Security Automation Manager</strong> in the WordPress admin. On your first visit you'll land on the Welcome page first -- see <a href='#personal-preferences'>Welcome &amp; your Home page</a> above. After that, <strong>Settings</strong> is the default landing page: it leads with the scorecard, Recent Activity, Protection Status, and an Action Centre preview, then the same per-pillar Overview tab this section originally described -- every pillar's per-surface status at a glance, with a link into each one. For CSP specifically, go to <strong>Security Automation Manager -> CSP</strong> -- that dashboard is split into tabs that match the product workflow.</p>
           <ul class='bullets'>
             <li><strong>Start Here:</strong> a short guide to the report-only, learning-window, and enforce-promotion workflow -- the default landing tab.</li>
             <li><strong>Profiles:</strong> see each surface and switch between report-only, enforce, and disabled.</li>
@@ -307,8 +317,8 @@ flowchart LR
           </div>
         </div>
         <figure class='screenshot'>
-          <img src='images/sam-navigation.png' alt='WordPress admin left-hand navigation showing the Security Automation Manager top-level menu, with all twelve submenus expanded: Overview, Certificates, Cross-Origin Policies, CSP, HSTS, Permissions-Policy, Referrer-Policy, Reverse Tabnabbing, Scripts, X-Content-Type-Options, and X-Frame-Options.' loading='lazy'>
-          <figcaption>The Security Automation Manager admin menu, showing every pillar and the CSP dashboard's tabs.</figcaption>
+          <img src='images/sam-navigation.png' alt='Outdated WordPress admin left-hand navigation screenshot, predating the current five-item Settings/Observe/Decide/Control/Verify menu, showing every pillar submenu expanded directly in the sidebar.' loading='lazy'>
+          <figcaption><em>This screenshot is stale and pending a refresh.</em> The current menu shows only five entries -- <strong>Settings</strong>, <strong>Observe</strong>, <strong>Decide</strong>, <strong>Control</strong>, and <strong>Verify</strong> -- with every pillar and Certificates reached via a link from Settings instead of its own sidebar item; see the admin menu diagram in the <a href='user-guide.html#how-it-works'>user guide</a> for the current structure.</figcaption>
         </figure>
       </section>
 

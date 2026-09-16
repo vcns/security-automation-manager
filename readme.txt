@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.107
+Stable tag: 2.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,6 +15,10 @@ Self-learning security headers, built-in attack detection and rate limiting, fil
 Turning on strict security headers usually means picking between two bad options: leave Content-Security-Policy off and stay exposed, or turn it on and watch it silently break your checkout page, your embedded videos, or your analytics -- with no warning before it happens.
 
 Security Automation Manager takes a third option. It watches your site quietly first, in report-only mode, learning exactly which scripts, styles, and fonts your site actually loads -- nothing gets blocked while it learns. Once you can see the whole picture, you approve a policy built from your real site, not a guess. Only then does it start enforcing.
+
+= You don't need to know what CSP means to use this =
+
+The first time you open the plugin, a short, skippable Welcome page asks how you'd like security information explained to you -- nothing more. Answer it or skip it: either way, your Settings page then leads with a plain-language scorecard (how many controls are Protected, still Learning, or Needs your attention), a Protection Status table using six consistent words instead of protocol names, and a consolidated Action Centre for anything worth reviewing. Prefer the technical names and raw evidence instead? Choose Technical presentation and every detail is expanded by default. These are personal display preferences, stored per WordPress user -- they never change how your site is actually protected, and the full technical dashboards this plugin has always had remain exactly where they were.
 
 = Everything below is free, with nothing held back =
 
@@ -114,6 +118,10 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.10.0 =
+
+* Added: Customer-Centred Administration Experience -- a presentation layer over existing capability, not a change to how the site is protected. A skippable Welcome page collects four personal presentation preferences (relationship to the site, security familiarity, Simple/Balanced/Technical depth, and what to see first) stored per WordPress user; edit them anytime from the new "Personal Preferences" link on Settings/Observe/Decide/Control/Verify. Settings/Overview now leads with a factual Protected/Learning/Needs-attention scorecard and a Recent Activity strip (detections, currently blocked/rate-limited sources, and newly-detected configuration changes in the last 24 hours -- raw request volume is deliberately not shown, since no store in this plugin reliably counts it), followed by an outcome-oriented Protection Status table (Protected/Learning/Monitoring/Needs attention/Not in use/Unavailable, never colour alone) and a new consolidated Action Centre tab gathering everything needing review -- from the existing Recommendations Engine, the CSP source review queue, and unclassified dependencies -- into one What-was-found/Why-it-matters/Recommended-action/What-will-happen list, without duplicating any existing decision logic. Every section keeps a "Technical details" disclosure open by default for Technical-depth users and available (never hidden) for everyone else. No existing tab, page, or security decision changed.
 
 = 2.9.107 =
 
