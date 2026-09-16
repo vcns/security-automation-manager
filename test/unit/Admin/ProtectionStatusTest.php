@@ -134,6 +134,23 @@ class ProtectionStatusTest extends TestCase {
 		$this->assertSame( Protection_Status::STATE_PROTECTED, $areas['Configuration integrity']['state'] );
 	}
 
+	/**
+	 * The "missing PHP extension" branch itself (mirrors page-certificates.
+	 * php's own identical check) can't be unit-tested without disabling a
+	 * real PHP extension at runtime -- not possible in this environment or
+	 * CI, and not attempted elsewhere in this codebase either (confirmed:
+	 * no existing test exercises that check's true branch). This test only
+	 * confirms the ordinary path -- extensions present, as they are here --
+	 * still resolves normally rather than always reporting Unavailable.
+	 */
+	public function test_certificate_area_is_not_unavailable_when_required_extensions_are_present(): void {
+		$this->reset_to_fresh_install();
+
+		$areas = $this->areas_by_name( ( new Protection_Status() )->areas() );
+
+		$this->assertNotSame( Protection_Status::STATE_UNAVAILABLE, $areas['TLS certificate']['state'] );
+	}
+
 	public function test_no_certificate_domains_configured_is_not_in_use(): void {
 		$this->reset_to_fresh_install();
 

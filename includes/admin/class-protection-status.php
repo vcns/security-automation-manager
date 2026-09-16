@@ -224,8 +224,24 @@ class Protection_Status {
 	 */
 	private function tls_certificate_area(): array {
 		$technical_name = __( 'TLS Certificate (ACME)', 'vcns-security-automation-manager' );
-		$store          = new Certificate_Store();
-		$config         = $store->get_config();
+
+		// Same environment-capability check page-certificates.php's own
+		// "Missing PHP requirement" notice uses: without these extensions,
+		// certificate automation cannot run at all regardless of
+		// configuration -- genuinely Unavailable, not the user's choice not
+		// to use it (Not in use).
+		if ( ! extension_loaded( 'openssl' ) || ! function_exists( 'sodium_crypto_secretbox' ) ) {
+			return array(
+				'area'             => __( 'TLS certificate', 'vcns-security-automation-manager' ),
+				'state'            => self::STATE_UNAVAILABLE,
+				'summary'          => __( 'Certificate automation cannot run on this server -- a required PHP extension is missing.', 'vcns-security-automation-manager' ),
+				'technical_name'   => $technical_name,
+				'technical_detail' => __( 'Missing PHP requirement: ext/openssl or ext/sodium.', 'vcns-security-automation-manager' ),
+			);
+		}
+
+		$store  = new Certificate_Store();
+		$config = $store->get_config();
 
 		if ( empty( array_filter( (array) ( $config['domains'] ?? array() ) ) ) ) {
 			return array(
