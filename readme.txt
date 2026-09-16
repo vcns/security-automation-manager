@@ -16,6 +16,10 @@ Turning on strict security headers usually means picking between two bad options
 
 Security Automation Manager takes a third option. It watches your site quietly first, in report-only mode, learning exactly which scripts, styles, and fonts your site actually loads -- nothing gets blocked while it learns. Once you can see the whole picture, you approve a policy built from your real site, not a guess. Only then does it start enforcing.
 
+= You don't need to know what CSP means to use this =
+
+The first time you open the plugin, a short, skippable Welcome page asks how you'd like security information explained to you -- nothing more. Answer it or skip it: either way, your Settings page then leads with a plain-language scorecard (how many controls are Protected, still Learning, or Needs your attention), a Protection Status table using six consistent words instead of protocol names, and a consolidated Action Centre for anything worth reviewing. Prefer the technical names and raw evidence instead? Choose Technical presentation and every detail is expanded by default. These are personal display preferences, stored per WordPress user -- they never change how your site is actually protected, and the full technical dashboards this plugin has always had remain exactly where they were.
+
 = Everything below is free, with nothing held back =
 
 * **Content Security Policy** that proposes itself from real traffic, runs report-only until you approve it, and keeps learning as your site changes.

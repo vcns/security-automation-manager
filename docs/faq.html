@@ -46,6 +46,12 @@
           </ul>
         </div>
         <div class='sidebar-group'>
+          <h3>Personal Preferences &amp; Home page</h3>
+          <ul>
+            <li><a href='#personal-preferences'>Welcome, depth &amp; Home page</a></li>
+          </ul>
+        </div>
+        <div class='sidebar-group'>
           <h3>CSP</h3>
           <ul>
             <li><a href='#general'>General</a></li>
@@ -100,6 +106,50 @@
           <article class='faq-item'>
             <h3>What are the minimum requirements?</h3>
             <p>WordPress 6.4 or later and PHP 8.1 or later.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id='personal-preferences' class='section'>
+        <p class='section-label'>Personal Preferences &amp; Home page</p>
+        <h2>The Welcome page, presentation depth, and the new Home experience.</h2>
+        <p class='section-note'>Edit these anytime from the "Personal Preferences" link near the top of <strong>Settings</strong>, <strong>Observe</strong>, <strong>Decide</strong>, <strong>Control</strong>, and <strong>Verify</strong>.</p>
+        <div class='faq-list'>
+          <article class='faq-item'>
+            <h3>What is the Welcome page, and can I skip it?</h3>
+            <p>It's a one-time, four-question page that appears the first time any WordPress user opens the plugin, asking your relationship to the site, security familiarity, presentation depth, and what to see first. Yes, it's fully skippable -- click <strong>Skip for now</strong> and the plugin uses Balanced presentation and an overall-status view by default. It never reappears automatically and never blocks access to anything.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Does anything on the Welcome page change how my site is protected?</h3>
+            <p>No. It only changes what you personally see and how it's explained -- it has no toggle for any security control, automation setting, or policy/certificate configuration. Those live exactly where they always have.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Are these preferences shared with other administrators on the same site?</h3>
+            <p>No. They're stored per WordPress user, not site-wide. Two administrators can each choose a different presentation depth without affecting each other or the site's actual configuration.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What's the difference between Simple, Balanced, and Technical?</h3>
+            <p>They control how much technical detail is visible by default, never what's true. Simple leads with plain-language outcomes; Balanced (the default) adds recognisable technical terminology alongside them; Technical expands every "Technical details" disclosure automatically. Every depth can reach the same underlying evidence -- Simple mode means less technical presentation, not less visibility of risk, and critical warnings are always fully visible regardless of depth.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What do the Security Scorecard's Protected / Learning / Needs attention numbers mean?</h3>
+            <p><strong>Protected</strong> counts controls actively enforcing right now. <strong>Learning</strong> counts controls collecting evidence or monitoring without yet enforcing. <strong>Needs attention</strong> is the number of open Action Centre items. A control that's intentionally not in use (see Protection Status below) never counts toward any of the three -- it's not a failure, and it doesn't inflate Protected either. It's factual counts, not a score out of 100.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Why does Recent Activity show "Detections" instead of a total request count?</h3>
+            <p>No store in this plugin reliably counts every request it has ever seen -- only requests a detector actually flags are ever recorded. Showing an invented or approximate total would misrepresent real traffic volume, so it's left out entirely. "Detections" is the honest number available: every detector match in the last 24 hours. Because one request can match more than one detector, this can be a higher number than the actual request count -- that's exactly why it's labelled "Detections," not "requests."</p>
+          </article>
+          <article class='faq-item'>
+            <h3>What are the six Protection Status states?</h3>
+            <p><strong>Protected</strong> (actively enforcing), <strong>Learning</strong> (collecting evidence in report-only/observation mode), <strong>Monitoring</strong> (watching without enforcing), <strong>Needs attention</strong> (needs your review), <strong>Not in use</strong> (deliberately not configured, e.g. your host manages TLS instead -- never a failure), and <strong>Unavailable</strong> (the capability can't run in this environment, e.g. a missing PHP extension -- different from a deliberate choice not to use it).</p>
+          </article>
+          <article class='faq-item'>
+            <h3>How is the Action Centre different from the Recommendations tab?</h3>
+            <p>It isn't a replacement -- it's the same Recommendations Engine and evidence, reused and presented as one consolidated list (plus the CSP source review queue and unclassified dependencies) so you don't have to know which subsystem an issue lives in. The Recommendations tab, and every technical page the Action Centre links out to (CSP's For Review and Policy Changes, Baseline &amp; Drift, Scripts, Certificates, and so on), still work exactly as before.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Where do I change my preferences after the first visit?</h3>
+            <p>Click <strong>Personal Preferences</strong> near the top of Settings, Observe, Decide, Control, or Verify. It opens the same four-question page, pre-filled with your current answers.</p>
           </article>
         </div>
       </section>
