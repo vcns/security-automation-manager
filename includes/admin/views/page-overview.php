@@ -102,6 +102,7 @@ if ( 'recommendations' === $tab ) {
 // ── Action Centre tab data ───────────────────────────────────────────────────
 if ( 'action-centre' === $tab ) {
 	$action_centre_items = ( new Action_Centre() )->items();
+	$wp_sam_ac_prefs     = Presentation_Preferences::get_for_user();
 }
 
 // ── Overview tab data ────────────────────────────────────────────────────────
@@ -785,6 +786,9 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 	<p>
 		<?php esc_html_e( 'Everything below is drawn from evidence SAM already collects elsewhere -- nothing here is a new signal source, and nothing is ever applied automatically. Each item explains what was found, why it matters, what SAM recommends, and what will happen if you act on it.', 'vcns-security-automation-manager' ); ?>
 	</p>
+		<?php if ( 'new' === $wp_sam_ac_prefs['security_familiarity'] ) : ?>
+	<p class="description"><?php esc_html_e( "New to this? You don't need a technical background to use this list -- each item already explains what to do in plain language. \"Technical details\" is optional background for anyone who wants it.", 'vcns-security-automation-manager' ); ?></p>
+	<?php endif; ?>
 
 		<?php if ( empty( $action_centre_items ) ) : ?>
 	<p class="description"><?php esc_html_e( 'Nothing currently needs your attention.', 'vcns-security-automation-manager' ); ?></p>
@@ -822,8 +826,14 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<?php if ( '' !== $wp_sam_ac_item['what_will_happen'] ) : ?>
 			<p class="description"><?php echo esc_html( $wp_sam_ac_item['what_will_happen'] ); ?></p>
 			<?php endif; ?>
+			<?php if ( '' !== $wp_sam_ac_item['technical_detail'] ) : ?>
+			<details<?php echo 'technical' === $wp_sam_ac_prefs['presentation_depth'] ? ' open="open"' : ''; ?>>
+				<summary><?php esc_html_e( 'Technical details', 'vcns-security-automation-manager' ); ?></summary>
+				<code style="white-space:pre-wrap;"><?php echo esc_html( $wp_sam_ac_item['technical_detail'] ); ?></code>
+			</details>
+			<?php endif; ?>
 			<p>
-				<a class="button button-secondary" href="<?php echo esc_url( $wp_sam_ac_item['evidence_url'] ); ?>"><?php esc_html_e( 'Technical details', 'vcns-security-automation-manager' ); ?></a>
+				<a class="button button-secondary" href="<?php echo esc_url( $wp_sam_ac_item['evidence_url'] ); ?>"><?php esc_html_e( 'Full evidence and controls', 'vcns-security-automation-manager' ); ?></a>
 				<?php if ( $wp_sam_ac_item['dismissible'] && null !== $wp_sam_ac_item['key'] ) : ?>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-flex;gap:0.3em;align-items:center;margin-left:0.5em;">
 					<?php wp_nonce_field( 'wp_sam_dismiss_recommendation' ); ?>

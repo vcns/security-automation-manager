@@ -71,6 +71,19 @@ class ActionCentreTest extends TestCase {
 		$this->assertStringContainsString( 'enforcement', $items[0]['what_will_happen'] );
 	}
 
+	public function test_recommendation_evidence_becomes_the_technical_detail_line(): void {
+		Recommendation_Registry::register(
+			new Fixture_Recommendation_Rule(
+				array( $this->recommendation( array( 'evidence' => array( 'violations_last_30_days' => 0, 'surface' => 'frontend' ) ) ) )
+			)
+		);
+
+		$items = ( new Action_Centre() )->items();
+
+		$this->assertStringContainsString( 'violations_last_30_days: 0', $items[0]['technical_detail'] );
+		$this->assertStringContainsString( 'surface: frontend', $items[0]['technical_detail'] );
+	}
+
 	public function test_unknown_recommendation_key_gets_no_consequence_copy_rather_than_a_guess(): void {
 		Recommendation_Registry::register(
 			new Fixture_Recommendation_Rule( array( $this->recommendation( array( 'key' => 'something_not_in_the_lookup' ) ) ) )

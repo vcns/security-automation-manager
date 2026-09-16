@@ -51,7 +51,7 @@ class Action_Centre {
 	 * additional aggregate sources are appended after it since they carry
 	 * no per-item risk rating of their own).
 	 *
-	 * @return array<int, array{what_found:string, why_it_matters:string, recommended_action:string, what_will_happen:string, evidence_url:string, risk:string, dismissible:bool, key:?string}>
+	 * @return array<int, array{what_found:string, why_it_matters:string, recommended_action:string, what_will_happen:string, evidence_url:string, risk:string, dismissible:bool, key:?string, technical_detail:string}>
 	 */
 	public function items(): array {
 		$items = array();
@@ -66,6 +66,7 @@ class Action_Centre {
 				'risk'               => (string) $recommendation['risk'],
 				'dismissible'        => (bool) $recommendation['dismissible'],
 				'key'                => (string) $recommendation['key'],
+				'technical_detail'   => $this->format_evidence( is_array( $recommendation['evidence'] ?? null ) ? $recommendation['evidence'] : array() ),
 			);
 		}
 
@@ -84,6 +85,7 @@ class Action_Centre {
 				'risk'               => 'medium',
 				'dismissible'        => false,
 				'key'                => null,
+				'technical_detail'   => sprintf( 'csp_source_inventory: %d row(s) with approval_state = pending.', $pending_sources ),
 			);
 		}
 
@@ -102,6 +104,7 @@ class Action_Centre {
 				'risk'               => 'low',
 				'dismissible'        => false,
 				'key'                => null,
+				'technical_detail'   => sprintf( 'sam_dependency_inventory: %d row(s) with classification = unclassified.', $unclassified_dependencies ),
 			);
 		}
 
@@ -110,6 +113,23 @@ class Action_Centre {
 
 	public function count_open(): int {
 		return count( $this->items() );
+	}
+
+	/**
+	 * Renders a recommendation's own evidence array (the concrete numbers/
+	 * dates behind the observation, per Recommendation_Engine's own
+	 * docblock) as one plain "key: value" line per entry -- the Level 3
+	 * progressive-disclosure detail for an Action Centre item (spec §12).
+	 * Never invents evidence; an empty array renders an empty string.
+	 *
+	 * @param array<string,mixed> $evidence
+	 */
+	private function format_evidence( array $evidence ): string {
+		$lines = array();
+		foreach ( $evidence as $field => $value ) {
+			$lines[] = $field . ': ' . ( is_scalar( $value ) ? (string) $value : wp_json_encode( $value ) );
+		}
+		return implode( "\n", $lines );
 	}
 
 	private function describe_consequence( string $key ): string {

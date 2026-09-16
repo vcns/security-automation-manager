@@ -1086,3 +1086,35 @@ details.wp-sam-filter-form form {
 		flex-direction: column;
 	}
 }
+
+/*
+ * Progressive disclosure (spec §12): the technical name is always present
+ * in the markup (never removed for Simple users -- only de-emphasised),
+ * and every <details> "Technical details" block follows the same
+ * treatment regardless of which section it's in.
+ */
+.wp-sam-technical-name {
+	color: #646970;
+	font-weight: normal;
+	font-size: 0.9em;
+}
+
+.wp-sam-depth-technical .wp-sam-technical-name {
+	color: inherit;
+	font-weight: 600;
+}
+
+.wp-sam-protection-status details,
+.wp-sam-action-centre-item details {
+	margin-top: 0.5em;
+}
+
+.wp-sam-protection-status details code,
+.wp-sam-action-centre-item details code {
+	display: block;
+	margin-top: 0.3em;
+	padding: 8px;
+	background: #f6f7f7;
+	border-radius: 3px;
+	font-size: 0.9em;
+}
