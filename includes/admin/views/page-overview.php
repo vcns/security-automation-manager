@@ -209,6 +209,8 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Security Automation Manager', 'vcns-security-automation-manager' ); ?></h1>
 
+	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
+
 	<!-- ── Tabs ──────────────────────────────────────────────────────────── -->
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Overview sections', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tab_help as $tab_key => $tab_data ) : ?>

@@ -105,6 +105,30 @@ if ( ! function_exists( 'get_userdata' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_user_meta' ) ) {
+	function get_user_meta( int $user_id, string $key = '', bool $single = false ): mixed {
+		$value = $GLOBALS['_wp_user_meta'][ $user_id ][ $key ] ?? null;
+		if ( $single ) {
+			return null === $value ? '' : $value;
+		}
+		return null === $value ? array() : array( $value );
+	}
+}
+
+if ( ! function_exists( 'update_user_meta' ) ) {
+	function update_user_meta( int $user_id, string $key, mixed $value ): bool {
+		$GLOBALS['_wp_user_meta'][ $user_id ][ $key ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_user_meta' ) ) {
+	function delete_user_meta( int $user_id, string $key ): bool {
+		unset( $GLOBALS['_wp_user_meta'][ $user_id ][ $key ] );
+		return true;
+	}
+}
+
 if ( ! function_exists( 'human_time_diff' ) ) {
 	function human_time_diff( int $from, int $to = 0 ): string {
 		$to   = 0 === $to ? time() : $to;
@@ -1095,6 +1119,7 @@ if ( ! function_exists( 'current_user_can' ) ) {
 // Call this in setUp() to start each test with a clean slate.
 function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_options']              = [];
+	$GLOBALS['_wp_user_meta']            = [];
 	$GLOBALS['_wp_transients']           = [];
 	$GLOBALS['_wp_actions']              = [];
 	$GLOBALS['_wp_did_actions']          = [];

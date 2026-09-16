@@ -29,6 +29,8 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Decide', 'vcns-security-automation-manager' ); ?></h1>
 
+	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
+
 	<p>
 		<?php esc_html_e( 'Evidence evaluated against deterministic rules, confidence, and policy. Nothing here applies a response on its own -- accepted or approved decisions take effect once configured under Control.', 'vcns-security-automation-manager' ); ?>
 	</p>
