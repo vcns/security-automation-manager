@@ -28,7 +28,7 @@
         <ul>
           <li>WordPress 6.4+ and PHP 8.1+</li>
           <li>A one-time, skippable Welcome page personalises how the plugin explains itself to you -- never how it protects the site</li>
-          <li>Ten pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies</li>
+          <li>Twelve pillars: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Information Masking, Cache-Control, Permissions-Policy, Strict-Transport-Security, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, X-Permitted-Cross-Domain-Policies</li>
           <li>Automatic TLS certificate issuance and renewal via ACME (Let's Encrypt) -- free, no subscription</li>
           <li>Per-surface policies for frontend, admin, login, and API</li>
           <li>Report-only rollout before CSP enforcement</li>
@@ -150,7 +150,7 @@
             <p>Per surface, choose None, Master-Only, By-Content-Type, or All. A legacy Flash/Acrobat-era header; None is almost always correct.</p>
           </article>
         </div>
-        <div class='diagram' aria-label='CSP workflow compared to the other nine pillars'>
+        <div class='diagram' aria-label='CSP workflow compared to the other eleven pillars'>
           <div class='mermaid'>
 flowchart LR
     subgraph CSP["Content Security Policy"]
@@ -222,7 +222,7 @@ flowchart LR
             <p>The promotion gate blocks enforce mode until the surface has approved inventory and no recent violation activity inside the configured window.</p>
           </article>
         </div>
-        <p class='section-note'>Steps 3 to 6 are CSP-specific. Seven of the other nine pillars only do step 1 (initialise) and step 2 (emit), with no evidence, approval, or promotion step. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy add a narrower evidence step of their own (their own Report-Only mode), but still skip approval and promotion.</p>
+        <p class='section-note'>Steps 3 to 6 are CSP-specific. Nine of the other eleven pillars only do step 1 (initialise) and step 2 (emit), with no evidence, approval, or promotion step. Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy add a narrower evidence step of their own (their own Report-Only mode), but still skip approval and promotion.</p>
       </section>
 
       <section id='learning-curve' class='section'>

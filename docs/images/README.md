@@ -37,13 +37,13 @@ exist):
 | `sam-csp-for-review.png` | user-guide.html (Scan and learn) |
 | `sam-csp-policy-changes.png` | user-guide.html (Approval workflow) |
 | `sam-csp-settings-deterministic-automation.png` | user-guide.html (Automation tiers) |
-| `sam-permissions-policy.png` | user-guide.html (The other nine pillars) |
-| `sam-x-frame-options.png` | user-guide.html (The other nine pillars) |
-| `sam-x-content-type-options.png` | user-guide.html (The other nine pillars) |
-| `sam-referrer-policy.png` | user-guide.html (The other nine pillars) |
-| `sam-hsts.png` | user-guide.html (The other nine pillars) |
-| `sam-cross-origin-coop.png` | user-guide.html (The other nine pillars) |
-| `sam-cross-origin-coep.png` | user-guide.html (The other nine pillars) |
+| `sam-permissions-policy.png` | user-guide.html (The other eleven pillars) |
+| `sam-x-frame-options.png` | user-guide.html (The other eleven pillars) |
+| `sam-x-content-type-options.png` | user-guide.html (The other eleven pillars) |
+| `sam-referrer-policy.png` | user-guide.html (The other eleven pillars) |
+| `sam-hsts.png` | user-guide.html (The other eleven pillars) |
+| `sam-cross-origin-coop.png` | user-guide.html (The other eleven pillars) |
+| `sam-cross-origin-coep.png` | user-guide.html (The other eleven pillars) |
 | `sam-reverse-tabnabbing.png` | user-guide.html (Content rewrite protections) |
 | `sam-scripts-external.png` | user-guide.html (Content rewrite protections) |
 | `sam-scripts-internal.png` | user-guide.html (Content rewrite protections) |
