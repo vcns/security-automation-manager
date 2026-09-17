@@ -749,6 +749,12 @@ if ( ! function_exists( 'wp_doing_cron' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_doing_ajax' ) ) {
+	function wp_doing_ajax(): bool {
+		return $GLOBALS['_wp_doing_ajax'] ?? false;
+	}
+}
+
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action( string $hook, callable $callback, int $priority = 10, int $accepted_args = 1 ): bool {
 		$GLOBALS['_wp_actions'][ $hook ][] = [ $callback, $priority, $accepted_args ];
@@ -1151,6 +1157,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_is_admin']             = false;
 	$GLOBALS['_wp_is_ssl']               = false;
 	$GLOBALS['_wp_doing_cron']           = false;
+	$GLOBALS['_wp_doing_ajax']           = false;
 	$GLOBALS['_wp_cron']                 = [];
 	$GLOBALS['_wp_current_user_can']     = [];
 	$GLOBALS['_wp_themes']               = [];

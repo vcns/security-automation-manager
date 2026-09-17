@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use WP_SAM\Admin\Admin_UI;
 use WP_SAM\Admin\Pillar_Registry;
 use WP_SAM\Plugin;
+use WP_SAM\Rollback_Guard;
 
 class AdminUITest extends TestCase {
 
@@ -767,6 +768,49 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'discovery/crawl_failed', $output );
 		$this->assertStringContainsString( 'Failed to fetch', $output );
 		$this->assertStringNotContainsString( '<details>', $output );
+	}
+
+	/**
+	 * Regression coverage: a real Release Verification CI run caught this
+	 * (Actions run 35161656965) -- a first-run Welcome redirect for a
+	 * WordPress user who had never completed SAM onboarding exited during
+	 * admin_init on every SAM admin page, including the one showing the
+	 * schema-downgrade notice, before the later admin_notices hook that
+	 * actually renders it ever got to run. curl (no -L flag) captured only
+	 * the redirect response, so the notice text was never found on the
+	 * expected page. has_urgent_admin_notice() must suppress the redirect
+	 * whenever a persistent, must-always-show notice is active -- the same
+	 * two conditions display_admin_notices() itself never delays.
+	 */
+	public function test_welcome_redirect_does_not_hide_the_schema_downgrade_notice(): void {
+		$GLOBALS['_wp_is_admin']                          = true;
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		$_GET['page'] = 'security-automation-manager';
+		update_option( Rollback_Guard::DOWNGRADE_OPTION, array( 'installed' => 99, 'code' => 22 ) );
+
+		$ui = $this->make_admin_ui();
+		$ui->maybe_redirect_to_welcome();
+
+		// No exception and no process exit -- reaching this assertion proves
+		// the redirect did not fire while the downgrade notice is active.
+		$this->assertTrue( true );
+
+		unset( $_GET['page'] );
+	}
+
+	public function test_welcome_redirect_is_not_suppressed_once_the_notice_condition_clears(): void {
+		$GLOBALS['_wp_is_admin']                          = true;
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		$_GET['page'] = 'security-automation-manager';
+
+		$ui = $this->make_admin_ui();
+
+		$this->assertFalse(
+			( new \ReflectionMethod( $ui, 'has_urgent_admin_notice' ) )->invoke( $ui ),
+			'has_urgent_admin_notice() should be false once no downgrade flag and no failed certificate run are present, so the Welcome redirect logic above it still runs normally for a first-time user.'
+		);
+
+		unset( $_GET['page'] );
 	}
 
 	private function make_admin_ui(): Admin_UI {

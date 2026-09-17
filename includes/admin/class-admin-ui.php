@@ -582,9 +582,37 @@ class Admin_UI {
 		if ( Presentation_Preferences::has_completed_onboarding( get_current_user_id() ) ) {
 			return;
 		}
+		if ( $this->has_urgent_admin_notice() ) {
+			return;
+		}
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-welcome' ) );
 		exit;
+	}
+
+	/**
+	 * True when a persistent, must-always-show admin notice is currently
+	 * active (schema downgrade or certificate-renewal failure -- the same
+	 * two conditions display_admin_notices() deliberately shows on every
+	 * page load instead of once, see its own comments). The Welcome-page
+	 * redirect must never delay either: redirecting first would exit the
+	 * request during admin_init, before the admin_notices hook that
+	 * actually renders these notices ever runs, hiding a genuinely urgent
+	 * condition behind a presentation-preference prompt -- the exact thing
+	 * spec section 5.4 already requires for the Action Centre, extended
+	 * here to admin notices generally.
+	 */
+	private function has_urgent_admin_notice(): bool {
+		$downgrade_flag = get_option( Rollback_Guard::DOWNGRADE_OPTION, array() );
+		if ( is_array( $downgrade_flag ) && ! empty( $downgrade_flag ) ) {
+			return true;
+		}
+
+		if ( isset( $this->plugin->cert_manager ) && 'failed' === $this->plugin->cert_manager->last_run()['status'] ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	public function add_plugin_action_links( array $links ): array {
