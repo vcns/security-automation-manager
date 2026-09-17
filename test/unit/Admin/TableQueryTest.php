@@ -254,6 +254,22 @@ class TableQueryTest extends TestCase {
 		$this->assertStringContainsString( 'v_paged=1', $html );
 	}
 
+	public function test_sort_header_omits_class_attribute_by_default(): void {
+		$resolved = Table_Query::resolve_sort( $this->whitelist(), 'last_seen', 'last_seen', 'desc' );
+
+		$html = Table_Query::sort_header( 'Host', 'host', $this->whitelist(), $resolved, array( 'tab' => 'violations' ), 'https://example.com/wp-admin/admin.php', 'v_paged' );
+
+		$this->assertStringStartsWith( '<th><a', $html );
+	}
+
+	public function test_sort_header_applies_the_semantic_column_class_when_given(): void {
+		$resolved = Table_Query::resolve_sort( $this->whitelist(), 'last_seen', 'last_seen', 'desc' );
+
+		$html = Table_Query::sort_header( 'Last Seen', 'last_seen', $this->whitelist(), $resolved, array( 'tab' => 'violations' ), 'https://example.com/wp-admin/admin.php', 'v_paged', 'wp-sam-col-datetime' );
+
+		$this->assertStringStartsWith( '<th class="wp-sam-col-datetime"><a', $html );
+	}
+
 	// ── pagination() ─────────────────────────────────────────────────────────────
 
 	public function test_pagination_renders_nothing_for_single_page(): void {

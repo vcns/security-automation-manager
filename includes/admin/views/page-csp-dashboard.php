@@ -268,28 +268,29 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 	<p class="description">
 		<?php esc_html_e( "Mode is what's actually happening on each surface right now -- report-only (nothing blocked, violations logged), enforce (the policy actually blocks what it doesn't allow), or disabled. Automation controls how much of the review-and-approve work is done for you; Manual leaves every decision to you. Trusted Types and Bypass Best Practices are advanced, opt-in exceptions -- Trusted Types adds a stricter defense on top of CSP (pinned to report-only, since enforcing it needs application code most WordPress sites don't have), and a Bypass Best Practices toggle only appears once this surface has actually needed one, each deliberately weakening the policy in one narrow way to stop something that was really breaking.", 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat fixed striped wp-sam-profiles-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat fixed striped wp-sam-table wp-sam-profiles-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Automation', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Experimental', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Bypass Best Practices', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Last Updated', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Automation', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Experimental', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Bypass Best Practices', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last Updated', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 		<?php foreach ( $profiles as $profile ) : ?>
 		<tr>
-			<td><?php echo esc_html( ucfirst( $profile['surface'] ) ); ?></td>
-			<td>
+			<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $profile['surface'] ) ); ?></td>
+			<td class="wp-sam-col-status">
 				<span class="wp-sam-mode-badge mode-<?php echo esc_attr( $profile['mode'] ); ?>">
 					<?php echo esc_html( $profile['mode'] ); ?>
 				</span>
 			</td>
-			<td>
+			<td class="wp-sam-col-technical">
 				<?php
 				$surface          = (string) $profile['surface'];
 				$surface_config   = $automation_config[ $surface ] ?? \WP_SAM\CSP\Automation_Config::DEFAULT_SURFACE_CONFIG;
@@ -323,7 +324,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 				<br /><a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-upgrade' ) ); ?>" style="font-size:0.85em;"><?php esc_html_e( 'Upgrade to unlock →', 'vcns-security-automation-manager' ); ?></a>
 				<?php endif; ?>
 			</td>
-			<td>
+			<td class="wp-sam-col-technical">
 				<label>
 					<input
 						type="checkbox"
@@ -338,7 +339,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 					?>
 				</label>
 			</td>
-			<td>
+			<td class="wp-sam-col-technical">
 				<?php
 				$bypass_enabled_flags = json_decode( (string) ( $profile['bypass_flags'] ?? '' ), true );
 				$bypass_enabled_flags = is_array( $bypass_enabled_flags ) ? $bypass_enabled_flags : array();
@@ -387,8 +388,8 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 				<p class="description" style="margin:0;"><?php esc_html_e( 'No relevant options for this surface yet -- entries appear here once this surface has actually triggered them.', 'vcns-security-automation-manager' ); ?></p>
 				<?php endif; ?>
 			</td>
-			<td><?php echo esc_html( $profile['updated_at'] ); ?></td>
-			<td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( $profile['updated_at'] ); ?></td>
+			<td class="wp-sam-col-actions">
 				<?php foreach ( array( 'report-only', 'enforce', 'disabled' ) as $m ) : ?>
 					<?php if ( $m !== $profile['mode'] ) : ?>
 					<button type="button"
@@ -407,6 +408,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php endif; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<?php elseif ( 'sources' === $tab ) : ?>
 	<!-- ── Sources tab ────────────────────────────────────────────────────── -->
@@ -586,43 +588,44 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		</form>
 	</details>
 
-	<table class="widefat fixed striped wp-sam-sources-table" style="margin-top:1em">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat fixed striped wp-sam-table wp-sam-sources-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
-				echo Table_Query::sort_header( __( 'ID', 'vcns-security-automation-manager' ), 'id', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
-				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Directive', 'vcns-security-automation-manager' ), 'directive', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Host', 'vcns-security-automation-manager' ), 'host', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Risk', 'vcns-security-automation-manager' ), 'risk', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'State', 'vcns-security-automation-manager' ), 'state', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Evidence', 'vcns-security-automation-manager' ), 'evidence', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $src_sort_whitelist, $src_sort, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'ID', 'vcns-security-automation-manager' ), 'id', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-compact' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-surface' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Directive', 'vcns-security-automation-manager' ), 'directive', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Host', 'vcns-security-automation-manager' ), 'host', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Risk', 'vcns-security-automation-manager' ), 'risk', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'State', 'vcns-security-automation-manager' ), 'state', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Evidence', 'vcns-security-automation-manager' ), 'evidence', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-count' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $src_sort_whitelist, $src_sort, $src_state_args, $base_url, 'paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				?>
-				<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 		<?php foreach ( $sources as $src ) : ?>
 		<tr>
-			<td><?php echo esc_html( $src['id'] ); ?></td>
-			<td><?php echo esc_html( $src['surface'] ); ?></td>
-			<td><code><?php echo esc_html( $src['directive'] ); ?></code></td>
-			<td>
+			<td class="wp-sam-col-compact"><?php echo esc_html( $src['id'] ); ?></td>
+			<td class="wp-sam-col-surface"><?php echo esc_html( $src['surface'] ); ?></td>
+			<td class="wp-sam-col-technical"><code><?php echo esc_html( $src['directive'] ); ?></code></td>
+			<td class="wp-sam-col-technical">
 				<code><?php echo esc_html( $src['source_host'] ); ?></code>
 				<?php echo Known_Source_Badge::render( (string) $src['source_host'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
 			</td>
-			<td>
+			<td class="wp-sam-col-status">
 				<?php echo Risk_Badge::render( (string) ( $src['risk_level'] ?? 'low' ), (string) ( $src['risk_reason'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
 			</td>
-			<td>
+			<td class="wp-sam-col-status">
 				<span class="wp-sam-state-badge state-<?php echo esc_attr( $src['approval_state'] ); ?>">
 					<?php echo esc_html( ucfirst( $src['approval_state'] ) ); ?>
 				</span>
 			</td>
-			<td><?php echo esc_html( number_format( (int) ( $src['evidence_count'] ?? 1 ) ) ); ?></td>
-			<td><?php echo esc_html( $src['last_seen_at'] ); ?></td>
-			<td class="wp-sam-source-actions">
+			<td class="wp-sam-col-count"><?php echo esc_html( number_format( (int) ( $src['evidence_count'] ?? 1 ) ) ); ?></td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( $src['last_seen_at'] ); ?></td>
+			<td class="wp-sam-source-actions wp-sam-col-actions">
 				<?php if ( 'pending' === $src['approval_state'] || 'denied' === $src['approval_state'] ) : ?>
 				<button type="button" class="button button-small wp-sam-approve-source" data-id="<?php echo esc_attr( $src['id'] ); ?>">
 					<?php esc_html_e( 'Approve', 'vcns-security-automation-manager' ); ?>
@@ -651,6 +654,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php endif; ?>
 		</tbody>
 	</table>
+	</div>
 
 		<?php echo Table_Query::pagination( $page_num, $src_pages, $src_state_args, $base_url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
@@ -902,54 +906,55 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			<?php submit_button( __( 'Filter', 'vcns-security-automation-manager' ), 'secondary', 'filter_policy_changes', false ); ?>
 		</form>
 	</details>
-	<table class="widefat fixed striped" style="margin-top:1em">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat fixed striped wp-sam-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
-				echo Table_Query::sort_header( __( 'When', 'vcns-security-automation-manager' ), 'when', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
-				echo Table_Query::sort_header( __( 'Event', 'vcns-security-automation-manager' ), 'event', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Type', 'vcns-security-automation-manager' ), 'type', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Actor', 'vcns-security-automation-manager' ), 'actor', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Directive', 'vcns-security-automation-manager' ), 'directive', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Host', 'vcns-security-automation-manager' ), 'host', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Risk', 'vcns-security-automation-manager' ), 'risk', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Policy Version', 'vcns-security-automation-manager' ), 'policy_version', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Suppression', 'vcns-security-automation-manager' ), 'suppression', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Detail', 'vcns-security-automation-manager' ), 'detail', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'When', 'vcns-security-automation-manager' ), 'when', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+				echo Table_Query::sort_header( __( 'Event', 'vcns-security-automation-manager' ), 'event', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Type', 'vcns-security-automation-manager' ), 'type', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-compact' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Actor', 'vcns-security-automation-manager' ), 'actor', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-primary' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-surface' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Directive', 'vcns-security-automation-manager' ), 'directive', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Host', 'vcns-security-automation-manager' ), 'host', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Risk', 'vcns-security-automation-manager' ), 'risk', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Policy Version', 'vcns-security-automation-manager' ), 'policy_version', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-compact' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Suppression', 'vcns-security-automation-manager' ), 'suppression', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Detail', 'vcns-security-automation-manager' ), 'detail', $pc_sort_whitelist, $pc_sort, $pc_state_args, $base_url, 'pc_paged', 'wp-sam-col-description' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				?>
 			</tr>
 		</thead>
 		<tbody>
 		<?php foreach ( $policy_events as $event ) : ?>
 		<tr>
-			<td><?php echo esc_html( $event['created_at'] ); ?></td>
-			<td><?php echo esc_html( $event['event'] ); ?></td>
-			<td><?php echo esc_html( $event['type'] ); ?></td>
-			<td><?php echo esc_html( $event['actor'] ); ?></td>
-			<td><?php echo '' !== $event['surface'] ? esc_html( $event['surface'] ) : '&mdash;'; ?></td>
-			<td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( $event['created_at'] ); ?></td>
+			<td class="wp-sam-col-status"><?php echo esc_html( $event['event'] ); ?></td>
+			<td class="wp-sam-col-compact"><?php echo esc_html( $event['type'] ); ?></td>
+			<td class="wp-sam-col-primary"><?php echo esc_html( $event['actor'] ); ?></td>
+			<td class="wp-sam-col-surface"><?php echo '' !== $event['surface'] ? esc_html( $event['surface'] ) : '&mdash;'; ?></td>
+			<td class="wp-sam-col-technical">
 				<?php if ( '' !== $event['directive'] ) : ?>
 					<code><?php echo esc_html( $event['directive'] ); ?></code>
 				<?php else : ?>
 					&mdash;
 				<?php endif; ?>
 			</td>
-			<td>
+			<td class="wp-sam-col-technical">
 				<?php if ( '' !== $event['source'] ) : ?>
 					<code><?php echo esc_html( $event['source'] ); ?></code>
 				<?php else : ?>
 					&mdash;
 				<?php endif; ?>
 			</td>
-			<td>
+			<td class="wp-sam-col-status">
 				<?php echo '' !== $event['risk_level'] ? Risk_Badge::render( $event['risk_level'], $event['risk_reason'] ) : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Risk_Badge::render() escapes internally; the literal &mdash; needs no escaping. ?>
 			</td>
-			<td><?php echo '' !== $event['policy_version'] ? esc_html( $event['policy_version'] ) : '&mdash;'; ?></td>
-			<td>
+			<td class="wp-sam-col-compact"><?php echo '' !== $event['policy_version'] ? esc_html( $event['policy_version'] ) : '&mdash;'; ?></td>
+			<td class="wp-sam-col-status">
 				<?php echo '' !== $event['suppression'] ? esc_html( $event['suppression'] ) : '&mdash;'; ?>
 			</td>
-			<td><?php echo esc_html( $event['detail'] ); ?></td>
+			<td class="wp-sam-col-description"><?php echo esc_html( $event['detail'] ); ?></td>
 		</tr>
 		<?php endforeach; ?>
 		<?php if ( empty( $policy_events ) ) : ?>
@@ -957,6 +962,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php endif; ?>
 		</tbody>
 	</table>
+	</div>
 
 		<?php echo Table_Query::pagination( $pc_page_num, $pc_pages, $pc_state_args, $base_url, 'pc_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
@@ -970,16 +976,17 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 	<p class="description">
 		<?php esc_html_e( "One row per surface, summarising what's actually live right now: the enforced Mode, how much of Automation you've delegated, which Policy Version last locked in, and how many discovered sources are still waiting in For Review -- High Risk narrows that to the ones worth checking first. Effective Header is the literal CSP string currently being sent for that surface.", 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat striped wp-sam-audit-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-audit-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Automation', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Policy Version', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Pending', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'High Risk', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Effective Header', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Automation', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-compact"><?php esc_html_e( 'Policy Version', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-count"><?php esc_html_e( 'Pending', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-count"><?php esc_html_e( 'High Risk', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Effective Header', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -1010,17 +1017,18 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 				$audit_profile = $profiles_by_surface[ $surface ] ?? array();
 				?>
 				<tr>
-					<td><strong><?php echo esc_html( ucfirst( $surface ) ); ?></strong></td>
-					<td><?php echo esc_html( $audit_profile['mode'] ?? 'unknown' ); ?></td>
-					<td><?php echo esc_html( $automation_config[ $surface ]['mode'] ?? 'manual' ); ?></td>
-					<td><?php echo isset( $audit_latest['version_number'] ) ? esc_html( (string) $audit_latest['version_number'] ) : esc_html__( 'Not captured yet', 'vcns-security-automation-manager' ); ?></td>
-					<td><?php echo esc_html( (string) $audit_pending_count ); ?></td>
-					<td><?php echo esc_html( (string) $audit_high_count ); ?></td>
-					<td><code><?php echo Csp_Header_Formatter::render( (string) ( $audit_latest['effective_header'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-escaped HTML, see Csp_Header_Formatter::render() ?></code></td>
+					<td class="wp-sam-col-surface"><strong><?php echo esc_html( ucfirst( $surface ) ); ?></strong></td>
+					<td class="wp-sam-col-status"><?php echo esc_html( $audit_profile['mode'] ?? 'unknown' ); ?></td>
+					<td class="wp-sam-col-technical"><?php echo esc_html( $automation_config[ $surface ]['mode'] ?? 'manual' ); ?></td>
+					<td class="wp-sam-col-compact"><?php echo isset( $audit_latest['version_number'] ) ? esc_html( (string) $audit_latest['version_number'] ) : esc_html__( 'Not captured yet', 'vcns-security-automation-manager' ); ?></td>
+					<td class="wp-sam-col-count"><?php echo esc_html( (string) $audit_pending_count ); ?></td>
+					<td class="wp-sam-col-count"><?php echo esc_html( (string) $audit_high_count ); ?></td>
+					<td class="wp-sam-col-technical"><code><?php echo Csp_Header_Formatter::render( (string) ( $audit_latest['effective_header'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-escaped HTML, see Csp_Header_Formatter::render() ?></code></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 	<p class="description" style="margin-top:1em">
 		<?php esc_html_e( 'For the pending review queue, see For Review. For the full, immutable decision ledger -- who approved, rejected, or reverted each source, and why -- see Policy Changes.', 'vcns-security-automation-manager' ); ?>
 	</p>
@@ -1196,30 +1204,31 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			<?php submit_button( __( 'Filter', 'vcns-security-automation-manager' ), 'secondary', 'filter_violations', false ); ?>
 		</form>
 	</details>
-	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
-				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
-				echo Table_Query::sort_header( __( 'Blocked URI', 'vcns-security-automation-manager' ), 'blocked_uri', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Directive', 'vcns-security-automation-manager' ), 'directive', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Occurrences (lifetime)', 'vcns-security-automation-manager' ), 'occurrences', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- count never resets; the seen-range filter only affects which rows are *shown*, not this total.
-				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Disposition', 'vcns-security-automation-manager' ), 'disposition', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged', 'wp-sam-col-surface' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+				echo Table_Query::sort_header( __( 'Blocked URI', 'vcns-security-automation-manager' ), 'blocked_uri', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Directive', 'vcns-security-automation-manager' ), 'directive', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Occurrences (lifetime)', 'vcns-security-automation-manager' ), 'occurrences', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged', 'wp-sam-col-count' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- count never resets; the seen-range filter only affects which rows are *shown*, not this total.
+				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Disposition', 'vcns-security-automation-manager' ), 'disposition', $viol_sort_whitelist, $viol_sort, $viol_state_args, $base_url, 'v_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				?>
-				<th><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-compact"><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 		<?php foreach ( $violations as $v ) : ?>
 		<tr>
-			<td><?php echo esc_html( $v['profile_surface'] ); ?></td>
-			<td><code style="word-break:break-all"><?php echo esc_html( ! empty( $v['blocked_host'] ) ? $v['blocked_host'] : $v['blocked_uri'] ); ?></code></td>
-			<td><code><?php echo esc_html( $v['violated_directive'] ); ?></code></td>
-			<td><?php echo esc_html( number_format( (int) $v['occurrence_count'] ) ); ?></td>
-			<td><?php echo esc_html( $v['reported_at'] ); ?></td>
-			<td><?php echo esc_html( $v['disposition'] ); ?></td>
-			<td>
+			<td class="wp-sam-col-surface"><?php echo esc_html( $v['profile_surface'] ); ?></td>
+			<td class="wp-sam-col-technical"><code><?php echo esc_html( ! empty( $v['blocked_host'] ) ? $v['blocked_host'] : $v['blocked_uri'] ); ?></code></td>
+			<td class="wp-sam-col-technical"><code><?php echo esc_html( $v['violated_directive'] ); ?></code></td>
+			<td class="wp-sam-col-count"><?php echo esc_html( number_format( (int) $v['occurrence_count'] ) ); ?></td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( $v['reported_at'] ); ?></td>
+			<td class="wp-sam-col-status"><?php echo esc_html( $v['disposition'] ); ?></td>
+			<td class="wp-sam-col-compact">
 				<?php
 				$meta_fields = array();
 				if ( ! empty( $v['first_reported_at'] ) ) {
@@ -1296,6 +1305,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php endif; ?>
 		</tbody>
 	</table>
+	</div>
 
 		<?php echo Table_Query::pagination( $viol_page_num, $viol_pages, $viol_state_args, $base_url, 'v_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
@@ -1309,16 +1319,17 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 	<p class="description">
 		<?php esc_html_e( "A scan checks the site's current file inventory (theme, active plugins, and any content this plugin can reach) against the source and hash inventory it already knows about, adding or removing entries as things change. Scans run automatically on the schedule below and after most site changes, or you can trigger one manually from the button at the top of this page. Policy Changed means the scan's findings actually altered a surface's locked-in policy version, not just that something was discovered.", 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat fixed striped">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat fixed striped wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Trigger', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Sources +/-', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Hashes +/-', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Policy Changed', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Started', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Duration', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Trigger', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-count"><?php esc_html_e( 'Sources +/-', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-count"><?php esc_html_e( 'Hashes +/-', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Policy Changed', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-datetime"><?php esc_html_e( 'Started', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-compact"><?php esc_html_e( 'Duration', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -1331,13 +1342,13 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			}
 			?>
 		<tr>
-			<td><?php echo esc_html( ucfirst( $log['trigger_type'] ) ); ?></td>
-			<td><?php echo esc_html( ucfirst( $log['status'] ) ); ?></td>
-			<td>+<?php echo esc_html( $log['sources_added'] ); ?> / -<?php echo esc_html( $log['sources_removed'] ); ?></td>
-			<td>+<?php echo esc_html( $log['hashes_added'] ); ?> / -<?php echo esc_html( $log['hashes_removed'] ); ?></td>
-			<td><?php echo $log['policy_changed'] ? esc_html__( 'Yes', 'vcns-security-automation-manager' ) : '&mdash;'; ?></td>
-			<td><?php echo esc_html( $log['started_at'] ); ?></td>
-			<td><?php echo esc_html( $duration ); ?></td>
+			<td class="wp-sam-col-primary"><?php echo esc_html( ucfirst( $log['trigger_type'] ) ); ?></td>
+			<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( $log['status'] ) ); ?></td>
+			<td class="wp-sam-col-count">+<?php echo esc_html( $log['sources_added'] ); ?> / -<?php echo esc_html( $log['sources_removed'] ); ?></td>
+			<td class="wp-sam-col-count">+<?php echo esc_html( $log['hashes_added'] ); ?> / -<?php echo esc_html( $log['hashes_removed'] ); ?></td>
+			<td class="wp-sam-col-status"><?php echo $log['policy_changed'] ? esc_html__( 'Yes', 'vcns-security-automation-manager' ) : '&mdash;'; ?></td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( $log['started_at'] ); ?></td>
+			<td class="wp-sam-col-compact"><?php echo esc_html( $duration ); ?></td>
 		</tr>
 		<?php endforeach; ?>
 		<?php if ( empty( $scan_logs ) ) : ?>
@@ -1345,6 +1356,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php endif; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<?php elseif ( 'settings' === $tab ) : ?>
 	<!-- ── Settings tab ───────────────────────────────────────────────────── -->
@@ -1409,22 +1421,23 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		do_action( 'wp_sam_automation_upgrade_notice', $wp_sam_has_unavailable_mode );
 		?>
 
-		<table class="widefat striped" role="presentation">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table" role="presentation">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Maximum per run', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Directive scope', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Allowed schemes', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-count"><?php esc_html_e( 'Maximum per run', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Directive scope', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Allowed schemes', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $surfaces as $surface ) : ?>
 				<?php $surface_config = $settings_automation_config[ $surface ] ?? \WP_SAM\CSP\Automation_Config::DEFAULT_SURFACE_CONFIG; ?>
 				<tr>
-					<td><strong><?php echo esc_html( ucfirst( $surface ) ); ?></strong></td>
-					<td>
+					<td class="wp-sam-col-surface"><strong><?php echo esc_html( ucfirst( $surface ) ); ?></strong></td>
+					<td class="wp-sam-col-technical">
 						<select name="wp_sam_automation_config[<?php echo esc_attr( $surface ); ?>][mode]">
 							<?php foreach ( $automation_mode_labels as $mode => $label ) : ?>
 							<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $surface_config['mode'], $mode ); ?>
@@ -1439,10 +1452,10 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 							<?php endforeach; ?>
 						</select>
 					</td>
-					<td>
+					<td class="wp-sam-col-count">
 						<input type="number" class="small-text" min="0" max="50" name="wp_sam_automation_config[<?php echo esc_attr( $surface ); ?>][max_automatic_changes_per_scan]" value="<?php echo esc_attr( (string) ( $surface_config['max_automatic_changes_per_scan'] ?? 0 ) ); ?>" />
 					</td>
-					<td>
+					<td class="wp-sam-col-technical">
 						<?php foreach ( $automation_directives as $directive ) : ?>
 							<label style="display:block">
 								<input type="checkbox" name="wp_sam_automation_config[<?php echo esc_attr( $surface ); ?>][enabled_directives][]" value="<?php echo esc_attr( $directive ); ?>" <?php checked( in_array( $directive, $surface_config['enabled_directives'] ?? array(), true ) ); ?> />
@@ -1451,7 +1464,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 						<?php endforeach; ?>
 						<p class="description"><?php esc_html_e( 'Leave all unchecked to permit any directive that is inside the selected automation posture and not hard-excluded by the deterministic engine.', 'vcns-security-automation-manager' ); ?></p>
 					</td>
-					<td>
+					<td class="wp-sam-col-technical">
 						<?php foreach ( $automation_schemes as $scheme ) : ?>
 							<label style="display:block">
 								<input type="checkbox" name="wp_sam_automation_config[<?php echo esc_attr( $surface ); ?>][allowed_source_schemes][]" value="<?php echo esc_attr( $scheme ); ?>" <?php checked( in_array( $scheme, $surface_config['allowed_source_schemes'] ?? array(), true ) ); ?> />
@@ -1463,6 +1476,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			<?php endforeach; ?>
 			</tbody>
 		</table>
+		</div>
 		<p class="description">
 			<?php esc_html_e( 'Automatic decisions are recorded with actor automation_engine and can be reverted from the review queue like administrator approvals.', 'vcns-security-automation-manager' ); ?>
 		</p>
