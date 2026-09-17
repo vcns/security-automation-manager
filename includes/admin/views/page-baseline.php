@@ -118,7 +118,7 @@ $current        = $baseline_store->get_current();
 		</p>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-drift-table">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-drift-table">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-surface"><?php esc_html_e( 'Category', 'vcns-security-automation-manager' ); ?></th>
@@ -182,7 +182,7 @@ $current        = $baseline_store->get_current();
 		</p>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-compact"><?php esc_html_e( 'Version', 'vcns-security-automation-manager' ); ?></th>
@@ -229,7 +229,7 @@ $current        = $baseline_store->get_current();
 		</p>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-surface"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>

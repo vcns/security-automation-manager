@@ -217,8 +217,12 @@
 /* ── Table tweaks ────────────────────────────────────────────────────────── */
 .wp-sam-wrap .widefat code {
 	font-size: 0.9em;
-	word-break: break-all;
 }
+/* word-break was previously break-all here, blanket across every table. Now
+ * governed per-column by .wp-sam-col-technical (see the SAM table layout
+ * standard section below), which uses the gentler word-break: break-word +
+ * overflow-wrap: anywhere -- .wp-sam-drift-item keeps its own explicit
+ * word-break: break-word regardless, unaffected by this change either way. */
 
 /* CSP directive names in the Policy Audit tab's Effective Header column.
    font-weight alone isn't enough contrast in a monospace <code> block on a
@@ -255,51 +259,6 @@
 	width: 100%;
 	max-width: 320px;
 }
-
-/* Column widths for the For Review (Sources) table -- table-layout:fixed
- * (from .widefat.fixed) sizes every column from the header row alone, so
- * without this every column ends up roughly equal width regardless of
- * actual content: Host (a full domain name plus the Known badge) was
- * starved down to the same width as ID or State, forcing ugly mid-word
- * wraps. Percentages sum to 100.
- */
-.wp-sam-sources-table th:nth-child(1),
-.wp-sam-sources-table td:nth-child(1) { width: 4%; }
-.wp-sam-sources-table th:nth-child(2),
-.wp-sam-sources-table td:nth-child(2) { width: 7%; }
-.wp-sam-sources-table th:nth-child(3),
-.wp-sam-sources-table td:nth-child(3) { width: 13%; }
-.wp-sam-sources-table th:nth-child(4),
-.wp-sam-sources-table td:nth-child(4) { width: 26%; word-break: break-word; }
-.wp-sam-sources-table th:nth-child(5),
-.wp-sam-sources-table td:nth-child(5) { width: 8%; }
-.wp-sam-sources-table th:nth-child(6),
-.wp-sam-sources-table td:nth-child(6) { width: 9%; }
-.wp-sam-sources-table th:nth-child(7),
-.wp-sam-sources-table td:nth-child(7) { width: 7%; }
-.wp-sam-sources-table th:nth-child(8),
-.wp-sam-sources-table td:nth-child(8) { width: 12%; }
-.wp-sam-sources-table th:nth-child(9),
-.wp-sam-sources-table td:nth-child(9) { width: 14%; }
-
-/* Same table-layout:fixed problem as the Sources table above, on the
- * Scripts > Internal Hash Inventory table: URL and Hash need most of the
- * room (full URLs, base64 SHA-384 hashes), everything else is short.
- */
-.wp-sam-hash-inventory-table th:nth-child(1),
-.wp-sam-hash-inventory-table td:nth-child(1) { width: 7%; }
-.wp-sam-hash-inventory-table th:nth-child(2),
-.wp-sam-hash-inventory-table td:nth-child(2) { width: 7%; }
-.wp-sam-hash-inventory-table th:nth-child(3),
-.wp-sam-hash-inventory-table td:nth-child(3) { width: 14%; }
-.wp-sam-hash-inventory-table th:nth-child(4),
-.wp-sam-hash-inventory-table td:nth-child(4) { width: 30%; }
-.wp-sam-hash-inventory-table th:nth-child(5),
-.wp-sam-hash-inventory-table td:nth-child(5) { width: 26%; }
-.wp-sam-hash-inventory-table th:nth-child(6),
-.wp-sam-hash-inventory-table td:nth-child(6) { width: 7%; }
-.wp-sam-hash-inventory-table th:nth-child(7),
-.wp-sam-hash-inventory-table td:nth-child(7) { width: 9%; }
 
 .wp-sam-readiness-badge {
 	display: inline-block;
@@ -349,251 +308,8 @@
 	list-style: disc;
 }
 
-/*
- * Violations table: table-layout is fixed (the "fixed" class), so an
- * explicit width on every column except Blocked URI lets that one column
- * absorb whatever space the others don't need, instead of all seven
- * columns splitting the row width evenly.
- */
-.wp-sam-violations-table th:nth-child(1),
-.wp-sam-violations-table td:nth-child(1) {
-	width: 90px;
-}
-
-.wp-sam-violations-table th:nth-child(3),
-.wp-sam-violations-table td:nth-child(3) {
-	width: 110px;
-}
-
-.wp-sam-violations-table th:nth-child(4),
-.wp-sam-violations-table td:nth-child(4) {
-	width: 110px;
-}
-
-.wp-sam-violations-table th:nth-child(5),
-.wp-sam-violations-table td:nth-child(5) {
-	width: 150px;
-}
-
-.wp-sam-violations-table th:nth-child(6),
-.wp-sam-violations-table td:nth-child(6) {
-	width: 100px;
-}
-
-.wp-sam-violations-table th:nth-child(7),
-.wp-sam-violations-table td:nth-child(7) {
-	width: 70px;
-}
-
-/*
- * Continuous Intelligence -- Events table: the nth-child rules above are
- * tuned for the 7-column Violations table and misalign badly against this
- * table's own 8 columns (a wrong Family/Severity/date width was the actual
- * cause of the reported "awful spacing" -- wrapping detector-family labels
- * and dates that would otherwise fit on one line). Pin every column except
- * Family, left unset to absorb whatever's left: for the large majority of
- * detectors it renders as a plain em-dash (see page-intelligence.php's own
- * comment -- id() and family() are the same string for all but a handful
- * of detectors), so it rarely needs the room, but the rare distinct family
- * name (e.g. "deception", "network-intelligence") still has space to
- * breathe. Detector is widened to comfortably fit the longest current
- * detector id ("script-webshell-probes", 22 characters) without wrapping.
- *
- * Column order: 1 Surface, 2 Detector, 3 Family, 4 Severity,
- * 5 Occurrences, 6 First Seen, 7 Last Seen, 8 Details.
- */
-.wp-sam-events-table th:nth-child(1),
-.wp-sam-events-table td:nth-child(1) {
-	width: 90px;
-}
-
-.wp-sam-events-table th:nth-child(2),
-.wp-sam-events-table td:nth-child(2) {
-	width: 200px;
-}
-
-.wp-sam-events-table th:nth-child(4),
-.wp-sam-events-table td:nth-child(4) {
-	width: 90px;
-}
-
-.wp-sam-events-table th:nth-child(5),
-.wp-sam-events-table td:nth-child(5) {
-	width: 110px;
-}
-
-.wp-sam-events-table th:nth-child(6),
-.wp-sam-events-table td:nth-child(6) {
-	width: 150px;
-}
-
-.wp-sam-events-table th:nth-child(7),
-.wp-sam-events-table td:nth-child(7) {
-	width: 150px;
-}
-
-.wp-sam-events-table th:nth-child(8),
-.wp-sam-events-table td:nth-child(8) {
-	width: 60px;
-}
-
-/*
- * Continuous Intelligence -- Identities table: same misaligned-nth-child
- * problem as Events, worse here because it also crushed the Claimed
- * Identity column (col 1) to 90px and Classification (col 5, the longest
- * label of any of these tables, e.g. "Enumerating (sequential ID
- * pattern)") to 150px. Classification is the one column left unset to
- * absorb whatever's left; the Decision column is pinned wide enough for
- * its Reason input plus buttons instead of being squeezed by neighbours.
- *
- * Column order: 1 Claimed Identity, 2 IP, 3 Surface, 4 Vendor Source,
- * 5 Classification, 6 State, 7 Occurrences, 8 Last Seen, 9 Decision.
- */
-.wp-sam-identities-table th:nth-child(1),
-.wp-sam-identities-table td:nth-child(1) {
-	width: 150px;
-}
-
-.wp-sam-identities-table th:nth-child(2),
-.wp-sam-identities-table td:nth-child(2) {
-	width: 120px;
-}
-
-.wp-sam-identities-table th:nth-child(3),
-.wp-sam-identities-table td:nth-child(3) {
-	width: 80px;
-}
-
-.wp-sam-identities-table th:nth-child(4),
-.wp-sam-identities-table td:nth-child(4) {
-	width: 90px;
-}
-
-.wp-sam-identities-table th:nth-child(6),
-.wp-sam-identities-table td:nth-child(6) {
-	width: 130px;
-}
-
-.wp-sam-identities-table th:nth-child(7),
-.wp-sam-identities-table td:nth-child(7) {
-	width: 110px;
-}
-
-.wp-sam-identities-table th:nth-child(8),
-.wp-sam-identities-table td:nth-child(8) {
-	width: 140px;
-}
-
-.wp-sam-identities-table th:nth-child(9),
-.wp-sam-identities-table td:nth-child(9) {
-	width: 280px;
-}
-
-/*
- * Continuous Intelligence -- Vendors table: col 1 (Vendor) was forced to
- * 90px by the same borrowed rule, too narrow for a name plus its
- * "(built-in)" tag; col 5 (Source, just a "Link" string) was needlessly
- * wide at 150px. Actions is left unset to absorb whatever's left.
- *
- * Column order: 1 Vendor, 2 Category, 3 UA pattern, 4 Verification,
- * 5 Source, 6 Actions.
- */
-.wp-sam-vendors-table th:nth-child(1),
-.wp-sam-vendors-table td:nth-child(1) {
-	width: 220px;
-}
-
-.wp-sam-vendors-table th:nth-child(2),
-.wp-sam-vendors-table td:nth-child(2) {
-	width: 170px;
-}
-
-.wp-sam-vendors-table th:nth-child(3),
-.wp-sam-vendors-table td:nth-child(3) {
-	width: 140px;
-}
-
-.wp-sam-vendors-table th:nth-child(4),
-.wp-sam-vendors-table td:nth-child(4) {
-	width: 100px;
-}
-
-.wp-sam-vendors-table th:nth-child(5),
-.wp-sam-vendors-table td:nth-child(5) {
-	width: 70px;
-}
-
-/*
- * Profiles table: Automation (a <select> plus an "Upgrade to unlock" link)
- * and Experimental/Bypass Best Practices (each a checkbox or two plus a
- * description paragraph) all need real room, unlike the short columns around
- * them -- pin the short columns to a fixed width and leave
- * Automation/Experimental/Bypass Best Practices unset so they split whatever
- * space is left, instead of seven columns splitting the row evenly and
- * cramming a dropdown or a checkbox+paragraph into a sliver each.
- *
- * Column order: 1 Surface, 2 Mode, 3 Automation, 4 Experimental,
- * 5 Bypass Best Practices, 6 Last Updated, 7 Actions.
- */
-.wp-sam-profiles-table th:nth-child(1),
-.wp-sam-profiles-table td:nth-child(1) {
-	width: 90px;
-}
-
-.wp-sam-profiles-table th:nth-child(2),
-.wp-sam-profiles-table td:nth-child(2) {
-	width: 110px;
-}
-
-.wp-sam-profiles-table th:nth-child(6),
-.wp-sam-profiles-table td:nth-child(6) {
-	width: 140px;
-}
-
-.wp-sam-profiles-table th:nth-child(7),
-.wp-sam-profiles-table td:nth-child(7) {
-	width: 160px;
-}
-
 .wp-sam-profiles-table .wp-sam-automation-mode {
 	max-width: 100%;
-}
-
-/*
- * External Scripts inventory table: Classification (a <select> with long
- * option labels) and Expected SRI (a hash input, a URL input, and a button,
- * stacked) both need real room. Pin the short columns to a fixed width and
- * leave Expected SRI unset to absorb whatever's left, since it holds the
- * most nested controls.
- */
-.wp-sam-dependency-inventory-table th:nth-child(1),
-.wp-sam-dependency-inventory-table td:nth-child(1) {
-	width: 70px;
-}
-
-.wp-sam-dependency-inventory-table th:nth-child(2),
-.wp-sam-dependency-inventory-table td:nth-child(2) {
-	width: 70px;
-}
-
-.wp-sam-dependency-inventory-table th:nth-child(3),
-.wp-sam-dependency-inventory-table td:nth-child(3) {
-	width: 190px;
-}
-
-.wp-sam-dependency-inventory-table th:nth-child(4),
-.wp-sam-dependency-inventory-table td:nth-child(4) {
-	width: 220px;
-}
-
-.wp-sam-dependency-inventory-table th:nth-child(6),
-.wp-sam-dependency-inventory-table td:nth-child(6) {
-	width: 70px;
-}
-
-.wp-sam-dependency-inventory-table th:nth-child(7),
-.wp-sam-dependency-inventory-table td:nth-child(7) {
-	width: 120px;
 }
 
 .wp-sam-dependency-inventory-table .wp-sam-dependency-classification {
@@ -714,73 +430,6 @@ details.wp-sam-filter-form form {
 	white-space: normal;
 }
 
-/*
- * Policy table (Traffic Controls > Policy): Rate limit and Failed login
- * lockout each hold two number inputs plus label text and need real room;
- * pin Surface/Mode/Actions to a fixed width and leave the other two unset
- * so they split whatever's left, the same "fixed" plus "pin what's short"
- * approach as the Profiles table above.
- *
- * Column order: 1 Surface, 2 Mode, 3 Rate limit, 4 Failed login lockout,
- * 5 Actions.
- */
-.wp-sam-policy-table th:nth-child(1),
-.wp-sam-policy-table td:nth-child(1) {
-	width: 100px;
-}
-
-.wp-sam-policy-table th:nth-child(2),
-.wp-sam-policy-table td:nth-child(2) {
-	width: 170px;
-}
-
-.wp-sam-policy-table th:nth-child(5),
-.wp-sam-policy-table td:nth-child(5) {
-	width: 90px;
-}
-
-/*
- * Blocks table (Traffic Controls > Blocks): overrides the generic
- * Violations table widths above -- that scheme was calibrated for a
- * different 7-column layout and left Surface (short text) absorbing all
- * the leftover space while Blocked Until and Actions (a timestamp and two
- * buttons) were squeezed. Reason holds the most variable-length text here
- * (e.g. "rate limit", a custom rule name), so it's the one left unset.
- *
- * Column order: 1 IP, 2 Surface, 3 Stage, 4 Reason, 5 Occurrences,
- * 6 Blocked Until, 7 Actions. Loaded after .wp-sam-violations-table so
- * these widths win the cascade on a table carrying both classes.
- */
-.wp-sam-blocks-table th:nth-child(1),
-.wp-sam-blocks-table td:nth-child(1) {
-	width: 140px;
-}
-
-.wp-sam-blocks-table th:nth-child(2),
-.wp-sam-blocks-table td:nth-child(2) {
-	width: 90px;
-}
-
-.wp-sam-blocks-table th:nth-child(3),
-.wp-sam-blocks-table td:nth-child(3) {
-	width: 130px;
-}
-
-.wp-sam-blocks-table th:nth-child(5),
-.wp-sam-blocks-table td:nth-child(5) {
-	width: 110px;
-}
-
-.wp-sam-blocks-table th:nth-child(6),
-.wp-sam-blocks-table td:nth-child(6) {
-	width: 170px;
-}
-
-.wp-sam-blocks-table th:nth-child(7),
-.wp-sam-blocks-table td:nth-child(7) {
-	width: 200px;
-}
-
 /* ── Sub-tabs (e.g. Network Intelligence's Tor/ASN/Geo-IP/Well-Known/Network Rules) ── */
 .wp-sam-subtab-wrapper {
 	margin-top: 1.5em;
@@ -827,71 +476,12 @@ details.wp-sam-filter-form form {
 	font-weight: 600;
 }
 
-/*
- * Baseline & Drift -- Drift table: Item and Actions are the two columns
- * whose content has a natural, predictable size (an item key/path; a
- * Reason input plus two small buttons), so they're pinned; Category,
- * Risk, Correlation, Disposition, and Details are left unset to split
- * whatever's left rather than each guessing a fixed width for text that
- * varies a lot row to row (a one-line risk badge next to a full sentence
- * of correlation explanation). word-break: break-word (not break-all,
- * the site-wide default used elsewhere for `code`) lets a long item key
- * wrap at natural boundaries -- a slash or hyphen -- instead of
- * mid-word.
- *
- * Column order: 1 Category, 2 Item, 3 Risk, 4 Correlation, 5 Disposition,
- * 6 Details, 7 Actions.
- */
-.wp-sam-drift-table th:nth-child(2),
-.wp-sam-drift-table td:nth-child(2) {
-	width: 140px;
-}
-
-.wp-sam-drift-table th:nth-child(7),
-.wp-sam-drift-table td:nth-child(7) {
-	width: 200px;
-}
-
-.wp-sam-drift-table td {
-	white-space: normal;
-}
-
+/* .wp-sam-drift-item keeps its own word-break: break-word (rather than the
+ * .wp-sam-col-technical default) so a long item key wraps at a natural
+ * boundary -- a slash or hyphen -- instead of mid-word; locked in by
+ * PageBaselineTest.php, so this class and rule stay as-is. */
 .wp-sam-wrap .widefat .wp-sam-drift-item {
 	word-break: break-word;
-}
-
-/*
- * Advanced Intelligence -- Campaigns table: Actions now stacks a shared
- * Reason input above two forms (Acknowledge/Dismiss, Block Participants),
- * so it needs real room; First / Last Detected holds two timestamps and
- * is the one column left unset to absorb whatever's left.
- *
- * Column order: 1 Detector, 2 Surface, 3 Participants, 4 Status,
- * 5 First / Last Detected, 6 Actions.
- */
-.wp-sam-campaigns-table th:nth-child(1),
-.wp-sam-campaigns-table td:nth-child(1) {
-	width: 180px;
-}
-
-.wp-sam-campaigns-table th:nth-child(2),
-.wp-sam-campaigns-table td:nth-child(2) {
-	width: 90px;
-}
-
-.wp-sam-campaigns-table th:nth-child(3),
-.wp-sam-campaigns-table td:nth-child(3) {
-	width: 180px;
-}
-
-.wp-sam-campaigns-table th:nth-child(4),
-.wp-sam-campaigns-table td:nth-child(4) {
-	width: 100px;
-}
-
-.wp-sam-campaigns-table th:nth-child(6),
-.wp-sam-campaigns-table td:nth-child(6) {
-	width: 240px;
 }
 
 /*
@@ -915,35 +505,6 @@ details.wp-sam-filter-form form {
 	display: block;
 	white-space: nowrap;
 	padding: 2px 0;
-}
-
-/*
- * Detectors table (Traffic Controls > Detectors): Detector/Family are short
- * kebab-case identifiers and don't need anywhere near the room a generic
- * even-width split gives them; Description is the column that actually
- * needs it, so it's the one left unset to absorb what the others don't.
- *
- * Column order: 1 Detector, 2 Family, 3 Description, 4 Enabled,
- * 5 Control action.
- */
-.wp-sam-detectors-table th:nth-child(1),
-.wp-sam-detectors-table td:nth-child(1) {
-	width: 150px;
-}
-
-.wp-sam-detectors-table th:nth-child(2),
-.wp-sam-detectors-table td:nth-child(2) {
-	width: 150px;
-}
-
-.wp-sam-detectors-table th:nth-child(4),
-.wp-sam-detectors-table td:nth-child(4) {
-	width: 70px;
-}
-
-.wp-sam-detectors-table th:nth-child(5),
-.wp-sam-detectors-table td:nth-child(5) {
-	width: 240px;
 }
 
 /*

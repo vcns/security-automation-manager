@@ -222,7 +222,7 @@ $classification_labels = array(
 </details>
 
 <div class="wp-sam-table-wrap">
-<table class="widefat fixed striped wp-sam-table wp-sam-dependency-inventory-table" style="margin-top:1em">
+<table class="widefat striped wp-sam-table wp-sam-dependency-inventory-table" style="margin-top:1em">
 	<thead>
 		<tr>
 			<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
