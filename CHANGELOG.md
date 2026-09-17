@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.10.1] - 2026-09-17
+
+### Fixed
+
+- `Admin_UI::maybe_redirect_to_welcome()` (2.10.0's Welcome-page first-run redirect) could exit the request during `admin_init` before the later `admin_notices` hook ever ran, on every SAM admin page a WordPress user with incomplete onboarding visited -- including whichever page would otherwise have shown a persistent, must-always-show notice (`Rollback_Guard`'s schema-downgrade warning, or a failed certificate-renewal run). Caught by Release Verification CI (run 35161656965) on the 2.10.0 release branch, after merge to `main`, via a scenario expecting the schema-downgrade notice on a fresh admin login.
+- New `Admin_UI::has_urgent_admin_notice()` checks the same two conditions `display_admin_notices()` itself never delays, and the Welcome redirect now skips itself whenever either is active. New regression coverage in `AdminUITest.php`; `test/bootstrap.php` gained a `wp_doing_ajax()` stub (`maybe_redirect_to_welcome()` calls it, and no prior test exercised that method).
+
 ## [2.10.0] - 2026-09-16
 
 ### Added
