@@ -76,6 +76,31 @@ class PageCspDashboardTest extends TestCase {
 		$this->assertStringNotContainsString( 'tablenav-pages', $output );
 	}
 
+	/**
+	 * Regression coverage ahead of the admin-table layout migration:
+	 * assets/js/admin.js reads `.wp-sam-state-badge` (to swap its `state-*`
+	 * modifier class after an approve/deny/revert/undo AJAX call) and
+	 * `.wp-sam-source-actions` (to replace that cell's inner HTML with
+	 * fresh buttons) directly off this row -- neither class has any other
+	 * test coverage anywhere in the suite, so nothing else would catch an
+	 * accidental rename of either while the table's markup/CSS is migrated
+	 * onto the new semantic column-role system.
+	 */
+	public function test_sources_row_carries_the_js_dependent_state_and_actions_classes(): void {
+		$_GET['tab']                        = 'sources';
+		$GLOBALS['_wpdb_get_var']            = 1;
+		$GLOBALS['_wpdb_get_results_queue']  = array_merge( $this->leading_top_level_queries(), array( $this->source_rows( 1 ) ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'wp-sam-state-badge state-pending', $output );
+		$this->assertStringContainsString( 'wp-sam-source-actions', $output );
+	}
+
 	// ── Policy Changes tab ───────────────────────────────────────────────────────
 	//
 	// Policy_Events_Builder has no COUNT query of its own -- the merged

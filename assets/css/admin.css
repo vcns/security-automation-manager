@@ -1118,3 +1118,93 @@ details.wp-sam-filter-form form {
 	border-radius: 3px;
 	font-size: 0.9em;
 }
+
+/* ── SAM table layout standard ─────────────────────────────────────────────
+ *
+ * Foundation for a repository-wide admin-table refactor (see
+ * docs/admin-table-ux-standard.md for the full policy this codifies).
+ * Added alongside WordPress's own `widefat`/`striped` classes, never
+ * replacing them -- `.wp-sam-table` only scopes the semantic column-role
+ * rules below, it carries no `table-layout` of its own. Every SAM table
+ * migrated onto this system uses the browser's natural/auto table layout:
+ * `width: 1%; white-space: nowrap` is what lets a compact/status/surface/
+ * count/actions column shrink to its own content under auto layout without
+ * ever being given a specific pixel or percentage number, and `min-width`
+ * (deliberately no `max-width`) is what gives a primary/description/
+ * technical column a sensible floor while letting it absorb whatever space
+ * auto layout leaves over. No page has to reproduce a bespoke "these
+ * percentages add up to 100%" calculation ever again. These are starting
+ * points, not a mandate for identical widths everywhere -- a table with
+ * unusually long content in one column may raise just that column's
+ * min-width with a small, table-scoped override; the goal is consistency
+ * of behaviour, not mathematical uniformity.
+ *
+ * Column classes go directly on each <th> and every corresponding <td> in
+ * the view -- column meaning can't be expressed by :nth-child(), so the
+ * template has to say what each cell actually is.
+ */
+.wp-sam-table-wrap {
+	overflow-x: auto;
+	max-width: 100%;
+}
+
+.wp-sam-table th,
+.wp-sam-table td {
+	vertical-align: top;
+}
+
+/* Compact: IDs, short flags -- only the width the content needs. */
+.wp-sam-col-compact {
+	width: 1%;
+	white-space: nowrap;
+}
+
+/* Count: numeric counts -- compact, right-aligned by default (a page may
+ * override text-align where a specific count reads better left-aligned). */
+.wp-sam-col-count {
+	width: 1%;
+	white-space: nowrap;
+	text-align: right;
+}
+
+/* Status: badges such as Protected/Learning/Active/High -- content-sized. */
+.wp-sam-col-status {
+	width: 1%;
+	white-space: nowrap;
+}
+
+/* Surface: Frontend/Admin/Login/API -- compact, never wraps. */
+.wp-sam-col-surface {
+	width: 1%;
+	white-space: nowrap;
+}
+
+/* Date/time: First Seen, Last Seen, Updated, Expires -- predictable width, no wrap. */
+.wp-sam-col-datetime {
+	min-width: 9em;
+	white-space: nowrap;
+}
+
+/* Primary: the row's main identifier -- host, detector, control, item name. */
+.wp-sam-col-primary {
+	min-width: 12em;
+}
+
+/* Description: reason, classification, consequence, explanation -- one of the widest columns. */
+.wp-sam-col-description {
+	min-width: 16em;
+}
+
+/* Technical: URLs, hashes, directives, fingerprints, evidence strings --
+ * flexible, but allowed to break safely rather than force the table wider. */
+.wp-sam-col-technical {
+	min-width: 12em;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+/* Actions: View/Manage/Review/Delete/Release -- content-sized, no wrap. */
+.wp-sam-col-actions {
+	width: 1%;
+	white-space: nowrap;
+}
