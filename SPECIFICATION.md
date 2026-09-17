@@ -116,7 +116,7 @@ per-surface pillars, each configured independently for the `frontend`,
 | Strict-Transport-Security | `max-age`, `includeSubDomains`, `preload` | HTTPS-only emission; `preload` gated behind `max-age`/`includeSubDomains` already meeting hstspreload.org's submission minimum, since preload removal can take months once a domain is listed |
 | Cross-Origin-Resource-Policy | `same-site`/`same-origin`/`cross-origin` | Low risk - restricts who may embed this site's resources, not what this site embeds |
 | Cross-Origin-Opener-Policy | `unsafe-none`/`same-origin`/`same-origin-allow-popups` | See §6, has a report-only learning workflow |
-| Cross-Origin-Embedder-Policy | `unsafe-none`/`require-corp`/`credentialless` | See §6, has a report-only learning workflow; highest breakage risk of the ten pillars - `require-corp` blocks any cross-origin subresource that doesn't opt in via CORP/CORS |
+| Cross-Origin-Embedder-Policy | `unsafe-none`/`require-corp`/`credentialless` | See §6, has a report-only learning workflow; highest breakage risk of the other eleven pillars - `require-corp` blocks any cross-origin subresource that doesn't opt in via CORP/CORS |
 | X-Permitted-Cross-Domain-Policies | `none`/`master-only`/`by-content-type`/`all` | Legacy Flash/Acrobat-era header; `none` is almost always correct |
 
 **Default state.** Since DB schema v18, a fresh install seeds every surface
