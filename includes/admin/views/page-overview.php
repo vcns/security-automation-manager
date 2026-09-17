@@ -317,18 +317,19 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 	<p class="description">
 		<?php esc_html_e( "This is a check on the plugin itself, not on your site. It confirms the database matches what the running code expects, the environment meets requirements, and no schema rollback is stuck half-finished. Treat every other layer's status with suspicion until a Fail here is resolved -- they all read from the same tables this layer is verifying.", 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td><strong><?php esc_html_e( 'Readiness', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td>
+				<td class="wp-sam-col-primary"><strong><?php esc_html_e( 'Readiness', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td class="wp-sam-col-status">
 					<?php
 					$layer1_readiness_items  = array_merge( $readiness['plugin'], $readiness['schema'], $readiness['health'] );
 					$layer1_readiness_status = 'pass';
@@ -344,24 +345,24 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 					echo Status_Badge::render_outcome( $layer1_readiness_status ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML.
 					?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( add_query_arg( 'tab', 'readiness', $base_url ) ); ?>">
 						<?php esc_html_e( 'View Readiness', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td><strong><?php esc_html_e( 'Recovery', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td><?php echo Status_Badge::render_outcome( empty( $downgrade_flag ) ? 'pass' : 'fail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
-				<td>
+				<td class="wp-sam-col-primary"><strong><?php esc_html_e( 'Recovery', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td class="wp-sam-col-status"><?php echo Status_Badge::render_outcome( empty( $downgrade_flag ) ? 'pass' : 'fail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( add_query_arg( 'tab', 'recovery', $base_url ) ); ?>">
 						<?php esc_html_e( 'View Recovery', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td><strong><?php esc_html_e( 'Updates', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td>
+				<td class="wp-sam-col-primary"><strong><?php esc_html_e( 'Updates', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td class="wp-sam-col-status">
 					<?php
 					echo esc_html(
 						'github' === WP_SAM_DISTRIBUTION_CHANNEL
@@ -370,7 +371,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 					);
 					?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( add_query_arg( 'tab', 'updates', $base_url ) ); ?>">
 						<?php esc_html_e( 'View Updates', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -378,29 +379,31 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<h2><?php esc_html_e( 'Layer 2: Controlled Automation', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
 		<?php esc_html_e( 'Writing a Content Security Policy by hand means listing every script, style, and font your site is allowed to load -- get it wrong and you either break the site or leave a gap wide open. Deterministic automation builds that list for you from what your site is actually running (its active theme, plugins, and known integrations), worked out separately for each surface below, so a strict policy can exist here without you writing it line by line.', 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td><strong><?php esc_html_e( 'CSP Deterministic Automation', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td>
+				<td class="wp-sam-col-primary"><strong><?php esc_html_e( 'CSP Deterministic Automation', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td class="wp-sam-col-status">
 					<?php foreach ( $surfaces as $surface ) : ?>
 						<?php $automation_mode = $automation_config->for_surface( $surface )['mode']; ?>
 						<?php echo Status_Badge::render_automation( ucfirst( $surface ) . ': ' . Automation_Config::mode_label( $automation_mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_automation() returns pre-escaped HTML. ?>
 					<?php endforeach; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings' ) ); ?>">
 						<?php esc_html_e( 'Manage Automation Settings', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -408,23 +411,25 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<h2><?php esc_html_e( 'Layer 3: Continuous Intelligence', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
 		<?php esc_html_e( 'Every request your site receives passes through a set of pattern-matching detectors that recognise the signature of common attacks -- SQL injection attempts, path traversal, malicious bots, and more. Each detector can simply watch and record evidence, or actively block, entirely under your control from the Continuous Intelligence page; the row below just shows how many are switched on right now.', 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td><strong><?php esc_html_e( 'Request observation, detectors, and traffic intelligence', 'vcns-security-automation-manager' ); ?></strong></td>
-				<td>
+				<td class="wp-sam-col-primary"><strong><?php esc_html_e( 'Request observation, detectors, and traffic intelligence', 'vcns-security-automation-manager' ); ?></strong></td>
+				<td class="wp-sam-col-status">
 					<?php if ( $intelligence_detector_count > 0 ) : ?>
 						<?php
 						echo Status_Badge::render( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
@@ -447,7 +452,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 						?>
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-intelligence' ) ); ?>">
 						<?php esc_html_e( 'View Continuous Intelligence', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -455,32 +460,34 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<h2><?php esc_html_e( 'Layer 4: Browser Security Policies', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
 		<?php esc_html_e( "These are instructions sent to every visitor's browser, telling it how to defend your site on their end -- for example, refusing to run a script you haven't approved, or refusing to let another site frame your pages inside a hidden iframe for a clickjacking attack. Content Security Policy is the most capable of these; the rest are narrower, single-purpose headers. Most can run in report-only mode first, so you can see what would have been blocked before anything actually is.", 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Content Security Policy', 'vcns-security-automation-manager' ); ?></strong>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php foreach ( $surfaces as $surface ) : ?>
 						<?php $mode = $modes_by_surface[ $surface ] ?? 'disabled'; ?>
 						<?php $state = $csp_status_by_mode[ $mode ] ?? Status_Badge::STATE_DISABLED; ?>
 						<?php echo Status_Badge::render( $state, ucfirst( $surface ) . ': ' . ( $csp_status_labels[ $state ] ?? $mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 					<?php endforeach; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard' ) ); ?>">
 						<?php esc_html_e( 'Manage CSP', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -488,16 +495,16 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 			<?php foreach ( $pillars as $pillar_key => $pillar ) : ?>
 				<tr>
-					<td>
+					<td class="wp-sam-col-primary">
 						<strong><?php echo esc_html( $pillar['label'] ); ?></strong>
 					</td>
-					<td>
+					<td class="wp-sam-col-status">
 						<?php foreach ( $surfaces as $surface ) : ?>
 							<?php $status = Pillar_Registry::resolve_status( $pillar_key, $pillar_rows[ $pillar_key ][ $surface ] ?? null ); ?>
 							<?php echo Status_Badge::render( $status['state'], ucfirst( $surface ) . ': ' . $status['label'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 						<?php endforeach; ?>
 					</td>
-					<td>
+					<td class="wp-sam-col-actions">
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $pillar['page'] . ( isset( $pillar['tab'] ) ? '&tab=' . $pillar['tab'] : '' ) ) ); ?>">
 							<?php
 							echo esc_html(
@@ -514,6 +521,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p style="margin-top: 1.5em;">
 		<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=policy-audit' ) ); ?>">
@@ -525,23 +533,24 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 	<p class="description">
 		<?php esc_html_e( 'Every layer above assumes visitors reach your site over a trusted, encrypted connection -- this is where that trust comes from. If a TLS certificate expires or was never issued, browsers show visitors a warning page before any of your other protections get a chance to matter.', 'vcns-security-automation-manager' ); ?>
 	</p>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Certificates', 'vcns-security-automation-manager' ); ?></strong>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<strong style="color:<?php echo esc_attr( $cert_status_color ); ?>"><?php echo esc_html( $cert_status_text ); ?></strong>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( $cert_manage_url ); ?>">
 						<?php esc_html_e( 'Manage Certificates', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -549,6 +558,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<?php elseif ( 'getting-started' === $tab ) : ?>
 
@@ -559,90 +569,91 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php esc_html_e( "Continuous Intelligence (request observation and detector classification) needs no setup at all -- it's already watching every request in the background from the moment this plugin activates, purely in Observe mode, so there's nothing to turn on for it below. The steps here are the parts that genuinely need a decision from you.", 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1.5em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table" style="margin-top: 1.5em;">
 		<thead>
 			<tr>
-				<th style="width:32%"><?php esc_html_e( 'Step', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Go there', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Step', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Go there', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( '1. Configure Content Security Policy', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;">
 						<?php esc_html_e( 'The most capable protection this plugin offers, and the one most worth setting up first. It starts in report-only mode, learning what your site actually loads before it ever blocks anything.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php echo Status_Badge::render( $gs_csp_active_count > 0 ? Status_Badge::STATE_ACTIVE : Status_Badge::STATE_NOT_CONFIGURED, $gs_csp_active_count > 0 ? __( 'In progress or active', 'vcns-security-automation-manager' ) : __( 'Not started', 'vcns-security-automation-manager' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard' ) ); ?>">
 						<?php esc_html_e( 'CSP Dashboard', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( '2. Turn on the other header pillars', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;">
 						<?php esc_html_e( 'Fourteen further headers, each an independent on/off switch per surface. Unlike CSP, most need no learning period, so most are safe to switch on straight away -- see the Layer 4 table on the Overview tab for the full list and current status of each.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php echo Status_Badge::render( $gs_any_pillar_on ? Status_Badge::STATE_ACTIVE : Status_Badge::STATE_NOT_CONFIGURED, $gs_any_pillar_on ? __( 'At least one enabled', 'vcns-security-automation-manager' ) : __( 'None enabled yet', 'vcns-security-automation-manager' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( add_query_arg( 'tab', 'overview', $base_url ) ); ?>">
 						<?php esc_html_e( 'Overview -- Layer 4', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( '3. Review Traffic Controls', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;">
 						<?php esc_html_e( 'Rate limiting and progressive blocking are already observing every request on every surface, same as Continuous Intelligence -- nothing is actually blocked until you promote a surface from Observe to Enforce.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php echo Status_Badge::render( $gs_any_surface_enforcing ? Status_Badge::STATE_ACTIVE : Status_Badge::STATE_NOT_CONFIGURED, $gs_any_surface_enforcing ? __( 'At least one surface enforcing', 'vcns-security-automation-manager' ) : __( 'Every surface still Observe', 'vcns-security-automation-manager' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-traffic' ) ); ?>">
 						<?php esc_html_e( 'Traffic Controls', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( '4. Capture a security baseline', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;">
 						<?php esc_html_e( "Answers \"what changed?\" from this point forward. Worth doing once you're happy with the configuration from the first three steps, so later drift has something real to compare against.", 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php echo Status_Badge::render( $gs_baseline_captured ? Status_Badge::STATE_ACTIVE : Status_Badge::STATE_NOT_CONFIGURED, $gs_baseline_captured ? __( 'Captured', 'vcns-security-automation-manager' ) : __( 'Not captured yet', 'vcns-security-automation-manager' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-baseline' ) ); ?>">
 						<?php esc_html_e( 'Baseline & Drift', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( '5. Issue a free TLS certificate (optional)', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;">
 						<?php esc_html_e( "Skip this one if your host already provides HTTPS some other way -- it's only relevant if you want this plugin itself to issue and renew the certificate.", 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php echo Status_Badge::render( $gs_certificate_issued ? Status_Badge::STATE_ACTIVE : Status_Badge::STATE_NOT_CONFIGURED, $gs_certificate_issued ? __( 'Issued', 'vcns-security-automation-manager' ) : __( 'Not configured', 'vcns-security-automation-manager' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-certificates' ) ); ?>">
 						<?php esc_html_e( 'Certificates', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -650,6 +661,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<?php elseif ( 'readiness' === $tab ) : ?>
 
@@ -658,70 +670,76 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 	</p>
 
 	<h2><?php esc_html_e( 'Plugin and Database', 'vcns-security-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-primary"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $readiness['plugin'] as $item ) : ?>
 				<tr>
-					<th scope="row"><?php echo esc_html( $item['label'] ); ?></th>
-					<td><code><?php echo esc_html( (string) $item['value'] ); ?></code></td>
-					<td><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
+					<th scope="row" class="wp-sam-col-primary"><?php echo esc_html( $item['label'] ); ?></th>
+					<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $item['value'] ); ?></code></td>
+					<td class="wp-sam-col-status"><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<h2><?php esc_html_e( 'Schema Health', 'vcns-security-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Table', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Rows', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-compact"><?php esc_html_e( 'Table', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-count"><?php esc_html_e( 'Rows', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $readiness['schema'] as $item ) : ?>
 				<tr>
-					<th scope="row"><code><?php echo esc_html( $item['table'] ); ?></code></th>
-					<td>
+					<th scope="row" class="wp-sam-col-compact"><code><?php echo esc_html( $item['table'] ); ?></code></th>
+					<td class="wp-sam-col-count">
 						<?php
 						echo null === $item['rows']
 							? esc_html__( 'Missing', 'vcns-security-automation-manager' )
 							: esc_html( (string) $item['rows'] );
 						?>
 					</td>
-					<td><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
+					<td class="wp-sam-col-status"><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<h2><?php esc_html_e( 'Operational Health', 'vcns-security-automation-manager' ); ?></h2>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-primary"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $readiness['health'] as $item ) : ?>
 				<tr>
-					<th scope="row"><?php echo esc_html( $item['label'] ); ?></th>
-					<td><code><?php echo esc_html( (string) $item['value'] ); ?></code></td>
-					<td><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
+					<th scope="row" class="wp-sam-col-primary"><?php echo esc_html( $item['label'] ); ?></th>
+					<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $item['value'] ); ?></code></td>
+					<td class="wp-sam-col-status"><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<?php elseif ( 'health' === $tab ) : ?>
 
@@ -738,18 +756,19 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-primary"><?php esc_html_e( 'Check', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $security_health as $item ) : ?>
 				<tr>
-					<th scope="row">
+					<th scope="row" class="wp-sam-col-primary">
 						<?php echo esc_html( $item['label'] ); ?>
 						<?php if ( '' !== $item['detail'] ) : ?>
 						<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
@@ -757,12 +776,13 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 						</span>
 						<?php endif; ?>
 					</th>
-					<td><?php echo esc_html( (string) $item['value'] ); ?></td>
-					<td><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
+					<td class="wp-sam-col-technical"><?php echo esc_html( (string) $item['value'] ); ?></td>
+					<td class="wp-sam-col-status"><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<h2 style="margin-top:2em"><?php esc_html_e( 'Evidence Export', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
@@ -857,13 +877,14 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php if ( empty( $recommendations ) ) : ?>
 	<p class="description"><?php esc_html_e( 'Nothing to suggest right now -- either everything already looks reasonable, or this build\'s rule catalogue doesn\'t cover your current configuration yet. This grows over time as more rules are added.', 'vcns-security-automation-manager' ); ?></p>
 	<?php else : ?>
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Recommendation', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Affected area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Action', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-description"><?php esc_html_e( 'Recommendation', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Affected area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Action', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -883,7 +904,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			?>
 			<?php foreach ( $recommendations as $recommendation ) : ?>
 			<tr>
-				<td>
+				<td class="wp-sam-col-description">
 					<strong><?php echo esc_html( $recommendation['observed'] ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;"><?php echo esc_html( $recommendation['why_it_matters'] ); ?></p>
 					<p class="description" style="margin:0.3em 0 0;">
@@ -899,13 +920,13 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 						?>
 					</p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php
 					$risk = (string) $recommendation['risk'];
 					echo Status_Badge::render_outcome( $recommendation_risk_status[ $risk ] ?? 'info', $recommendation_risk_label[ $risk ] ?? ucfirst( $risk ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML.
 					?>
 				</td>
-				<td>
+				<td class="wp-sam-col-surface">
 					<?php
 					echo esc_html(
 						implode(
@@ -915,7 +936,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 					);
 					?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( $recommendation['cta_url'] ); ?>"><?php esc_html_e( 'Go there', 'vcns-security-automation-manager' ); ?></a>
 					<?php if ( ! empty( $recommendation['dismissible'] ) ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:0.5em;display:flex;gap:0.3em;align-items:center;">
@@ -931,6 +952,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 	<?php endif; ?>
 
 	<?php elseif ( 'recovery' === $tab ) : ?>
@@ -1025,28 +1047,29 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php if ( empty( $rollback_snapshots ) ) : ?>
 	<p class="description"><?php esc_html_e( 'No snapshots yet -- one is taken automatically the next time a schema migration runs.', 'vcns-security-automation-manager' ); ?></p>
 	<?php else : ?>
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th scope="col"><?php esc_html_e( 'Taken', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Migration', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Restorable now', 'vcns-security-automation-manager' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Action', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-datetime"><?php esc_html_e( 'Taken', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-technical"><?php esc_html_e( 'Migration', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-status"><?php esc_html_e( 'Restorable now', 'vcns-security-automation-manager' ); ?></th>
+				<th scope="col" class="wp-sam-col-actions"><?php esc_html_e( 'Action', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $rollback_snapshots as $snapshot ) : ?>
 			<tr>
-				<td><?php echo esc_html( $snapshot['created_at'] ); ?></td>
-				<td><?php echo esc_html( sprintf( 'v%1$d -> v%2$d', $snapshot['from_version'], $snapshot['to_version'] ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( $snapshot['created_at'] ); ?></td>
+				<td class="wp-sam-col-technical"><?php echo esc_html( sprintf( 'v%1$d -> v%2$d', $snapshot['from_version'], $snapshot['to_version'] ) ); ?></td>
+				<td class="wp-sam-col-status">
 					<?php if ( $snapshot['restorable'] ) : ?>
 						<?php esc_html_e( 'Yes', 'vcns-security-automation-manager' ); ?>
 					<?php else : ?>
 						<?php esc_html_e( 'No -- schema has moved on since', 'vcns-security-automation-manager' ); ?>
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<?php if ( $snapshot['restorable'] ) : ?>
 						<?php $snapshot_contents = Rollback_Guard::snapshot_contents( $snapshot['id'] ); ?>
 						<?php if ( ! empty( $snapshot_contents ) ) : ?>
@@ -1089,6 +1112,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 	<?php endif; ?>
 
 	<hr>
@@ -1226,28 +1250,29 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		</div>
 		<?php endif; ?>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat fixed striped wp-sam-violations-table wp-sam-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Control', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Owner', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Expires', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-primary"><?php esc_html_e( 'Control', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-primary"><?php esc_html_e( 'Owner', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Expires', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $exceptions as $exception ) : ?>
 				<tr>
-					<td><?php echo esc_html( (string) $exception['control'] ); ?></td>
-					<td><?php echo esc_html( '' !== (string) $exception['surface'] ? ucfirst( (string) $exception['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
-					<td><?php echo esc_html( (string) $exception['owner'] ); ?></td>
-					<td><?php echo esc_html( $exception_risk_labels[ $exception['risk_classification'] ] ?? (string) $exception['risk_classification'] ); ?></td>
-					<td><?php echo esc_html( $exception_status_labels[ $exception['review_status'] ] ?? (string) $exception['review_status'] ); ?></td>
-					<td><?php echo esc_html( ! empty( $exception['expiry_date'] ) ? (string) $exception['expiry_date'] : __( 'Never (privileged override)', 'vcns-security-automation-manager' ) ); ?></td>
-					<td style="white-space:nowrap">
+					<td class="wp-sam-col-primary"><?php echo esc_html( (string) $exception['control'] ); ?></td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( '' !== (string) $exception['surface'] ? ucfirst( (string) $exception['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+					<td class="wp-sam-col-primary"><?php echo esc_html( (string) $exception['owner'] ); ?></td>
+					<td class="wp-sam-col-status"><?php echo esc_html( $exception_risk_labels[ $exception['risk_classification'] ] ?? (string) $exception['risk_classification'] ); ?></td>
+					<td class="wp-sam-col-status"><?php echo esc_html( $exception_status_labels[ $exception['review_status'] ] ?? (string) $exception['review_status'] ); ?></td>
+					<td class="wp-sam-col-datetime"><?php echo esc_html( ! empty( $exception['expiry_date'] ) ? (string) $exception['expiry_date'] : __( 'Never (privileged override)', 'vcns-security-automation-manager' ) ); ?></td>
+					<td class="wp-sam-col-actions">
 					<?php if ( 'active' === $exception['review_status'] ) : ?>
 						<details style="display:inline-block">
 							<summary style="cursor:pointer;display:inline"><?php esc_html_e( 'Extend', 'vcns-security-automation-manager' ); ?></summary>
@@ -1281,6 +1306,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<h2 id="wp-sam-exception-form" style="margin-top:2em"><?php esc_html_e( 'Create a new exception', 'vcns-security-automation-manager' ); ?></h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -1366,15 +1392,16 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		$is_github_channel = 'github' === WP_SAM_DISTRIBUTION_CHANNEL;
 		?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table" style="margin-top: 1em;">
 		<tbody>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Installed version', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php echo esc_html( WP_SAM_VERSION ); ?></td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Installed version', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical"><?php echo esc_html( WP_SAM_VERSION ); ?></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Build channel', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Build channel', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php
 					if ( $is_github_channel ) {
 						esc_html_e( 'VCNS GitHub', 'vcns-security-automation-manager' );
@@ -1388,6 +1415,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 		<?php if ( ! $is_github_channel ) : ?>
 
@@ -1428,15 +1456,16 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		$updates_pending           = '' !== $updates_available_version && version_compare( WP_SAM_VERSION, $updates_available_version, '<' );
 		?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1.5em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table" style="margin-top: 1.5em;">
 		<tbody>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Update manifest URL', 'vcns-security-automation-manager' ); ?></th>
-				<td><code><?php echo esc_html( defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ? WP_SAM_UPDATE_MANIFEST_URL : '' ); ?></code></td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Update manifest URL', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( defined( 'WP_SAM_UPDATE_MANIFEST_URL' ) ? WP_SAM_UPDATE_MANIFEST_URL : '' ); ?></code></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Available version', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Available version', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php if ( '' === $updates_available_version ) : ?>
 						<?php esc_html_e( 'Unknown -- no successful check yet', 'vcns-security-automation-manager' ); ?>
 					<?php elseif ( $updates_pending ) : ?>
@@ -1447,20 +1476,20 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Last successful update check', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php echo esc_html( (string) ( $updates_diagnostics['last_check_success_at'] ?? $updates_never ) ); ?></td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Last successful update check', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical"><?php echo esc_html( (string) ( $updates_diagnostics['last_check_success_at'] ?? $updates_never ) ); ?></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Last failed update check', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php echo esc_html( (string) ( $updates_diagnostics['last_check_failure_at'] ?? $updates_none_recorded ) ); ?></td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Last failed update check', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical"><?php echo esc_html( (string) ( $updates_diagnostics['last_check_failure_at'] ?? $updates_none_recorded ) ); ?></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Manifest validation status', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php echo esc_html( $updates_check_result_labels[ $updates_diagnostics['last_check_result'] ?? '' ] ?? $updates_never ); ?></td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Manifest validation status', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical"><?php echo esc_html( $updates_check_result_labels[ $updates_diagnostics['last_check_result'] ?? '' ] ?? $updates_never ); ?></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Package checksum verification status', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Package checksum verification status', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php echo esc_html( $updates_checksum_result_labels[ $updates_diagnostics['last_checksum_result'] ?? '' ] ?? $updates_not_yet_attempted ); ?>
 					<?php if ( ! empty( $updates_diagnostics['last_checksum_at'] ) ) : ?>
 						<span class="description"> (<?php echo esc_html( (string) $updates_diagnostics['last_checksum_at'] ); ?>)</span>
@@ -1468,8 +1497,8 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Last update result', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Last update result', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php echo esc_html( $updates_applied_result_labels[ $updates_diagnostics['last_applied_result'] ?? '' ] ?? $updates_no_update_applied ); ?>
 					<?php if ( ! empty( $updates_diagnostics['last_applied_at'] ) ) : ?>
 						<span class="description"> (<?php echo esc_html( (string) $updates_diagnostics['last_applied_at'] ); ?>)</span>
@@ -1477,8 +1506,8 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'WP_SAM_DISABLE_AUTO_UPDATE defined', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'WP_SAM_DISABLE_AUTO_UPDATE defined', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php
 					if ( ! $updates_kill_switch_defined ) {
 						esc_html_e( 'No', 'vcns-security-automation-manager' );
@@ -1491,8 +1520,8 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Background updates', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Background updates', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php
 					if ( $updates_kill_switch_engaged ) {
 						esc_html_e( 'Blocked by WP_SAM_DISABLE_AUTO_UPDATE.', 'vcns-security-automation-manager' );
@@ -1504,6 +1533,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'This updater never transmits or stores any credential or secret -- the manifest above is a public JSON file, and package integrity is verified with a SHA-256 checksum published in that same public manifest.', 'vcns-security-automation-manager' ); ?>
