@@ -105,7 +105,7 @@ $tab_help = array(
 		?>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-campaigns-table">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-campaigns-table">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-technical"><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
@@ -203,7 +203,7 @@ $tab_help = array(
 		<?php $honeypaths = ( new Honeypath_Store() )->all(); ?>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-technical"><?php esc_html_e( 'Path', 'vcns-security-automation-manager' ); ?></th>
@@ -315,7 +315,7 @@ $tab_help = array(
 
 		<h2 style="margin-top:2em"><?php esc_html_e( 'History', 'vcns-security-automation-manager' ); ?></h2>
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-description"><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
@@ -358,7 +358,7 @@ $tab_help = array(
 		?>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-datetime"><?php esc_html_e( 'When', 'vcns-security-automation-manager' ); ?></th>

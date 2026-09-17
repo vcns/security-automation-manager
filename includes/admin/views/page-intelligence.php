@@ -237,7 +237,7 @@ $tab_help = array(
 		</details>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-events-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-events-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<?php
@@ -489,7 +489,7 @@ $tab_help = array(
 		</details>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-identities-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-identities-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<?php
@@ -630,7 +630,7 @@ $tab_help = array(
 			<a href="https://github.com/vcns/security-automation-manager/blob/main/docs/scanner-vendor-research.md" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Vendor research: sourcing for every built-in entry, plus researched-but-not-built-in commercial scanners and monitoring bots', 'vcns-security-automation-manager' ); ?></a>
 		</p>
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-vendors-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-vendors-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-primary"><?php esc_html_e( 'Vendor', 'vcns-security-automation-manager' ); ?></th>

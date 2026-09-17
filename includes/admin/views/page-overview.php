@@ -1251,7 +1251,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php endif; ?>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-violations-table wp-sam-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-primary"><?php esc_html_e( 'Control', 'vcns-security-automation-manager' ); ?></th>

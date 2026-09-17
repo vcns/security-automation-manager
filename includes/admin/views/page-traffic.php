@@ -117,7 +117,7 @@ $tab_help = array(
 		<?php endforeach; ?>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-policy-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-policy-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
@@ -170,7 +170,7 @@ $tab_help = array(
 		</p>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-status"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
@@ -258,7 +258,7 @@ $tab_help = array(
 		</p>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-blocks-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-blocks-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-technical"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
@@ -787,7 +787,7 @@ $tab_help = array(
 			</p>
 
 			<div class="wp-sam-table-wrap">
-			<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+			<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 				<thead>
 					<tr>
 						<th class="wp-sam-col-status"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
@@ -920,7 +920,7 @@ $tab_help = array(
 			<input type="hidden" name="action" value="wp_sam_detector_policy_update" />
 
 			<div class="wp-sam-table-wrap">
-			<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-detectors-table">
+			<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-detectors-table">
 				<thead>
 					<tr>
 						<th class="wp-sam-col-compact"><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
@@ -1049,7 +1049,7 @@ $tab_help = array(
 		<?php endif; ?>
 
 		<div class="wp-sam-table-wrap">
-		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<th class="wp-sam-col-primary"><?php esc_html_e( 'Name', 'vcns-security-automation-manager' ); ?></th>

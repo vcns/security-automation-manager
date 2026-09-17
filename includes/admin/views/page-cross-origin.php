@@ -408,7 +408,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 	</details>
 
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php

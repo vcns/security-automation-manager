@@ -106,7 +106,7 @@ $item_labels = array(
 	</p>
 
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em;max-width:600px">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Header', 'vcns-security-automation-manager' ); ?></th>
@@ -134,7 +134,7 @@ $item_labels = array(
 	</div>
 
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em;max-width:600px">
 		<tbody>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Last checked', 'vcns-security-automation-manager' ); ?></th>

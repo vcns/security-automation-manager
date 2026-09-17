@@ -269,7 +269,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php esc_html_e( "Mode is what's actually happening on each surface right now -- report-only (nothing blocked, violations logged), enforce (the policy actually blocks what it doesn't allow), or disabled. Automation controls how much of the review-and-approve work is done for you; Manual leaves every decision to you. Trusted Types and Bypass Best Practices are advanced, opt-in exceptions -- Trusted Types adds a stricter defense on top of CSP (pinned to report-only, since enforcing it needs application code most WordPress sites don't have), and a Bypass Best Practices toggle only appears once this surface has actually needed one, each deliberately weakening the policy in one narrow way to stop something that was really breaking.", 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table wp-sam-profiles-table">
+	<table class="widefat striped wp-sam-table wp-sam-profiles-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
@@ -589,7 +589,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 	</details>
 
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table wp-sam-sources-table" style="margin-top:1em">
+	<table class="widefat striped wp-sam-table wp-sam-sources-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
@@ -907,7 +907,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		</form>
 	</details>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table" style="margin-top:1em">
+	<table class="widefat striped wp-sam-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
@@ -1205,7 +1205,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		</form>
 	</details>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
@@ -1320,7 +1320,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		<?php esc_html_e( "A scan checks the site's current file inventory (theme, active plugins, and any content this plugin can reach) against the source and hash inventory it already knows about, adding or removing entries as things change. Scans run automatically on the schedule below and after most site changes, or you can trigger one manually from the button at the top of this page. Policy Changed means the scan's findings actually altered a surface's locked-in policy version, not just that something was discovered.", 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat fixed striped wp-sam-table">
+	<table class="widefat striped wp-sam-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Trigger', 'vcns-security-automation-manager' ); ?></th>
