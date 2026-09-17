@@ -140,6 +140,8 @@ Responsibilities:
 - surface one-per-session warnings for known platform constraints (e.g. wp-admin strict CSP limitation)
 - expose a destructive reset flow that requires `manage_options`, a nonce, current administrator password re-authentication, and typed confirmation before clearing plugin-owned runtime data
 
+Admin table layout (column widths, wrapping, responsive overflow) follows a repository-wide standard -- see `docs/admin-table-ux-standard.md` for the semantic column-role classes (`wp-sam-col-*`) and the policies (wrapping, `fixed` layout, action-column complexity, alignment) a new or migrated table must follow.
+
 ## Runtime request flow
 
 ### 1. WordPress boot
