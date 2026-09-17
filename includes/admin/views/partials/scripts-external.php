@@ -141,12 +141,13 @@ $classification_labels = array(
 	</p>
 </div>
 
-<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+<div class="wp-sam-table-wrap">
+<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-technical"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
@@ -158,8 +159,8 @@ $classification_labels = array(
 			);
 			?>
 			<tr>
-				<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+				<td class="wp-sam-col-status">
 					<input
 						type="checkbox"
 						class="wp-sam-dependency-enabled"
@@ -167,7 +168,7 @@ $classification_labels = array(
 						<?php checked( $current['enabled'] ); ?>
 					/>
 				</td>
-				<td>
+				<td class="wp-sam-col-technical">
 					<select class="wp-sam-dependency-mode" data-surface="<?php echo esc_attr( $surface ); ?>">
 						<option value="report" <?php selected( $current['mode'], 'report' ); ?>><?php esc_html_e( 'Report only', 'vcns-security-automation-manager' ); ?></option>
 						<option value="enforce" <?php selected( $current['mode'], 'enforce' ); ?>><?php esc_html_e( 'Enforce', 'vcns-security-automation-manager' ); ?></option>
@@ -177,6 +178,7 @@ $classification_labels = array(
 		<?php endforeach; ?>
 	</tbody>
 </table>
+</div>
 
 <h2 class="title" style="margin-top:1.5em"><?php esc_html_e( 'Inventory', 'vcns-security-automation-manager' ); ?></h2>
 
@@ -219,24 +221,25 @@ $classification_labels = array(
 	</form>
 </details>
 
-<table class="widefat fixed striped wp-sam-dependency-inventory-table" style="margin-top:1em">
+<div class="wp-sam-table-wrap">
+<table class="widefat fixed striped wp-sam-table wp-sam-dependency-inventory-table" style="margin-top:1em">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-			<?php echo Table_Query::sort_header( __( 'Origin', 'vcns-security-automation-manager' ), 'origin', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			<th><?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Expected SRI', 'vcns-security-automation-manager' ); ?></th>
-			<?php echo Table_Query::sort_header( __( 'Evidence', 'vcns-security-automation-manager' ), 'evidence', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			<?php echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-compact"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+			<?php echo Table_Query::sort_header( __( 'Origin', 'vcns-security-automation-manager' ), 'origin', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<th class="wp-sam-col-status"><?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-technical"><?php esc_html_e( 'Expected SRI', 'vcns-security-automation-manager' ); ?></th>
+			<?php echo Table_Query::sort_header( __( 'Evidence', 'vcns-security-automation-manager' ), 'evidence', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged', 'wp-sam-col-count' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $ext_sort_whitelist, $ext_sort, $ext_state_args, $ext_base_url, 'ext_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</tr>
 	</thead>
 	<tbody>
 		<?php foreach ( $inventory as $item ) : ?>
 			<tr data-id="<?php echo esc_attr( (string) $item['id'] ); ?>">
-				<td><?php echo esc_html( ucfirst( $item['surface'] ) ); ?></td>
-				<td><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'vcns-security-automation-manager' ) : __( 'Stylesheet', 'vcns-security-automation-manager' ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $item['surface'] ) ); ?></td>
+				<td class="wp-sam-col-compact"><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'vcns-security-automation-manager' ) : __( 'Stylesheet', 'vcns-security-automation-manager' ) ); ?></td>
+				<td class="wp-sam-col-technical">
 					<code><?php echo esc_html( $item['origin'] ); ?></code>
 					<?php if ( ! empty( $item['last_seen_url'] ) ) : ?>
 					<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
@@ -249,14 +252,14 @@ $classification_labels = array(
 					</span>
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<select class="wp-sam-dependency-classification" data-id="<?php echo esc_attr( (string) $item['id'] ); ?>">
 						<?php foreach ( $classification_labels as $value => $label ) : ?>
 						<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $item['classification'], $value ); ?>><?php echo esc_html( $label ); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</td>
-				<td>
+				<td class="wp-sam-col-technical">
 					<input
 						type="text"
 						class="wp-sam-dependency-sri"
@@ -283,8 +286,8 @@ $classification_labels = array(
 						><?php esc_html_e( 'Suggest', 'vcns-security-automation-manager' ); ?></button>
 					</div>
 				</td>
-				<td><?php echo esc_html( (string) $item['evidence_count'] ); ?></td>
-				<td><?php echo esc_html( $item['last_seen_at'] ); ?></td>
+				<td class="wp-sam-col-count"><?php echo esc_html( (string) $item['evidence_count'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( $item['last_seen_at'] ); ?></td>
 			</tr>
 		<?php endforeach; ?>
 		<?php if ( empty( $inventory ) ) : ?>
@@ -294,5 +297,6 @@ $classification_labels = array(
 		<?php endif; ?>
 	</tbody>
 </table>
+</div>
 
 <?php echo Table_Query::pagination( $ext_page_num, $ext_pages, $ext_state_args, $ext_base_url, 'ext_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>

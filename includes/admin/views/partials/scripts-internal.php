@@ -41,18 +41,19 @@ $int_table = $wpdb->prefix . 'sam_internal_asset_inventory';
 $int_inventory_raw = $wpdb->get_results( "SELECT * FROM {$int_table} ORDER BY last_seen_at DESC LIMIT 200", ARRAY_A );
 $int_inventory     = ! empty( $int_inventory_raw ) ? $int_inventory_raw : array();
 ?>
-<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+<div class="wp-sam-table-wrap">
+<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
 		<?php foreach ( $surfaces as $surface ) : ?>
 			<tr>
-				<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+				<td class="wp-sam-col-status">
 					<input
 						type="checkbox"
 						class="wp-sam-pillar-enabled"
@@ -65,34 +66,36 @@ $int_inventory     = ! empty( $int_inventory_raw ) ? $int_inventory_raw : array(
 		<?php endforeach; ?>
 	</tbody>
 </table>
+</div>
 
 <h2 class="title" style="margin-top:1.5em"><?php esc_html_e( 'Hash inventory', 'vcns-security-automation-manager' ); ?></h2>
 <p class="description">
 	<?php esc_html_e( 'Read-only: every first-party script/stylesheet currently getting an integrity attribute, on a surface where this is enabled. Recalculated automatically whenever a file\'s size or modified time changes -- nothing to approve or classify.', 'vcns-security-automation-manager' ); ?>
 </p>
 
-<table class="widefat fixed striped wp-sam-hash-inventory-table" style="margin-top:1em">
+<div class="wp-sam-table-wrap">
+<table class="widefat fixed striped wp-sam-table wp-sam-hash-inventory-table" style="margin-top:1em">
 	<thead>
 		<tr>
-			<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Handle', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'URL', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Hash', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'File Size', 'vcns-security-automation-manager' ); ?></th>
-			<th><?php esc_html_e( 'Last Seen', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-compact"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-technical"><?php esc_html_e( 'Handle', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-technical"><?php esc_html_e( 'URL', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-technical"><?php esc_html_e( 'Hash', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-count"><?php esc_html_e( 'File Size', 'vcns-security-automation-manager' ); ?></th>
+			<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last Seen', 'vcns-security-automation-manager' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
 		<?php foreach ( $int_inventory as $item ) : ?>
 			<tr>
-				<td><?php echo esc_html( ucfirst( $item['surface'] ) ); ?></td>
-				<td><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'vcns-security-automation-manager' ) : __( 'Stylesheet', 'vcns-security-automation-manager' ) ); ?></td>
-				<td><code><?php echo esc_html( $item['handle'] ); ?></code></td>
-				<td><code style="word-break:break-all;"><?php echo esc_html( $item['url'] ); ?></code></td>
-				<td><code style="word-break:break-all;font-size:11px;"><?php echo esc_html( $item['hash'] ); ?></code></td>
-				<td><?php echo esc_html( size_format( (int) $item['file_size'] ) ); ?></td>
-				<td><?php echo esc_html( $item['last_seen_at'] ); ?></td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $item['surface'] ) ); ?></td>
+				<td class="wp-sam-col-compact"><?php echo esc_html( 'script' === $item['resource_type'] ? __( 'Script', 'vcns-security-automation-manager' ) : __( 'Stylesheet', 'vcns-security-automation-manager' ) ); ?></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( $item['handle'] ); ?></code></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( $item['url'] ); ?></code></td>
+				<td class="wp-sam-col-technical"><code style="font-size:11px;"><?php echo esc_html( $item['hash'] ); ?></code></td>
+				<td class="wp-sam-col-count"><?php echo esc_html( size_format( (int) $item['file_size'] ) ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( $item['last_seen_at'] ); ?></td>
 			</tr>
 		<?php endforeach; ?>
 		<?php if ( empty( $int_inventory ) ) : ?>
@@ -102,3 +105,4 @@ $int_inventory     = ! empty( $int_inventory_raw ) ? $int_inventory_raw : array(
 		<?php endif; ?>
 	</tbody>
 </table>
+</div>
