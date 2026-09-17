@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.11.1] - 2026-09-17
+
+### Fixed
+
+- No functional change from 2.11.0. `wporg-deploy.yml`'s release-provenance check (a deliberate, no-bypass hard failure -- see the workflow's own comment) requires the merge commit it's deploying to have come from a pull request whose head branch is exactly `release/v<version>`. 2.11.0's release branch was named `release/2.11.0-table-layout-standard` (topic-suffixed, matching the ordinary feature-branch convention rather than the release-branch one), so `wporg-v2.11.0` failed that check outright and never reached WordPress.org -- the GitHub Release and update feed were unaffected, since `release-package.yml` has no equivalent check. Republished as 2.11.1 from a correctly-named `release/v2.11.1` branch so the WordPress.org SVN deploy can proceed.
+
 ## [2.11.0] - 2026-09-17
 
 ### Changed
