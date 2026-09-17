@@ -11,6 +11,20 @@ This document describes the internal release path from GitHub development work t
 - `release/*` branches are cut from `development` when stabilising a release
 - `main` is the production and publishing branch
 
+`wporg-deploy.yml`'s WordPress.org SVN deploy has its own stricter naming
+requirement, separate from `pr-branch-policy.yml`'s generic `release/*`
+prefix check: pushing a `wporg-vX.Y.Z` tag only deploys if that exact
+commit was merged into `main` via a pull request whose head branch is
+literally `release/vX.Y.Z` (bare -- no descriptive suffix). A branch named
+`release/2.10.1-some-description` satisfies `pr-branch-policy.yml` and
+merges into `main` without error, but silently fails the later
+`wporg-deploy.yml` guardrail once you tag it -- confirmed the hard way when
+v2.10.1 was first released: the `wporg-v2.10.1` tag had to be re-pushed at
+a second `main` merge commit, this time via a branch literally named
+`release/v2.10.1`, after the first attempt (merged from
+`release/2.10.1-welcome-redirect-notice-fix`) failed this check. Name every
+release branch intended for a WordPress.org deploy exactly `release/vX.Y.Z`.
+
 Operational rules:
 
 - no direct commits to `development`
