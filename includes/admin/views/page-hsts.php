@@ -65,14 +65,15 @@ $max_age_options = array(
 		<?php esc_html_e( 'This header is only ever sent over an HTTPS connection -- sending it over plain HTTP would have no effect on browsers and would misrepresent the site as HTTPS-only before it actually is.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Max-Age', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Include Subdomains', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Preload', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Max-Age', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Include Subdomains', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Preload', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -87,8 +88,8 @@ $max_age_options = array(
 				$preload_eligible = Strict_Transport_Security_Builder::preload_eligible( $current['max_age'], $current['include_subdomains'] );
 				?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-hsts-enabled"
@@ -96,7 +97,7 @@ $max_age_options = array(
 							<?php checked( $current['enabled'] ); ?>
 						/>
 					</td>
-					<td>
+					<td class="wp-sam-col-technical">
 						<select
 							class="wp-sam-hsts-max-age"
 							data-surface="<?php echo esc_attr( $surface ); ?>"
@@ -108,7 +109,7 @@ $max_age_options = array(
 							<?php endforeach; ?>
 						</select>
 					</td>
-					<td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-hsts-include-subdomains"
@@ -116,7 +117,7 @@ $max_age_options = array(
 							<?php checked( $current['include_subdomains'] ); ?>
 						/>
 					</td>
-					<td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-hsts-preload"
@@ -129,6 +130,7 @@ $max_age_options = array(
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'Changes apply immediately. Preload is only selectable once Max-Age is at least 1 year and Include Subdomains is on -- the minimum hstspreload.org requires for submission. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>

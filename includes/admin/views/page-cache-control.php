@@ -79,12 +79,13 @@ $cdn_acknowledged = ! empty( get_option( Cache_Control_Conflict_Detector::CDN_AC
 	</div>
 	<?php endif; ?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -96,8 +97,8 @@ $cdn_acknowledged = ! empty( get_option( Cache_Control_Conflict_Detector::CDN_AC
 				);
 				?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-pillar-enabled"
@@ -107,7 +108,7 @@ $cdn_acknowledged = ! empty( get_option( Cache_Control_Conflict_Detector::CDN_AC
 							<?php disabled( $blocked ); ?>
 						/>
 					</td>
-					<td>
+					<td class="wp-sam-col-technical">
 						<select
 							class="wp-sam-pillar-value"
 							data-pillar="<?php echo esc_attr( Cache_Control_Builder::PILLAR_KEY ); ?>"
@@ -126,6 +127,7 @@ $cdn_acknowledged = ! empty( get_option( Cache_Control_Conflict_Detector::CDN_AC
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'Unlike every other pillar on this page, Cache-Control is not enabled by default on any surface -- it is a caching/performance decision, not a universal security hardening default, and WordPress core already protects admin and login pages on its own. Turning a surface on for the first time starts it at the safest preset, no-store, never an arbitrary or previously-selected value.', 'vcns-security-automation-manager' ); ?>

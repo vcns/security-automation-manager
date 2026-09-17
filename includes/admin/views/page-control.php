@@ -28,64 +28,65 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php esc_html_e( '"Control" here means applying an explicitly permitted response: a header policy, a certificate action, or -- since Traffic Controls -- rate limiting and blocking. Every traffic-control surface starts in Observe mode and stays there until you explicitly switch it to Enforce.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'Manage', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Traffic Controls', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Per-surface rate limiting, an IP allow/block list, and progressive-response blocks.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-traffic' ) ); ?>">
 						<?php esc_html_e( 'Manage Traffic Controls', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'CSP Profiles', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'The per-surface Content Security Policy actually applied to this site.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=profiles' ) ); ?>">
 						<?php esc_html_e( 'Manage CSP Profiles', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Automation Settings', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'How far CSP is allowed to progress from a human decision to automatic approval, per surface.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings' ) ); ?>">
 						<?php esc_html_e( 'Manage Automation Settings', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Every header & content policy', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'The full status table for every browser security policy and transport/certificate control this plugin manages, grouped by protection layer.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager' ) ); ?>">
 						<?php esc_html_e( 'View Settings', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Certificates', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Issue or renew this site\'s TLS certificate.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-certificates&tab=renew' ) ); ?>">
 						<?php esc_html_e( 'Manage Certificates', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -93,4 +94,5 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</tr>
 		</tbody>
 	</table>
+	</div>
 </div>
