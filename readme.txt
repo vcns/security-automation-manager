@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.9.107
+Stable tag: 2.10.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -118,6 +118,14 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.10.1 =
+
+* Fixed: a first-time WordPress user could be redirected to the new Welcome page before ever seeing a persistent, must-see admin notice (the schema-downgrade warning, or a failed TLS certificate renewal) -- the redirect exited the request before those notices had a chance to render. The redirect now checks for either condition first and skips itself when one is present, so an urgent notice always reaches the administrator immediately.
+
+= 2.10.0 =
+
+* Added: Customer-Centred Administration Experience -- a presentation layer over existing capability, not a change to how the site is protected. A skippable Welcome page collects four personal presentation preferences (relationship to the site, security familiarity, Simple/Balanced/Technical depth, and what to see first) stored per WordPress user; edit them anytime from the new "Personal Preferences" link on Settings/Observe/Decide/Control/Verify. Settings/Overview now leads with a factual Protected/Learning/Needs-attention scorecard and a Recent Activity strip (detections, currently blocked/rate-limited sources, and newly-detected configuration changes in the last 24 hours -- raw request volume is deliberately not shown, since no store in this plugin reliably counts it), followed by an outcome-oriented Protection Status table (Protected/Learning/Monitoring/Needs attention/Not in use/Unavailable, never colour alone) and a new consolidated Action Centre tab gathering everything needing review -- from the existing Recommendations Engine, the CSP source review queue, and unclassified dependencies -- into one What-was-found/Why-it-matters/Recommended-action/What-will-happen list, without duplicating any existing decision logic. Every section keeps a "Technical details" disclosure open by default for Technical-depth users and available (never hidden) for everyone else. No existing tab, page, or security decision changed.
 
 = 2.9.107 =
 

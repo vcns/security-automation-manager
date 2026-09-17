@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.10.1] - 2026-09-17
+
+### Fixed
+
+- `Admin_UI::maybe_redirect_to_welcome()` (2.10.0's Welcome-page first-run redirect) could exit the request during `admin_init` before the later `admin_notices` hook ever ran, on every SAM admin page a WordPress user with incomplete onboarding visited -- including whichever page would otherwise have shown a persistent, must-always-show notice (`Rollback_Guard`'s schema-downgrade warning, or a failed certificate-renewal run). Caught by Release Verification CI (run 35161656965) on the 2.10.0 release branch, after merge to `main`, via a scenario expecting the schema-downgrade notice on a fresh admin login.
+- New `Admin_UI::has_urgent_admin_notice()` checks the same two conditions `display_admin_notices()` itself never delays, and the Welcome redirect now skips itself whenever either is active. New regression coverage in `AdminUITest.php`; `test/bootstrap.php` gained a `wp_doing_ajax()` stub (`maybe_redirect_to_welcome()` calls it, and no prior test exercised that method).
+
+## [2.10.0] - 2026-09-16
+
+### Added
+
+- **Customer-Centred Administration Experience** -- a presentation layer over existing capability, delivered as six sequential phases (PRs #408-#413). Does not change how the site is protected: every new class here reads existing stores/engines read-only and translates their output into customer-facing presentation, never re-implements a security decision.
+- `Admin\Presentation_Preferences` -- per-WordPress-user presentation preferences (relationship to the site, security familiarity, Simple/Balanced/Technical depth, landing emphasis) stored as `wp_sam_*` user meta, validated against fixed allow-lists, always scoped to `get_current_user_id()`. New `page-welcome.php` view (Welcome on first SAM visit, "Personal Preferences" editor thereafter) and a first-run `admin_init` redirect (`Admin_UI::maybe_redirect_to_welcome()`) -- skippable, blocks nothing, changes no security configuration.
+- `Admin\Action_Centre` -- consolidates `Recommendation_Engine::get_recommendations()` (unchanged, reused as-is) with two additional read-only aggregate sources (pending CSP source review queue, unclassified third-party dependencies) into one What-found/Why-it-matters/Recommended-action/What-will-happen/Evidence-link shape. New "Action Centre" tab on Settings/Overview; the existing Recommendations tab is untouched.
+- `Admin\Protection_Status` -- classifies existing state (CSP mode, Traffic Controls mode, dependency-governance pillar state, baseline/drift, certificate config) into a fixed six-state outcome vocabulary: Protected, Learning, Monitoring, Needs attention, Not in use, Unavailable. `Admin\Security_Scorecard` aggregates it into factual Protected/Learning/Needs-attention counts (deliberately not a numeric score); Learning and Monitoring share one tile, Not in use/Unavailable count toward neither.
+- Settings/Overview's "overview" tab now leads with the scorecard, a Recent Activity strip, the Protection Status table, and an Action Centre preview, above the existing tab navigation -- section order follows the user's landing-emphasis preference, except a critical Action Centre item always takes priority. New `Admin\Recent_Activity`, `Event_Store::total_occurrences_since()` (labelled "Detections," not "requests" -- summing rows across detector families can exceed actual request count) and `Drift_Store::count_detected_since()` (based on `first_seen_at`). "Requests observed" (raw traffic volume) is deliberately omitted: no store in this plugin persists total request volume.
+- Progressive disclosure: Protection Status rows and Action Centre items each carry a `technical_name` (always shown, only de-emphasised via CSS for Simple/Balanced) and a `technical_detail` evidence string inside a native `<details>` element, open by default only for Technical-depth users. `security_familiarity = new` adds one bounded "New to this?" helper line; every other level is unchanged.
+- `Status_Badge::render_protection_state()` -- icon + text always paired for the six-state vocabulary, never colour alone.
+- New test coverage: `PresentationPreferencesTest`, `ActionCentreTest`, `ProtectionStatusTest`, `SecurityScorecardTest`, `ProgressiveDisclosureTest`, plus `PageOverviewTest` extended to cover the `overview` and `action-centre` tabs' own render paths for the first time (uncovered two pre-existing test-environment-only gaps along the way: `Plugin::$cert_manager` and `Automation_Mode_Registry` are normally primed by `Plugin::bootstrap()`, never run by a bare unit test).
+
 ## [2.9.107] - 2026-09-14
 
 ### Security
