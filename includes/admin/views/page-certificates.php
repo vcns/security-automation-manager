@@ -278,11 +278,12 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 
 	<?php elseif ( 'renew' === $wp_sam_cert_tab ) : ?>
 	<!-- ── Issue / Renew tab ─────────────────────────────────────────────── -->
-	<table class="widefat striped">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table">
 		<tbody>
 			<tr>
-				<th scope="row" style="width:220px"><?php esc_html_e( 'Latest certificate', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Latest certificate', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-technical">
 					<?php if ( null !== $wp_sam_cert_latest ) : ?>
 						<code><?php echo esc_html( implode( ', ', (array) $wp_sam_cert_latest['domains'] ) ); ?></code>
 						(<?php echo esc_html( (string) $wp_sam_cert_latest['environment'] ); ?>) -
@@ -299,8 +300,8 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Last run', 'vcns-security-automation-manager' ); ?></th>
-				<td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Last run', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-status">
 					<?php
 					$wp_sam_cert_run_color = array(
 						'failed'  => '#d63638',
@@ -317,11 +318,12 @@ if ( '' === trim( $wp_sam_cert_domains_value ) ) {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Automatic renewal', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php esc_html_e( 'Checked daily via WP-Cron; production certificates re-issue automatically inside the 30-day window before expiry. WP-Cron only fires when the site receives traffic - for an idle or low-traffic site, point a real system cron at wp-cron.php (see the documentation on the Install tab).', 'vcns-security-automation-manager' ); ?></td>
+				<th scope="row" class="wp-sam-col-primary"><?php esc_html_e( 'Automatic renewal', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-description"><?php esc_html_e( 'Checked daily via WP-Cron; production certificates re-issue automatically inside the 30-day window before expiry. WP-Cron only fires when the site receives traffic - for an idle or low-traffic site, point a real system cron at wp-cron.php (see the documentation on the Install tab).', 'vcns-security-automation-manager' ); ?></td>
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<p style="margin-top:12px">
 		<form method="post" action="<?php echo esc_url( $wp_sam_action_url ); ?>" style="display:inline">
