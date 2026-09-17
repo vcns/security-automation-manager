@@ -58,13 +58,14 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		<?php esc_html_e( 'The table below treats each row as a separate "surface" -- an area of your site that can be configured on its own: the public frontend, the wp-admin dashboard, the login screen, and the REST API. A setting that makes sense for the public frontend does not necessarily make sense for wp-admin or the REST API, and vice versa.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 				<?php if ( null !== $value_options ) : ?>
-					<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
 				<?php endif; ?>
 			</tr>
 		</thead>
@@ -77,8 +78,8 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 				);
 				?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-pillar-enabled"
@@ -88,7 +89,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 						/>
 					</td>
 					<?php if ( null !== $value_options ) : ?>
-						<td>
+						<td class="wp-sam-col-technical">
 							<select
 								class="wp-sam-pillar-value"
 								data-pillar="<?php echo esc_attr( $pillar_key ); ?>"
@@ -106,6 +107,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php

@@ -49,13 +49,14 @@ $token_labels = array(
 		<?php esc_html_e( "Most of what runs in wp-admin, on the login screen, or against the REST API has no legitimate reason to touch a camera, a microphone, or a visitor's location -- so locking every directive to None on those surfaces closes off a capability a compromised plugin or an injected script could otherwise try to use, without taking anything away from what an administrator actually does there. The frontend is the surface most likely to need an exception carved out -- a store locator using geolocation, an embedded payment form using the Payment Request API -- which is why each surface and each directive is decided separately rather than all at once. A directive left at \"(browser default)\" is not emitted for that surface -- the browser applies its own default policy for that feature.", 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 				<?php foreach ( $directives as $directive ) : ?>
-					<th><code><?php echo esc_html( $directive ); ?></code></th>
+					<th class="wp-sam-col-technical"><code><?php echo esc_html( $directive ); ?></code></th>
 				<?php endforeach; ?>
 			</tr>
 		</thead>
@@ -68,8 +69,8 @@ $token_labels = array(
 				);
 				?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-permissions-policy-enabled"
@@ -79,7 +80,7 @@ $token_labels = array(
 					</td>
 					<?php foreach ( $directives as $directive ) : ?>
 						<?php $current_token = $current['directives'][ $directive ] ?? ''; ?>
-						<td>
+						<td class="wp-sam-col-technical">
 							<select
 								class="wp-sam-permissions-policy-directive"
 								data-surface="<?php echo esc_attr( $surface ); ?>"
@@ -97,6 +98,7 @@ $token_labels = array(
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'Changes apply immediately. "(browser default)" emits nothing for that surface, leaving the browser\'s own default policy in place. "None" blocks the feature entirely. "Self" allows it for this origin only. "All" allows any origin, including a third-party iframe or embed running alongside this site\'s own pages -- not just this site\'s own code -- so it is not recommended unless a specific integration genuinely needs it. There is no report-only mode, discovery workflow, or automation for this pillar.', 'vcns-security-automation-manager' ); ?>

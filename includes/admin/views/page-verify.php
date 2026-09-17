@@ -25,42 +25,43 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php esc_html_e( 'Confirms state locally -- what this server is configured to send, and whether it has drifted from an approved baseline. Independently confirming what an external visitor actually receives is planned for a future phase and is not available yet.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'View', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'View', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Baseline & Drift', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Confirms whether a previously detected drift condition has been resolved, and what still differs from the approved baseline.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-baseline' ) ); ?>">
 						<?php esc_html_e( 'View Baseline & Drift', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'CSP Policy Audit', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'The effective header this site is currently configured to send, per surface -- confirms a policy change is actually present.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=policy-audit' ) ); ?>">
 						<?php esc_html_e( 'View Policy Audit', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Certificates -- Issue/Renew', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Confirms a certificate was correctly issued and deployed.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-certificates&tab=renew' ) ); ?>">
 						<?php esc_html_e( 'View Certificates', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -68,4 +69,5 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</tr>
 		</tbody>
 	</table>
+	</div>
 </div>

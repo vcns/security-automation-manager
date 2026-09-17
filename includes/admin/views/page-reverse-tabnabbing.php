@@ -46,18 +46,19 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		</p>
 	</div>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $surfaces as $surface ) : ?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-pillar-enabled"
@@ -70,6 +71,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'Changes apply immediately. This is a content rewrite, not a header -- it never blocks or breaks a link, it only closes an opener-access gap. Only a successful, non-streamed HTML page response on the frontend is ever rewritten (see the notice above for why the other surfaces don\'t apply here).', 'vcns-security-automation-manager' ); ?>

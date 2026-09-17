@@ -30,21 +30,22 @@ $intelligence_detector_count = count( Detector_Registry::keys() );
 		<?php esc_html_e( 'Collecting evidence -- request behaviour, browser policy violations, script and certificate changes -- without applying any control. Nothing here blocks or changes anything on its own.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'View', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'View', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Continuous Intelligence', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Every request to Frontend, Admin, Login and API is observed and classified.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php if ( $intelligence_detector_count > 0 ) : ?>
 						<?php
 						echo Status_Badge::render( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
@@ -67,31 +68,31 @@ $intelligence_detector_count = count( Detector_Registry::keys() );
 						?>
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-intelligence' ) ); ?>">
 						<?php esc_html_e( 'View Continuous Intelligence', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'CSP Violations', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Report-only violation reports browsers have sent back for this site\'s Content Security Policy.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>&mdash;</td>
-				<td>
+				<td class="wp-sam-col-status">&mdash;</td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=violations' ) ); ?>">
 						<?php esc_html_e( 'View CSP Violations', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Scan Log', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'History of discovery scans, including ones that ran after a theme, plugin, or content change.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>&mdash;</td>
-				<td>
+				<td class="wp-sam-col-status">&mdash;</td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=scan-log' ) ); ?>">
 						<?php esc_html_e( 'View Scan Log', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -99,6 +100,7 @@ $intelligence_detector_count = count( Detector_Registry::keys() );
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description">
 		<?php esc_html_e( 'Not yet available: an ongoing baseline/drift feed and certificate-change monitoring as first-class observation are planned for a future phase.', 'vcns-security-automation-manager' ); ?>
