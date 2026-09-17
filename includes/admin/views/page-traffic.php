@@ -116,34 +116,35 @@ $tab_help = array(
 		</form>
 		<?php endforeach; ?>
 
-		<table class="widefat fixed striped wp-sam-policy-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat fixed striped wp-sam-table wp-sam-policy-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Rate limit', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Failed login lockout', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Rate limit', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Failed login lockout', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $policies as $policy ) : ?>
 				<?php $form_id = 'wp-sam-policy-form-' . (string) $policy['surface']; ?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( (string) $policy['surface'] ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( (string) $policy['surface'] ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<select form="<?php echo esc_attr( $form_id ); ?>" name="mode">
 							<option value="observe" <?php selected( $policy['mode'], 'observe' ); ?>><?php esc_html_e( 'Observe (never blocks)', 'vcns-security-automation-manager' ); ?></option>
 							<option value="enforce" <?php selected( $policy['mode'], 'enforce' ); ?>><?php esc_html_e( 'Enforce', 'vcns-security-automation-manager' ); ?></option>
 						</select>
 					</td>
-					<td>
+					<td class="wp-sam-col-technical">
 						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="rate_limit_max_requests" style="width:80px" value="<?php echo esc_attr( (string) $policy['rate_limit_max_requests'] ); ?>" />
 						<?php esc_html_e( 'per', 'vcns-security-automation-manager' ); ?>
 						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="rate_limit_window_seconds" style="width:80px" value="<?php echo esc_attr( (string) $policy['rate_limit_window_seconds'] ); ?>" />
 						<?php esc_html_e( 'sec', 'vcns-security-automation-manager' ); ?>
 					</td>
-					<td>
+					<td class="wp-sam-col-technical">
 						<?php if ( 'login' === $policy['surface'] ) : ?>
 						<input type="number" min="1" form="<?php echo esc_attr( $form_id ); ?>" name="login_max_failed_attempts" style="width:70px" value="<?php echo esc_attr( (string) $policy['login_max_failed_attempts'] ); ?>" />
 							<?php esc_html_e( 'in', 'vcns-security-automation-manager' ); ?>
@@ -153,11 +154,12 @@ $tab_help = array(
 						&#8212;
 						<?php endif; ?>
 					</td>
-					<td><button type="submit" form="<?php echo esc_attr( $form_id ); ?>" class="button button-primary"><?php esc_html_e( 'Save', 'vcns-security-automation-manager' ); ?></button></td>
+					<td class="wp-sam-col-actions"><button type="submit" form="<?php echo esc_attr( $form_id ); ?>" class="button button-primary"><?php esc_html_e( 'Save', 'vcns-security-automation-manager' ); ?></button></td>
 				</tr>
 			<?php endforeach; ?>
 			</tbody>
 		</table>
+		</div>
 
 	<?php elseif ( 'ip-rules' === $tab ) : ?>
 
@@ -167,26 +169,27 @@ $tab_help = array(
 			<?php esc_html_e( 'Use this when you already know a specific address and want a decision that doesn\'t depend on rate limits or detectors at all: Allow permanently exempts a source you trust (a monitoring service, your own office) from every other control on this page; Block permanently shuts one out, regardless of what mode a surface is in. A CIDR range lets one rule cover a whole block of addresses at once -- 203.0.113.0/24 covers all 256 addresses from .0 to .255, useful when an attacker is rotating through a known range. Leave Expires blank (or 0) for a rule that should never lapse on its own; for the equivalent decision by ASN or country instead of by address, see Network Rules on the Network Intelligence tab.', 'vcns-security-automation-manager' ); ?>
 		</p>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'CIDR', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Expires', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'CIDR', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Expires', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $rules as $rule ) : ?>
 			<tr>
-				<td><?php echo esc_html( ucfirst( (string) $rule['list_type'] ) ); ?></td>
-				<td><code><?php echo esc_html( (string) $rule['cidr'] ); ?></code></td>
-				<td><?php echo esc_html( '' !== (string) $rule['surface'] ? ucfirst( (string) $rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
-				<td><?php echo esc_html( (string) $rule['reason'] ); ?></td>
-				<td><?php echo esc_html( ! empty( $rule['expires_at'] ) ? (string) $rule['expires_at'] : __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( (string) $rule['list_type'] ) ); ?></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $rule['cidr'] ); ?></code></td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( '' !== (string) $rule['surface'] ? ucfirst( (string) $rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $rule['reason'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( ! empty( $rule['expires_at'] ) ? (string) $rule['expires_at'] : __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+				<td class="wp-sam-col-actions">
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
 						<?php wp_nonce_field( 'wp_sam_ip_rule_delete' ); ?>
 						<input type="hidden" name="action" value="wp_sam_ip_rule_delete" />
@@ -203,6 +206,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<h2 style="margin-top:2em"><?php esc_html_e( 'Add a rule', 'vcns-security-automation-manager' ); ?></h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -253,26 +257,27 @@ $tab_help = array(
 			<?php esc_html_e( "This is what automatic detection has done on its own, without you adding anything here -- crossing a rate limit or tripping an enforce-mode detector moves a source up a stage (Warn, Throttle, Temporary block, Extended block); Occurrences counts how many times that's happened. Release lifts a block immediately, useful when you recognise a source as a false positive; Make Permanent turns a temporary, auto-expiring block into one that stays until you remove it yourself -- functionally the same outcome as adding it to IP Rules by hand. Nothing here is a manual decision until you click one of those two buttons.", 'vcns-security-automation-manager' ); ?>
 		</p>
 
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-blocks-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-blocks-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Stage', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Occurrences', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Blocked Until', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Stage', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-count"><?php esc_html_e( 'Occurrences', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Blocked Until', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $blocks as $block ) : ?>
 			<tr>
-				<td><code><?php echo esc_html( (string) $block['ip'] ); ?></code></td>
-				<td><?php echo esc_html( ucfirst( (string) $block['surface'] ) ); ?></td>
-				<td><?php echo esc_html( str_replace( '_', ' ', ucfirst( (string) $block['stage'] ) ) ); ?></td>
-				<td><?php echo esc_html( str_replace( '_', ' ', (string) $block['reason'] ) ); ?></td>
-				<td><?php echo esc_html( number_format( (int) $block['occurrence_count'] ) ); ?></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $block['ip'] ); ?></code></td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( (string) $block['surface'] ) ); ?></td>
+				<td class="wp-sam-col-status"><?php echo esc_html( str_replace( '_', ' ', ucfirst( (string) $block['stage'] ) ) ); ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( str_replace( '_', ' ', (string) $block['reason'] ) ); ?></td>
+				<td class="wp-sam-col-count"><?php echo esc_html( number_format( (int) $block['occurrence_count'] ) ); ?></td>
 				<?php
 				$blocked_until_display = '—';
 				if ( ! empty( $block['is_persistent'] ) ) {
@@ -281,8 +286,8 @@ $tab_help = array(
 					$blocked_until_display = (string) $block['blocked_until'];
 				}
 				?>
-				<td><?php echo esc_html( $blocked_until_display ); ?></td>
-				<td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( $blocked_until_display ); ?></td>
+				<td class="wp-sam-col-actions">
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
 						<?php wp_nonce_field( 'wp_sam_traffic_block_release' ); ?>
 						<input type="hidden" name="action" value="wp_sam_traffic_block_release" />
@@ -307,6 +312,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 	<?php elseif ( 'network-intelligence' === $tab ) : ?>
 
@@ -780,24 +786,25 @@ $tab_help = array(
 				<?php esc_html_e( "Block traffic by ASN or country, checked alongside IP Rules -- an explicit decision, applied regardless of a surface's observe/enforce mode. Adding the first rule here is what switches ASN/Geo-IP resolution on for every request; with no rules configured, nothing here costs anything. The Geo-IP tab's Country Block List above manages all-surfaces country rules with a friendlier toggle grid; use this form for ASN rules or a per-surface country exception.", 'vcns-security-automation-manager' ); ?>
 			</p>
 
-			<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+			<div class="wp-sam-table-wrap">
+			<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-status"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-description"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 				<?php foreach ( $network_rules as $network_rule ) : ?>
 				<tr>
-					<td><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? __( 'ASN', 'vcns-security-automation-manager' ) : __( 'Country', 'vcns-security-automation-manager' ) ); ?></td>
-					<td><code><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? 'AS' . (string) $network_rule['value'] : (string) $network_rule['value'] ); ?></code></td>
-					<td><?php echo esc_html( '' !== (string) $network_rule['surface'] ? ucfirst( (string) $network_rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
-					<td><?php echo esc_html( (string) $network_rule['reason'] ); ?></td>
-					<td>
+					<td class="wp-sam-col-status"><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? __( 'ASN', 'vcns-security-automation-manager' ) : __( 'Country', 'vcns-security-automation-manager' ) ); ?></td>
+					<td class="wp-sam-col-technical"><code><?php echo esc_html( 'asn' === $network_rule['rule_type'] ? 'AS' . (string) $network_rule['value'] : (string) $network_rule['value'] ); ?></code></td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( '' !== (string) $network_rule['surface'] ? ucfirst( (string) $network_rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+					<td class="wp-sam-col-description"><?php echo esc_html( (string) $network_rule['reason'] ); ?></td>
+					<td class="wp-sam-col-actions">
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
 							<?php wp_nonce_field( 'wp_sam_network_rule_delete' ); ?>
 							<input type="hidden" name="action" value="wp_sam_network_rule_delete" />
@@ -814,6 +821,7 @@ $tab_help = array(
 				<?php endif; ?>
 				</tbody>
 			</table>
+			</div>
 
 			<h3 style="margin-top:1.5em"><?php esc_html_e( 'Add a network rule', 'vcns-security-automation-manager' ); ?></h3>
 
@@ -911,14 +919,15 @@ $tab_help = array(
 			<?php wp_nonce_field( 'wp_sam_detector_policy_update' ); ?>
 			<input type="hidden" name="action" value="wp_sam_detector_policy_update" />
 
-			<table class="widefat fixed striped wp-sam-violations-table wp-sam-detectors-table">
+			<div class="wp-sam-table-wrap">
+			<table class="widefat fixed striped wp-sam-table wp-sam-violations-table wp-sam-detectors-table">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Family', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
-						<th><?php esc_html_e( 'Control action', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-compact"><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-surface"><?php esc_html_e( 'Family', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-description"><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-technical"><?php esc_html_e( 'Control action', 'vcns-security-automation-manager' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -930,13 +939,13 @@ $tab_help = array(
 					$description  = $detector->description();
 					?>
 					<tr>
-						<td style="white-space:nowrap"><code><?php echo esc_html( $detector->id() ); ?></code></td>
-						<td><?php echo esc_html( $detector->family() ); ?></td>
-						<td><?php echo '' !== $description ? esc_html( $description ) : '&#8212;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static em-dash literal; $description itself is escaped. ?></td>
-						<td>
+						<td class="wp-sam-col-compact"><code><?php echo esc_html( $detector->id() ); ?></code></td>
+						<td class="wp-sam-col-surface"><?php echo esc_html( $detector->family() ); ?></td>
+						<td class="wp-sam-col-description"><?php echo '' !== $description ? esc_html( $description ) : '&#8212;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static em-dash literal; $description itself is escaped. ?></td>
+						<td class="wp-sam-col-status">
 							<input type="checkbox" name="<?php echo esc_attr( $field_prefix ); ?>[enabled]" value="1" <?php checked( $detector_policies->is_enabled( $detector->id() ) ); ?> />
 						</td>
-						<td>
+						<td class="wp-sam-col-technical">
 							<?php if ( count( $allowed ) > 1 ) : ?>
 							<select name="<?php echo esc_attr( $field_prefix ); ?>[control_action]">
 								<?php foreach ( $allowed as $action ) : ?>
@@ -964,6 +973,7 @@ $tab_help = array(
 				<?php endif; ?>
 				</tbody>
 			</table>
+			</div>
 
 			<?php if ( ! empty( $detectors ) ) : ?>
 			<p><?php submit_button( __( 'Save Detector Settings', 'vcns-security-automation-manager' ), 'primary', '', false ); ?></p>
@@ -1038,27 +1048,28 @@ $tab_help = array(
 		</div>
 		<?php endif; ?>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat fixed striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Name', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Pattern', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Matches against', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Severity', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surfaces', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-primary"><?php esc_html_e( 'Name', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Pattern', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Matches against', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Severity', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surfaces', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $custom_rules as $rule ) : ?>
 				<?php $rule_surfaces = json_decode( (string) $rule['surfaces'], true ); ?>
 				<tr>
-					<td><?php echo esc_html( (string) $rule['name'] ); ?></td>
-					<td><code><?php echo esc_html( (string) $rule['pattern'] ); ?></code></td>
-					<td><?php echo esc_html( $subject_field_labels[ $rule['subject_field'] ] ?? (string) $rule['subject_field'] ); ?></td>
-					<td><?php echo esc_html( $severity_labels[ $rule['severity'] ] ?? (string) $rule['severity'] ); ?></td>
-					<td><?php echo esc_html( ! empty( $rule_surfaces ) ? implode( ', ', array_map( 'ucfirst', $rule_surfaces ) ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
-					<td style="white-space:nowrap">
+					<td class="wp-sam-col-primary"><?php echo esc_html( (string) $rule['name'] ); ?></td>
+					<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $rule['pattern'] ); ?></code></td>
+					<td class="wp-sam-col-technical"><?php echo esc_html( $subject_field_labels[ $rule['subject_field'] ] ?? (string) $rule['subject_field'] ); ?></td>
+					<td class="wp-sam-col-status"><?php echo esc_html( $severity_labels[ $rule['severity'] ] ?? (string) $rule['severity'] ); ?></td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ! empty( $rule_surfaces ) ? implode( ', ', array_map( 'ucfirst', $rule_surfaces ) ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
+					<td class="wp-sam-col-actions" style="white-space:nowrap">
 						<a href="
 						<?php
 						echo esc_url(
@@ -1090,6 +1101,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 		<p class="description">
 			<?php esc_html_e( 'A rule\'s detector id (shown next to Delete above, e.g. "custom_3") is how it appears on the Detectors tab -- use it to find the right row there once you\'ve created a rule.', 'vcns-security-automation-manager' ); ?>
 		</p>
