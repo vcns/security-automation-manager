@@ -117,27 +117,28 @@ $current        = $baseline_store->get_current();
 			<?php endforeach; ?>
 		</p>
 
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-drift-table">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-drift-table">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Category', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Item', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Correlation', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Disposition', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Category', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Item', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Correlation', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Disposition', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-compact"><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $drifts as $drift ) : ?>
 			<tr>
-				<td><?php echo esc_html( str_replace( '_', ' ', ucfirst( (string) $drift['category'] ) ) ); ?><?php echo '' !== (string) $drift['surface'] ? ' (' . esc_html( ucfirst( (string) $drift['surface'] ) ) . ')' : ''; ?></td>
-				<td><code class="wp-sam-drift-item"><?php echo esc_html( (string) $drift['item_key'] ); ?></code></td>
-				<td><?php echo Risk_Badge::render( (string) $drift['risk_level'], (string) $drift['risk_reason'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?></td>
-				<td><?php echo esc_html( (string) $drift['correlated_change'] ); ?></td>
-				<td><?php echo esc_html( ucfirst( (string) $drift['disposition'] ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( str_replace( '_', ' ', ucfirst( (string) $drift['category'] ) ) ); ?><?php echo '' !== (string) $drift['surface'] ? ' (' . esc_html( ucfirst( (string) $drift['surface'] ) ) . ')' : ''; ?></td>
+				<td class="wp-sam-col-technical"><code class="wp-sam-drift-item"><?php echo esc_html( (string) $drift['item_key'] ); ?></code></td>
+				<td class="wp-sam-col-status"><?php echo Risk_Badge::render( (string) $drift['risk_level'], (string) $drift['risk_reason'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $drift['correlated_change'] ); ?></td>
+				<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( (string) $drift['disposition'] ) ); ?></td>
+				<td class="wp-sam-col-compact">
 					<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
 						<span class="wp-sam-meta-popover" role="tooltip">
 							<div class="wp-sam-meta-row"><strong><?php esc_html_e( 'Baseline said:', 'vcns-security-automation-manager' ); ?></strong> <code><?php echo esc_html( mb_substr( (string) $drift['old_value'], 0, 200 ) ); ?></code></div>
@@ -145,7 +146,7 @@ $current        = $baseline_store->get_current();
 						</span>
 					</span>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<?php if ( in_array( (string) $drift['disposition'], array( 'unexplained' ), true ) ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<?php wp_nonce_field( 'wp_sam_drift_disposition' ); ?>
@@ -168,6 +169,7 @@ $current        = $baseline_store->get_current();
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<?php endif; ?>
 
@@ -179,22 +181,23 @@ $current        = $baseline_store->get_current();
 			<?php esc_html_e( 'Every approved baseline is kept, not deleted, when you capture a new one -- capturing only changes which version is Current, the one drift scans actually compare against. Capturing is always a deliberate action taken here; nothing is ever baselined automatically, the same never-automatic principle used elsewhere in this plugin (CSP enforcement, traffic blocking), so there is always a known, chosen baseline rather than a moving target.', 'vcns-security-automation-manager' ); ?>
 		</p>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Version', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Current', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Approved At', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Note', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-compact"><?php esc_html_e( 'Version', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Current', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Approved At', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Note', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $all_baselines as $baseline ) : ?>
 			<tr>
-				<td><?php echo esc_html( '#' . (string) $baseline['version_number'] ); ?></td>
-				<td><?php echo ! empty( $baseline['is_current'] ) ? '&#10003;' : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static HTML entities only. ?></td>
-				<td><?php echo esc_html( (string) $baseline['approved_at'] ); ?></td>
-				<td><?php echo esc_html( (string) $baseline['note'] ); ?></td>
+				<td class="wp-sam-col-compact"><?php echo esc_html( '#' . (string) $baseline['version_number'] ); ?></td>
+				<td class="wp-sam-col-status"><?php echo ! empty( $baseline['is_current'] ) ? '&#10003;' : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static HTML entities only. ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $baseline['approved_at'] ); ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $baseline['note'] ); ?></td>
 			</tr>
 			<?php endforeach; ?>
 			<?php if ( empty( $all_baselines ) ) : ?>
@@ -204,6 +207,7 @@ $current        = $baseline_store->get_current();
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<h2 style="margin-top:2em"><?php esc_html_e( 'Capture a new baseline', 'vcns-security-automation-manager' ); ?></h2>
 		<p class="description"><?php esc_html_e( 'Snapshots the current configuration as the new known-good state. Future drift scans compare against this instead.', 'vcns-security-automation-manager' ); ?></p>
@@ -224,28 +228,29 @@ $current        = $baseline_store->get_current();
 			<?php esc_html_e( "Populated automatically as these events happen -- a plugin or theme updating, being activated or deactivated, WordPress core updating, a new administrator account appearing, or a role being granted -- there is nothing to configure here. Its only purpose is giving the Drift tab's Correlation column something concrete to check against; it is not itself an alert or a block on anything.", 'vcns-security-automation-manager' ); ?>
 		</p>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Item', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Version', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'When', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Item', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Version', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'When', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $change_log_entries as $entry ) : ?>
 			<tr>
-				<td><?php echo esc_html( str_replace( '_', ' ', ucfirst( (string) $entry['change_type'] ) ) ); ?></td>
-				<td><code><?php echo esc_html( (string) $entry['item_name'] ); ?></code></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( str_replace( '_', ' ', ucfirst( (string) $entry['change_type'] ) ) ); ?></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $entry['item_name'] ); ?></code></td>
+				<td class="wp-sam-col-technical">
 					<?php if ( '' !== (string) $entry['old_version'] && '' !== (string) $entry['new_version'] ) : ?>
 						<?php echo esc_html( (string) $entry['old_version'] . ' → ' . (string) $entry['new_version'] ); ?>
 					<?php else : ?>
 						<?php echo esc_html( (string) $entry['new_version'] ); ?>
 					<?php endif; ?>
 				</td>
-				<td><?php echo esc_html( (string) $entry['occurred_at'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $entry['occurred_at'] ); ?></td>
 			</tr>
 			<?php endforeach; ?>
 			<?php if ( empty( $change_log_entries ) ) : ?>
@@ -255,6 +260,7 @@ $current        = $baseline_store->get_current();
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 	<?php endif; ?>
 </div>

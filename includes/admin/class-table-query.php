@@ -226,8 +226,12 @@ final class Table_Query {
 	 * Renders one sortable <th>. Clicking the currently active column flips its
 	 * direction; clicking any other column jumps to that column's own
 	 * default_dir. Always resets the page key to 1.
+	 *
+	 * $th_class is an optional semantic column-role class (see
+	 * docs/admin-table-ux-standard.md, e.g. "wp-sam-col-datetime") applied to
+	 * the <th> itself; empty string (the default) renders exactly as before.
 	 */
-	public static function sort_header( string $label, string $sort_key, array $whitelist, array $resolved_sort, array $state_args, string $base_url, string $paged_key = 'paged' ): string {
+	public static function sort_header( string $label, string $sort_key, array $whitelist, array $resolved_sort, array $state_args, string $base_url, string $paged_key = 'paged', string $th_class = '' ): string {
 		$is_active = ( $resolved_sort['key'] === $sort_key );
 
 		if ( $is_active ) {
@@ -252,7 +256,9 @@ final class Table_Query {
 			$arrow = ' <span class="dashicons dashicons-' . esc_attr( $icon ) . '" aria-hidden="true"></span>';
 		}
 
-		return '<th><a href="' . esc_url( $url ) . '">' . esc_html( $label ) . $arrow . '</a></th>';
+		$class_attr = '' !== $th_class ? ' class="' . esc_attr( $th_class ) . '"' : '';
+
+		return '<th' . $class_attr . '><a href="' . esc_url( $url ) . '">' . esc_html( $label ) . $arrow . '</a></th>';
 	}
 
 	/** Renders a shared Prev/Page X of Y/Next block, carrying $state_args forward. */

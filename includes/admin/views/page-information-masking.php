@@ -62,18 +62,19 @@ $item_labels = array(
 		<?php esc_html_e( 'X-Powered-By hands a scanner the exact PHP version this site runs, an instant shortlist of known vulnerabilities to try against it. Server does the same for the web-server software itself -- Apache, Nginx, LiteSpeed -- and often its version too. X-Pingback exposes this site\'s own xmlrpc.php URL, the endpoint pingback-based amplification and enumeration abuse targets, confirming both that it\'s reachable and exactly where to send it.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $surfaces as $surface ) : ?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
-					<td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-status">
 						<input
 							type="checkbox"
 							class="wp-sam-pillar-enabled"
@@ -86,6 +87,7 @@ $item_labels = array(
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<p class="description" style="margin-top: 1em;">
 		<?php esc_html_e( 'Changes apply immediately. X-Powered-By and X-Pingback are removed directly from PHP and this always works. Server is best-effort -- see the readiness check below.', 'vcns-security-automation-manager' ); ?>
@@ -103,19 +105,20 @@ $item_labels = array(
 		<?php esc_html_e( 'This check only runs when you click Check Now below -- nothing here is scheduled automatically, so re-run it after changing hosts, upgrading PHP, or editing server configuration. If a check fails outright (a timeout, a brief outage), the results below are left exactly as they were after the last successful check rather than cleared or reported as newly present; only Last check status changes to reflect the failure.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em;max-width:600px">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Header', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Result', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Header', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Result', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $item_labels as $item_key => $item_label ) : ?>
 				<?php $result = $diag_results[ $item_key ] ?? null; ?>
 				<tr>
-					<td><?php echo esc_html( $item_label ); ?></td>
-					<td>
+					<td class="wp-sam-col-primary"><?php echo esc_html( $item_label ); ?></td>
+					<td class="wp-sam-col-status">
 						<?php if ( null === $result ) : ?>
 							<?php esc_html_e( 'Not yet checked', 'vcns-security-automation-manager' ); ?>
 						<?php elseif ( 'masked' === $result ) : ?>
@@ -128,19 +131,22 @@ $item_labels = array(
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
-	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em;max-width:600px">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em;max-width:600px">
 		<tbody>
 			<tr>
-				<th style="width:200px"><?php esc_html_e( 'Last checked', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php echo esc_html( $diag_checked_at ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Last checked', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-status"><?php echo esc_html( $diag_checked_at ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
 			</tr>
 			<tr>
-				<th><?php esc_html_e( 'Last check status', 'vcns-security-automation-manager' ); ?></th>
-				<td><?php echo esc_html( '' !== $diag_status ? ucfirst( $diag_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) ); ?></td>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Last check status', 'vcns-security-automation-manager' ); ?></th>
+				<td class="wp-sam-col-status"><?php echo esc_html( '' !== $diag_status ? ucfirst( $diag_status ) : __( 'Not yet run', 'vcns-security-automation-manager' ) ); ?></td>
 			</tr>
 		</tbody>
 	</table>
+	</div>
 
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:1em">
 		<?php wp_nonce_field( 'wp_sam_information_masking_check' ); ?>

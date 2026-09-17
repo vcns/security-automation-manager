@@ -104,15 +104,16 @@ $tab_help = array(
 		$event_store = new Event_Store();
 		?>
 
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-campaigns-table">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-campaigns-table">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Participants', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'First / Last Detected', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Detector', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-count"><?php esc_html_e( 'Participants', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'First / Last Detected', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -133,9 +134,9 @@ $tab_help = array(
 				$ips_remaining   = count( $participant_ips ) - count( $ips_shown );
 				?>
 			<tr>
-				<td><code><?php echo esc_html( (string) $campaign['detector_id'] ); ?></code></td>
-				<td><?php echo esc_html( ucfirst( (string) $campaign['surface'] ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $campaign['detector_id'] ); ?></code></td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( (string) $campaign['surface'] ) ); ?></td>
+				<td class="wp-sam-col-count">
 					<?php echo esc_html( (string) $campaign['participant_count'] ); ?> <?php esc_html_e( 'distinct IPs', 'vcns-security-automation-manager' ); ?>
 					<?php if ( ! empty( $participant_ips ) ) : ?>
 					<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
@@ -161,9 +162,9 @@ $tab_help = array(
 					<span class="dashicons dashicons-info-outline wp-sam-meta-icon wp-sam-meta-icon--empty" title="<?php esc_attr_e( 'No participant is still active within the detection window -- the stored count reflects when this campaign was last detected.', 'vcns-security-automation-manager' ); ?>"></span>
 					<?php endif; ?>
 				</td>
-				<td><?php echo esc_html( ucfirst( (string) $campaign['status'] ) ); ?></td>
-				<td><?php echo esc_html( (string) $campaign['first_detected_at'] . ' / ' . (string) $campaign['last_detected_at'] ); ?></td>
-				<td>
+				<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( (string) $campaign['status'] ) ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $campaign['first_detected_at'] . ' / ' . (string) $campaign['last_detected_at'] ); ?></td>
+				<td class="wp-sam-col-actions">
 					<?php if ( 'detected' === (string) $campaign['status'] ) : ?>
 					<input type="text" id="<?php echo esc_attr( $reason_id ); ?>" class="wp-sam-campaign-reason" data-campaign-forms="<?php echo esc_attr( $disposition_form_id . ' ' . $block_form_id ); ?>" placeholder="<?php esc_attr_e( 'Reason', 'vcns-security-automation-manager' ); ?>" aria-required="true" style="width:160px" />
 					<br />
@@ -195,27 +196,29 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 	<?php elseif ( 'honeypaths' === $tab ) : ?>
 
 		<?php $honeypaths = ( new Honeypath_Store() )->all(); ?>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Path', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Added', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Path', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Added', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $honeypaths as $honeypath ) : ?>
 			<tr>
-				<td><code><?php echo esc_html( (string) $honeypath['path'] ); ?></code></td>
-				<td><?php echo esc_html( (string) $honeypath['description'] ); ?></td>
-				<td><?php echo esc_html( (string) $honeypath['created_at'] ); ?></td>
-				<td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $honeypath['path'] ); ?></code></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $honeypath['description'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $honeypath['created_at'] ); ?></td>
+				<td class="wp-sam-col-actions">
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<?php wp_nonce_field( 'wp_sam_honeypath_delete' ); ?>
 						<input type="hidden" name="action" value="wp_sam_honeypath_delete" />
@@ -232,6 +235,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<h2 style="margin-top:2em"><?php esc_html_e( 'Add a decoy path', 'vcns-security-automation-manager' ); ?></h2>
 		<p class="description"><?php esc_html_e( 'Choose a path no legitimate visitor, link, or integration on your site ever requests -- e.g. a fake admin path or a plausible-looking sensitive filename.', 'vcns-security-automation-manager' ); ?></p>
@@ -310,27 +314,28 @@ $tab_help = array(
 		<?php endif; ?>
 
 		<h2 style="margin-top:2em"><?php esc_html_e( 'History', 'vcns-security-automation-manager' ); ?></h2>
-		<table class="widefat fixed striped wp-sam-violations-table">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Opened', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Closed', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Rollback Reference', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Resolution', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Description', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Opened', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'Closed', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-compact"><?php esc_html_e( 'Rollback Reference', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Resolution', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php $window_history = $window_store->all(); ?>
 			<?php foreach ( $window_history as $window ) : ?>
 			<tr>
-				<td><?php echo esc_html( (string) $window['description'] ); ?></td>
-				<td><?php echo esc_html( ucfirst( (string) $window['status'] ) ); ?></td>
-				<td><?php echo esc_html( (string) $window['opened_at'] ); ?></td>
-				<td><?php echo esc_html( (string) ( $window['closed_at'] ?? '' ) ); ?></td>
-				<td><?php echo ! empty( $window['baseline_id_before'] ) ? esc_html( '#' . (string) $window['baseline_id_before'] ) : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static HTML entity only. ?></td>
-				<td><?php echo esc_html( (string) $window['resolution_note'] ); ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $window['description'] ); ?></td>
+				<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( (string) $window['status'] ) ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $window['opened_at'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) ( $window['closed_at'] ?? '' ) ); ?></td>
+				<td class="wp-sam-col-compact"><?php echo ! empty( $window['baseline_id_before'] ) ? esc_html( '#' . (string) $window['baseline_id_before'] ) : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static HTML entity only. ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $window['resolution_note'] ); ?></td>
 			</tr>
 			<?php endforeach; ?>
 			<?php if ( empty( $window_history ) ) : ?>
@@ -340,6 +345,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 	<?php elseif ( 'timeline' === $tab ) : ?>
 
@@ -351,24 +357,25 @@ $tab_help = array(
 		);
 		?>
 
-		<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'When', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Event', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Detail', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-datetime"><?php esc_html_e( 'When', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Type', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Event', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Risk', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Detail', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $timeline_events as $event ) : ?>
 			<tr>
-				<td><?php echo esc_html( (string) $event['when'] ); ?></td>
-				<td><?php echo esc_html( (string) $event['type'] ); ?></td>
-				<td><?php echo esc_html( (string) $event['event'] ); ?></td>
-				<td><?php echo '' !== (string) $event['risk_level'] ? Risk_Badge::render( (string) $event['risk_level'], '' ) : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally; static entity otherwise. ?></td>
-				<td><?php echo esc_html( (string) $event['detail'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $event['when'] ); ?></td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( (string) $event['type'] ); ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $event['event'] ); ?></td>
+				<td class="wp-sam-col-status"><?php echo '' !== (string) $event['risk_level'] ? Risk_Badge::render( (string) $event['risk_level'], '' ) : '&mdash;'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally; static entity otherwise. ?></td>
+				<td class="wp-sam-col-description"><?php echo esc_html( (string) $event['detail'] ); ?></td>
 			</tr>
 			<?php endforeach; ?>
 			<?php if ( empty( $timeline_events ) ) : ?>
@@ -378,6 +385,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 	<?php endif; ?>
 </div>

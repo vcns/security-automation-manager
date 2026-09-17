@@ -165,16 +165,17 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 
 	<?php echo wp_kses_post( $active['intro_html'] ); ?>
 
-	<table class="widefat striped wp-sam-readiness-table" style="margin-top: 1em;">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table" style="margin-top: 1em;">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
 				<?php if ( $active['supports_mode'] ) : ?>
-					<th><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Mode', 'vcns-security-automation-manager' ); ?></th>
 				<?php else : ?>
-					<th><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-status"><?php esc_html_e( 'Enabled', 'vcns-security-automation-manager' ); ?></th>
 				<?php endif; ?>
-				<th><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -187,9 +188,9 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 				);
 				?>
 				<tr>
-					<td><?php echo esc_html( ucfirst( $surface ) ); ?></td>
+					<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $surface ) ); ?></td>
 					<?php if ( $active['supports_mode'] ) : ?>
-						<td>
+						<td class="wp-sam-col-status">
 							<select
 								class="wp-sam-pillar-mode"
 								data-pillar="<?php echo esc_attr( $active['pillar_key'] ); ?>"
@@ -203,7 +204,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 							</select>
 						</td>
 					<?php else : ?>
-						<td>
+						<td class="wp-sam-col-status">
 							<input
 								type="checkbox"
 								class="wp-sam-pillar-enabled"
@@ -213,7 +214,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 							/>
 						</td>
 					<?php endif; ?>
-					<td>
+					<td class="wp-sam-col-technical">
 						<select
 							class="wp-sam-pillar-value"
 							data-pillar="<?php echo esc_attr( $active['pillar_key'] ); ?>"
@@ -230,6 +231,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 
 	<?php if ( $active['supports_mode'] ) : ?>
 	<p class="description" style="margin-top: 1em;">
@@ -405,30 +407,31 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		</form>
 	</details>
 
-	<table class="widefat fixed striped wp-sam-violations-table" style="margin-top:1em">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-violations-table" style="margin-top:1em">
 		<thead>
 			<tr>
 				<?php
-				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
-				echo Table_Query::sort_header( __( 'Report Type', 'vcns-security-automation-manager' ), 'type', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Disposition', 'vcns-security-automation-manager' ), 'disposition', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'First Seen', 'vcns-security-automation-manager' ), 'first_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged', 'wp-sam-col-surface' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+				echo Table_Query::sort_header( __( 'Report Type', 'vcns-security-automation-manager' ), 'type', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Disposition', 'vcns-security-automation-manager' ), 'disposition', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged', 'wp-sam-col-count' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'First Seen', 'vcns-security-automation-manager' ), 'first_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $evid_sort_whitelist, $evid_sort, $evid_state_args, $base_url, 'e_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				?>
-				<th><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-compact"><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 		<?php foreach ( $evidence as $e ) : ?>
 		<tr>
-			<td><?php echo esc_html( ucfirst( (string) $e['surface'] ) ); ?></td>
-			<td><code><?php echo esc_html( (string) $e['report_type'] ); ?></code></td>
-			<td><?php echo esc_html( (string) $e['disposition'] ); ?></td>
-			<td><?php echo esc_html( number_format( (int) $e['occurrence_count'] ) ); ?></td>
-			<td><?php echo esc_html( (string) $e['first_seen_at'] ); ?></td>
-			<td><?php echo esc_html( (string) $e['last_seen_at'] ); ?></td>
-			<td>
+			<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( (string) $e['surface'] ) ); ?></td>
+			<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $e['report_type'] ); ?></code></td>
+			<td class="wp-sam-col-status"><?php echo esc_html( (string) $e['disposition'] ); ?></td>
+			<td class="wp-sam-col-count"><?php echo esc_html( number_format( (int) $e['occurrence_count'] ) ); ?></td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $e['first_seen_at'] ); ?></td>
+			<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $e['last_seen_at'] ); ?></td>
+			<td class="wp-sam-col-compact">
 				<?php
 				$e_detail    = json_decode( (string) $e['detail'], true );
 				$meta_fields = is_array( $e_detail ) ? $e_detail : array();
@@ -461,6 +464,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		<?php endif; ?>
 		</tbody>
 	</table>
+	</div>
 
 		<?php echo Table_Query::pagination( $evid_page_num, $evid_pages, $evid_state_args, $base_url, 'e_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 

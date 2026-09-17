@@ -35,21 +35,22 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 		<?php esc_html_e( 'Evidence evaluated against deterministic rules, confidence, and policy. Nothing here applies a response on its own -- accepted or approved decisions take effect once configured under Control.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
-	<table class="widefat striped wp-sam-readiness-table">
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-readiness-table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
-				<th><?php esc_html_e( 'View', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-status"><?php esc_html_e( 'Status', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-actions"><?php esc_html_e( 'View', 'vcns-security-automation-manager' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'For Review', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'CSP source candidates discovered on this site, awaiting an approve/reject decision.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php if ( $pending_sources > 0 ) : ?>
 						<?php
 						echo esc_html(
@@ -64,42 +65,42 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 						<?php esc_html_e( 'Nothing awaiting a decision.', 'vcns-security-automation-manager' ); ?>
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=sources' ) ); ?>">
 						<?php esc_html_e( 'View For Review', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Policy Changes', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'The full decision ledger -- every approval, rejection, reversion, and undo, with a reason recorded for each.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>&mdash;</td>
-				<td>
+				<td class="wp-sam-col-status">&mdash;</td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=policy-changes' ) ); ?>">
 						<?php esc_html_e( 'View Policy Changes', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Policy Audit', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Per-surface pending and high-risk counts at a glance, across every surface this site serves.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>&mdash;</td>
-				<td>
+				<td class="wp-sam-col-status">&mdash;</td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=policy-audit' ) ); ?>">
 						<?php esc_html_e( 'View Policy Audit', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Active Exceptions', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Controlled, time-bound weakenings of a control or surface currently in force.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>
+				<td class="wp-sam-col-status">
 					<?php if ( $active_exceptions > 0 ) : ?>
 						<?php
 						echo esc_html(
@@ -114,19 +115,19 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 						<?php esc_html_e( 'No active exceptions.', 'vcns-security-automation-manager' ); ?>
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=exceptions' ) ); ?>">
 						<?php esc_html_e( 'View Exceptions', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'Dependency Classification', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'Decide whether a third-party script or stylesheet origin is trusted.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
-				<td>&mdash;</td>
-				<td>
+				<td class="wp-sam-col-status">&mdash;</td>
+				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-scripts&tab=external' ) ); ?>">
 						<?php esc_html_e( 'View Dependency Classification', 'vcns-security-automation-manager' ); ?>
 					</a>
@@ -134,4 +135,5 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 			</tr>
 		</tbody>
 	</table>
+	</div>
 </div>

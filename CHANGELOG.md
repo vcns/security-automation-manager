@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.11.0] - 2026-09-17
+
+### Changed
+
+- **SAM admin table layout standard** -- a repository-wide admin-table consistency refactor, delivered as foundation + 7 migration phases (PRs #419-426). UI/UX only: no security behaviour, stored data, decision logic, filtering/sorting, forms, permissions, API behaviour, or evidence calculations are touched on any migrated page.
+- Replaces the plugin's three previously-incompatible column-width strategies (natural sizing, `table-layout:fixed` + `nth-child()` percentages, `table-layout:fixed` + `nth-child()` pixels) with one system: nine semantic column-role classes (`wp-sam-col-compact`/`count`/`status`/`surface`/`datetime`/`primary`/`description`/`technical`/`actions`) applied directly to `<th>`/`<td>` in each view, plus a `.wp-sam-table-wrap` horizontal-overflow container. Compact columns use intrinsic sizing (`width:1%; white-space:nowrap`); flexible columns use `min-width` alone, never paired with a `max-width` that would force overflow. Column classes are applied by what a column *contains*, not by position -- `:nth-child()` couldn't express that, and was the root cause of every prior width-drift bug (a column's width rule silently pointing at the wrong column after a table gained or lost one).
+- Migrated every admin table across CSP dashboard, Overview/Settings, Scripts, Certificates, Cross-Origin Policies, Information Masking, Traffic Controls, Baseline & Drift, and Continuous/Advanced Intelligence.
+- Final cutover (Phase 7) deletes every remaining `nth-child()` width block in `admin.css` and removes the `fixed` class from every admin table across the 10 view files that still carried it -- every SAM table now uses the browser's natural/auto layout governed purely by the per-cell semantic classes. Also retires the blanket `.wp-sam-wrap .widefat code { word-break: break-all }` rule in favour of `.wp-sam-col-technical`'s own `word-break: break-word` + `overflow-wrap: anywhere`.
+- Inner-control width rules unrelated to column layout are untouched (e.g. the Profiles tab's automation-mode dropdown, the dependency-inventory classification `<select>`), as is Information Masking's deliberate table-level `max-width:600px` and every inline `style="width:"` on a form control -- documented as out of scope in the new `docs/admin-table-ux-standard.md`.
+- New regression coverage locks in the two table-cell classes `assets/js/admin.js` depends on directly (`wp-sam-state-badge`, `wp-sam-source-actions`), which had no prior test coverage anywhere. Full PHPUnit suite (2398/2398), PHPCS, and `tools/lint-php.php` clean; repo-wide audit confirms zero remaining `nth-child()`/`table-layout:fixed`/`widefat-fixed` occurrences outside explanatory doc comments.
+
 ## [2.10.1] - 2026-09-17
 
 ### Fixed

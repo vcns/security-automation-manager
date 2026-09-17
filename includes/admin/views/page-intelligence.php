@@ -236,27 +236,28 @@ $tab_help = array(
 			</form>
 		</details>
 
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-events-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-events-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<?php
-					echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
-					echo Table_Query::sort_header( __( 'Detector', 'vcns-security-automation-manager' ), 'detector', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'Family', 'vcns-security-automation-manager' ), 'family', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'Severity', 'vcns-security-automation-manager' ), 'severity', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'First Seen', 'vcns-security-automation-manager' ), 'first_seen', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Surface', 'vcns-security-automation-manager' ), 'surface', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-surface' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally.
+					echo Table_Query::sort_header( __( 'Detector', 'vcns-security-automation-manager' ), 'detector', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-technical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Family', 'vcns-security-automation-manager' ), 'family', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-surface' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Severity', 'vcns-security-automation-manager' ), 'severity', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-count' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'First Seen', 'vcns-security-automation-manager' ), 'first_seen', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $sort_whitelist, $sort, $state_args, $base_url, 'i_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					?>
-					<th><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-compact"><?php esc_html_e( 'Details', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $events as $event ) : ?>
 			<tr>
-				<td><?php echo esc_html( ucfirst( (string) $event['surface'] ) ); ?></td>
-				<td><code><?php echo esc_html( (string) $event['detector_id'] ); ?></code></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( (string) $event['surface'] ) ); ?></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $event['detector_id'] ); ?></code></td>
+				<td class="wp-sam-col-surface">
 					<?php
 					// Most built-in detectors return the same string from id()
 					// and family() -- family only actually groups something
@@ -270,11 +271,11 @@ $tab_help = array(
 					echo esc_html( (string) $event['detector_family'] !== (string) $event['detector_id'] ? (string) $event['detector_family'] : '—' );
 					?>
 				</td>
-				<td><?php echo esc_html( ucfirst( (string) $event['severity'] ) ); ?></td>
-				<td><?php echo esc_html( number_format( (int) $event['occurrence_count'] ) ); ?></td>
-				<td><?php echo esc_html( (string) $event['first_seen_at'] ); ?></td>
-				<td><?php echo esc_html( (string) $event['last_seen_at'] ); ?></td>
-				<td>
+				<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( (string) $event['severity'] ) ); ?></td>
+				<td class="wp-sam-col-count"><?php echo esc_html( number_format( (int) $event['occurrence_count'] ) ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $event['first_seen_at'] ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $event['last_seen_at'] ); ?></td>
+				<td class="wp-sam-col-compact">
 					<?php
 					$event_detail = json_decode( (string) $event['detail'], true );
 					$meta_fields  = is_array( $event_detail ) ? $event_detail : array();
@@ -310,6 +311,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<?php echo Table_Query::pagination( $page_num, $pages, $state_args, $base_url, 'i_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
@@ -486,22 +488,23 @@ $tab_help = array(
 			</form>
 		</details>
 
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-identities-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-identities-table" style="margin-top:1em">
 			<thead>
 				<tr>
 					<?php
-					echo Table_Query::sort_header( __( 'Claimed Identity', 'vcns-security-automation-manager' ), 'identity', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Claimed Identity', 'vcns-security-automation-manager' ), 'identity', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged', 'wp-sam-col-primary' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					?>
-					<th><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Vendor Source', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'IP', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Vendor Source', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-description"><?php esc_html_e( 'Classification', 'vcns-security-automation-manager' ); ?></th>
 					<?php
-					echo Table_Query::sort_header( __( 'State', 'vcns-security-automation-manager' ), 'state', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'State', 'vcns-security-automation-manager' ), 'state', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged', 'wp-sam-col-status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Occurrences', 'vcns-security-automation-manager' ), 'occurrences', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged', 'wp-sam-col-count' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo Table_Query::sort_header( __( 'Last Seen', 'vcns-security-automation-manager' ), 'last_seen', $sort_whitelist, $sort, $state_args, $base_url, 'id_paged', 'wp-sam-col-datetime' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					?>
-					<th><?php esc_html_e( 'Decision', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Decision', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -517,8 +520,8 @@ $tab_help = array(
 				$recent_paths   = is_array( $recent_paths ) ? $recent_paths : array();
 				?>
 			<tr>
-				<td><?php echo esc_html( '' !== (string) $row['claimed_identity'] ? (string) $row['claimed_identity'] : __( '(unrecognised)', 'vcns-security-automation-manager' ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-primary"><?php echo esc_html( '' !== (string) $row['claimed_identity'] ? (string) $row['claimed_identity'] : __( '(unrecognised)', 'vcns-security-automation-manager' ) ); ?></td>
+				<td class="wp-sam-col-technical">
 					<code><?php echo esc_html( (string) $row['ip'] ); ?></code>
 					<?php
 					$network_bits = array_filter(
@@ -532,15 +535,15 @@ $tab_help = array(
 						<br /><small class="description"><?php echo esc_html( implode( ' -- ', $network_bits ) ); ?></small>
 					<?php endif; ?>
 				</td>
-				<td><?php echo esc_html( ucfirst( (string) $row['surface'] ) ); ?></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( (string) $row['surface'] ) ); ?></td>
+				<td class="wp-sam-col-technical">
 					<?php if ( null !== $vendor && '' !== (string) $vendor['source_url'] ) : ?>
 						<a href="<?php echo esc_url( (string) $vendor['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Source', 'vcns-security-automation-manager' ); ?></a>
 					<?php else : ?>
 						&mdash;
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-description">
 					<span<?php echo ! empty( $recent_paths ) ? ' title="' . esc_attr( implode( ', ', $recent_paths ) ) . '"' : ''; ?>>
 						<?php echo esc_html( $classification_labels[ $classification ] ?? $classification ); ?>
 					</span>
@@ -548,10 +551,10 @@ $tab_help = array(
 						<br /><small class="description"><?php echo esc_html( sprintf( /* translators: %d: number of recently observed request paths */ _n( '%d recent path logged', '%d recent paths logged', count( $recent_paths ), 'vcns-security-automation-manager' ), count( $recent_paths ) ) ); ?></small>
 					<?php endif; ?>
 				</td>
-				<td><?php echo esc_html( $state_labels[ $state ] ?? $state ); ?></td>
-				<td><?php echo esc_html( number_format( (int) $row['occurrence_count'] ) ); ?></td>
-				<td><?php echo esc_html( (string) $row['last_seen_at'] ); ?></td>
-				<td>
+				<td class="wp-sam-col-status"><?php echo esc_html( $state_labels[ $state ] ?? $state ); ?></td>
+				<td class="wp-sam-col-count"><?php echo esc_html( number_format( (int) $row['occurrence_count'] ) ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( (string) $row['last_seen_at'] ); ?></td>
+				<td class="wp-sam-col-actions">
 					<?php if ( 'loopback' === $state ) : ?>
 						<span class="description wp-sam-auto-authorised" title="<?php esc_attr_e( 'This server calling itself is treated as authorised automatically. If a reverse proxy on this site terminates every visitor connection via loopback, deny it below to override that.', 'vcns-security-automation-manager' ); ?>"><?php esc_html_e( 'Auto-authorised (loopback)', 'vcns-security-automation-manager' ); ?></span>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;margin-top:4px">
@@ -593,6 +596,7 @@ $tab_help = array(
 			<?php endif; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<?php echo Table_Query::pagination( $page_num, $pages, $state_args, $base_url, 'id_paged' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
@@ -625,37 +629,38 @@ $tab_help = array(
 		<p class="description">
 			<a href="https://github.com/vcns/security-automation-manager/blob/main/docs/scanner-vendor-research.md" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Vendor research: sourcing for every built-in entry, plus researched-but-not-built-in commercial scanners and monitoring bots', 'vcns-security-automation-manager' ); ?></a>
 		</p>
-		<table class="widefat fixed striped wp-sam-violations-table wp-sam-vendors-table" style="margin-top:1em">
+		<div class="wp-sam-table-wrap">
+		<table class="widefat striped wp-sam-table wp-sam-violations-table wp-sam-vendors-table" style="margin-top:1em">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Vendor', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Category', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'UA pattern', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Verification', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Source', 'vcns-security-automation-manager' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-primary"><?php esc_html_e( 'Vendor', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-surface"><?php esc_html_e( 'Category', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'UA pattern', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Verification', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-technical"><?php esc_html_e( 'Source', 'vcns-security-automation-manager' ); ?></th>
+					<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ( $vendors as $vendor ) : ?>
 			<tr>
-				<td>
+				<td class="wp-sam-col-primary">
 					<?php echo esc_html( (string) $vendor['vendor_name'] ); ?>
 					<?php if ( ! empty( $vendor['is_builtin'] ) ) : ?>
 						<span class="description">(<?php esc_html_e( 'built-in', 'vcns-security-automation-manager' ); ?>)</span>
 					<?php endif; ?>
 				</td>
-				<td><?php echo esc_html( $category_labels[ (string) $vendor['category'] ] ?? (string) $vendor['category'] ); ?></td>
-				<td><code><?php echo esc_html( (string) $vendor['ua_pattern'] ); ?></code></td>
-				<td><?php echo esc_html( (string) $vendor['verification_method'] ); ?></td>
-				<td>
+				<td class="wp-sam-col-surface"><?php echo esc_html( $category_labels[ (string) $vendor['category'] ] ?? (string) $vendor['category'] ); ?></td>
+				<td class="wp-sam-col-technical"><code><?php echo esc_html( (string) $vendor['ua_pattern'] ); ?></code></td>
+				<td class="wp-sam-col-technical"><?php echo esc_html( (string) $vendor['verification_method'] ); ?></td>
+				<td class="wp-sam-col-technical">
 					<?php if ( '' !== (string) $vendor['source_url'] ) : ?>
 						<a href="<?php echo esc_url( (string) $vendor['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Link', 'vcns-security-automation-manager' ); ?></a>
 					<?php else : ?>
 						&mdash;
 					<?php endif; ?>
 				</td>
-				<td>
+				<td class="wp-sam-col-actions">
 					<?php
 					$vendor_edit_url = add_query_arg(
 						array(
@@ -681,6 +686,7 @@ $tab_help = array(
 			<?php endforeach; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<details class="wp-sam-filter-form" id="wp-sam-vendor-form" style="margin-top:2em"<?php echo null !== $editing_vendor ? ' open' : ''; ?>>
 			<summary>
