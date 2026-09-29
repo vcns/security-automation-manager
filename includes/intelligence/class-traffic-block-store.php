@@ -193,6 +193,13 @@ final class Traffic_Block_Store {
 		return false !== $result;
 	}
 
+	/**
+	 * Builds the fingerprint that identifies a block.
+	 *
+	 * @param string $ip      IP address.
+	 * @param string $surface Surface slug.
+	 * @return string SHA-256 hash.
+	 */
 	private function fingerprint( string $ip, string $surface ): string {
 		return hash( 'sha256', $ip . '|' . $surface );
 	}

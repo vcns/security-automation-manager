@@ -25,6 +25,11 @@ final class Humans_Txt_Store {
 	/** @var callable(string):(array|\WP_Error) Real wp_remote_get() by default; injectable so tests never make a real HTTP call. */
 	private $http_get;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param callable|null $http_get HTTP GET function, defaults to wp_remote_get().
+	 */
 	public function __construct( ?callable $http_get = null ) {
 		$this->http_get = $http_get ?? static fn ( string $url ) => wp_remote_get(
 			$url,
@@ -46,15 +51,30 @@ final class Humans_Txt_Store {
 		return 'success' === $this->last_fetch_status();
 	}
 
+	/**
+	 * Returns the cached humans.txt content.
+	 *
+	 * @return string Content, or an empty string.
+	 */
 	public function content(): string {
 		return (string) get_option( 'wp_sam_humans_txt_content', '' );
 	}
 
+	/**
+	 * Returns when humans.txt was last refreshed successfully.
+	 *
+	 * @return string|null Time of the last refresh, or null when it has not been refreshed.
+	 */
 	public function last_refreshed_at(): ?string {
 		$value = get_option( 'wp_sam_humans_txt_refreshed_at', '' );
 		return '' !== $value ? (string) $value : null;
 	}
 
+	/**
+	 * Returns the outcome of the last humans.txt fetch.
+	 *
+	 * @return string Status code, or an empty string when none has run.
+	 */
 	public function last_fetch_status(): string {
 		return (string) get_option( 'wp_sam_humans_txt_last_fetch_status', '' );
 	}

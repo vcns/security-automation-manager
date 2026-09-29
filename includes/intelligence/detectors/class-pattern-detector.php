@@ -58,6 +58,12 @@ abstract class Pattern_Detector extends Detector {
 		return '1';
 	}
 
+	/**
+	 * Matches the detector's rules against the request and returns the most severe match.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return array|null Finding data, or null when no rule matched.
+	 */
 	final public function evaluate( array $context ): ?array {
 		$subject = substr( self::decode( $this->subject( $context ) ), 0, self::MAX_SUBJECT_LENGTH );
 		if ( '' === $subject ) {
@@ -106,6 +112,13 @@ abstract class Pattern_Detector extends Detector {
 		return urldecode( $raw );
 	}
 
+	/**
+	 * Checks whether a candidate severity outranks the current one.
+	 *
+	 * @param string $candidate Candidate severity.
+	 * @param string $current   Current severity.
+	 * @return bool True when the candidate is more severe.
+	 */
 	private static function outranks( string $candidate, string $current ): bool {
 		return ( self::SEVERITY_ORDER[ $candidate ] ?? 0 ) > ( self::SEVERITY_ORDER[ $current ] ?? 0 );
 	}

@@ -25,30 +25,66 @@ final class Agents_Compliance_Detector extends Detector {
 
 	private Agents_Rules_Store $rules;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Agents_Rules_Store $rules Agents rules store.
+	 */
 	public function __construct( Agents_Rules_Store $rules ) {
 		$this->rules = $rules;
 	}
 
+	/**
+	 * Returns the stable id of the agents.txt compliance detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'agents-compliance';
 	}
 
+	/**
+	 * Returns the family the agents.txt compliance detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'agents-compliance';
 	}
 
+	/**
+	 * Returns the plain-language description of the agents.txt compliance detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags a known crawler/scanner that requests a path your own agents.txt disallows for all agents.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the agents.txt compliance detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the control actions the agents.txt compliance detector may be set to.
+	 *
+	 * @return array Control action keys.
+	 */
 	public function allowed_control_actions(): array {
 		return array( 'observe', 'enforce' );
 	}
 
+	/**
+	 * Flags a recognised crawler that requests a path disallowed by this site's agents.txt.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return array|null Finding data, or null when nothing was found.
+	 */
 	public function evaluate( array $context ): ?array {
 		$state = (string) ( $context['identity_verification_state'] ?? 'unknown' );
 		if ( ! in_array( $state, self::CRAWLER_STATES, true ) ) {

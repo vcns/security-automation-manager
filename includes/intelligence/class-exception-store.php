@@ -39,6 +39,11 @@ final class Exception_Store {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log|null $audit Audit log, a new one is created when omitted.
+	 */
 	public function __construct( ?Audit_Log $audit = null ) {
 		$this->audit = null !== $audit ? $audit : new Audit_Log();
 	}

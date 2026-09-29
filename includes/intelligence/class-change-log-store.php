@@ -27,6 +27,15 @@ final class Change_Log_Store {
 
 	public const CHANGE_TYPES = array( 'plugin_updated', 'plugin_activated', 'plugin_deactivated', 'theme_updated', 'theme_switched', 'core_updated', 'admin_account_created', 'admin_role_granted' );
 
+	/**
+	 * Adds a change to the log; unknown change types are ignored.
+	 *
+	 * @param string $change_type Change type key.
+	 * @param string $item_name   Name of the plugin, theme or component.
+	 * @param string $old_version Version before the change.
+	 * @param string $new_version Version after the change.
+	 * @return void
+	 */
 	public function record( string $change_type, string $item_name, string $old_version, string $new_version ): void {
 		if ( ! in_array( $change_type, self::CHANGE_TYPES, true ) ) {
 			return;

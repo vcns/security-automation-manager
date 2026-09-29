@@ -27,6 +27,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Recommendation_Rule_Certificate_Renewal implements Recommendation_Rule {
 
+	/**
+	 * Returns the rule id.
+	 *
+	 * @return string Rule id.
+	 */
 	public function id(): string {
 		return 'certificate_renewal_due';
 	}

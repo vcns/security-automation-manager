@@ -29,26 +29,57 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Robots_Txt_Detector extends Pattern_Detector {
 
+	/**
+	 * Returns the stable id of the robots.txt probing detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'robots-txt-visit';
 	}
 
+	/**
+	 * Returns the family the robots.txt probing detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'robots-txt-visit';
 	}
 
+	/**
+	 * Returns the plain-language description of the robots.txt probing detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Notes when a source checks your robots.txt before crawling -- typically a good sign, not evidence of anything adverse.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the robots.txt probing detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the request data (path) that the robots.txt probing rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		return (string) ( $context['path'] ?? '' );
 	}
 
+	/**
+	 * Returns the robots.txt probing detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		return array(
 			array(

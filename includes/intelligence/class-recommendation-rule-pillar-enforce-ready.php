@@ -35,6 +35,11 @@ final class Recommendation_Rule_Pillar_Enforce_Ready implements Recommendation_R
 
 	private const QUIET_WINDOW_DAYS = 30;
 
+	/**
+	 * Returns the rule id.
+	 *
+	 * @return string Rule id.
+	 */
 	public function id(): string {
 		return 'pillar_enforce_ready';
 	}
