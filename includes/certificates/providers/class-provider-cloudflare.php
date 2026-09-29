@@ -20,10 +20,20 @@ class Provider_Cloudflare extends Dns_Provider {
 
 	private const API = 'https://api.cloudflare.com/client/v4';
 
+	/**
+	 * Returns the display name of the Cloudflare provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Cloudflare';
 	}
 
+	/**
+	 * Describes the credentials the Cloudflare provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
@@ -33,6 +43,13 @@ class Provider_Cloudflare extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Cloudflare API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone_id = $this->zone_id( $fqdn );
 
@@ -49,6 +66,13 @@ class Provider_Cloudflare extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Cloudflare API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone_id = $this->zone_id( $fqdn );
 		$list    = $this->request(
@@ -64,6 +88,13 @@ class Provider_Cloudflare extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the Cloudflare zone id that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone_id( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			$response = $this->request( 'GET', self::API . '/zones?name=' . rawurlencode( $candidate ), $this->headers() );
@@ -75,6 +106,11 @@ class Provider_Cloudflare extends Dns_Provider {
 		throw new \RuntimeException( "Cloudflare: no zone found for {$fqdn}. Check the token's zone scope." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the Cloudflare request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'Authorization' => 'Bearer ' . $this->credential( 'api_token' ) );
 	}

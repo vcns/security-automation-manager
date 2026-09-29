@@ -19,10 +19,20 @@ class Provider_Dreamhost extends Dns_Provider {
 
 	private const API = 'https://api.dreamhost.com/';
 
+	/**
+	 * Returns the display name of the DreamHost provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'DreamHost';
 	}
 
+	/**
+	 * Describes the credentials the DreamHost provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
@@ -31,14 +41,37 @@ class Provider_Dreamhost extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the DreamHost API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$this->call( 'dns-add_record', $fqdn, $value );
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the DreamHost API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$this->call( 'dns-remove_record', $fqdn, $value );
 	}
 
+	/**
+	 * Sends a record command to the DreamHost API.
+	 *
+	 * @param string $cmd   API command.
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function call( string $cmd, string $fqdn, string $value ): void {
 		$query = http_build_query(
 			array(

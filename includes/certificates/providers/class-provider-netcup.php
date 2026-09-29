@@ -21,10 +21,20 @@ class Provider_Netcup extends Dns_Provider {
 
 	private ?string $session = null;
 
+	/**
+	 * Returns the display name of the netcup provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'netcup';
 	}
 
+	/**
+	 * Describes the credentials the netcup provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'customer_number' => array(
@@ -40,6 +50,13 @@ class Provider_Netcup extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the netcup API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -55,6 +72,13 @@ class Provider_Netcup extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the netcup API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -78,6 +102,13 @@ class Provider_Netcup extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Sends the changed record list of a zone to netcup.
+	 *
+	 * @param string $zone    Zone name.
+	 * @param array  $records Records to store.
+	 * @return void
+	 */
 	private function update_records( string $zone, array $records ): void {
 		$this->call(
 			'updateDnsRecords',
@@ -88,6 +119,13 @@ class Provider_Netcup extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Finds the netcup zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			try {
@@ -101,6 +139,14 @@ class Provider_Netcup extends Dns_Provider {
 		throw new \RuntimeException( "netcup: no DNS zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Calls the netcup API, logging in first when needed.
+	 *
+	 * @param string $action API action name.
+	 * @param array  $params Action parameters.
+	 * @return array Decoded response.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function call( string $action, array $params ): array {
 		if ( null === $this->session && 'login' !== $action ) {
 			$login         = $this->call(

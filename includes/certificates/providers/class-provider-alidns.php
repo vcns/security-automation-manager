@@ -17,10 +17,20 @@ class Provider_Alidns extends Dns_Provider {
 
 	private const API = 'https://alidns.aliyuncs.com/';
 
+	/**
+	 * Returns the display name of the Alibaba Cloud DNS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Alibaba Cloud DNS';
 	}
 
+	/**
+	 * Describes the credentials the Alibaba Cloud DNS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'access_key_id'     => array(
@@ -33,6 +43,13 @@ class Provider_Alidns extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Alibaba Cloud DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -48,6 +65,13 @@ class Provider_Alidns extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Alibaba Cloud DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -67,6 +91,13 @@ class Provider_Alidns extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the Alibaba Cloud DNS domain that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Domain name.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		$info = $this->call( 'GetMainDomainName', array( 'InputString' => $fqdn ) );
 		$zone = (string) ( $info['DomainName'] ?? '' );
@@ -78,6 +109,13 @@ class Provider_Alidns extends Dns_Provider {
 		return $zone;
 	}
 
+	/**
+	 * Sends a signed request to the Alibaba Cloud DNS API.
+	 *
+	 * @param string $action API action name.
+	 * @param array  $params Action parameters.
+	 * @return array Decoded response.
+	 */
 	private function call( string $action, array $params ): array {
 		$query = array_merge(
 			array(
@@ -107,6 +145,12 @@ class Provider_Alidns extends Dns_Provider {
 		return is_array( $decoded ) ? $decoded : array();
 	}
 
+	/**
+	 * Percent-encodes a value the way Alibaba Cloud request signing requires.
+	 *
+	 * @param string $value Value to encode.
+	 * @return string Encoded value.
+	 */
 	private function percent_encode( string $value ): string {
 		return str_replace( array( '+', '*', '%7E' ), array( '%20', '%2A', '~' ), rawurlencode( $value ) );
 	}

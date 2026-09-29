@@ -19,10 +19,20 @@ class Provider_Dnsimple extends Dns_Provider {
 
 	private ?string $account_id = null;
 
+	/**
+	 * Returns the display name of the DNSimple provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'DNSimple';
 	}
 
+	/**
+	 * Describes the credentials the DNSimple provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
@@ -31,6 +41,13 @@ class Provider_Dnsimple extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the DNSimple API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -47,6 +64,13 @@ class Provider_Dnsimple extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the DNSimple API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -63,6 +87,12 @@ class Provider_Dnsimple extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Returns the DNSimple account id, looked up once from the API.
+	 *
+	 * @return string Account id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function account(): string {
 		if ( null === $this->account_id ) {
 			$who              = $this->request( 'GET', self::API . '/whoami', $this->headers() );
@@ -75,6 +105,13 @@ class Provider_Dnsimple extends Dns_Provider {
 		return $this->account_id;
 	}
 
+	/**
+	 * Finds the DNSimple zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			try {
@@ -88,6 +125,11 @@ class Provider_Dnsimple extends Dns_Provider {
 		throw new \RuntimeException( "DNSimple: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the DNSimple request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'Authorization' => 'Bearer ' . $this->credential( 'api_token' ) );
 	}

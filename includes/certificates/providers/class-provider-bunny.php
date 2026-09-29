@@ -19,10 +19,20 @@ class Provider_Bunny extends Dns_Provider {
 	private const API      = 'https://api.bunny.net';
 	private const TYPE_TXT = 3;
 
+	/**
+	 * Returns the display name of the Bunny.net DNS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Bunny.net DNS';
 	}
 
+	/**
+	 * Describes the credentials the Bunny.net DNS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
@@ -31,6 +41,13 @@ class Provider_Bunny extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Bunny.net DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -47,6 +64,13 @@ class Provider_Bunny extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Bunny.net DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone['name'] );
@@ -78,6 +102,11 @@ class Provider_Bunny extends Dns_Provider {
 		throw new \RuntimeException( "Bunny.net: no DNS zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the Bunny.net DNS request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'AccessKey' => $this->credential( 'api_key' ) );
 	}

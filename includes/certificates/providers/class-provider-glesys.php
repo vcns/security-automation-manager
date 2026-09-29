@@ -17,10 +17,20 @@ class Provider_Glesys extends Dns_Provider {
 
 	private const API = 'https://api.glesys.com';
 
+	/**
+	 * Returns the display name of the GleSYS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'GleSYS';
 	}
 
+	/**
+	 * Describes the credentials the GleSYS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'account' => array(
@@ -34,6 +44,13 @@ class Provider_Glesys extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the GleSYS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -49,6 +66,13 @@ class Provider_Glesys extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the GleSYS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -61,6 +85,13 @@ class Provider_Glesys extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the GleSYS zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			try {
@@ -74,6 +105,13 @@ class Provider_Glesys extends Dns_Provider {
 		throw new \RuntimeException( "GleSYS: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Sends a request to the GleSYS API.
+	 *
+	 * @param string $path   API path.
+	 * @param array  $params Request parameters.
+	 * @return array Decoded response.
+	 */
 	private function call( string $path, array $params ): array {
 		$body = $this->request_raw(
 			'POST',

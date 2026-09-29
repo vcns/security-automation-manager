@@ -24,10 +24,20 @@ class Provider_Google_Cloud extends Dns_Provider {
 
 	private ?string $token = null;
 
+	/**
+	 * Returns the display name of the Google Cloud DNS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Google Cloud DNS';
 	}
 
+	/**
+	 * Describes the credentials the Google Cloud DNS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'service_account_json' => array(
@@ -37,6 +47,13 @@ class Provider_Google_Cloud extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Google Cloud DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -57,6 +74,13 @@ class Provider_Google_Cloud extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Google Cloud DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -78,6 +102,13 @@ class Provider_Google_Cloud extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the Google Cloud DNS zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			$response = $this->request(
@@ -93,6 +124,12 @@ class Provider_Google_Cloud extends Dns_Provider {
 		throw new \RuntimeException( "Google Cloud DNS: no managed zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Decodes the service account key from the saved credentials.
+	 *
+	 * @return array Key fields.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function key(): array {
 		$key = json_decode( $this->credential( 'service_account_json' ), true );
 		if ( ! is_array( $key ) || empty( $key['client_email'] ) || empty( $key['private_key'] ) ) {
@@ -102,10 +139,21 @@ class Provider_Google_Cloud extends Dns_Provider {
 		return $key;
 	}
 
+	/**
+	 * Returns the project id from the service account key.
+	 *
+	 * @return string Project id.
+	 */
 	private function project(): string {
 		return (string) ( $this->key()['project_id'] ?? '' );
 	}
 
+	/**
+	 * Builds the Google Cloud request headers, fetching an access token on first use.
+	 *
+	 * @return array Header map.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function headers(): array {
 		if ( null === $this->token ) {
 			$key    = $this->key();

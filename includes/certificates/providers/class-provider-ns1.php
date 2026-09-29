@@ -17,10 +17,20 @@ class Provider_Ns1 extends Dns_Provider {
 
 	private const API = 'https://api.nsone.net/v1';
 
+	/**
+	 * Returns the display name of the NS1 provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'NS1';
 	}
 
+	/**
+	 * Describes the credentials the NS1 provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
@@ -29,6 +39,13 @@ class Provider_Ns1 extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the NS1 API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -48,12 +65,26 @@ class Provider_Ns1 extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the NS1 API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
 		$this->request( 'DELETE', self::API . "/zones/{$zone}/{$fqdn}/TXT", $this->headers() );
 	}
 
+	/**
+	 * Finds the NS1 zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			try {
@@ -67,6 +98,11 @@ class Provider_Ns1 extends Dns_Provider {
 		throw new \RuntimeException( "NS1: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the NS1 request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'X-NSONE-Key' => $this->credential( 'api_key' ) );
 	}
