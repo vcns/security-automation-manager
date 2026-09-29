@@ -167,7 +167,7 @@ $tab_help = array(
 		$total = (int) $wpdb->get_var( $count_sql );
 
 		$pages    = max( 1, (int) ceil( $total / $per_page ) );
-		$page_num = min( max( 1, (int) ( isset( $_GET['i_paged'] ) ? $_GET['i_paged'] : 1 ) ), $pages ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page_num = min( max( 1, absint( wp_unslash( $_GET['i_paged'] ?? 1 ) ) ), $pages ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$offset   = ( $page_num - 1 ) * $per_page;
 
 		$data_args = array_merge( $args, array( $per_page, $offset ) );
@@ -387,7 +387,7 @@ $tab_help = array(
 		$total = (int) $wpdb->get_var( $count_sql );
 
 		$pages    = max( 1, (int) ceil( $total / $per_page ) );
-		$page_num = min( max( 1, (int) ( isset( $_GET['id_paged'] ) ? $_GET['id_paged'] : 1 ) ), $pages ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page_num = min( max( 1, absint( wp_unslash( $_GET['id_paged'] ?? 1 ) ) ), $pages ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$offset   = ( $page_num - 1 ) * $per_page;
 
 		$data_args = array_merge( $args, array( $per_page, $offset ) );

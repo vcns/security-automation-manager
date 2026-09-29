@@ -1054,7 +1054,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to reset plugin data.', 'vcns-security-automation-manager' ) );
 		}
 
-		$password     = (string) wp_unslash( $_POST['wp_sam_current_password'] ?? '' );
+		$password     = (string) wp_unslash( $_POST['wp_sam_current_password'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a password must be compared verbatim and is never stored or echoed.
 		$confirmation = sanitize_text_field( wp_unslash( $_POST['wp_sam_reset_confirmation'] ?? '' ) );
 
 		if ( 'RESET SAM PLUGIN DATA' !== $confirmation || ! $this->current_user_password_is_valid( $password ) ) {
@@ -1085,7 +1085,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to restore plugin configuration.', 'vcns-security-automation-manager' ) );
 		}
 
-		$snapshot_id = (int) ( $_POST['wp_sam_snapshot_id'] ?? 0 );
+		$snapshot_id = intval( wp_unslash( $_POST['wp_sam_snapshot_id'] ?? 0 ) );
 		$confirmed   = ! empty( $_POST['wp_sam_restore_confirmation'] );
 
 		if ( $snapshot_id <= 0 || ! $confirmed ) {
@@ -1144,11 +1144,12 @@ class Admin_UI {
 			$this->redirect_to_recovery_import( 'failed', __( 'Confirmation checkbox was not checked.', 'vcns-security-automation-manager' ) );
 		}
 
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- PHP-generated upload temp path, verified with is_uploaded_file() before use.
 		if ( empty( $_FILES['wp_sam_import_file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['wp_sam_import_file']['tmp_name'] ) ) {
 			$this->redirect_to_recovery_import( 'failed', __( 'No file was uploaded.', 'vcns-security-automation-manager' ) );
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_get_contents -- a temp upload path, not a plugin-tree file; WP_Filesystem is unavailable this early and unnecessary for a one-shot read of PHP's own upload temp file.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_get_contents,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a temp upload path, not a plugin-tree file; WP_Filesystem is unavailable this early and unnecessary for a one-shot read of PHP's own upload temp file.
 		$contents = file_get_contents( $_FILES['wp_sam_import_file']['tmp_name'] );
 		$decoded  = null !== $contents ? json_decode( $contents, true ) : null;
 
@@ -1213,7 +1214,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to make this decision.', 'vcns-security-automation-manager' ) );
 		}
 
-		$id       = (int) ( $_POST['identity_id'] ?? 0 );
+		$id       = intval( wp_unslash( $_POST['identity_id'] ?? 0 ) );
 		$decision = sanitize_key( wp_unslash( $_POST['decision'] ?? '' ) );
 		$note     = sanitize_text_field( wp_unslash( $_POST['note'] ?? '' ) );
 
@@ -1247,8 +1248,8 @@ class Admin_UI {
 			sanitize_text_field( wp_unslash( $_POST['vendor_name'] ?? '' ) ),
 			sanitize_key( wp_unslash( $_POST['category'] ?? '' ) ),
 			sanitize_text_field( wp_unslash( $_POST['ua_pattern'] ?? '' ) ),
-			$this->split_lines( (string) wp_unslash( is_scalar( $_POST['rdns_suffixes'] ?? null ) ? $_POST['rdns_suffixes'] : '' ) ),
-			$this->split_lines( (string) wp_unslash( is_scalar( $_POST['cidr_ranges'] ?? null ) ? $_POST['cidr_ranges'] : '' ) ),
+			$this->split_lines( sanitize_textarea_field( wp_unslash( is_scalar( $_POST['rdns_suffixes'] ?? null ) ? $_POST['rdns_suffixes'] : '' ) ) ),
+			$this->split_lines( sanitize_textarea_field( wp_unslash( is_scalar( $_POST['cidr_ranges'] ?? null ) ? $_POST['cidr_ranges'] : '' ) ) ),
 			sanitize_text_field( wp_unslash( $_POST['source_url'] ?? '' ) ),
 			sanitize_key( wp_unslash( $_POST['verification_method'] ?? '' ) ),
 			sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) )
@@ -1292,10 +1293,10 @@ class Admin_UI {
 		( new Traffic_Policy_Store() )->update(
 			$surface,
 			sanitize_key( wp_unslash( $_POST['mode'] ?? 'observe' ) ),
-			(int) ( $_POST['rate_limit_max_requests'] ?? 0 ),
-			(int) ( $_POST['rate_limit_window_seconds'] ?? 0 ),
-			(int) ( $_POST['login_max_failed_attempts'] ?? 0 ),
-			(int) ( $_POST['login_lockout_seconds'] ?? 0 )
+			intval( wp_unslash( $_POST['rate_limit_max_requests'] ?? 0 ) ),
+			intval( wp_unslash( $_POST['rate_limit_window_seconds'] ?? 0 ) ),
+			intval( wp_unslash( $_POST['login_max_failed_attempts'] ?? 0 ) ),
+			intval( wp_unslash( $_POST['login_lockout_seconds'] ?? 0 ) )
 		);
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=policy' ) );
@@ -1329,7 +1330,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Ip_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
+		( new Ip_Rule_Store() )->delete( intval( wp_unslash( $_POST['rule_id'] ?? 0 ) ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules' ) );
 		exit;
@@ -1341,7 +1342,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Traffic_Block_Store() )->release( (int) ( $_POST['block_id'] ?? 0 ) );
+		( new Traffic_Block_Store() )->release( intval( wp_unslash( $_POST['block_id'] ?? 0 ) ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=blocks' ) );
 		exit;
@@ -1353,7 +1354,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Traffic_Block_Store() )->set_persistent( (int) ( $_POST['block_id'] ?? 0 ), get_current_user_id() );
+		( new Traffic_Block_Store() )->set_persistent( intval( wp_unslash( $_POST['block_id'] ?? 0 ) ), get_current_user_id() );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=blocks' ) );
 		exit;
@@ -1373,7 +1374,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		$submitted = isset( $_POST['detector'] ) && is_array( $_POST['detector'] ) ? wp_unslash( $_POST['detector'] ) : array();
+		$submitted = isset( $_POST['detector'] ) && is_array( $_POST['detector'] ) ? wp_unslash( $_POST['detector'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each row is read through the detector registry's own field allowlist below.
 		$policies  = new Detector_Policy_Store();
 
 		foreach ( Detector_Registry::all() as $detector ) {
@@ -1404,11 +1405,11 @@ class Admin_UI {
 
 		$input = array(
 			'name'          => sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) ),
-			'pattern'       => wp_unslash( $_POST['pattern'] ?? '' ),
-			'subject_field' => wp_unslash( $_POST['subject_field'] ?? '' ),
-			'severity'      => wp_unslash( $_POST['severity'] ?? '' ),
-			'surfaces'      => isset( $_POST['surfaces'] ) && is_array( $_POST['surfaces'] ) ? wp_unslash( $_POST['surfaces'] ) : array(),
-			'description'   => wp_unslash( $_POST['description'] ?? '' ),
+			'pattern'       => wp_unslash( $_POST['pattern'] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a regular expression; sanitizing would corrupt it. Validated by Custom_Rule_Store before saving.
+			'subject_field' => sanitize_text_field( wp_unslash( $_POST['subject_field'] ?? '' ) ),
+			'severity'      => sanitize_text_field( wp_unslash( $_POST['severity'] ?? '' ) ),
+			'surfaces'      => isset( $_POST['surfaces'] ) && is_array( $_POST['surfaces'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['surfaces'] ) ) : array(),
+			'description'   => sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) ),
 		);
 
 		$rule_store = new Custom_Rule_Store();
@@ -1436,7 +1437,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Custom_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
+		( new Custom_Rule_Store() )->delete( intval( wp_unslash( $_POST['rule_id'] ?? 0 ) ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=custom-rules' ) );
 		exit;
@@ -1454,8 +1455,8 @@ class Admin_UI {
 			wp_send_json_error( null, 403 );
 		}
 
-		$pattern = (string) wp_unslash( $_POST['pattern'] ?? '' );
-		$sample  = (string) wp_unslash( $_POST['sample'] ?? '' );
+		$pattern = (string) wp_unslash( $_POST['pattern'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a regular expression under test; sanitizing would corrupt it. Only compiled for a match preview, never stored.
+		$sample  = (string) wp_unslash( $_POST['sample'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sample text matched against the pattern for a preview; sanitizing would change the result.
 
 		$matched = ( new Custom_Rule_Store() )->test( $pattern, $sample );
 
@@ -1471,18 +1472,18 @@ class Admin_UI {
 		}
 
 		$input = array(
-			'control'                 => wp_unslash( $_POST['control'] ?? '' ),
-			'surface'                 => wp_unslash( $_POST['surface'] ?? '' ),
-			'weaker_value'            => wp_unslash( $_POST['weaker_value'] ?? '' ),
-			'business_justification'  => wp_unslash( $_POST['business_justification'] ?? '' ),
-			'technical_justification' => wp_unslash( $_POST['technical_justification'] ?? '' ),
-			'owner'                   => wp_unslash( $_POST['owner'] ?? '' ),
-			'approver'                => wp_unslash( $_POST['approver'] ?? '' ),
-			'compensating_control'    => wp_unslash( $_POST['compensating_control'] ?? '' ),
-			'risk_classification'     => wp_unslash( $_POST['risk_classification'] ?? '' ),
-			'reference'               => wp_unslash( $_POST['reference'] ?? '' ),
+			'control'                 => sanitize_text_field( wp_unslash( $_POST['control'] ?? '' ) ),
+			'surface'                 => sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) ),
+			'weaker_value'            => sanitize_text_field( wp_unslash( $_POST['weaker_value'] ?? '' ) ),
+			'business_justification'  => sanitize_textarea_field( wp_unslash( $_POST['business_justification'] ?? '' ) ),
+			'technical_justification' => sanitize_textarea_field( wp_unslash( $_POST['technical_justification'] ?? '' ) ),
+			'owner'                   => sanitize_text_field( wp_unslash( $_POST['owner'] ?? '' ) ),
+			'approver'                => sanitize_text_field( wp_unslash( $_POST['approver'] ?? '' ) ),
+			'compensating_control'    => sanitize_textarea_field( wp_unslash( $_POST['compensating_control'] ?? '' ) ),
+			'risk_classification'     => sanitize_text_field( wp_unslash( $_POST['risk_classification'] ?? '' ) ),
+			'reference'               => sanitize_text_field( wp_unslash( $_POST['reference'] ?? '' ) ),
 			'is_privileged_override'  => ! empty( $_POST['is_privileged_override'] ),
-			'expiry_date'             => wp_unslash( $_POST['expiry_date'] ?? '' ),
+			'expiry_date'             => sanitize_text_field( wp_unslash( $_POST['expiry_date'] ?? '' ) ),
 		);
 
 		$result = ( new Exception_Store() )->create( $input );
@@ -1502,9 +1503,9 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage exceptions.', 'vcns-security-automation-manager' ) );
 		}
 
-		$id              = (int) ( $_POST['exception_id'] ?? 0 );
-		$new_expiry_date = (string) wp_unslash( $_POST['new_expiry_date'] ?? '' );
-		$reason          = (string) wp_unslash( $_POST['reason'] ?? '' );
+		$id              = intval( wp_unslash( $_POST['exception_id'] ?? 0 ) );
+		$new_expiry_date = sanitize_text_field( wp_unslash( $_POST['new_expiry_date'] ?? '' ) );
+		$reason          = sanitize_text_field( wp_unslash( $_POST['reason'] ?? '' ) );
 
 		$result = ( new Exception_Store() )->extend( $id, $new_expiry_date, $reason );
 
@@ -1521,8 +1522,8 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage exceptions.', 'vcns-security-automation-manager' ) );
 		}
 
-		$id       = (int) ( $_POST['exception_id'] ?? 0 );
-		$reason   = (string) wp_unslash( $_POST['reason'] ?? '' );
+		$id       = intval( wp_unslash( $_POST['exception_id'] ?? 0 ) );
+		$reason   = sanitize_text_field( wp_unslash( $_POST['reason'] ?? '' ) );
 		$user     = get_userdata( get_current_user_id() );
 		$username = $user ? $user->user_login : '';
 
@@ -1582,7 +1583,7 @@ class Admin_UI {
 		}
 
 		( new Drift_Store() )->disposition(
-			(int) ( $_POST['drift_id'] ?? 0 ),
+			intval( wp_unslash( $_POST['drift_id'] ?? 0 ) ),
 			sanitize_key( wp_unslash( $_POST['disposition'] ?? '' ) ),
 			get_current_user_id(),
 			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) )
@@ -1613,7 +1614,7 @@ class Admin_UI {
 		}
 
 		( new Campaign_Store() )->disposition(
-			(int) ( $_POST['campaign_id'] ?? 0 ),
+			intval( wp_unslash( $_POST['campaign_id'] ?? 0 ) ),
 			sanitize_key( wp_unslash( $_POST['disposition'] ?? '' ) ),
 			get_current_user_id(),
 			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) )
@@ -1636,7 +1637,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to block campaign participants.', 'vcns-security-automation-manager' ) );
 		}
 
-		$campaign = ( new Campaign_Store() )->get( (int) ( $_POST['campaign_id'] ?? 0 ) );
+		$campaign = ( new Campaign_Store() )->get( intval( wp_unslash( $_POST['campaign_id'] ?? 0 ) ) );
 		$note     = sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) );
 
 		if ( null !== $campaign && '' !== trim( $note ) ) {
@@ -1674,7 +1675,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage honey paths.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Honeypath_Store() )->delete( (int) ( $_POST['honeypath_id'] ?? 0 ) );
+		( new Honeypath_Store() )->delete( intval( wp_unslash( $_POST['honeypath_id'] ?? 0 ) ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=honeypaths' ) );
 		exit;
@@ -1687,7 +1688,7 @@ class Admin_UI {
 		}
 
 		$current  = ( new Baseline_Store() )->get_current();
-		$duration = (int) ( $_POST['duration_hours'] ?? 0 );
+		$duration = intval( wp_unslash( $_POST['duration_hours'] ?? 0 ) );
 
 		( new Change_Window_Store() )->open(
 			sanitize_text_field( wp_unslash( $_POST['description'] ?? '' ) ),
@@ -1723,7 +1724,7 @@ class Admin_UI {
 		$current = ( new Baseline_Store() )->get_current();
 
 		( new Change_Window_Store() )->close(
-			(int) ( $_POST['window_id'] ?? 0 ),
+			intval( wp_unslash( $_POST['window_id'] ?? 0 ) ),
 			get_current_user_id(),
 			sanitize_textarea_field( wp_unslash( $_POST['note'] ?? '' ) ),
 			null !== $current ? (int) $current['id'] : null
@@ -1881,7 +1882,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to change Geo-IP settings.', 'vcns-security-automation-manager' ) );
 		}
 
-		$token = isset( $_POST['ipinfo_token'] ) ? (string) wp_unslash( $_POST['ipinfo_token'] ) : '';
+		$token = isset( $_POST['ipinfo_token'] ) ? sanitize_text_field( wp_unslash( $_POST['ipinfo_token'] ) ) : '';
 		if ( '' !== trim( $token ) ) {
 			( new Geo_Ip_Store() )->save_token( $token );
 		} elseif ( isset( $_POST['clear_token'] ) ) {
@@ -1929,7 +1930,7 @@ class Admin_UI {
 		}
 
 		$valid_codes = array_keys( Iso_Countries::all() );
-		$raw         = isset( $_POST['blocked_countries'] ) && is_array( $_POST['blocked_countries'] ) ? wp_unslash( $_POST['blocked_countries'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- wp_unslash() is applied here; each element is still sanitized below.
+		$raw         = isset( $_POST['blocked_countries'] ) && is_array( $_POST['blocked_countries'] ) ? wp_unslash( $_POST['blocked_countries'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- wp_unslash() is applied here; each element is still sanitized below.
 		$submitted   = array_unique( array_intersect( array_map( 'strtoupper', array_map( 'sanitize_text_field', $raw ) ), $valid_codes ) );
 
 		$network_rules  = new Network_Rule_Store();
@@ -2127,7 +2128,7 @@ class Admin_UI {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
-		( new Network_Rule_Store() )->delete( (int) ( $_POST['rule_id'] ?? 0 ) );
+		( new Network_Rule_Store() )->delete( intval( wp_unslash( $_POST['rule_id'] ?? 0 ) ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=network-rules' ) );
 		exit;
@@ -2169,12 +2170,14 @@ class Admin_UI {
 			$config['export_path']  = sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_export_path'] ?? '' ) );
 			$config['cpanel_host']  = sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_host'] ?? '' ) );
 			$config['cpanel_user']  = sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_cpanel_user'] ?? '' ) );
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- an API token is an opaque secret; sanitizing could alter it.
 			$config['cpanel_token'] = '' !== (string) wp_unslash( $_POST['wp_sam_cert_cpanel_token'] ?? '' )
 				? (string) wp_unslash( $_POST['wp_sam_cert_cpanel_token'] )
 				: $config['cpanel_token']; // Blank = keep stored token.
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		} else {
 			$section       = 'configuration';
-			$domains_raw   = (string) wp_unslash( $_POST['wp_sam_cert_domains'] ?? '' );
+			$domains_raw   = sanitize_textarea_field( wp_unslash( $_POST['wp_sam_cert_domains'] ?? '' ) );
 			$domains_split = preg_split( '/[\s,]+/', $domains_raw );
 			$domains       = array_values(
 				array_filter(
@@ -2207,7 +2210,7 @@ class Admin_UI {
 			$credentials = (array) $config['dns_credentials'];
 			if ( '' !== $provider ) {
 				foreach ( $providers[ $provider ]::fields() as $field_key => $field_meta ) {
-					$submitted = (string) wp_unslash( $_POST[ 'wp_sam_cert_cred_' . $field_key ] ?? '' );
+					$submitted = (string) wp_unslash( $_POST[ 'wp_sam_cert_cred_' . $field_key ] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- credentials may be opaque secrets; non-secret fields are sanitized on the next lines.
 					if ( false === ( $field_meta['secret'] ?? true ) ) {
 						$submitted = sanitize_text_field( $submitted );
 					}
@@ -2227,7 +2230,7 @@ class Admin_UI {
 			// Bring-your-own private key: blank keeps the stored key, the clear
 			// checkbox removes it, and a pasted PEM must load before we accept
 			// it (a broken key would otherwise only surface mid-order).
-			$custom_key = trim( (string) wp_unslash( $_POST['wp_sam_cert_custom_key'] ?? '' ) );
+			$custom_key = trim( (string) wp_unslash( $_POST['wp_sam_cert_custom_key'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a PEM private key; sanitizing would corrupt it. It is loaded and validated before it is accepted.
 			if ( ! empty( $_POST['wp_sam_cert_clear_custom_key'] ) ) {
 				$custom_key_value = null; // Explicit clear (Certificate_Store sentinel).
 			} elseif ( '' !== $custom_key ) {
@@ -2256,7 +2259,7 @@ class Admin_UI {
 					'provider'            => $provider,
 					'challenge'           => $challenge,
 					'custom_key_pem'      => $custom_key_value,
-					'key_type'            => 'rsa-2048' === ( $_POST['wp_sam_cert_key_type'] ?? '' ) ? 'rsa-2048' : 'ec-256',
+					'key_type'            => 'rsa-2048' === sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_key_type'] ?? '' ) ) ? 'rsa-2048' : 'ec-256',
 					'staging'             => ! empty( $_POST['wp_sam_cert_staging'] ),
 					'dns_credentials'     => $credentials,
 					'organization'        => sanitize_text_field( wp_unslash( $_POST['wp_sam_cert_organization'] ?? '' ) ),
@@ -2623,7 +2626,7 @@ class Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( null, 403 );
 		}
-		$this->decide_source( (int) ( $_POST['source_id'] ?? 0 ), 'approved' );
+		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'approved' );
 	}
 
 	public function ajax_deny_source(): void {
@@ -2631,7 +2634,7 @@ class Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( null, 403 );
 		}
-		$this->decide_source( (int) ( $_POST['source_id'] ?? 0 ), 'rejected' );
+		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'rejected' );
 	}
 
 	public function ajax_revert_source(): void {
@@ -2639,7 +2642,7 @@ class Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( null, 403 );
 		}
-		$this->decide_source( (int) ( $_POST['source_id'] ?? 0 ), 'reverted' );
+		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'reverted' );
 	}
 
 	public function ajax_undo_source_decision(): void {
@@ -2647,7 +2650,7 @@ class Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( null, 403 );
 		}
-		$this->decide_source( (int) ( $_POST['source_id'] ?? 0 ), 'undone' );
+		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'undone' );
 	}
 
 	private function decide_source( int $id, string $action ): void {
@@ -3073,7 +3076,7 @@ class Admin_UI {
 
 		$surface            = sanitize_text_field( wp_unslash( $_POST['surface'] ?? '' ) );
 		$enabled            = ! empty( $_POST['enabled'] );
-		$max_age            = Strict_Transport_Security_Builder::sanitize_max_age( wp_unslash( $_POST['max_age'] ?? Strict_Transport_Security_Builder::DEFAULT_MAX_AGE ) );
+		$max_age            = Strict_Transport_Security_Builder::sanitize_max_age( wp_unslash( $_POST['max_age'] ?? Strict_Transport_Security_Builder::DEFAULT_MAX_AGE ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized by Strict_Transport_Security_Builder::sanitize_max_age().
 		$include_subdomains = ! empty( $_POST['include_subdomains'] );
 		$preload            = ! empty( $_POST['preload'] ) && Strict_Transport_Security_Builder::preload_eligible( $max_age, $include_subdomains );
 
@@ -3174,7 +3177,7 @@ class Admin_UI {
 			wp_send_json_error( null, 403 );
 		}
 
-		$id             = (int) ( $_POST['id'] ?? 0 );
+		$id             = intval( wp_unslash( $_POST['id'] ?? 0 ) );
 		$classification = sanitize_text_field( wp_unslash( $_POST['classification'] ?? '' ) );
 		$expected_sri   = sanitize_text_field( wp_unslash( $_POST['expected_sri'] ?? '' ) );
 
@@ -3237,8 +3240,8 @@ class Admin_UI {
 			wp_send_json_error( null, 403 );
 		}
 
-		$id  = (int) ( $_POST['id'] ?? 0 );
-		$url = esc_url_raw( trim( (string) wp_unslash( $_POST['url'] ?? '' ) ) );
+		$id  = intval( wp_unslash( $_POST['id'] ?? 0 ) );
+		$url = trim( esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) ) );
 
 		if ( $id <= 0 || '' === $url ) {
 			wp_send_json_error( array( 'message' => __( 'A URL is required.', 'vcns-security-automation-manager' ) ) );

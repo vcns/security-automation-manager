@@ -213,7 +213,7 @@ abstract class Content_Rewriter extends Request_Surface {
 	 * when it is a public front-end page request eligible for rewriting.
 	 */
 	protected function request_exclusion_reason(): ?string {
-		$method = $_SERVER['REQUEST_METHOD'] ?? null;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : null;
 		if ( is_string( $method ) && ! in_array( strtoupper( $method ), array( 'GET', 'HEAD' ), true ) ) {
 			return 'method';
 		}

@@ -96,7 +96,7 @@ $ext_pages = max( 1, (int) ceil( $ext_total / $ext_per_page ) );
 // table in this codebase clamps its page number the same way; this one didn't,
 // so ?ext_paged=9999 against a 3-page result set rendered "Page 9999 of 3"
 // instead of serving (and reporting) the real last page.
-$ext_page_num = min( max( 1, (int) ( $_GET['ext_paged'] ?? 1 ) ), $ext_pages );
+$ext_page_num = min( max( 1, absint( wp_unslash( $_GET['ext_paged'] ?? 1 ) ) ), $ext_pages );
 $ext_offset   = ( $ext_page_num - 1 ) * $ext_per_page;
 
 $ext_data_args = array_merge( $ext_args, array( $ext_per_page, $ext_offset ) );

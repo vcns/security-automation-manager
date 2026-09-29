@@ -253,9 +253,12 @@ class Activator {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_policy_profiles';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			"SELECT id, bypass_img_src_data, bypass_font_src_data, bypass_style_attr_unsafe_hashes, bypass_flags FROM {$table}",
+			$wpdb->prepare(
+				'SELECT id, bypass_img_src_data, bypass_font_src_data, bypass_style_attr_unsafe_hashes, bypass_flags FROM %i',
+				$table
+			),
 			ARRAY_A
 		);
 
@@ -1505,9 +1508,12 @@ class Activator {
 			return;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			"SELECT id, profile_surface, blocked_uri, violated_directive, occurrence_count, first_reported_at, last_reported_at FROM {$table}",
+			$wpdb->prepare(
+				'SELECT id, profile_surface, blocked_uri, violated_directive, occurrence_count, first_reported_at, last_reported_at FROM %i',
+				$table
+			),
 			ARRAY_A
 		);
 		if ( empty( $rows ) ) {
@@ -1604,12 +1610,15 @@ class Activator {
 
 		// Collapse any historic duplicate fingerprints before enforcing uniqueness.
 		// The current reporter has deduped for some time, but this keeps upgrades safe.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$duplicates = $wpdb->get_results(
-			"SELECT fingerprint, MIN(id) AS keep_id, SUM(occurrence_count) AS total_count, MIN(first_reported_at) AS first_seen, MAX(last_reported_at) AS last_seen
-			 FROM {$table}
-			 GROUP BY fingerprint
-			 HAVING COUNT(*) > 1",
+			$wpdb->prepare(
+				'SELECT fingerprint, MIN(id) AS keep_id, SUM(occurrence_count) AS total_count, MIN(first_reported_at) AS first_seen, MAX(last_reported_at) AS last_seen
+				 FROM %i
+				 GROUP BY fingerprint
+				 HAVING COUNT(*) > 1',
+				$table
+			),
 			ARRAY_A
 		);
 

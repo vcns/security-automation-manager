@@ -32,7 +32,7 @@ final class Surface_Classifier {
 	public static function is_conflict_probe_request(): bool {
 		$server_key = 'HTTP_' . strtoupper( str_replace( '-', '_', Request_Surface::CONFLICT_PROBE_HEADER ) );
 
-		return isset( $_SERVER[ $server_key ] ) && '1' === (string) $_SERVER[ $server_key ];
+		return isset( $_SERVER[ $server_key ] ) && '1' === sanitize_text_field( wp_unslash( $_SERVER[ $server_key ] ) );
 	}
 
 	// ── Surface detection ─────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ final class Surface_Classifier {
 			return '';
 		}
 
-		$value    = wp_unslash( (string) $_SERVER[ $key ] );
+		$value    = wp_unslash( (string) $_SERVER[ $key ] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- deliberately unsanitized; see the docblock above. Control characters are stripped below.
 		$filtered = preg_replace( '/[\x00-\x1F\x7F]/', '', $value );
 		return null !== $filtered ? $filtered : '';
 	}

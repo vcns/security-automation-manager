@@ -327,7 +327,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 		$evid_total = (int) $wpdb->get_var( $evid_count_sql );
 
 		$evid_pages    = max( 1, (int) ceil( $evid_total / $per_page ) );
-		$evid_page_num = min( max( 1, (int) ( isset( $_GET['e_paged'] ) ? $_GET['e_paged'] : 1 ) ), $evid_pages );
+		$evid_page_num = min( max( 1, absint( wp_unslash( $_GET['e_paged'] ?? 1 ) ) ), $evid_pages );
 		$evid_offset   = ( $evid_page_num - 1 ) * $per_page;
 
 		$evid_data_args = array_merge( $evid_args, array( $per_page, $evid_offset ) );
