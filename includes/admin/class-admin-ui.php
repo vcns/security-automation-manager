@@ -811,11 +811,23 @@ class Admin_UI {
 					'nonce'     => wp_create_nonce( 'wp_sam_admin_nonce' ),
 					'restNonce' => wp_create_nonce( 'wp_rest' ),
 					'i18n'      => array(
-						'scanning'            => __( 'Scanning…', 'vcns-security-automation-manager' ),
-						'scanDone'            => __( 'Scan complete.', 'vcns-security-automation-manager' ),
-						'scanError'           => __( 'Scan failed. Check error log.', 'vcns-security-automation-manager' ),
-						'reasonRequired'      => __( 'A decision reason is required.', 'vcns-security-automation-manager' ),
-						'enforceReasonPrompt' => __( 'Reason for promoting this surface to enforce mode:', 'vcns-security-automation-manager' ),
+						'scanning'               => __( 'Scanning…', 'vcns-security-automation-manager' ),
+						'scanDone'               => __( 'Scan complete.', 'vcns-security-automation-manager' ),
+						'scanError'              => __( 'Scan failed. Check error log.', 'vcns-security-automation-manager' ),
+						'reasonRequired'         => __( 'A decision reason is required.', 'vcns-security-automation-manager' ),
+						'enforceReasonPrompt'    => __( 'Reason for promoting this surface to enforce mode:', 'vcns-security-automation-manager' ),
+						'failedSwitchMode'       => __( 'Failed to switch mode.', 'vcns-security-automation-manager' ),
+						'failedSave'             => __( 'Failed to save.', 'vcns-security-automation-manager' ),
+						'failedSwitchAutomation' => __( 'Failed to switch automation mode.', 'vcns-security-automation-manager' ),
+						'couldNotRecord'         => __( 'Could not record policy decision.', 'vcns-security-automation-manager' ),
+						'enterUrl'               => __( 'Enter the exact URL to fetch and hash first.', 'vcns-security-automation-manager' ),
+						'couldNotHash'           => __( 'Could not compute a hash for that URL.', 'vcns-security-automation-manager' ),
+						'failedHash'             => __( 'Failed to compute hash.', 'vcns-security-automation-manager' ),
+						'requestFailed'          => __( 'Request failed.', 'vcns-security-automation-manager' ),
+						'invalidPattern'         => __( 'Invalid pattern.', 'vcns-security-automation-manager' ),
+						'patternMatches'         => __( 'Matches.', 'vcns-security-automation-manager' ),
+						'patternNoMatch'         => __( 'Does not match.', 'vcns-security-automation-manager' ),
+						'reasonIsRequired'       => __( 'Reason is required.', 'vcns-security-automation-manager' ),
 					),
 				)
 			);
@@ -2689,10 +2701,10 @@ class Admin_UI {
 		$mode    = sanitize_text_field( wp_unslash( $_POST['mode'] ?? '' ) );
 
 		if ( ! in_array( $surface, array( 'frontend', 'admin', 'login', 'api' ), true ) ) {
-			wp_send_json_error( array( 'message' => 'Invalid surface.' ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid surface.', 'vcns-security-automation-manager' ) ) );
 		}
 		if ( ! in_array( $mode, array( 'report-only', 'enforce', 'disabled' ), true ) ) {
-			wp_send_json_error( array( 'message' => 'Invalid mode.' ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid mode.', 'vcns-security-automation-manager' ) ) );
 		}
 
 		// Full promotion gate: enforce requires passing all configured checks

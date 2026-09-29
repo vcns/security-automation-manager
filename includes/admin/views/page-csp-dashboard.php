@@ -372,7 +372,8 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 					/>
 					<code><?php echo esc_html( $bypass_entry['directive'] . ': ' . $bypass_entry['token'] ); ?></code>
 					<?php
-					$bypass_note = $bypass_entry['label'] . ' ' . $bypass_entry['risk_note'];
+					$bypass_text = \WP_SAM\CSP\Policy_Builder::bypass_text( $bypass_flag );
+					$bypass_note = $bypass_text['label'] . ' ' . $bypass_text['risk_note'];
 					if ( $bypass_count > 0 ) {
 						$bypass_note .= ' ' . sprintf(
 							/* translators: %s: formatted violation occurrence count */

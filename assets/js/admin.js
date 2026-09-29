@@ -60,7 +60,7 @@
 				location.reload();
 			} else {
 				// eslint-disable-next-line no-alert
-				alert( res.data.message || 'Failed to switch mode.' );
+				alert( res.data.message || wpSamAdmin.i18n.failedSwitchMode );
 				$btn.prop( 'disabled', false );
 			}
 		} )
@@ -88,7 +88,7 @@
 			if ( ! res || true !== res.success ) {
 				$checkbox.prop( 'checked', ! enabled );
 				// eslint-disable-next-line no-alert
-				alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+				alert( ( res && res.data && res.data.message ) || wpSamAdmin.i18n.failedSave );
 			}
 		} )
 		.fail( function () {
@@ -116,7 +116,7 @@
 			if ( ! res || true !== res.success ) {
 				$checkbox.prop( 'checked', ! enabled );
 				// eslint-disable-next-line no-alert
-				alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+				alert( ( res && res.data && res.data.message ) || wpSamAdmin.i18n.failedSave );
 			}
 		} )
 		.fail( function () {
@@ -151,14 +151,14 @@
 				$select.val( previous );
 			}
 			// eslint-disable-next-line no-alert
-			alert( res.data.message || 'Failed to switch automation mode.' );
+			alert( res.data.message || wpSamAdmin.i18n.failedSwitchAutomation );
 		} )
 		.fail( function () {
 			if ( previous !== '' ) {
 				$select.val( previous );
 			}
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to switch automation mode.' );
+			alert( wpSamAdmin.i18n.failedSwitchAutomation );
 		} )
 		.always( function () {
 			$select.prop( 'disabled', false );
@@ -180,7 +180,7 @@
 			return;
 		}
 		// eslint-disable-next-line no-alert
-		alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+		alert( ( res && res.data && res.data.message ) || wpSamAdmin.i18n.failedSave );
 	}
 
 	function requiredReason( promptText ) {
@@ -241,12 +241,12 @@
 				setSourceRowState( $btn.closest( 'tr' ), id, nextState, nextLabel, lastDecision );
 			} else {
 				// eslint-disable-next-line no-alert
-				alert( res.data.message || 'Could not record policy decision.' );
+				alert( res.data.message || wpSamAdmin.i18n.couldNotRecord );
 			}
 		} )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Could not record policy decision.' );
+			alert( wpSamAdmin.i18n.couldNotRecord );
 		} )
 		.always( function () { $btn.prop( 'disabled', false ); } );
 	}
@@ -301,7 +301,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$fields.prop( 'disabled', false );
@@ -333,7 +333,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$row.find( '.wp-sam-permissions-policy-enabled, .wp-sam-permissions-policy-directive' ).prop( 'disabled', false );
@@ -383,7 +383,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$row.find( 'input, select' ).prop( 'disabled', false );
@@ -413,7 +413,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$row.find( 'input, select' ).prop( 'disabled', false );
@@ -446,7 +446,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} );
 	}
 
@@ -468,7 +468,7 @@
 
 		if ( ! url ) {
 			// eslint-disable-next-line no-alert
-			alert( 'Enter the exact URL to fetch and hash first.' );
+			alert( wpSamAdmin.i18n.enterUrl );
 			return;
 		}
 
@@ -487,12 +487,12 @@
 				postDependencyClassification( $row );
 			} else {
 				// eslint-disable-next-line no-alert
-				alert( ( res.data && res.data.message ) || 'Could not compute a hash for that URL.' );
+				alert( ( res.data && res.data.message ) || wpSamAdmin.i18n.couldNotHash );
 			}
 		} )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to compute hash.' );
+			alert( wpSamAdmin.i18n.failedHash );
 		} )
 		.always( function () {
 			$button.prop( 'disabled', false ).text( originalLabel );
@@ -517,20 +517,20 @@
 		} )
 		.done( function ( res ) {
 			if ( ! res.success ) {
-				$result.text( 'Request failed.' ).css( 'color', '#cc1818' );
+				$result.text( wpSamAdmin.i18n.requestFailed ).css( 'color', '#cc1818' );
 				return;
 			}
 			const matched = res.data.matched;
 			if ( null === matched ) {
-				$result.text( 'Invalid pattern.' ).css( 'color', '#cc1818' );
+				$result.text( wpSamAdmin.i18n.invalidPattern ).css( 'color', '#cc1818' );
 			} else if ( matched ) {
-				$result.text( 'Matches.' ).css( 'color', '#1a7f37' );
+				$result.text( wpSamAdmin.i18n.patternMatches ).css( 'color', '#1a7f37' );
 			} else {
-				$result.text( 'Does not match.' ).css( 'color', '#646970' );
+				$result.text( wpSamAdmin.i18n.patternNoMatch ).css( 'color', '#646970' );
 			}
 		} )
 		.fail( function () {
-			$result.text( 'Request failed.' ).css( 'color', '#cc1818' );
+			$result.text( wpSamAdmin.i18n.requestFailed ).css( 'color', '#cc1818' );
 		} )
 		.always( function () {
 			$btn.prop( 'disabled', false );
@@ -557,7 +557,7 @@
 					e.preventDefault();
 					const el = $reason.get( 0 );
 					if ( el && el.setCustomValidity ) {
-						el.setCustomValidity( 'Reason is required.' );
+						el.setCustomValidity( wpSamAdmin.i18n.reasonIsRequired );
 						el.reportValidity();
 						el.setCustomValidity( '' );
 					}

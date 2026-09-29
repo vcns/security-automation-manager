@@ -233,6 +233,68 @@ class Policy_Builder extends Header_Builder {
 	);
 
 	/**
+	 * Translated label and risk note for one BYPASS_CATALOG entry.
+	 *
+	 * The catalog is a class constant, which cannot call __(), so the
+	 * user-facing English text lives here where the translation functions
+	 * can be extracted. The constant's own 'label' and 'risk_note' values
+	 * remain as the untranslated fallback for an unknown flag.
+	 *
+	 * @param string $flag A BYPASS_CATALOG key.
+	 * @return array{label: string, risk_note: string} Translated text, or the catalog's English text.
+	 */
+	public static function bypass_text( string $flag ): array {
+		$text = array(
+			'img_src_data' => array(
+				'label'     => __( 'Allow data: URIs for images', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline image data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'img_src_blob' => array(
+				'label'     => __( 'Allow blob: URIs for images', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: like data:, a blob: image source cannot execute as script -- common with canvas exports and client-side file/image previews.', 'vcns-security-automation-manager' ),
+			),
+			'font_src_data' => array(
+				'label'     => __( 'Allow data: URIs for fonts', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline font data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'media_src_data' => array(
+				'label'     => __( 'Allow data: URIs for audio/video', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline audio/video data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'media_src_blob' => array(
+				'label'     => __( 'Allow blob: URIs for audio/video', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: a blob: media source cannot execute as script -- common with streaming/adaptive-bitrate players built on the Media Source Extensions API.', 'vcns-security-automation-manager' ),
+			),
+			'style_src_attr_unsafe_hashes' => array(
+				'label'     => __( 'Allow inline style attributes via hash approval (adds \'unsafe-hashes\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2); does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.', 'vcns-security-automation-manager' ),
+			),
+			'script_src_attr_unsafe_hashes' => array(
+				'label'     => __( 'Allow inline event handler attributes via hash approval (adds \'unsafe-hashes\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2), and only for that exact hashed value -- does not enable \'unsafe-inline\' or affect script-src/script-src-elem. Covers inline event handler attributes such as onclick=""; script-src-attr is otherwise \'none\' everywhere in this codebase.', 'vcns-security-automation-manager' ),
+			),
+			'script_src_wasm_unsafe_eval' => array(
+				'label'     => __( 'Allow WebAssembly compilation (adds \'wasm-unsafe-eval\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: CSP3\'s \'wasm-unsafe-eval\' keyword permits only WebAssembly instantiation/compilation -- unlike \'unsafe-eval\', it does not permit eval(), new Function(), or any other string-to-JS execution path. Needed by some image/video-processing, PDF-rendering, or cryptography libraries compiled to WebAssembly.', 'vcns-security-automation-manager' ),
+			),
+			'worker_src_blob' => array(
+				'label'     => __( 'Allow blob: URIs for workers', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Higher risk than the other entries here: unlike an image, font, or media source, a Worker constructed from a blob: URL does execute as JavaScript. Only enable this if a specific, identified library on this site genuinely constructs its worker from a blob (common with PDF.js and some video encoders, or bundler-generated workers) -- if nothing on the site does this, leave it off.', 'vcns-security-automation-manager' ),
+			),
+		);
+
+		if ( isset( $text[ $flag ] ) ) {
+			return $text[ $flag ];
+		}
+
+		$entry = self::BYPASS_CATALOG[ $flag ] ?? array();
+		return array(
+			'label'     => (string) ( $entry['label'] ?? '' ),
+			'risk_note' => (string) ( $entry['risk_note'] ?? '' ),
+		);
+	}
+
+	/**
 	 * Hard byte budget for the cumulative worst-case cost of approved
 	 * hashes appended to the header. script-src/style-src hashes count
 	 * twice (once for the base directive, once for its -elem counterpart
