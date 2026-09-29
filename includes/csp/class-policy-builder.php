@@ -294,10 +294,23 @@ class Policy_Builder extends Header_Builder {
 
 	// ── Header emission ───────────────────────────────────────────────────────
 
+	/**
+	 * Checks whether a profile is turned on.
+	 *
+	 * @param array $profile Policy profile row.
+	 * @return bool True unless the profile mode is disabled.
+	 */
 	protected function is_profile_active( array $profile ): bool {
 		return 'disabled' !== $profile['mode'];
 	}
 
+	/**
+	 * Builds a profile's policy and sends it as a response header.
+	 *
+	 * @param array  $profile Policy profile row.
+	 * @param string $surface Surface slug.
+	 * @return bool True when a header was sent.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		$policy = $this->build_policy_string( $profile, $surface );
 		if ( empty( $policy ) ) {
@@ -317,6 +330,12 @@ class Policy_Builder extends Header_Builder {
 		return true;
 	}
 
+	/**
+	 * Returns the header name to use for the policy.
+	 *
+	 * @param bool $is_report_only Whether the policy is report-only.
+	 * @return string Custom header name if set, otherwise the default for the mode.
+	 */
 	public function get_policy_header_name( bool $is_report_only ): string {
 		$custom = self::sanitize_custom_policy_header_name( get_option( 'wp_sam_policy_header_name', '' ) );
 		if ( '' !== $custom ) {
@@ -326,6 +345,12 @@ class Policy_Builder extends Header_Builder {
 		return $is_report_only ? self::DEFAULT_REPORT_ONLY_HEADER : self::DEFAULT_ENFORCE_HEADER;
 	}
 
+	/**
+	 * Validates a reporting transport value.
+	 *
+	 * @param mixed $transport Stored or submitted value.
+	 * @return string A known transport, falling back to both.
+	 */
 	public static function sanitize_reporting_transport( mixed $transport ): string {
 		$transport = (string) $transport;
 		if ( in_array( $transport, self::get_reporting_transport_options(), true ) ) {
@@ -340,6 +365,11 @@ class Policy_Builder extends Header_Builder {
 		return self::REPORTING_TRANSPORT_BOTH;
 	}
 
+	/**
+	 * Lists the allowed reporting transports.
+	 *
+	 * @return array Transport keys.
+	 */
 	public static function get_reporting_transport_options(): array {
 		return array(
 			self::REPORTING_TRANSPORT_DIRECT,
@@ -348,6 +378,11 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
+	/**
+	 * Checks whether the configured transport includes the Reporting API.
+	 *
+	 * @return bool True for the api and both transports.
+	 */
 	private function uses_reporting_api(): bool {
 		return in_array(
 			$this->get_reporting_transport(),
@@ -356,12 +391,24 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
+	/**
+	 * Returns the configured reporting transport.
+	 *
+	 * @return string Transport key.
+	 */
 	private function get_reporting_transport(): string {
 		return self::sanitize_reporting_transport( get_option( 'wp_sam_reporting_transport', self::REPORTING_TRANSPORT_BOTH ) );
 	}
 
 	// ── Policy assembly ───────────────────────────────────────────────────────
 
+	/**
+	 * Builds the CSP header value for a profile.
+	 *
+	 * @param array  $profile Policy profile row.
+	 * @param string $surface Surface slug.
+	 * @return string Header value, or an empty string when the profile cannot be built.
+	 */
 	public function build_policy_string( array $profile, string $surface ): string {
 		$nonce      = Plugin_Nonce_Manager::get_instance_nonce();
 		$directives = json_decode( $profile['directives'], true );
@@ -663,6 +710,12 @@ class Policy_Builder extends Header_Builder {
 		$this->audit->log( $component, $event, $detail, $severity );
 	}
 
+	/**
+	 * Removes 'none' from any directive that also lists other sources.
+	 *
+	 * @param array $directives Directives keyed by name.
+	 * @return array Cleaned directives.
+	 */
 	private function normalize_none_sources( array $directives ): array {
 		foreach ( $directives as $directive => $sources_list ) {
 			if ( ! is_array( $sources_list ) || count( array_filter( $sources_list ) ) < 2 ) {
@@ -697,10 +750,22 @@ class Policy_Builder extends Header_Builder {
 		return $this->data_loader->load_profile( $surface );
 	}
 
+	/**
+	 * Loads the approved hashes for a surface from the data loader.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Approved hashes.
+	 */
 	private function load_approved_hashes( string $surface ): array {
 		return $this->data_loader->load_approved_hashes( $surface );
 	}
 
+	/**
+	 * Loads the approved sources for a surface from the data loader.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Approved sources.
+	 */
 	private function load_approved_sources( string $surface ): array {
 		return $this->data_loader->load_approved_sources( $surface );
 	}

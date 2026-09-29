@@ -57,6 +57,13 @@ class Automation_Mode_Registry {
 		);
 	}
 
+	/**
+	 * Maps an old mode key to the current mode key it was renamed to.
+	 *
+	 * @param string $alias    Legacy mode key.
+	 * @param string $mode_key Current mode key.
+	 * @return void
+	 */
 	public static function register_legacy_alias( string $alias, string $mode_key ): void {
 		self::$legacy_aliases[ $alias ] = $mode_key;
 	}
@@ -86,10 +93,22 @@ class Automation_Mode_Registry {
 		self::$defaults_registered = false;
 	}
 
+	/**
+	 * Returns the current mode key for a possibly legacy key.
+	 *
+	 * @param string $key Mode key, current or legacy.
+	 * @return string The current mode key, or the input when it is not an alias.
+	 */
 	public static function resolve_legacy_alias( string $key ): string {
 		return self::$legacy_aliases[ $key ] ?? $key;
 	}
 
+	/**
+	 * Checks whether a mode key is registered, regardless of whether it is currently available.
+	 *
+	 * @param string $key Mode key.
+	 * @return bool True when the mode is registered.
+	 */
 	public static function is_valid_mode( string $key ): bool {
 		return isset( self::$modes[ $key ] );
 	}
