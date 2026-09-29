@@ -46,10 +46,20 @@ abstract class Request_Surface {
 
 	// ── Surface detection ─────────────────────────────────────────────────────
 
+	/**
+	 * Returns the surface of the current request.
+	 *
+	 * @return string Surface slug.
+	 */
 	protected function detect_surface(): string {
 		return Surface_Classifier::detect();
 	}
 
+	/**
+	 * Returns the path of the current request.
+	 *
+	 * @return string Request path.
+	 */
 	protected function get_request_path(): string {
 		return Surface_Classifier::request_path();
 	}

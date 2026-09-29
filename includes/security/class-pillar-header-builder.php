@@ -20,6 +20,12 @@ abstract class Pillar_Header_Builder extends Header_Builder {
 	 *   public const PILLAR_KEY = '...'; // storage key in sam_pillar_profiles.pillar
 	 */
 
+	/**
+	 * Loads this pillar's stored profile for a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array|null Profile row, or null when none exists.
+	 */
 	protected function load_profile( string $surface ): ?array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_pillar_profiles';
@@ -28,6 +34,12 @@ abstract class Pillar_Header_Builder extends Header_Builder {
 		return ! empty( $row ) ? $row : null;
 	}
 
+	/**
+	 * Checks whether a profile is enabled.
+	 *
+	 * @param array $profile Pillar profile row.
+	 * @return bool True when enabled.
+	 */
 	protected function is_profile_active( array $profile ): bool {
 		return ! empty( $profile['enabled'] );
 	}

@@ -38,6 +38,12 @@ class Strict_Transport_Security_Builder extends Pillar_Header_Builder {
 	// hstspreload.org's minimum max-age for preload list submission.
 	public const PRELOAD_MIN_MAX_AGE = 31536000; // 1 year.
 
+	/**
+	 * Clamps a max-age value to the allowed range.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return int Seconds, between the minimum and maximum.
+	 */
 	public static function sanitize_max_age( mixed $value ): int {
 		$value = (int) $value;
 		return max( self::MIN_MAX_AGE, min( self::MAX_MAX_AGE, $value ) );
@@ -51,6 +57,13 @@ class Strict_Transport_Security_Builder extends Pillar_Header_Builder {
 		return $include_subdomains && $max_age >= self::PRELOAD_MIN_MAX_AGE;
 	}
 
+	/**
+	 * Sends the Strict-Transport-Security header, on HTTPS requests only.
+	 *
+	 * @param array  $profile Pillar profile row.
+	 * @param string $surface Surface slug, unused.
+	 * @return bool True when a header was sent.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		unset( $surface );
 
@@ -67,10 +80,21 @@ class Strict_Transport_Security_Builder extends Pillar_Header_Builder {
 		return true;
 	}
 
+	/**
+	 * Checks whether the current request uses HTTPS.
+	 *
+	 * @return bool True on HTTPS.
+	 */
 	protected function is_https_request(): bool {
 		return is_ssl();
 	}
 
+	/**
+	 * Builds the header value from a profile's max-age, includeSubDomains and preload settings.
+	 *
+	 * @param array $profile Pillar profile row.
+	 * @return string Header value.
+	 */
 	public static function build_header_value( array $profile ): string {
 		$payload = json_decode( (string) ( $profile['payload'] ?? '' ), true );
 		$payload = is_array( $payload ) ? $payload : array();

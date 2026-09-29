@@ -35,6 +35,11 @@ final class Information_Masking_Diagnostic {
 	/** @var callable(string):(array|\WP_Error) Real wp_remote_head() by default; injectable so tests never make a real HTTP call. */
 	private $http_head;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param callable|null $http_head HTTP HEAD request function, defaults to wp_remote_head().
+	 */
 	public function __construct( ?callable $http_head = null ) {
 		$this->http_head = $http_head ?? static fn ( string $url ) => wp_remote_head(
 			$url,
@@ -90,11 +95,21 @@ final class Information_Masking_Diagnostic {
 		return is_array( $stored ) ? $stored : array();
 	}
 
+	/**
+	 * Returns when the last check ran.
+	 *
+	 * @return string|null Time of the last check, or null when none has run.
+	 */
 	public function checked_at(): ?string {
 		$value = get_option( 'wp_sam_information_masking_checked_at', '' );
 		return '' !== $value ? (string) $value : null;
 	}
 
+	/**
+	 * Returns the status of the last check.
+	 *
+	 * @return string Status code, or an empty string when none has run.
+	 */
 	public function last_status(): string {
 		return (string) get_option( 'wp_sam_information_masking_last_status', '' );
 	}
