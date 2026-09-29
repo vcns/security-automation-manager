@@ -160,12 +160,36 @@ final class Policy_Events_Builder {
 	private const DECISION_ACTIONS = array( 'approved', 'rejected', 'reverted', 'undone' );
 	private const DISCOVERY_EVENTS = array( 'source_proposed', 'proposal_suppressed' );
 
+	/**
+	 * Returns the label for a discovery event.
+	 *
+	 * @param string $raw_event Raw event name.
+	 * @return string Translated label.
+	 */
 	private static function discovery_event_label( string $raw_event ): string {
 		return 'proposal_suppressed' === $raw_event
 			? __( 'Suppressed proposal', 'vcns-security-automation-manager' )
 			: __( 'Proposed source', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Fetches policy change decisions that match the filters.
+	 *
+	 * @param \wpdb  $wpdb        WordPress database object.
+	 * @param array  $surface     Surfaces to match.
+	 * @param array  $directive   Directives to match.
+	 * @param string $host        Source host search.
+	 * @param array  $risk        Risk levels to match.
+	 * @param array  $actions     Actions to match.
+	 * @param string $policy_ver  Policy version number search.
+	 * @param string $suppression Suppression state filter.
+	 * @param array  $actor       Actor types to match.
+	 * @param string $detail      Detail search.
+	 * @param string $when_from   Earliest date.
+	 * @param string $when_to     Latest date.
+	 * @param bool   $truncated   Set to true when the result was cut at the row cap.
+	 * @return array Event rows.
+	 */
 	private static function fetch_decisions( \wpdb $wpdb, array $surface, array $directive, string $host, array $risk, array $actions, string $policy_ver, string $suppression, array $actor, string $detail, string $when_from, string $when_to, bool &$truncated ): array {
 		$where = array( '1=1' );
 		$args  = array();
@@ -215,6 +239,19 @@ final class Policy_Events_Builder {
 		return $events;
 	}
 
+	/**
+	 * Fetches policy versions that match the filters.
+	 *
+	 * @param \wpdb  $wpdb       WordPress database object.
+	 * @param array  $surface    Surfaces to match.
+	 * @param string $policy_ver Policy version number search.
+	 * @param array  $actor      Actor types to match.
+	 * @param string $detail     Detail search.
+	 * @param string $when_from  Earliest date.
+	 * @param string $when_to    Latest date.
+	 * @param bool   $truncated  Set to true when the result was cut at the row cap.
+	 * @return array Event rows.
+	 */
 	private static function fetch_versions( \wpdb $wpdb, array $surface, string $policy_ver, array $actor, string $detail, string $when_from, string $when_to, bool &$truncated ): array {
 		$where = array( '1=1' );
 		$args  = array();
@@ -269,6 +306,19 @@ final class Policy_Events_Builder {
 		return $events;
 	}
 
+	/**
+	 * Fetches source discovery events from the audit log that match the filters.
+	 *
+	 * @param \wpdb  $wpdb          WordPress database object.
+	 * @param array  $events_wanted Events to match.
+	 * @param string $suppression   Suppression state filter.
+	 * @param array  $actor         Actor types to match.
+	 * @param string $detail        Detail search.
+	 * @param string $when_from     Earliest date.
+	 * @param string $when_to       Latest date.
+	 * @param bool   $truncated     Set to true when the result was cut at the row cap.
+	 * @return array Event rows.
+	 */
 	private static function fetch_discovery( \wpdb $wpdb, array $events_wanted, string $suppression, array $actor, string $detail, string $when_from, string $when_to, bool &$truncated ): array {
 		$where = array( "component = 'policy_change'" );
 		$args  = array();
@@ -319,6 +369,14 @@ final class Policy_Events_Builder {
 		return $events;
 	}
 
+	/**
+	 * Adds a where fragment and its arguments to a query being built.
+	 *
+	 * @param array      $where    SQL conditions, extended by reference.
+	 * @param array      $args     Query arguments, extended by reference.
+	 * @param array|null $fragment Fragment with sql and args, or null to skip.
+	 * @return void
+	 */
 	private static function append( array &$where, array &$args, ?array $fragment ): void {
 		if ( null === $fragment ) {
 			return;
