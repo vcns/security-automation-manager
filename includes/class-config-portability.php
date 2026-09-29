@@ -14,7 +14,7 @@
  * configuration -- what should the policy be -- never secrets, credentials,
  * telemetry, or history.
  *   - PORTABLE_TABLE_SUFFIXES: CSP policy profiles, source/hash approval
- *     decisions, the other nine header pillars' profiles, and
+ *     decisions, the other eleven header pillars' profiles, and
  *     External Scripts/SRI classifications. Never sam_certificates -- an
  *     issued certificate is a domain-bound artifact tied to a specific
  *     ACME account and DNS setup, not portable configuration, and its key

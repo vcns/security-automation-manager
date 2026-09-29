@@ -167,7 +167,7 @@ error log and open an issue rather than attempting a downgrade.
 
 **Covered** (snapshotted before every migration, restorable when the code's
 schema still matches): CSP policy profiles and their directives, approved
-sources and hashes, the other nine header pillars' per-surface profiles,
+sources and hashes, the other eleven header pillars' per-surface profiles,
 External Scripts/Internal Script Integrity classifications, and certificate
 records (including their encrypted private-key and account-key fields, as
 opaque ciphertext -- see the next section).

@@ -103,7 +103,7 @@ universal support. Safari lacks `script-src-elem`, `script-src-attr`,
 
 ## 3. Security Header Controls
 
-Ten header pillars in total: CSP (§4, the most capable) and nine simpler
+Twelve header pillars in total: CSP (§4, the most capable) and eleven simpler
 per-surface pillars, each configured independently for the `frontend`,
 `admin`, `login`, and `api` surfaces from its own admin page.
 
@@ -112,6 +112,8 @@ per-surface pillars, each configured independently for the `frontend`,
 | X-Frame-Options | `DENY` / `SAMEORIGIN` | Fallback for browsers that don't honour CSP `frame-ancestors` |
 | X-Content-Type-Options | on/off | `nosniff` |
 | Referrer-Policy | 8 standard tokens | Defaults to `strict-origin-when-cross-origin` |
+| Information Masking | on/off | `header_remove()` for `X-Powered-By`, `Server`, and `X-Pingback`; `Server` removal only takes effect where PHP, not the web server, sets it |
+| Cache-Control | `no-store`/`private-no-cache`/`public-short`/`public-long` | `Cache_Control_Conflict_Detector` gates emission: defers instead of sending a competing value when a caching plugin or CDN is already active |
 | Permissions-Policy | `none`/`self`/`all` per directive | Starter set of 7 features: geolocation, camera, microphone, fullscreen, payment, usb, autoplay - not the full W3C registry |
 | Strict-Transport-Security | `max-age`, `includeSubDomains`, `preload` | HTTPS-only emission; `preload` gated behind `max-age`/`includeSubDomains` already meeting hstspreload.org's submission minimum, since preload removal can take months once a domain is listed |
 | Cross-Origin-Resource-Policy | `same-site`/`same-origin`/`cross-origin` | Low risk - restricts who may embed this site's resources, not what this site embeds |
@@ -120,12 +122,15 @@ per-surface pillars, each configured independently for the `frontend`,
 | X-Permitted-Cross-Domain-Policies | `none`/`master-only`/`by-content-type`/`all` | Legacy Flash/Acrobat-era header; `none` is almost always correct |
 
 **Default state.** Since DB schema v18, a fresh install seeds every surface
-with a vetted, enabled configuration for all nine of these pillars (HSTS
-excluded - it stays a deliberate per-surface opt-in because of its
-stickiness). An upgraded install is never retroactively changed: the v18
-seed only fills a `(pillar, surface)` row that has no existing setting.
+with a vetted, enabled configuration for nine of these eleven pillars. The
+two exceptions: HSTS is not seeded at all (it stays a deliberate per-surface
+opt-in because of its stickiness), and Cache-Control is seeded with the safe
+`no-store` preset but disabled on every surface, since pre-enabling it would
+risk silently changing a site's frontend caching behaviour on upgrade. An
+upgraded install is never retroactively changed: the seed only fills a
+`(pillar, surface)` row that has no existing setting.
 
-**Report-only, discovery, automation.** Seven of the nine (all except
+**Report-only, discovery, automation.** Nine of the eleven (all except
 Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy) have none of
 these: each header is either sent exactly as configured, or not sent at all.
 There is no equivalent of "external sources this page happens to load" for a
