@@ -16,6 +16,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Readiness_Checker {
 
+	/**
+	 * Builds the readiness report.
+	 *
+	 * @return array Plugin details, schema health and runtime health.
+	 */
 	public function get_report(): array {
 		return array(
 			'plugin' => $this->get_plugin_details(),
@@ -24,6 +29,11 @@ class Readiness_Checker {
 		);
 	}
 
+	/**
+	 * Reports the plugin and database schema versions.
+	 *
+	 * @return array Rows with a label, value and status.
+	 */
 	private function get_plugin_details(): array {
 		$installed_schema = (string) get_option( 'wp_sam_db_version', '0' );
 
@@ -56,6 +66,11 @@ class Readiness_Checker {
 		);
 	}
 
+	/**
+	 * Reports whether each plugin table exists and how many rows it holds.
+	 *
+	 * @return array Rows with a label, value and status.
+	 */
 	private function get_schema_health(): array {
 		global $wpdb;
 
@@ -80,6 +95,11 @@ class Readiness_Checker {
 		return $health;
 	}
 
+	/**
+	 * Reports the runtime configuration, such as the report endpoint and policy profiles.
+	 *
+	 * @return array Rows with a label, value and status.
+	 */
 	private function get_runtime_health(): array {
 		$report_endpoint = (string) get_option( 'wp_sam_report_endpoint_url', '' );
 		if ( '' === trim( $report_endpoint ) ) {
@@ -136,6 +156,13 @@ class Readiness_Checker {
 		);
 	}
 
+	/**
+	 * Counts rows of a plugin table that match a fixed condition.
+	 *
+	 * @param string $suffix Table name without the prefix.
+	 * @param string $where  Trusted SQL condition supplied by this class, never user input.
+	 * @return int Number of rows, or 0 when the table is missing.
+	 */
 	private function count_table_rows_where( string $suffix, string $where ): int {
 		global $wpdb;
 
@@ -149,6 +176,12 @@ class Readiness_Checker {
 		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE {$where}" );
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name.
+	 * @return bool True when it exists.
+	 */
 	private function table_exists( string $table ): bool {
 		global $wpdb;
 
@@ -156,12 +189,23 @@ class Readiness_Checker {
 		return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 	}
 
+	/**
+	 * Returns the WordPress table prefix.
+	 *
+	 * @return string Table prefix.
+	 */
 	private function get_table_prefix(): string {
 		global $wpdb;
 
 		return $wpdb->prefix;
 	}
 
+	/**
+	 * Checks that a URL is http or https with a host.
+	 *
+	 * @param string $url URL to check.
+	 * @return bool True when valid.
+	 */
 	private function is_valid_http_url( string $url ): bool {
 		$parts  = wp_parse_url( $url );
 		$scheme = is_array( $parts ) ? strtolower( (string) ( $parts['scheme'] ?? '' ) ) : '';
@@ -170,6 +214,11 @@ class Readiness_Checker {
 		return '' !== $host && in_array( $scheme, array( 'http', 'https' ), true );
 	}
 
+	/**
+	 * Summarises each surface's automation mode as text.
+	 *
+	 * @return string Summary text.
+	 */
 	private function automation_modes_summary(): string {
 		$config = get_option( 'wp_sam_automation_config', array() );
 		if ( ! is_array( $config ) || empty( $config ) ) {
@@ -185,6 +234,11 @@ class Readiness_Checker {
 		return implode( ', ', $modes );
 	}
 
+	/**
+	 * Describes which policy header name is in use.
+	 *
+	 * @return string Summary text.
+	 */
 	private function policy_header_summary(): string {
 		$custom = Policy_Builder::sanitize_custom_policy_header_name( get_option( 'wp_sam_policy_header_name', '' ) );
 		if ( '' !== $custom ) {
