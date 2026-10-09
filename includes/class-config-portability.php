@@ -84,6 +84,11 @@ class Config_Portability {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log that records export and import events.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
@@ -286,6 +291,12 @@ class Config_Portability {
 		$store->save_config( array_merge( $current, $imported ) );
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name, including the prefix.
+	 * @return bool True when the table exists.
+	 */
 	private function table_exists( string $table ): bool {
 		global $wpdb;
 

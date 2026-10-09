@@ -119,8 +119,16 @@ final class Plugin {
 	 */
 	public Hash_Manager $hash_manager;
 
+	/**
+	 * Private so the plugin can only be booted through instance().
+	 */
 	private function __construct() {}
 
+	/**
+	 * Returns the single plugin instance, creating it on first use.
+	 *
+	 * @return self The plugin singleton.
+	 */
 	public static function instance(): self {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -128,6 +136,11 @@ final class Plugin {
 		return self::$instance;
 	}
 
+	/**
+	 * Loads translations, upgrades the database schema when needed, and boots the plugin services.
+	 *
+	 * @return void
+	 */
 	public function init(): void {
 		$this->load_textdomain();
 		$this->maybe_upgrade_db();
@@ -136,6 +149,13 @@ final class Plugin {
 
 	// ── Text domain ───────────────────────────────────────────────────────────
 
+	/**
+	 * Loads the bundled translations on the GitHub distribution channel.
+	 *
+	 * WordPress.org loads translations for hosted plugins itself, so nothing is done there.
+	 *
+	 * @return void
+	 */
 	private function load_textdomain(): void {
 		// WordPress core auto-loads translations for WordPress.org-hosted plugins
 		// (matched by slug against the wp.org translation API) since 4.6 -- calling
@@ -154,6 +174,13 @@ final class Plugin {
 
 	// ── DB migration gate ─────────────────────────────────────────────────────
 
+	/**
+	 * Runs the activator when the stored schema version is older than the code, or when tables are missing.
+	 *
+	 * A downgrade is detected first and never runs the activator (see Rollback_Guard).
+	 *
+	 * @return void
+	 */
 	private function maybe_upgrade_db(): void {
 		$installed = (int) get_option( 'wp_sam_db_version', 0 );
 
@@ -184,6 +211,11 @@ final class Plugin {
 
 	// ── Module bootstrap ──────────────────────────────────────────────────────
 
+	/**
+	 * Builds the core services and registers their WordPress hooks.
+	 *
+	 * @return void
+	 */
 	private function bootstrap(): void {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
@@ -456,6 +488,11 @@ final class Plugin {
 
 	// ── REST routes ───────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the public CSP report route and the admin REST controller routes.
+	 *
+	 * @return void
+	 */
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers. permission_callback
 		// is Violation_Reporter's own early flood check (see its docblock),

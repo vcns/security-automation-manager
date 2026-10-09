@@ -21,12 +21,24 @@ class Admin_Controller {
 	private Policy_Version_Manager $policy_versions;
 	private Automation_Config $automation_config;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log                   $audit             Audit log used to record changes.
+	 * @param Policy_Version_Manager|null $policy_versions   Policy version store; defaults to a new instance.
+	 * @param Automation_Config|null      $automation_config Automation settings store; defaults to a new instance.
+	 */
 	public function __construct( Audit_Log $audit, ?Policy_Version_Manager $policy_versions = null, ?Automation_Config $automation_config = null ) {
 		$this->audit             = $audit;
 		$this->policy_versions   = $policy_versions ?? new Policy_Version_Manager();
 		$this->automation_config = $automation_config ?? new Automation_Config();
 	}
 
+	/**
+	 * Registers the admin REST routes under sam/v1/admin.
+	 *
+	 * @return void
+	 */
 	public function register_routes(): void {
 		register_rest_route(
 			'sam/v1',
@@ -116,10 +128,22 @@ class Admin_Controller {
 		);
 	}
 
+	/**
+	 * Permission callback: only users who can manage options may use these routes.
+	 *
+	 * @param \WP_REST_Request|null $_request Unused.
+	 * @return bool True when the current user can manage options.
+	 */
 	public function can_manage( ?\WP_REST_Request $_request = null ): bool {
 		return current_user_can( 'manage_options' );
 	}
 
+	/**
+	 * Lists each surface with its mode and latest policy version.
+	 *
+	 * @param \WP_REST_Request|null $_request Unused.
+	 * @return \WP_REST_Response Policies keyed by surface.
+	 */
 	public function list_policies( ?\WP_REST_Request $_request = null ): \WP_REST_Response {
 		global $wpdb;
 
@@ -143,6 +167,12 @@ class Admin_Controller {
 		return new \WP_REST_Response( array( 'policies' => $rows ) );
 	}
 
+	/**
+	 * Lists the recorded policy versions for one surface.
+	 *
+	 * @param \WP_REST_Request $request Request with the surface parameter.
+	 * @return \WP_REST_Response Version history, or a 400 error for an unknown surface.
+	 */
 	public function list_policy_history( \WP_REST_Request $request ): \WP_REST_Response {
 		global $wpdb;
 
@@ -164,6 +194,12 @@ class Admin_Controller {
 		return new \WP_REST_Response( array( 'versions' => is_array( $rows ) ? $rows : array() ) );
 	}
 
+	/**
+	 * Returns one policy version.
+	 *
+	 * @param \WP_REST_Request $request Request with the version id.
+	 * @return \WP_REST_Response The version, or a 404 error.
+	 */
 	public function get_policy_version( \WP_REST_Request $request ): \WP_REST_Response {
 		$version = $this->policy_versions->get_version( (int) $request['id'] );
 		if ( null === $version ) {
@@ -173,6 +209,12 @@ class Admin_Controller {
 		return new \WP_REST_Response( array( 'version' => $version ) );
 	}
 
+	/**
+	 * Returns a policy version together with the version before it.
+	 *
+	 * @param \WP_REST_Request $request Request with the version id.
+	 * @return \WP_REST_Response The current and previous versions, or a 404 error.
+	 */
 	public function get_policy_diff( \WP_REST_Request $request ): \WP_REST_Response {
 		$current = $this->policy_versions->get_version( (int) $request['id'] );
 		if ( null === $current ) {
@@ -188,6 +230,12 @@ class Admin_Controller {
 		);
 	}
 
+	/**
+	 * Searches policy change decisions by surface, directive, state, actor type and risk level.
+	 *
+	 * @param \WP_REST_Request $request Request carrying the filters.
+	 * @return \WP_REST_Response Matching decisions.
+	 */
 	public function search_decisions( \WP_REST_Request $request ): \WP_REST_Response {
 		global $wpdb;
 
@@ -218,6 +266,12 @@ class Admin_Controller {
 		return new \WP_REST_Response( array( 'decisions' => is_array( $rows ) ? $rows : array() ) );
 	}
 
+	/**
+	 * Returns one policy change decision.
+	 *
+	 * @param \WP_REST_Request $request Request with the decision id.
+	 * @return \WP_REST_Response The decision, or a 404 error.
+	 */
 	public function get_decision( \WP_REST_Request $request ): \WP_REST_Response {
 		global $wpdb;
 
@@ -253,6 +307,12 @@ class Admin_Controller {
 		);
 	}
 
+	/**
+	 * Lists sources awaiting an approval decision, most severe first.
+	 *
+	 * @param \WP_REST_Request|null $_request Unused.
+	 * @return \WP_REST_Response Pending sources.
+	 */
 	public function list_pending_reviews( ?\WP_REST_Request $_request = null ): \WP_REST_Response {
 		global $wpdb;
 
@@ -262,10 +322,22 @@ class Admin_Controller {
 		return new \WP_REST_Response( array( 'pending' => is_array( $rows ) ? $rows : array() ) );
 	}
 
+	/**
+	 * Returns the CSP automation configuration.
+	 *
+	 * @param \WP_REST_Request|null $_request Unused.
+	 * @return \WP_REST_Response The configuration.
+	 */
 	public function get_automation_config( ?\WP_REST_Request $_request = null ): \WP_REST_Response {
 		return new \WP_REST_Response( array( 'automation_config' => $this->automation_config->all() ) );
 	}
 
+	/**
+	 * Replaces the CSP automation configuration from a JSON body and logs the change.
+	 *
+	 * @param \WP_REST_Request $request Request whose body holds the configuration.
+	 * @return \WP_REST_Response The stored configuration, or a 400 error for invalid JSON.
+	 */
 	public function update_automation_config( \WP_REST_Request $request ): \WP_REST_Response {
 		$payload = json_decode( $request->get_body(), true );
 		if ( ! is_array( $payload ) ) {
@@ -278,6 +350,13 @@ class Admin_Controller {
 		return new \WP_REST_Response( array( 'automation_config' => $config ) );
 	}
 
+	/**
+	 * Counts the sources of a surface that match a fixed SQL condition.
+	 *
+	 * @param string $surface   Surface slug.
+	 * @param string $condition Trusted SQL fragment supplied by this class, never user input.
+	 * @return int Number of matching sources.
+	 */
 	private function count_sources( string $surface, string $condition ): int {
 		global $wpdb;
 
@@ -291,6 +370,12 @@ class Admin_Controller {
 		);
 	}
 
+	/**
+	 * Normalises a surface name against the known surfaces.
+	 *
+	 * @param string $surface Raw surface value.
+	 * @return string The lowercase surface slug, or an empty string when unknown.
+	 */
 	private function normalise_surface( string $surface ): string {
 		$surface = strtolower( trim( sanitize_text_field( $surface ) ) );
 		return in_array( $surface, Automation_Config::SURFACES, true ) ? $surface : '';
