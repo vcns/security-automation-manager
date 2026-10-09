@@ -35,6 +35,11 @@ final class Recommendation_Rule_Exception_Expiring implements Recommendation_Rul
 		'low'    => 0,
 	);
 
+	/**
+	 * Returns the rule id.
+	 *
+	 * @return string Rule id.
+	 */
 	public function id(): string {
 		return 'exception_expiring_soon';
 	}

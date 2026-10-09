@@ -38,6 +38,11 @@ final class Recommendation_Rule_Detector_Disabled_But_Firing implements Recommen
 
 	private const LOOKBACK_HOURS = 24 * 7; // 7 days.
 
+	/**
+	 * Returns the rule id.
+	 *
+	 * @return string Rule id.
+	 */
 	public function id(): string {
 		return 'detector_disabled_but_firing';
 	}

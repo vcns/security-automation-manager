@@ -51,10 +51,26 @@ final class Rate_Limiter {
 		return $count + 1;
 	}
 
+	/**
+	 * Counts a request and checks whether the limit for the window is now exceeded.
+	 *
+	 * @param string $ip             IP address.
+	 * @param string $surface        Surface slug.
+	 * @param int    $max_requests   Maximum requests in the window.
+	 * @param int    $window_seconds Window length in seconds.
+	 * @return bool True when the limit is exceeded.
+	 */
 	public function exceeded( string $ip, string $surface, int $max_requests, int $window_seconds ): bool {
 		return $this->hit( $ip, $surface, $window_seconds ) > max( 1, $max_requests );
 	}
 
+	/**
+	 * Builds the transient key that counts an IP address on a surface.
+	 *
+	 * @param string $ip      IP address.
+	 * @param string $surface Surface slug.
+	 * @return string Transient key.
+	 */
 	private function transient_key( string $ip, string $surface ): string {
 		return 'wp_sam_rate_' . $surface . '_' . md5( $ip );
 	}

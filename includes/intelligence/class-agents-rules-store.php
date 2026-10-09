@@ -28,6 +28,11 @@ final class Agents_Rules_Store {
 	/** @var callable(string):(array|\WP_Error) Real wp_remote_get() by default; injectable so tests never make a real HTTP call. */
 	private $http_get;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param callable|null $http_get HTTP GET function, defaults to wp_remote_get().
+	 */
 	public function __construct( ?callable $http_get = null ) {
 		$this->http_get = $http_get ?? static fn ( string $url ) => wp_remote_get(
 			$url,
@@ -39,6 +44,12 @@ final class Agents_Rules_Store {
 		);
 	}
 
+	/**
+	 * Checks whether a path is disallowed by the cached agents.txt rules.
+	 *
+	 * @param string $path Request path.
+	 * @return bool True when a rule disallows the path.
+	 */
 	public function is_disallowed( string $path ): bool {
 		if ( '' === $path ) {
 			return false;
@@ -57,11 +68,21 @@ final class Agents_Rules_Store {
 		return is_array( $stored ) ? $stored : array();
 	}
 
+	/**
+	 * Returns when agents.txt was last refreshed successfully.
+	 *
+	 * @return string|null Time of the last refresh, or null when it has not been refreshed.
+	 */
 	public function last_refreshed_at(): ?string {
 		$value = get_option( 'wp_sam_agents_rules_refreshed_at', '' );
 		return '' !== $value ? (string) $value : null;
 	}
 
+	/**
+	 * Returns the outcome of the last agents.txt fetch.
+	 *
+	 * @return string Status code, or an empty string when none has run.
+	 */
 	public function last_fetch_status(): string {
 		return (string) get_option( 'wp_sam_agents_rules_last_fetch_status', '' );
 	}

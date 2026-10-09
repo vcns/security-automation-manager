@@ -47,6 +47,11 @@ final class Asn_Lookup_Store {
 	/** @var callable(string):array<int,string> Real dns_get_record() TXT lookup by default; injectable so tests never make a real DNS call. */
 	private $txt_lookup;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param callable|null $txt_lookup DNS TXT lookup function, defaults to dns_get_record().
+	 */
 	public function __construct( ?callable $txt_lookup = null ) {
 		$this->txt_lookup = $txt_lookup ?? static function ( string $hostname ): array {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- dns_get_record() emits a warning on lookup failure; failure is a normal, expected outcome here, same rationale as Identity_Resolver's gethostbyaddr()/gethostbyname() calls.
@@ -105,6 +110,14 @@ final class Asn_Lookup_Store {
 		);
 	}
 
+	/**
+	 * Caches the ASN found for an IP address.
+	 *
+	 * @param string      $ip      IP address.
+	 * @param int|null    $asn     Autonomous system number, or null when unknown.
+	 * @param string|null $asn_org Organisation name, or null when unknown.
+	 * @return void
+	 */
 	private function remember( string $ip, ?int $asn, ?string $asn_org ): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_asn_cache';

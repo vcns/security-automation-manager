@@ -27,22 +27,48 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Php_Probe_Detector extends Pattern_Detector {
 
+	/**
+	 * Returns the stable id of the PHP probe detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'php-probes';
 	}
 
+	/**
+	 * Returns the family the PHP probe detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'php-probes';
 	}
 
+	/**
+	 * Returns the plain-language description of the PHP probe detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags requests for exposed PHP diagnostic tools and known remote-code-execution paths (e.g. PHPUnit eval-stdin, Laravel Ignition).', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the PHP probe detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the request data (path, query string) that the PHP probe rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		$path         = (string) ( $context['path'] ?? '' );
 		$query_string = (string) ( $context['query_string'] ?? '' );
@@ -50,6 +76,11 @@ final class Php_Probe_Detector extends Pattern_Detector {
 		return '' !== $query_string ? $path . '?' . $query_string : $path;
 	}
 
+	/**
+	 * Returns the PHP probe detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		return array(
 			array(

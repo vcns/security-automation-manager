@@ -33,30 +33,66 @@ final class Honeypath_Detector extends Pattern_Detector {
 
 	private Honeypath_Store $paths;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Honeypath_Store $paths Honey path store.
+	 */
 	public function __construct( Honeypath_Store $paths ) {
 		$this->paths = $paths;
 	}
 
+	/**
+	 * Returns the stable id of the honey path detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'honeypath';
 	}
 
+	/**
+	 * Returns the family the honey path detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'deception';
 	}
 
+	/**
+	 * Returns the plain-language description of the honey path detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags any request to one of your configured decoy paths -- no legitimate visitor should ever hit one.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the honey path detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the request data (path) that the honey path rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		return (string) ( $context['path'] ?? '' );
 	}
 
+	/**
+	 * Returns the honey path detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		$rules = array();
 
