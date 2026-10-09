@@ -21,10 +21,20 @@ class Provider_Inwx extends Dns_Provider {
 
 	private ?string $cookie = null;
 
+	/**
+	 * Returns the display name of the INWX provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'INWX';
 	}
 
+	/**
+	 * Describes the credentials the INWX provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'username' => array(
@@ -37,6 +47,13 @@ class Provider_Inwx extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the INWX API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -52,6 +69,13 @@ class Provider_Inwx extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the INWX API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 		$info = $this->rpc(
@@ -70,6 +94,13 @@ class Provider_Inwx extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the INWX zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			$info = $this->rpc( 'nameserver.info', array( 'domain' => $candidate ), true );
@@ -81,6 +112,15 @@ class Provider_Inwx extends Dns_Provider {
 		throw new \RuntimeException( "INWX: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Calls a method of the INWX XML-RPC API, logging in first when needed.
+	 *
+	 * @param string $method        API method name.
+	 * @param array  $params        Method parameters.
+	 * @param bool   $allow_failure Whether a failed call is returned instead of throwing an exception.
+	 * @return array Decoded response.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function rpc( string $method, array $params, bool $allow_failure = false ): array {
 		if ( null === $this->cookie && 'account.login' !== $method ) {
 			$this->login();
@@ -125,6 +165,11 @@ class Provider_Inwx extends Dns_Provider {
 		return $body;
 	}
 
+	/**
+	 * Logs in to the INWX API and keeps the session cookie.
+	 *
+	 * @return void
+	 */
 	private function login(): void {
 		$this->cookie = ''; // Sentinel so login itself does not recurse.
 		$this->rpc(

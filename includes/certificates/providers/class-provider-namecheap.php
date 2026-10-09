@@ -25,10 +25,20 @@ class Provider_Namecheap extends Dns_Provider {
 
 	private const API = 'https://api.namecheap.com/xml.response';
 
+	/**
+	 * Returns the display name of the Namecheap provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Namecheap';
 	}
 
+	/**
+	 * Describes the credentials the Namecheap provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_user'  => array(
@@ -46,6 +56,13 @@ class Provider_Namecheap extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Namecheap API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$this->modify_hosts(
 			$fqdn,
@@ -61,6 +78,13 @@ class Provider_Namecheap extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Namecheap API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$this->modify_hosts(
 			$fqdn,
@@ -135,6 +159,13 @@ class Provider_Namecheap extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the Namecheap zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		// Namecheap-registered zones are registrable domains (SLD.TLD); pick
 		// the candidate that getHosts accepts.
@@ -159,6 +190,14 @@ class Provider_Namecheap extends Dns_Provider {
 		throw new \RuntimeException( "Namecheap: no manageable domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Sends a request to the Namecheap API.
+	 *
+	 * @param string $command API command.
+	 * @param array  $params  Command parameters.
+	 * @param string $method  HTTP method.
+	 * @return string Response body.
+	 */
 	private function call( string $command, array $params, string $method = 'GET' ): string {
 		$query = array_merge(
 			array(
@@ -178,6 +217,12 @@ class Provider_Namecheap extends Dns_Provider {
 		return $this->request_raw( 'GET', self::API . '?' . http_build_query( $query ) );
 	}
 
+	/**
+	 * Extracts the error message from a Namecheap XML response.
+	 *
+	 * @param string $body Response body.
+	 * @return string The error text, or unknown error.
+	 */
 	private function error_from( string $body ): string {
 		preg_match( '#<Error[^>]*>([^<]*)</Error>#', $body, $error );
 

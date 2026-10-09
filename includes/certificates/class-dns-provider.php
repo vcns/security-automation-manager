@@ -25,6 +25,11 @@ abstract class Dns_Provider {
 	/** @var array<string,string> Decrypted credential map, keyed by field key. */
 	protected array $credentials;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param array $credentials Credential values keyed by field key.
+	 */
 	public function __construct( array $credentials ) {
 		$this->credentials = $credentials;
 	}
@@ -121,6 +126,13 @@ abstract class Dns_Provider {
 		);
 	}
 
+	/**
+	 * Creates the DNS provider registered under a slug.
+	 *
+	 * @param string $slug        Provider slug.
+	 * @param array  $credentials Credential values keyed by field key.
+	 * @return Dns_Provider|null The provider, or null when the slug is unknown.
+	 */
 	public static function make( string $slug, array $credentials ): ?Dns_Provider {
 		$providers = self::providers();
 		if ( ! isset( $providers[ $slug ] ) ) {
@@ -200,10 +212,23 @@ abstract class Dns_Provider {
 		);
 	}
 
+	/**
+	 * Returns one saved credential value.
+	 *
+	 * @param string $key Credential field key.
+	 * @return string The value, or an empty string when missing.
+	 */
 	protected function credential( string $key ): string {
 		return isset( $this->credentials[ $key ] ) ? (string) $this->credentials[ $key ] : '';
 	}
 
+	/**
+	 * Builds an HTTP Basic authorization header value.
+	 *
+	 * @param string $user     User name.
+	 * @param string $password Password.
+	 * @return string Header value.
+	 */
 	protected function basic_auth( string $user, string $password ): string {
 		return 'Basic ' . base64_encode( $user . ':' . $password );
 	}

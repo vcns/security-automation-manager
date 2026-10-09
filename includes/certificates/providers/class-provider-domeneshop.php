@@ -17,10 +17,20 @@ class Provider_Domeneshop extends Dns_Provider {
 
 	private const API = 'https://api.domeneshop.no/v0';
 
+	/**
+	 * Returns the display name of the Domeneshop provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Domeneshop';
 	}
 
+	/**
+	 * Describes the credentials the Domeneshop provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'token'  => array(
@@ -33,6 +43,13 @@ class Provider_Domeneshop extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Domeneshop API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -49,6 +66,13 @@ class Provider_Domeneshop extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Domeneshop API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone['name'] );
@@ -80,6 +104,11 @@ class Provider_Domeneshop extends Dns_Provider {
 		throw new \RuntimeException( "Domeneshop: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the Domeneshop request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'Authorization' => $this->basic_auth( $this->credential( 'token' ), $this->credential( 'secret' ) ) );
 	}
