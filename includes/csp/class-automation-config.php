@@ -67,11 +67,24 @@ class Automation_Config {
 		return Automation_Mode_Registry::labels();
 	}
 
+	/**
+	 * Returns the display label for an automation mode, falling back to the manual label.
+	 *
+	 * @param string $mode Automation mode key.
+	 * @return string Translated mode label.
+	 */
 	public static function mode_label( string $mode ): string {
 		$labels = self::mode_labels();
 		return $labels[ $mode ] ?? $labels[ self::MODE_MANUAL ];
 	}
 
+	/**
+	 * Changes the automation mode of one surface and stores the result.
+	 *
+	 * @param string $surface Surface slug.
+	 * @param string $mode    New automation mode key.
+	 * @return array The full configuration after the change.
+	 */
 	public function update_surface_mode( string $surface, string $mode ): array {
 		$config = $this->all();
 		if ( ! in_array( $surface, self::SURFACES, true ) ) {
@@ -95,26 +108,55 @@ class Automation_Config {
 		return $config;
 	}
 
+	/**
+	 * Returns the stored automation configuration for every surface.
+	 *
+	 * @return array Configuration keyed by surface.
+	 */
 	public function all(): array {
 		$config = get_option( 'wp_sam_automation_config', array() );
 		return $this->normalise_all( is_array( $config ) ? $config : array() );
 	}
 
+	/**
+	 * Returns the automation configuration for one surface, or the defaults for an unknown surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Configuration for the surface.
+	 */
 	public function for_surface( string $surface ): array {
 		$config = $this->all();
 		return $config[ $surface ] ?? self::DEFAULT_SURFACE_CONFIG;
 	}
 
+	/**
+	 * Normalises and stores the automation configuration for every surface.
+	 *
+	 * @param array $config Submitted configuration keyed by surface.
+	 * @return array The configuration that was stored.
+	 */
 	public function update_all( array $config ): array {
 		$normalised = $this->normalise_all( $config );
 		update_option( 'wp_sam_automation_config', $normalised );
 		return $normalised;
 	}
 
+	/**
+	 * Normalises an automation configuration submitted from the admin screen, without storing it.
+	 *
+	 * @param array $config Submitted configuration keyed by surface.
+	 * @return array The normalised configuration.
+	 */
 	public function normalise_admin_input( array $config ): array {
 		return $this->normalise_all( $config );
 	}
 
+	/**
+	 * Normalises the configuration of every known surface, dropping unknown keys.
+	 *
+	 * @param array $config Configuration keyed by surface.
+	 * @return array Normalised configuration.
+	 */
 	private function normalise_all( array $config ): array {
 		$normalised = array();
 		foreach ( self::SURFACES as $surface ) {
@@ -123,6 +165,12 @@ class Automation_Config {
 		return $normalised;
 	}
 
+	/**
+	 * Merges one surface configuration over the defaults and cleans its mode and directive lists.
+	 *
+	 * @param array $config Configuration for one surface.
+	 * @return array Normalised surface configuration.
+	 */
 	private function normalise_surface( array $config ): array {
 		$merged         = array_merge( self::DEFAULT_SURFACE_CONFIG, $config );
 		$merged['mode'] = $this->normalise_mode( (string) $merged['mode'] );

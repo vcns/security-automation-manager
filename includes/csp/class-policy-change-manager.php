@@ -42,6 +42,14 @@ class Policy_Change_Manager {
 	private ?Policy_Version_Manager $policy_versions;
 	private int $automatic_changes_this_run = 0;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log                   $audit             Audit log.
+	 * @param Decision_Engine|null        $decision_engine   Decision engine, a new one is created when omitted.
+	 * @param Policy_Version_Manager|null $policy_versions   Policy version manager, created on first use when omitted.
+	 * @param Automation_Config|null      $automation_config Automation config, a new one is created when omitted.
+	 */
 	public function __construct( Audit_Log $audit, ?Decision_Engine $decision_engine = null, ?Policy_Version_Manager $policy_versions = null, ?Automation_Config $automation_config = null ) {
 		$this->audit             = $audit;
 		$this->decision_engine   = $decision_engine ?? new Decision_Engine();
@@ -196,22 +204,58 @@ class Policy_Change_Manager {
 		);
 	}
 
+	/**
+	 * Approves a proposed source.
+	 *
+	 * @param int    $source_id Source inventory id.
+	 * @param string $reason    Reason for the decision.
+	 * @return bool True when the decision was recorded.
+	 */
 	public function approve_source( int $source_id, string $reason ): bool {
 		return $this->decide_source( $source_id, 'approved', $reason, false );
 	}
 
+	/**
+	 * Rejects a proposed source and suppresses it from being proposed again.
+	 *
+	 * @param int    $source_id Source inventory id.
+	 * @param string $reason    Reason for the decision.
+	 * @return bool True when the decision was recorded.
+	 */
 	public function reject_source( int $source_id, string $reason ): bool {
 		return $this->decide_source( $source_id, 'rejected', $reason, true );
 	}
 
+	/**
+	 * Reverts an approved source and suppresses it from being proposed again.
+	 *
+	 * @param int    $source_id Source inventory id.
+	 * @param string $reason    Reason for the decision.
+	 * @return bool True when the decision was recorded.
+	 */
 	public function revert_source( int $source_id, string $reason ): bool {
 		return $this->decide_source( $source_id, 'reverted', $reason, true );
 	}
 
+	/**
+	 * Undoes an earlier decision on a source.
+	 *
+	 * @param int    $source_id Source inventory id.
+	 * @param string $reason    Reason for the undo.
+	 * @return bool True when the undo was recorded.
+	 */
 	public function undo_source_decision( int $source_id, string $reason ): bool {
 		return $this->decide_source( $source_id, 'undone', $reason, false );
 	}
 
+	/**
+	 * Checks whether the latest decision for a source suppresses further proposals.
+	 *
+	 * @param string $surface   Surface slug.
+	 * @param string $directive CSP directive.
+	 * @param string $host      Source host.
+	 * @return bool True when the source is suppressed.
+	 */
 	public function is_suppressed( string $surface, string $directive, string $host ): bool {
 		global $wpdb;
 
@@ -230,6 +274,14 @@ class Policy_Change_Manager {
 		return is_array( $latest ) && ! empty( $latest['suppression_active'] );
 	}
 
+	/**
+	 * Builds the stable fingerprint that identifies a surface, directive and host combination.
+	 *
+	 * @param string $surface   Surface slug.
+	 * @param string $directive CSP directive.
+	 * @param string $host      Source host.
+	 * @return string SHA-256 hash.
+	 */
 	public static function fingerprint( string $surface, string $directive, string $host ): string {
 		return hash(
 			'sha256',
@@ -258,6 +310,17 @@ class Policy_Change_Manager {
 		);
 	}
 
+	/**
+	 * Applies a decision to a source, recording it and the policy version it produced.
+	 *
+	 * @param int      $source_id     Source inventory id.
+	 * @param string   $action        Decision action.
+	 * @param string   $reason        Reason for the decision.
+	 * @param bool     $suppress      Whether the source is suppressed afterwards.
+	 * @param string   $actor_type    Who made the decision.
+	 * @param int|null $actor_user_id WordPress user id, or null for a non-user actor.
+	 * @return bool True when the decision was applied.
+	 */
 	private function decide_source( int $source_id, string $action, string $reason, bool $suppress, string $actor_type = 'administrator', ?int $actor_user_id = null ): bool {
 		if ( $source_id <= 0 ) {
 			return false;
@@ -370,6 +433,25 @@ class Policy_Change_Manager {
 		return true;
 	}
 
+	/**
+	 * Stores a decision row.
+	 *
+	 * @param array  $source                     Source row.
+	 * @param string $action                     Decision action.
+	 * @param string $fingerprint                Decision fingerprint.
+	 * @param string $risk_level                 Risk level.
+	 * @param string $risk_reason                Reason for the risk level.
+	 * @param string $reason                     Reason for the decision.
+	 * @param bool   $suppress                   Whether the source is suppressed.
+	 * @param string $now                        Time of the decision in UTC.
+	 * @param int    $user_id                    WordPress user id.
+	 * @param array  $deterministic              Deterministic evaluation result.
+	 * @param int    $previous_policy_version_id Policy version before the decision.
+	 * @param int    $policy_version_id          Policy version after the decision.
+	 * @param int    $reverted_decision_id       Decision being reverted, or 0.
+	 * @param string $actor_type                 Who made the decision.
+	 * @return int Id of the new decision row.
+	 */
 	private function record_decision(
 		array $source,
 		string $action,
@@ -438,6 +520,12 @@ class Policy_Change_Manager {
 		return (int) ( $wpdb->insert_id ?? 0 );
 	}
 
+	/**
+	 * Approves a pending source automatically when the automation rules allow it.
+	 *
+	 * @param int $source_id Source inventory id.
+	 * @return bool True when the source was auto-approved.
+	 */
 	private function maybe_auto_approve_source( int $source_id ): bool {
 		if ( $source_id <= 0 ) {
 			return false;
@@ -476,6 +564,12 @@ class Policy_Change_Manager {
 		return true;
 	}
 
+	/**
+	 * Records an automatic approval.
+	 *
+	 * @param int $source_id Source inventory id.
+	 * @return bool True when the approval was recorded.
+	 */
 	private function auto_approve_source( int $source_id ): bool {
 		return $this->decide_source(
 			$source_id,
@@ -487,6 +581,13 @@ class Policy_Change_Manager {
 		);
 	}
 
+	/**
+	 * Checks whether the surface's automation settings allow this source to be approved automatically.
+	 *
+	 * @param array $source     Source row.
+	 * @param array $automation Automation settings for the surface.
+	 * @return bool True when automatic approval is allowed.
+	 */
 	private function automation_config_allows_source( array $source, array $automation ): bool {
 		$mode = (string) ( $automation['mode'] ?? 'manual' );
 		if ( Automation_Config::MODE_MANUAL === $mode || ! Automation_Mode_Registry::is_valid_mode( $mode ) ) {
@@ -519,6 +620,15 @@ class Policy_Change_Manager {
 		return empty( $allowed_schemes ) || in_array( $scheme, $allowed_schemes, true );
 	}
 
+	/**
+	 * Stores each rule finding behind a decision.
+	 *
+	 * @param int    $source_id     Source inventory id.
+	 * @param int    $decision_id   Decision id.
+	 * @param array  $deterministic Evaluation result containing the findings.
+	 * @param string $now           Time of the evaluation in UTC.
+	 * @return void
+	 */
 	private function record_rule_evaluations( int $source_id, int $decision_id, array $deterministic, string $now ): void {
 		global $wpdb;
 
@@ -545,11 +655,23 @@ class Policy_Change_Manager {
 		}
 	}
 
+	/**
+	 * Returns the id of a surface's newest policy version.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return int Version id, or 0 when there is none.
+	 */
 	private function latest_policy_version_id( string $surface ): int {
 		$latest = $this->policy_versions()->latest_version( $surface );
 		return isset( $latest['id'] ) ? (int) $latest['id'] : 0;
 	}
 
+	/**
+	 * Returns the id of the newest decision with a fingerprint.
+	 *
+	 * @param string $fingerprint Decision fingerprint.
+	 * @return int Decision id, or 0 when there is none.
+	 */
 	private function latest_decision_id( string $fingerprint ): int {
 		global $wpdb;
 
@@ -563,6 +685,11 @@ class Policy_Change_Manager {
 		);
 	}
 
+	/**
+	 * Returns the policy version manager, creating it on first use.
+	 *
+	 * @return Policy_Version_Manager The manager.
+	 */
 	private function policy_versions(): Policy_Version_Manager {
 		if ( null === $this->policy_versions ) {
 			$this->policy_versions = new Policy_Version_Manager();
@@ -570,6 +697,12 @@ class Policy_Change_Manager {
 		return $this->policy_versions;
 	}
 
+	/**
+	 * Builds the evidence stored with a decision from a source row.
+	 *
+	 * @param array $source Source row.
+	 * @return array Evidence fields.
+	 */
 	private function source_evidence_snapshot( array $source ): array {
 		return array(
 			'source_inventory_id' => (int) ( $source['id'] ?? 0 ),
@@ -585,24 +718,55 @@ class Policy_Change_Manager {
 		);
 	}
 
+	/**
+	 * Cleans a CSP directive name.
+	 *
+	 * @param string $directive Raw directive.
+	 * @return string Lowercase directive, up to 64 characters.
+	 */
 	private function normalise_directive( string $directive ): string {
 		$directive = strtolower( trim( sanitize_text_field( $directive ) ) );
 		return substr( $directive, 0, 64 );
 	}
 
+	/**
+	 * Cleans a source host.
+	 *
+	 * @param string $host Raw host.
+	 * @return string Lowercase host, up to 255 characters.
+	 */
 	private function normalise_host( string $host ): string {
 		$host = strtolower( trim( sanitize_text_field( $host ) ) );
 		return substr( $host, 0, 255 );
 	}
 
+	/**
+	 * Cleans a short identifier and trims it to a length.
+	 *
+	 * @param string $token  Raw value.
+	 * @param int    $length Maximum length.
+	 * @return string Lowercase value.
+	 */
 	private function normalise_token( string $token, int $length ): string {
 		return substr( strtolower( trim( sanitize_text_field( $token ) ) ), 0, $length );
 	}
 
+	/**
+	 * Cleans a decision reason and trims it to 512 characters.
+	 *
+	 * @param string $reason Raw reason.
+	 * @return string Sanitized reason.
+	 */
 	private function normalise_decision_reason( string $reason ): string {
 		return sanitize_text_field( substr( trim( $reason ), 0, 512 ) );
 	}
 
+	/**
+	 * Restricts an actor type to the known values.
+	 *
+	 * @param string $actor_type Raw actor type.
+	 * @return string A known actor type, or an empty string.
+	 */
 	private function normalise_actor_type( string $actor_type ): string {
 		return in_array( $actor_type, array( 'administrator', 'automation_engine', 'system_migration', 'system_recovery' ), true ) ? $actor_type : 'administrator';
 	}

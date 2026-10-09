@@ -17,10 +17,23 @@ class Policy_Version_Manager {
 
 	private Policy_Builder $builder;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Policy_Builder|null $builder Policy builder, a new one is created when omitted.
+	 */
 	public function __construct( ?Policy_Builder $builder = null ) {
 		$this->builder = $builder ?? new Policy_Builder( new Feature_Gate() );
 	}
 
+	/**
+	 * Stores a snapshot of a surface's current policy as a new version.
+	 *
+	 * @param string $surface      Surface slug.
+	 * @param string $trigger_type What caused the snapshot.
+	 * @param int    $trigger_id   Id of the triggering record, or 0.
+	 * @return int Id of the new version, or 0 when it could not be stored.
+	 */
 	public function capture_snapshot( string $surface, string $trigger_type, int $trigger_id = 0 ): int {
 		global $wpdb;
 
@@ -58,6 +71,12 @@ class Policy_Version_Manager {
 		return false === $inserted ? 0 : (int) $wpdb->insert_id;
 	}
 
+	/**
+	 * Returns the newest policy version of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array|null Version row, or null when there is none.
+	 */
 	public function latest_version( string $surface ): ?array {
 		global $wpdb;
 
@@ -74,6 +93,12 @@ class Policy_Version_Manager {
 		return is_array( $row ) ? $row : null;
 	}
 
+	/**
+	 * Returns one policy version.
+	 *
+	 * @param int $version_id Version id.
+	 * @return array|null Version row, or null when not found.
+	 */
 	public function get_version( int $version_id ): ?array {
 		global $wpdb;
 
@@ -90,6 +115,13 @@ class Policy_Version_Manager {
 		return is_array( $row ) ? $row : null;
 	}
 
+	/**
+	 * Compares two policy versions, listing the directives and source values added or removed.
+	 *
+	 * @param array|null $previous Earlier version, or null for the first version.
+	 * @param array      $current  Later version.
+	 * @return array Added and removed directives and values.
+	 */
 	public function diff_versions( ?array $previous, array $current ): array {
 		$prev_snapshot = $this->decode_snapshot( $previous['policy_snapshot'] ?? '' );
 		$next_snapshot = $this->decode_snapshot( $current['policy_snapshot'] ?? '' );
@@ -123,6 +155,13 @@ class Policy_Version_Manager {
 		return $diff;
 	}
 
+	/**
+	 * Builds the snapshot stored for a version from the profile, approved sources and hashes.
+	 *
+	 * @param string $surface Surface slug.
+	 * @param array  $profile Policy profile row.
+	 * @return array Snapshot data.
+	 */
 	private function build_snapshot( string $surface, array $profile ): array {
 		$directives = json_decode( (string) $profile['directives'], true );
 		$overrides  = json_decode( (string) $profile['overrides'], true );
@@ -164,6 +203,12 @@ class Policy_Version_Manager {
 		);
 	}
 
+	/**
+	 * Loads the policy profile row of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array|null Profile row, or null when not found.
+	 */
 	private function load_profile( string $surface ): ?array {
 		global $wpdb;
 
@@ -180,6 +225,12 @@ class Policy_Version_Manager {
 		return is_array( $row ) ? $row : null;
 	}
 
+	/**
+	 * Loads the approved sources of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Source rows.
+	 */
 	private function load_approved_sources( string $surface ): array {
 		global $wpdb;
 
@@ -196,6 +247,12 @@ class Policy_Version_Manager {
 		return is_array( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Loads the active hashes of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Hash rows.
+	 */
 	private function load_active_hashes( string $surface ): array {
 		global $wpdb;
 
@@ -212,16 +269,35 @@ class Policy_Version_Manager {
 		return is_array( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Decodes a stored snapshot.
+	 *
+	 * @param string $json Snapshot JSON.
+	 * @return array Snapshot data, or an empty array when the JSON is invalid.
+	 */
 	private function decode_snapshot( string $json ): array {
 		$decoded = json_decode( $json, true );
 		return is_array( $decoded ) ? $decoded : array();
 	}
 
+	/**
+	 * Restricts a surface name to the known surfaces.
+	 *
+	 * @param string $surface Raw surface.
+	 * @return string A known surface slug, or an empty string.
+	 */
 	private function normalise_surface( string $surface ): string {
 		$surface = strtolower( trim( sanitize_text_field( $surface ) ) );
 		return in_array( $surface, Automation_Config::SURFACES, true ) ? $surface : '';
 	}
 
+	/**
+	 * Cleans a short identifier and trims it to a length.
+	 *
+	 * @param string $token  Raw value.
+	 * @param int    $length Maximum length.
+	 * @return string Lowercase value.
+	 */
 	private function normalise_token( string $token, int $length ): string {
 		return substr( strtolower( trim( sanitize_text_field( $token ) ) ), 0, $length );
 	}

@@ -40,6 +40,13 @@ class Discovery {
 	private Feature_Gate $gate;
 	private Policy_Change_Manager $policy_changes;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log                  $audit          Audit log.
+	 * @param Feature_Gate               $gate           Feature gate.
+	 * @param Policy_Change_Manager|null $policy_changes Policy change manager, a new one is created when omitted.
+	 */
 	public function __construct( Audit_Log $audit, Feature_Gate $gate, ?Policy_Change_Manager $policy_changes = null ) {
 		$this->audit          = $audit;
 		$this->gate           = $gate;
@@ -297,6 +304,13 @@ class Discovery {
 
 	// ── DB upsert ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Adds newly discovered sources to the inventory or refreshes the ones already known.
+	 *
+	 * @param array  $sources Discovered sources.
+	 * @param string $surface Surface slug.
+	 * @return array Counts of sources added and updated.
+	 */
 	private function upsert_sources( array $sources, string $surface ): array {
 		$added   = 0;
 		$updated = 0;
@@ -329,6 +343,14 @@ class Discovery {
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Resolves a URL found in a page and describes it as a policy source.
+	 *
+	 * @param string $raw_url   URL as found in the markup.
+	 * @param string $directive CSP directive it was found under.
+	 * @param string $base_url  Base URL used to resolve relative URLs.
+	 * @return array|null Source details, or null when the URL cannot be used.
+	 */
 	private function classify_url( string $raw_url, string $directive, string $base_url ): ?array {
 		$resolved = $this->resolve_url( $raw_url, $base_url );
 		if ( null === $resolved ) {
@@ -384,6 +406,12 @@ class Discovery {
 		return $base_dir . $raw_url;
 	}
 
+	/**
+	 * Checks whether a source is inline data (a data: or blob: URI).
+	 *
+	 * @param string $src Source value.
+	 * @return bool True for data: and blob: sources.
+	 */
 	private function is_inline_data( string $src ): bool {
 		return str_starts_with( $src, 'data:' ) || str_starts_with( $src, 'blob:' );
 	}

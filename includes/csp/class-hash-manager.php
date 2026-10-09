@@ -95,6 +95,12 @@ class Hash_Manager {
 	/** Which surface's buffer is currently open, or null. Used by the shutdown fallback -- see maybe_end_buffer_on_shutdown(). */
 	private ?string $buffer_surface = null;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log    $audit Audit log.
+	 * @param Feature_Gate $gate  Feature gate.
+	 */
 	public function __construct( Audit_Log $audit, Feature_Gate $gate ) {
 		$this->audit = $audit;
 		$this->gate  = $gate;
@@ -156,14 +162,30 @@ class Hash_Manager {
 		$this->start_buffer( 'frontend' );
 	}
 
+	/**
+	 * Starts output buffering on admin pages.
+	 *
+	 * @return void
+	 */
 	public function start_buffer_admin(): void {
 		$this->start_buffer( 'admin' );
 	}
 
+	/**
+	 * Starts output buffering on the login page.
+	 *
+	 * @return void
+	 */
 	public function start_buffer_login(): void {
 		$this->start_buffer( 'login' );
 	}
 
+	/**
+	 * Starts output buffering for a surface, unless a buffer is already open.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return void
+	 */
 	private function start_buffer( string $surface ): void {
 		// Guards against opening a second buffer on top of one already
 		// open (e.g. a hook firing twice in one request) -- without this,
@@ -179,14 +201,29 @@ class Hash_Manager {
 		}
 	}
 
+	/**
+	 * Ends buffering on the front end and records the inline blocks found.
+	 *
+	 * @return void
+	 */
 	public function end_buffer_frontend(): void {
 		$this->flush_buffer( 'frontend' );
 	}
 
+	/**
+	 * Ends buffering on admin pages and records the inline blocks found.
+	 *
+	 * @return void
+	 */
 	public function end_buffer_admin(): void {
 		$this->flush_buffer( 'admin' );
 	}
 
+	/**
+	 * Ends buffering on the login page and records the inline blocks found.
+	 *
+	 * @return void
+	 */
 	public function end_buffer_login(): void {
 		$this->flush_buffer( 'login' );
 	}
@@ -614,6 +651,17 @@ class Hash_Manager {
 
 	// ── Internal ──────────────────────────────────────────────────────────────
 
+	/**
+	 * Records a hash in the inventory, refreshing an existing one or inserting a new one within the insert limit.
+	 *
+	 * @param string $hash_b64       Base64 hash value.
+	 * @param string $fingerprint    Fingerprint of the inline content.
+	 * @param string $directive      CSP directive the hash applies to.
+	 * @param string $surface        Surface slug.
+	 * @param string $source_file    File the block came from.
+	 * @param string $source_context Extra context about where the block was found.
+	 * @return void
+	 */
 	private function upsert(
 		string $hash_b64,
 		string $fingerprint,
