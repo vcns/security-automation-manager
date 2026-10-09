@@ -1063,6 +1063,64 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringNotContainsString( 'data:', $this->extract_directive( $policy, 'img-src' ) );
 	}
 
+	// ── bypass_text() translation boundary ───────────────────────────────────
+
+	protected function tearDown(): void {
+		unset( $GLOBALS['wp_test_translations'] );
+		parent::tearDown();
+	}
+
+	/** @return array<string, array{string}> One case per BYPASS_CATALOG key. */
+	public static function bypass_catalog_keys(): array {
+		$cases = array();
+		foreach ( array_keys( Policy_Builder::BYPASS_CATALOG ) as $flag ) {
+			$cases[ $flag ] = array( $flag );
+		}
+		return $cases;
+	}
+
+	/**
+	 * Every catalog entry must have a non-empty translated label and risk
+	 * note that match the catalog's own English text, so a catalog edit
+	 * cannot drift from bypass_text() unnoticed.
+	 *
+	 * @dataProvider bypass_catalog_keys
+	 */
+	public function test_bypass_text_matches_catalog_for_every_flag( string $flag ): void {
+		$text = Policy_Builder::bypass_text( $flag );
+
+		$this->assertNotSame( '', $text['label'] );
+		$this->assertNotSame( '', $text['risk_note'] );
+		$this->assertSame( Policy_Builder::BYPASS_CATALOG[ $flag ]['label'], $text['label'] );
+		$this->assertSame( Policy_Builder::BYPASS_CATALOG[ $flag ]['risk_note'], $text['risk_note'] );
+	}
+
+	/**
+	 * @dataProvider bypass_catalog_keys
+	 */
+	public function test_bypass_text_passes_every_flag_through_translation( string $flag ): void {
+		$english = Policy_Builder::bypass_text( $flag );
+		$GLOBALS['wp_test_translations'] = array(
+			$english['label']     => 'L:' . $english['label'],
+			$english['risk_note'] => 'R:' . $english['risk_note'],
+		);
+
+		$text = Policy_Builder::bypass_text( $flag );
+
+		$this->assertSame( 'L:' . $english['label'], $text['label'] );
+		$this->assertSame( 'R:' . $english['risk_note'], $text['risk_note'] );
+	}
+
+	public function test_bypass_text_returns_empty_strings_for_unknown_flag(): void {
+		$this->assertSame(
+			array(
+				'label'     => '',
+				'risk_note' => '',
+			),
+			Policy_Builder::bypass_text( 'no_such_flag' )
+		);
+	}
+
 	/**
 	 * Extracts a single directive's value segment from a built policy string.
 	 */
