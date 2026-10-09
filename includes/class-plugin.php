@@ -145,6 +145,7 @@ final class Plugin {
 		if ( 'github' !== WP_SAM_DISTRIBUTION_CHANNEL ) {
 			return;
 		}
+		// phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- only reached on the GitHub channel, which is not served by wordpress.org language packs.
 		load_plugin_textdomain(
 			'vcns-security-automation-manager',
 			false,

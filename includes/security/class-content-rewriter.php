@@ -213,7 +213,7 @@ abstract class Content_Rewriter extends Request_Surface {
 	 * when it is a public front-end page request eligible for rewriting.
 	 */
 	protected function request_exclusion_reason(): ?string {
-		$method = $_SERVER['REQUEST_METHOD'] ?? null;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? wp_unslash( $_SERVER['REQUEST_METHOD'] ) : null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared against an exact GET/HEAD allowlist; sanitizing would strip percent-encoded bytes and let e.g. GET%00 pass as GET.
 		if ( is_string( $method ) && ! in_array( strtoupper( $method ), array( 'GET', 'HEAD' ), true ) ) {
 			return 'method';
 		}

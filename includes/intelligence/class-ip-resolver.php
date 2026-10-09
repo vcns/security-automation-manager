@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Ip_Resolver {
 
 	public static function resolve(): string {
-		$candidate = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+		$candidate = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		if ( '' === $candidate ) {
 			return '';
 		}
