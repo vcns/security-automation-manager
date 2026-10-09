@@ -18,6 +18,13 @@ class X_Content_Type_Options_Builder extends Pillar_Header_Builder {
 
 	public const PILLAR_KEY = 'x-content-type-options';
 
+	/**
+	 * Sends X-Content-Type-Options: nosniff.
+	 *
+	 * @param array  $profile Pillar profile row, unused.
+	 * @param string $surface Surface slug, unused.
+	 * @return bool Always true.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		unset( $profile, $surface );
 		header( 'X-Content-Type-Options: nosniff' );

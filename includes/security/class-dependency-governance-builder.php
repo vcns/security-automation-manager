@@ -52,10 +52,22 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 
 	private const MARKER = 'data-wp-sam-dependency-remove';
 
+	/**
+	 * Checks whether dependency governance is enabled for a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return bool True when a profile exists and is enabled.
+	 */
 	protected function is_active( string $surface ): bool {
 		return null !== $this->load_profile( $surface );
 	}
 
+	/**
+	 * Loads the enabled dependency governance profile of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array|null Profile row, or null when missing or disabled.
+	 */
 	private function load_profile( string $surface ): ?array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_pillar_profiles';
@@ -67,6 +79,12 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 		return $row;
 	}
 
+	/**
+	 * Reads the governance mode from a profile's payload.
+	 *
+	 * @param array $profile Pillar profile row.
+	 * @return string enforce, or report for anything else.
+	 */
 	public static function extract_mode( array $profile ): string {
 		$payload = json_decode( (string) ( $profile['payload'] ?? '' ), true );
 		$mode    = is_array( $payload ) ? (string) ( $payload['mode'] ?? '' ) : '';
@@ -134,6 +152,12 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 		return array_values( array_unique( $origins ) );
 	}
 
+	/**
+	 * Checks whether an origin is first-party.
+	 *
+	 * @param string $origin Origin, or the first-party marker.
+	 * @return bool True for first-party origins.
+	 */
 	public static function is_first_party( string $origin ): bool {
 		return 'first-party' === $origin || in_array( $origin, self::first_party_origins(), true );
 	}
@@ -169,6 +193,13 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 
 	// ── Rewrite pass ──────────────────────────────────────────────────────────
 
+	/**
+	 * Classifies the scripts and stylesheets in a page against the dependency inventory and, in enforce mode, removes those marked for removal.
+	 *
+	 * @param string $html    HTML of the page.
+	 * @param string $surface Surface slug.
+	 * @return string The HTML, unchanged when nothing needs removing or parsing fails.
+	 */
 	protected function rewrite( string $html, string $surface ): string {
 		if ( false === stripos( $html, '<script' ) && false === stripos( $html, '<link' ) ) {
 			return $html;
@@ -341,6 +372,12 @@ class Dependency_Governance_Builder extends Content_Rewriter {
 		return $by_key;
 	}
 
+	/**
+	 * Writes the touched dependency inventory rows to the database.
+	 *
+	 * @param array $inventory Inventory rows keyed by dependency.
+	 * @return void
+	 */
 	private function persist_inventory( array $inventory ): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_dependency_inventory';
