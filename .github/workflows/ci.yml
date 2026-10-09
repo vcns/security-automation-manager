@@ -84,7 +84,10 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ github.head_ref || github.ref_name }}
+          # Check out by SHA, not branch name: for a pull request from a fork
+          # the head branch does not exist in this repository, so a ref of
+          # github.head_ref fails with "A branch or tag ... could not be found".
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: TruffleHog scan
         uses: trufflesecurity/trufflehog@main
