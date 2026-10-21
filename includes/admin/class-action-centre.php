@@ -111,6 +111,11 @@ class Action_Centre {
 		return $items;
 	}
 
+	/**
+	 * Counts the open items in the Action Centre.
+	 *
+	 * @return int Number of items.
+	 */
 	public function count_open(): int {
 		return count( $this->items() );
 	}
@@ -132,6 +137,12 @@ class Action_Centre {
 		return implode( "\n", $lines );
 	}
 
+	/**
+	 * Returns the consequence text for a recommendation key, matching by prefix where needed.
+	 *
+	 * @param string $key Recommendation key.
+	 * @return string Consequence text, or an empty string.
+	 */
 	private function describe_consequence( string $key ): string {
 		if ( isset( self::CONSEQUENCE_COPY[ $key ] ) ) {
 			return self::CONSEQUENCE_COPY[ $key ];
@@ -146,6 +157,11 @@ class Action_Centre {
 		return '';
 	}
 
+	/**
+	 * Counts CSP sources waiting for approval.
+	 *
+	 * @return int Number of pending sources.
+	 */
 	private function pending_csp_source_count(): int {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_source_inventory';
@@ -159,6 +175,11 @@ class Action_Centre {
 		);
 	}
 
+	/**
+	 * Counts dependencies that have not been classified.
+	 *
+	 * @return int Number of unclassified dependencies.
+	 */
 	private function unclassified_dependency_count(): int {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_dependency_inventory';

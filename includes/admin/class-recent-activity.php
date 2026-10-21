@@ -58,6 +58,11 @@ class Recent_Activity {
 		);
 	}
 
+	/**
+	 * Returns the label of the period the activity covers.
+	 *
+	 * @return string Translated label.
+	 */
 	public function period_label(): string {
 		return __( 'Last 24 hours', 'vcns-security-automation-manager' );
 	}

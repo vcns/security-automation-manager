@@ -290,6 +290,11 @@ class Protection_Status {
 		);
 	}
 
+	/**
+	 * Counts dependencies that have not been classified.
+	 *
+	 * @return int Number of unclassified dependencies.
+	 */
 	private function unclassified_dependency_count(): int {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_dependency_inventory';

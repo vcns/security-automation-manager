@@ -68,6 +68,12 @@ class Presentation_Preferences {
 		);
 	}
 
+	/**
+	 * Checks whether a user has completed or skipped the Welcome screen.
+	 *
+	 * @param int|null $user_id User id, defaults to the current user.
+	 * @return bool True when onboarding is finished.
+	 */
 	public static function has_completed_onboarding( ?int $user_id = null ): bool {
 		$state = self::get_for_user( $user_id )['onboarding_state'];
 		return in_array( $state, self::ONBOARDING_STATES, true );
@@ -128,6 +134,12 @@ class Presentation_Preferences {
 		}
 	}
 
+	/**
+	 * Returns the given user id, or the current user's.
+	 *
+	 * @param int|null $user_id User id, or null.
+	 * @return int User id.
+	 */
 	private static function resolve_user_id( ?int $user_id ): int {
 		return null !== $user_id ? $user_id : get_current_user_id();
 	}

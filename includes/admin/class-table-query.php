@@ -91,6 +91,13 @@ final class Table_Query {
 	// All builders return null when the filter is inactive, or ['sql' => '...',
 	// 'args' => [...]] with placeholders that must be passed through $wpdb->prepare().
 
+	/**
+	 * Builds an IN condition for a multi-select filter, capped at 50 values.
+	 *
+	 * @param string $column     Column name.
+	 * @param array  $raw_values Selected values.
+	 * @return array|null Fragment with sql and args, or null when nothing is selected.
+	 */
 	public static function multi_select_where( string $column, array $raw_values ): ?array {
 		$values = array_slice( array_values( array_unique( $raw_values ) ), 0, 50 );
 		if ( empty( $values ) ) {
@@ -105,6 +112,13 @@ final class Table_Query {
 		);
 	}
 
+	/**
+	 * Builds an equality condition for a text filter.
+	 *
+	 * @param string $column    Column name.
+	 * @param string $raw_value Submitted value.
+	 * @return array|null Fragment with sql and args, or null when the value is empty.
+	 */
 	public static function equals_where( string $column, string $raw_value ): ?array {
 		$value = trim( $raw_value );
 		if ( '' === $value ) {
@@ -117,6 +131,14 @@ final class Table_Query {
 		);
 	}
 
+	/**
+	 * Builds a contains condition for a search filter.
+	 *
+	 * @param \wpdb  $wpdb     WordPress database object, used to escape LIKE wildcards.
+	 * @param string $column   Column name.
+	 * @param string $raw_term Search term.
+	 * @return array|null Fragment with sql and args, or null when the term is empty.
+	 */
 	public static function like_where( \wpdb $wpdb, string $column, string $raw_term ): ?array {
 		$term = trim( $raw_term );
 		if ( '' === $term ) {
@@ -155,6 +177,13 @@ final class Table_Query {
 		);
 	}
 
+	/**
+	 * Builds a minimum-value condition.
+	 *
+	 * @param string   $column  Column name.
+	 * @param int|null $raw_min Minimum value, or null for no filter.
+	 * @return array|null Fragment with sql and args, or null when there is no minimum.
+	 */
 	public static function numeric_gte_where( string $column, ?int $raw_min ): ?array {
 		if ( null === $raw_min ) {
 			return null;
