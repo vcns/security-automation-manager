@@ -90,6 +90,15 @@ class Violation_Reporter {
 	 */
 	private array $profile_mode_cache = array();
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log                   $audit             Audit log.
+	 * @param Learning_Window|null        $learning_window   Learning window.
+	 * @param Policy_Change_Manager|null  $policy_changes    Policy change manager, a new one is created when omitted.
+	 * @param Pillar_Violation_Store|null $pillar_violations Pillar violation store, a new one is created when omitted.
+	 * @param Rate_Limiter|null           $rate_limiter      Rate limiter, a new one is created when omitted.
+	 */
 	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Pillar_Violation_Store $pillar_violations = null, ?Rate_Limiter $rate_limiter = null ) {
 		$this->audit             = $audit;
 		$this->learning_window   = $learning_window;
@@ -262,6 +271,12 @@ class Violation_Reporter {
 		return array();
 	}
 
+	/**
+	 * Maps a legacy application/csp-report payload to the internal report shape.
+	 *
+	 * @param array $r The csp-report object.
+	 * @return array Report fields.
+	 */
 	private function map_csp_report( array $r ): array {
 		// Legacy field names use hyphens (application/csp-report format).
 		// script-sample is only present when 'report-sample' is in the policy (R7).
@@ -281,6 +296,12 @@ class Violation_Reporter {
 		);
 	}
 
+	/**
+	 * Maps a Reporting API (application/reports+json) body to the internal report shape.
+	 *
+	 * @param array $b The report body.
+	 * @return array Report fields.
+	 */
 	private function map_reporting_api( array $b ): array {
 		// Reporting API field names use camelCase (application/reports+json format).
 		// sample is only present when 'report-sample' is in the policy (R7).
@@ -302,6 +323,12 @@ class Violation_Reporter {
 
 	// ── Storage ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Stores a violation report, or increments the count of an identical one.
+	 *
+	 * @param array $r Report fields.
+	 * @return void
+	 */
 	private function store_report( array $r ): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_violation_reports';
@@ -549,6 +576,14 @@ class Violation_Reporter {
 		);
 	}
 
+	/**
+	 * Checks whether a source is already in the inventory.
+	 *
+	 * @param string $surface   Surface slug.
+	 * @param string $directive CSP directive.
+	 * @param string $host      Source host.
+	 * @return bool True when it exists.
+	 */
 	private function has_existing_source_proposal( string $surface, string $directive, string $host ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_source_inventory';
@@ -565,6 +600,13 @@ class Violation_Reporter {
 		return ! empty( $id );
 	}
 
+	/**
+	 * Builds a proposed policy source from a violation report.
+	 *
+	 * @param array  $r           Report fields.
+	 * @param string $blocked_uri The blocked URI.
+	 * @return array|null Candidate source, or null when the report does not describe a source.
+	 */
 	private function source_candidate_from_report( array $r, string $blocked_uri ): ?array {
 		$directive = $this->normalise_directive(
 			isset( $r['effective_directive'] ) && '' !== $r['effective_directive']
@@ -609,6 +651,12 @@ class Violation_Reporter {
 		);
 	}
 
+	/**
+	 * Reduces a directive string to its bare directive name.
+	 *
+	 * @param string $directive Raw directive.
+	 * @return string Directive name.
+	 */
 	private function normalise_directive( string $directive ): string {
 		$directive = strtolower( trim( $directive ) );
 		if ( str_contains( $directive, ' ' ) ) {
@@ -619,6 +667,12 @@ class Violation_Reporter {
 		return is_string( $normalised ) ? $normalised : '';
 	}
 
+	/**
+	 * Checks whether a blocked URI is a keyword such as inline or eval, or a data: or blob: URI, rather than a host.
+	 *
+	 * @param string $blocked_uri Blocked URI.
+	 * @return bool True when it is not a host.
+	 */
 	private static function is_non_host_blocked_uri( string $blocked_uri ): bool {
 		$value = strtolower( $blocked_uri );
 		if ( in_array( $value, array( 'inline', 'eval', 'wasm-eval', 'data', 'blob', 'about' ), true ) ) {
@@ -656,6 +710,11 @@ class Violation_Reporter {
 		return ! empty( $host ) ? strtolower( sanitize_text_field( substr( (string) $host, 0, 255 ) ) ) : null;
 	}
 
+	/**
+	 * Lists the hosts a report's document URI may belong to.
+	 *
+	 * @return array Lowercase host names.
+	 */
 	private function get_allowed_document_hosts(): array {
 		$urls = array(
 			home_url(),
@@ -687,6 +746,12 @@ class Violation_Reporter {
 		return array_values( array_unique( $hosts ) );
 	}
 
+	/**
+	 * Works out which surface a report came from.
+	 *
+	 * @param string $uri Document URI of the report.
+	 * @return string Surface slug.
+	 */
 	private function surface_from_document_uri( string $uri ): string {
 		if ( empty( $uri ) ) {
 			return 'frontend';

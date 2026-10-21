@@ -34,12 +34,22 @@ class Conflict_Detector {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log that records detected conflicts.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the wp_headers check and the daily probe.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		// Hook late into wp_headers to detect competing CSP values already queued.
 		add_filter( 'wp_headers', array( $this, 'check_headers_filter' ), PHP_INT_MAX );
@@ -205,6 +215,14 @@ class Conflict_Detector {
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Writes a warning to the audit log for a competing CSP header.
+	 *
+	 * @param string $source Where the competing header was found.
+	 * @param string $header Header name.
+	 * @param string $value  Header value, only a prefix is logged.
+	 * @return void
+	 */
 	private function record_conflict( string $source, string $header, string $value ): void {
 		$guidance = $this->get_source_guidance( $source );
 		$this->audit->log(
@@ -246,6 +264,12 @@ class Conflict_Detector {
 		);
 	}
 
+	/**
+	 * Returns the advice shown for a given conflict source.
+	 *
+	 * @param string $source Conflict source identifier.
+	 * @return string Guidance text.
+	 */
 	private function get_source_guidance( string $source ): string {
 		return match ( $source ) {
 			'htaccess'        => 'Review Apache or LiteSpeed .htaccess Header directives before enabling enforcement here.',
