@@ -285,10 +285,26 @@ final class Scanner_Identity_Store {
 		return false !== $encoded ? $encoded : '[]';
 	}
 
+	/**
+	 * Marks a scanner identity as authorised by the customer; a note is required.
+	 *
+	 * @param int    $id      Identity id.
+	 * @param int    $user_id Administrator user id.
+	 * @param string $note    Reason note.
+	 * @return bool True when the decision was stored.
+	 */
 	public function authorise( int $id, int $user_id, string $note ): bool {
 		return $this->set_decision( $id, 'customer_authorised', $user_id, $note );
 	}
 
+	/**
+	 * Marks a scanner identity as explicitly denied; a note is required.
+	 *
+	 * @param int    $id      Identity id.
+	 * @param int    $user_id Administrator user id.
+	 * @param string $note    Reason note.
+	 * @return bool True when the decision was stored.
+	 */
 	public function deny( int $id, int $user_id, string $note ): bool {
 		return $this->set_decision( $id, 'explicitly_denied', $user_id, $note );
 	}
@@ -298,6 +314,15 @@ final class Scanner_Identity_Store {
 		return $this->set_decision( $id, 'unknown', $user_id, $note );
 	}
 
+	/**
+	 * Stores an administrator decision on a scanner identity.
+	 *
+	 * @param int    $id      Identity id.
+	 * @param string $state   Decision state.
+	 * @param int    $user_id Administrator user id.
+	 * @param string $note    Reason note, required.
+	 * @return bool True when the decision was stored.
+	 */
 	private function set_decision( int $id, string $state, int $user_id, string $note ): bool {
 		if ( '' === trim( $note ) ) {
 			return false;

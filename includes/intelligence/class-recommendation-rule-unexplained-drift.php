@@ -24,6 +24,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Recommendation_Rule_Unexplained_Drift implements Recommendation_Rule {
 
+	/**
+	 * Returns the rule id.
+	 *
+	 * @return string Rule id.
+	 */
 	public function id(): string {
 		return 'unexplained_high_risk_drift';
 	}

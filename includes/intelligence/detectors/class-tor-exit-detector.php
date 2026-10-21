@@ -37,30 +37,66 @@ final class Tor_Exit_Detector extends Detector {
 
 	private Tor_Exit_List_Store $tor_exit_list;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Tor_Exit_List_Store|null $tor_exit_list Tor exit list store, a new one is created when omitted.
+	 */
 	public function __construct( ?Tor_Exit_List_Store $tor_exit_list = null ) {
 		$this->tor_exit_list = $tor_exit_list ?? new Tor_Exit_List_Store();
 	}
 
+	/**
+	 * Returns the stable id of the Tor exit node detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'tor-exit-node';
 	}
 
+	/**
+	 * Returns the family the Tor exit node detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'network-intelligence';
 	}
 
+	/**
+	 * Returns the plain-language description of the Tor exit node detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags requests from a current Tor exit node -- not itself evidence of malicious intent.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the Tor exit node detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the control actions the Tor exit node detector may be set to.
+	 *
+	 * @return array Control action keys.
+	 */
 	public function allowed_control_actions(): array {
 		return array( 'observe', 'enforce' );
 	}
 
+	/**
+	 * Flags a request that comes from a known Tor exit node.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return array|null Finding data, or null when nothing was found.
+	 */
 	public function evaluate( array $context ): ?array {
 		$ip = (string) ( $context['ip'] ?? '' );
 		if ( '' === $ip || ! $this->tor_exit_list->is_exit_node( $ip ) ) {

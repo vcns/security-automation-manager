@@ -33,6 +33,14 @@ final class Drift_Scanner {
 	private Drift_Store $drifts;
 	private Change_Log_Store $change_log;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Baseline_State_Builder $state_builder Builder of the current state.
+	 * @param Baseline_Store         $baselines     Store of baselines.
+	 * @param Drift_Store            $drifts        Store of drift records.
+	 * @param Change_Log_Store       $change_log    Change log used to explain drift.
+	 */
 	public function __construct(
 		Baseline_State_Builder $state_builder,
 		Baseline_Store $baselines,
@@ -192,6 +200,12 @@ final class Drift_Scanner {
 		);
 	}
 
+	/**
+	 * Describes the recorded change that a drift correlates with.
+	 *
+	 * @param array $entry Change log entry.
+	 * @return string Description.
+	 */
 	private function format_correlation( array $entry ): string {
 		return sprintf(
 			/* translators: 1: change type label, 2: human-readable relative time */

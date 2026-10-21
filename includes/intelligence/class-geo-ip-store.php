@@ -49,6 +49,11 @@ final class Geo_Ip_Store {
 	/** @var callable(string):(array|\WP_Error) Real wp_remote_get() by default; injectable so tests never make a real HTTP call. */
 	private $http_get;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param callable|null $http_get HTTP GET function, defaults to wp_remote_get().
+	 */
 	public function __construct( ?callable $http_get = null ) {
 		$this->http_get = $http_get ?? static fn ( string $url ) => wp_remote_get(
 			$url,
@@ -60,6 +65,11 @@ final class Geo_Ip_Store {
 		);
 	}
 
+	/**
+	 * Checks whether a geolocation token is saved.
+	 *
+	 * @return bool True when a token is set.
+	 */
 	public function is_configured(): bool {
 		return '' !== $this->token();
 	}
@@ -105,6 +115,11 @@ final class Geo_Ip_Store {
 		return Credential_Vault::is_sealed_but_undecryptable( $sealed );
 	}
 
+	/**
+	 * Returns the saved geolocation token, decrypted.
+	 *
+	 * @return string The token, or an empty string.
+	 */
 	private function token(): string {
 		$sealed = (string) get_option( 'wp_sam_geoip_ipinfo_token', '' );
 		if ( '' === $sealed ) {

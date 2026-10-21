@@ -76,6 +76,19 @@ final class Traffic_Guard {
 	/** @var callable(int):void Real usleep() by default; injectable so tests never actually sleep. */
 	private $throttle_delay;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Traffic_Policy_Store          $policies             Traffic policy store.
+	 * @param Ip_Rule_Store                 $ip_rules             IP rule store.
+	 * @param Traffic_Block_Store           $blocks               Block store.
+	 * @param Rate_Limiter                  $rate_limiter         Rate limiter.
+	 * @param Network_Rule_Store            $network_rules        Network rule store.
+	 * @param Network_Intelligence_Resolver $network_intelligence Network intelligence resolver.
+	 * @param callable|null                 $is_privileged_user   Callback that says whether the current user is privileged, defaults to a capability check.
+	 * @param callable|null                 $respond_blocked      Callback that sends the blocked response, defaults to a 403 page.
+	 * @param callable|null                 $throttle_delay       Callback that delays a throttled request, defaults to sleeping.
+	 */
 	public function __construct(
 		Traffic_Policy_Store $policies,
 		Ip_Rule_Store $ip_rules,
@@ -102,11 +115,21 @@ final class Traffic_Guard {
 		};
 	}
 
+	/**
+	 * Registers the request check and the failed login hook.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'enforce' ), 1 );
 		add_action( 'wp_login_failed', array( $this, 'on_login_failed' ) );
 	}
 
+	/**
+	 * Applies the traffic policy to the current request and blocks or throttles it when a rule matches.
+	 *
+	 * @return void
+	 */
 	public function enforce(): void {
 		if ( Surface_Classifier::is_conflict_probe_request() ) {
 			return;
@@ -336,6 +359,13 @@ final class Traffic_Guard {
 		);
 	}
 
+	/**
+	 * Sends a 403 response, with Retry-After when known, and stops the request.
+	 *
+	 * @param string   $reason              Reason for the block, unused.
+	 * @param int|null $retry_after_seconds Seconds until the visitor may retry, or null.
+	 * @return void
+	 */
 	private function real_respond_blocked( string $reason, ?int $retry_after_seconds ): void {
 		unset( $reason );
 

@@ -37,6 +37,11 @@ final class Surface_Classifier {
 
 	// ── Surface detection ─────────────────────────────────────────────────────
 
+	/**
+	 * Works out which surface the current request belongs to.
+	 *
+	 * @return string Surface slug: api, login, admin or frontend.
+	 */
 	public static function detect(): string {
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
 			return 'api';
@@ -60,6 +65,11 @@ final class Surface_Classifier {
 		return 'frontend';
 	}
 
+	/**
+	 * Returns the request path without the query string or a trailing slash.
+	 *
+	 * @return string Path, or an empty string.
+	 */
 	public static function request_path(): string {
 		$uri = self::raw_server_value( 'REQUEST_URI' );
 		if ( '' === $uri ) {
@@ -70,6 +80,11 @@ final class Surface_Classifier {
 		return is_string( $path ) ? rtrim( $path, '/' ) : '';
 	}
 
+	/**
+	 * Returns the raw query string of the request.
+	 *
+	 * @return string Query string.
+	 */
 	public static function query_string(): string {
 		return self::raw_server_value( 'QUERY_STRING' );
 	}

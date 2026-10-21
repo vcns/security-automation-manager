@@ -54,6 +54,13 @@ final class Identity_Resolver {
 	/** @var callable(string):string Real gethostbyname() by default; injectable so tests never make a real DNS call. */
 	private $forward_lookup;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Scanner_Vendor_Store $vendors        Vendor catalogue.
+	 * @param callable|null        $reverse_lookup Reverse DNS lookup function, defaults to gethostbyaddr().
+	 * @param callable|null        $forward_lookup Forward DNS lookup function, defaults to gethostbyname().
+	 */
 	public function __construct( Scanner_Vendor_Store $vendors, ?callable $reverse_lookup = null, ?callable $forward_lookup = null ) {
 		$this->vendors        = $vendors;
 		$this->reverse_lookup = $reverse_lookup ?? static fn ( string $ip ) => @gethostbyaddr( $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- gethostbyaddr() emits a warning on lookup failure; failure is a normal, expected outcome here.
@@ -163,6 +170,12 @@ final class Identity_Resolver {
 		return Cidr_Matcher::ip_in_any_cidr( $ip, Cidr_Matcher::LOOPBACK_CIDRS );
 	}
 
+	/**
+	 * Maps a vendor category to a verification state.
+	 *
+	 * @param string $category Vendor category.
+	 * @return string Verification state.
+	 */
 	private function state_for_category( string $category ): string {
 		switch ( $category ) {
 			case 'known_commercial_scanner':

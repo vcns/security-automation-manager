@@ -31,6 +31,12 @@ final class Recommendation_Registry {
 
 	private static bool $defaults_registered = false;
 
+	/**
+	 * Registers a recommendation rule under its id.
+	 *
+	 * @param Recommendation_Rule $rule Rule to register.
+	 * @return void
+	 */
 	public static function register( Recommendation_Rule $rule ): void {
 		self::$rules[ $rule->id() ] = $rule;
 	}

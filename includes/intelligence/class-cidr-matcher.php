@@ -29,6 +29,13 @@ final class Cidr_Matcher {
 	 */
 	public const LOOPBACK_CIDRS = array( '127.0.0.0/8', '::1/128' );
 
+	/**
+	 * Checks whether an IP address falls inside a CIDR range.
+	 *
+	 * @param string $ip   IP address.
+	 * @param string $cidr Range in CIDR notation.
+	 * @return bool True when the address is inside the range.
+	 */
 	public static function ip_in_cidr( string $ip, string $cidr ): bool {
 		$parts = explode( '/', $cidr, 2 );
 		if ( 2 !== count( $parts ) ) {

@@ -56,6 +56,12 @@ final class Detector_Registry {
 
 	private static bool $defaults_registered = false;
 
+	/**
+	 * Registers a detector under its id.
+	 *
+	 * @param Detector $detector Detector to register.
+	 * @return void
+	 */
 	public static function register( Detector $detector ): void {
 		self::$detectors[ $detector->id() ] = $detector;
 	}
@@ -85,14 +91,32 @@ final class Detector_Registry {
 		self::register( new Legacy_Endpoint_Detector() );
 	}
 
+	/**
+	 * Checks whether a detector id is registered.
+	 *
+	 * @param string $id Detector id.
+	 * @return bool True when registered.
+	 */
 	public static function is_registered( string $id ): bool {
 		return isset( self::$detectors[ $id ] );
 	}
 
+	/**
+	 * Checks whether a detector is registered and currently available.
+	 *
+	 * @param string $id Detector id.
+	 * @return bool True when available.
+	 */
 	public static function is_available( string $id ): bool {
 		return isset( self::$detectors[ $id ] ) && self::$detectors[ $id ]->is_available();
 	}
 
+	/**
+	 * Returns a registered detector.
+	 *
+	 * @param string $id Detector id.
+	 * @return Detector|null The detector, or null when not registered.
+	 */
 	public static function get( string $id ): ?Detector {
 		return self::$detectors[ $id ] ?? null;
 	}

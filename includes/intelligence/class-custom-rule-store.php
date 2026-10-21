@@ -79,6 +79,12 @@ final class Custom_Rule_Store {
 		return $this->save( $id, $input );
 	}
 
+	/**
+	 * Deletes a custom detector rule.
+	 *
+	 * @param int $id Rule id.
+	 * @return bool True when a rule was deleted.
+	 */
 	public function delete( int $id ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_custom_detector_rules';
@@ -203,6 +209,12 @@ final class Custom_Rule_Store {
 		);
 	}
 
+	/**
+	 * Checks that a regular expression is valid.
+	 *
+	 * @param string $pattern Regular expression, with delimiters.
+	 * @return bool True when it compiles.
+	 */
 	private static function pattern_compiles( string $pattern ): bool {
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- deliberately probing whether $pattern is a valid PCRE; a warning here is the expected way PHP reports an invalid one.
 		return false !== @preg_match( $pattern, '' );

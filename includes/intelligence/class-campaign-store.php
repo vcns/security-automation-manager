@@ -70,6 +70,16 @@ final class Campaign_Store {
 		return is_array( $row ) ? $row : null;
 	}
 
+	/**
+	 * Records a detected campaign, updating the existing one for the same detector and surface.
+	 *
+	 * @param string $detector_id       Detector id.
+	 * @param string $detector_family   Detector family.
+	 * @param string $surface           Surface slug.
+	 * @param int    $participant_count Number of participants.
+	 * @param int    $event_count       Number of events.
+	 * @return void
+	 */
 	public function record( string $detector_id, string $detector_family, string $surface, int $participant_count, int $event_count ): void {
 		global $wpdb;
 		$table       = $wpdb->prefix . 'sam_campaigns';
@@ -116,6 +126,15 @@ final class Campaign_Store {
 		);
 	}
 
+	/**
+	 * Sets an administrator's disposition on a campaign; a note is required.
+	 *
+	 * @param int    $id       Campaign id.
+	 * @param string $status   New status: acknowledged, dismissed or blocked.
+	 * @param int    $admin_id Administrator user id.
+	 * @param string $note     Reason note.
+	 * @return bool True when the disposition was stored.
+	 */
 	public function disposition( int $id, string $status, int $admin_id, string $note ): bool {
 		if ( ! in_array( $status, array( 'acknowledged', 'dismissed', 'blocked' ), true ) ) {
 			return false; // 'detected' is the automatic default, never re-set by an admin.
@@ -143,6 +162,13 @@ final class Campaign_Store {
 		return false !== $result;
 	}
 
+	/**
+	 * Builds the fingerprint that identifies a campaign.
+	 *
+	 * @param string $detector_id Detector id.
+	 * @param string $surface     Surface slug.
+	 * @return string SHA-256 hash.
+	 */
 	private function fingerprint( string $detector_id, string $surface ): string {
 		return hash( 'sha256', $detector_id . '|' . $surface );
 	}

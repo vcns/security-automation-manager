@@ -32,6 +32,17 @@ final class Ip_Rule_Store {
 		return ! empty( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Adds an allow or block rule for an IP address or CIDR range.
+	 *
+	 * @param string   $list_type          List type, allow or block.
+	 * @param string   $cidr               IP address or CIDR range.
+	 * @param string   $surface            Surface slug.
+	 * @param string   $reason             Reason for the rule.
+	 * @param int      $created_by         User id of the creator.
+	 * @param int|null $expires_in_seconds Lifetime in seconds, or null for no expiry.
+	 * @return bool True when the rule was added.
+	 */
 	public function add( string $list_type, string $cidr, string $surface, string $reason, int $created_by, ?int $expires_in_seconds = null ): bool {
 		if ( ! in_array( $list_type, self::LIST_TYPES, true ) || '' === trim( $cidr ) ) {
 			return false;
@@ -57,6 +68,12 @@ final class Ip_Rule_Store {
 		return false !== $result;
 	}
 
+	/**
+	 * Deletes an IP rule.
+	 *
+	 * @param int $id Rule id.
+	 * @return bool True when a rule was deleted.
+	 */
 	public function delete( int $id ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_ip_rules';

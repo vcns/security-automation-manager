@@ -35,22 +35,48 @@ final class Header_Consistency_Detector extends Detector {
 
 	private const BROWSER_TOKEN_PATTERN = '#Chrome/\d|Firefox/\d|Edg/\d|Edge/\d|Version/\d[\d.]*\s+Safari/\d#';
 
+	/**
+	 * Returns the stable id of the header consistency detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'header-consistency';
 	}
 
+	/**
+	 * Returns the family the header consistency detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'header-consistency';
 	}
 
+	/**
+	 * Returns the plain-language description of the header consistency detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags a request claiming to be a specific browser but missing a header every real browser sends unconditionally.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the header consistency detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Flags a browser user agent that sends no Accept-Language header.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return array|null Finding data, or null when nothing was found.
+	 */
 	public function evaluate( array $context ): ?array {
 		$user_agent = (string) ( $context['user_agent'] ?? '' );
 		if ( '' === $user_agent || 1 !== preg_match( self::BROWSER_TOKEN_PATTERN, $user_agent ) ) {

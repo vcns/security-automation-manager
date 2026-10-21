@@ -41,6 +41,13 @@ final class Network_Intelligence_Resolver {
 	private Asn_Lookup_Store $asn_lookup;
 	private Geo_Ip_Store $geo_ip;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Tor_Exit_List_Store $tor_exit_list Tor exit list.
+	 * @param Asn_Lookup_Store    $asn_lookup    ASN lookup.
+	 * @param Geo_Ip_Store        $geo_ip        Geolocation store.
+	 */
 	public function __construct( Tor_Exit_List_Store $tor_exit_list, Asn_Lookup_Store $asn_lookup, Geo_Ip_Store $geo_ip ) {
 		$this->tor_exit_list = $tor_exit_list;
 		$this->asn_lookup    = $asn_lookup;

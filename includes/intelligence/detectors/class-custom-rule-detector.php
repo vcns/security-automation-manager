@@ -55,10 +55,20 @@ class Custom_Rule_Detector extends Pattern_Detector {
 		$this->rule = $rule;
 	}
 
+	/**
+	 * Returns the stable id of the custom rule detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'custom_' . (int) $this->rule['id'];
 	}
 
+	/**
+	 * Returns the family the custom rule detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'custom';
 	}
@@ -77,11 +87,21 @@ class Custom_Rule_Detector extends Pattern_Detector {
 		);
 	}
 
+	/**
+	 * Returns the surfaces the custom rule detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		$surfaces = json_decode( (string) ( $this->rule['surfaces'] ?? '' ), true );
 		return is_array( $surfaces ) ? array_values( array_filter( $surfaces, 'is_string' ) ) : array();
 	}
 
+	/**
+	 * Returns the control actions the custom rule detector may be set to.
+	 *
+	 * @return array Control action keys.
+	 */
 	public function allowed_control_actions(): array {
 		// An admin who took the trouble to author this rule is making an
 		// explicit, informed decision -- same reasoning §11.4/§11.13 use for
@@ -92,10 +112,20 @@ class Custom_Rule_Detector extends Pattern_Detector {
 		return array( 'observe', 'enforce' );
 	}
 
+	/**
+	 * Returns the control action a new custom rule detector policy starts with.
+	 *
+	 * @return string Control action key.
+	 */
 	public function default_control_action(): string {
 		return 'observe';
 	}
 
+	/**
+	 * Returns the custom rule detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		$severity = in_array( $this->rule['severity'] ?? '', self::VALID_SEVERITIES, true )
 			? (string) $this->rule['severity']
@@ -111,6 +141,12 @@ class Custom_Rule_Detector extends Pattern_Detector {
 		);
 	}
 
+	/**
+	 * Returns the request field the rule is set to check that the custom rule rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		$field = in_array( $this->rule['subject_field'] ?? '', self::VALID_SUBJECT_FIELDS, true )
 			? (string) $this->rule['subject_field']

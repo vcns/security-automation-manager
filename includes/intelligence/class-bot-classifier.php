@@ -84,6 +84,13 @@ final class Bot_Classifier {
 	private Request_Timing_Analyzer $timing;
 	private Repeated_Error_Analyzer $errors;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Uri_Pattern_Analyzer|null    $uri_patterns Analyzer for URI patterns, a new one is created when omitted.
+	 * @param Request_Timing_Analyzer|null $timing       Analyzer for request timing, a new one is created when omitted.
+	 * @param Repeated_Error_Analyzer|null $errors       Analyzer for repeated errors, a new one is created when omitted.
+	 */
 	public function __construct( ?Uri_Pattern_Analyzer $uri_patterns = null, ?Request_Timing_Analyzer $timing = null, ?Repeated_Error_Analyzer $errors = null ) {
 		$this->uri_patterns = $uri_patterns ?? new Uri_Pattern_Analyzer();
 		$this->timing       = $timing ?? new Request_Timing_Analyzer();
