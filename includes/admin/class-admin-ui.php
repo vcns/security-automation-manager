@@ -512,6 +512,12 @@ class Admin_UI {
 			'security-automation-manager-scripts',
 			'security-automation-manager-xcto',
 			'security-automation-manager-xfo',
+			// Not a technology-standard page either: its four tabs are each
+			// linked from the lifecycle stage they belong to (Timeline from
+			// Observe, Campaigns from Decide, Honey Paths from Control,
+			// Change Windows from Verify), so a sixth top-level entry beside
+			// the lifecycle only split the same navigation in two.
+			'security-automation-manager-advanced',
 		);
 
 		$rules = '';

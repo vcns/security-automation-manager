@@ -277,6 +277,26 @@ class AdminUITest extends TestCase {
 		}
 	}
 
+	public function test_advanced_intelligence_is_hidden_from_the_menu_but_still_registered(): void {
+		// Its tabs are linked from Observe, Decide, Control and Verify; the
+		// page itself must stay registered so those links (and direct URLs)
+		// keep working.
+		wp_test_reset_globals();
+		$ui = $this->make_admin_ui();
+		$ui->add_menu_pages();
+
+		$this->assertContains(
+			'security-automation-manager-advanced',
+			array_column( $GLOBALS['_wp_submenu_pages']['security-automation-manager'], 'menu_slug' )
+		);
+
+		ob_start();
+		$ui->print_hidden_menu_css();
+		$css = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'page=security-automation-manager-advanced"', $css );
+	}
+
 	public function test_print_hidden_menu_css_does_not_hide_lifecycle_or_settings_pages(): void {
 		$ui = $this->make_admin_ui();
 

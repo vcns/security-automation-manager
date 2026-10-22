@@ -98,6 +98,18 @@ $intelligence_detector_count = count( Detector_Registry::keys() );
 					</a>
 				</td>
 			</tr>
+			<tr>
+				<td class="wp-sam-col-primary">
+					<strong><?php esc_html_e( 'Timeline', 'vcns-security-automation-manager' ); ?></strong>
+					<p class="description"><?php esc_html_e( 'Site changes, security drift, and campaigns merged into one chronological view.', 'vcns-security-automation-manager' ); ?></p>
+				</td>
+				<td class="wp-sam-col-status">&mdash;</td>
+				<td class="wp-sam-col-actions">
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=timeline' ) ); ?>">
+						<?php esc_html_e( 'View Timeline', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
 		</tbody>
 	</table>
 	</div>

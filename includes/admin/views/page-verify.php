@@ -47,6 +47,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</tr>
 			<tr>
 				<td class="wp-sam-col-primary">
+					<strong><?php esc_html_e( 'Change Windows', 'vcns-security-automation-manager' ); ?></strong>
+					<p class="description"><?php esc_html_e( 'Declare an intentional change in progress, then review what drifted while it was open.', 'vcns-security-automation-manager' ); ?></p>
+				</td>
+				<td class="wp-sam-col-actions">
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=change-windows' ) ); ?>">
+						<?php esc_html_e( 'View Change Windows', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+			<tr>
+				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( 'CSP Policy Audit', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description"><?php esc_html_e( 'The effective header this site is currently configured to send, per surface -- confirms a policy change is actually present.', 'vcns-security-automation-manager' ); ?></p>
 				</td>

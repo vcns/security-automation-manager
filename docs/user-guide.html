@@ -257,10 +257,14 @@ flowchart TD
     Observe -.-> ContInt["Continuous Intelligence<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
     Control -.-> Traffic["Traffic Controls<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
     Verify -.-> Baseline["Baseline &amp; Drift<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
-    Verify -.-> AdvInt["Advanced Intelligence<br/><small>not in the sidebar -- not yet covered in this guide</small>"]
+    AdvInt["Advanced Intelligence<br/><small>not in the sidebar -- each tab is linked from the stage it belongs to;<br/>not yet covered in this guide</small>"]
+    Observe -.->|"Timeline"| AdvInt
+    Decide -.->|"Campaigns"| AdvInt
+    Control -.->|"Honey Paths"| AdvInt
+    Verify -.->|"Change Windows"| AdvInt
           </div>
         </div>
-        <p class='section-note'>The real WordPress admin menu, for orientation. Only <strong>Settings</strong>, <strong>Observe</strong>, <strong>Decide</strong>, <strong>Control</strong>, and <strong>Verify</strong> appear in the left-hand sidebar. Every other page this plugin registers -- CSP, every header pillar, Certificates, Welcome / Personal Preferences, and more -- is deliberately hidden from the sidebar and reached only by clicking a link from <strong>Settings</strong> (a "Manage" link from the Overview tab, the "Personal Preferences" link, or the Action Centre tab) or a task-relevant link from Observe/Decide/Control/Verify, never by finding it in the menu directly. Every hidden page still works by direct URL if you already know its slug. Reverse Tabnabbing and Scripts aren't <em>header</em> pillars, but they share the same hidden-page mechanism -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
+        <p class='section-note'>The real WordPress admin menu, for orientation. Only <strong>Settings</strong>, <strong>Observe</strong>, <strong>Decide</strong>, <strong>Control</strong>, and <strong>Verify</strong> appear in the left-hand sidebar. Every other page this plugin registers -- CSP, every header pillar, Certificates, Advanced Intelligence, Welcome / Personal Preferences, and more -- is deliberately hidden from the sidebar and reached only by clicking a link from <strong>Settings</strong> (a "Manage" link from the Overview tab, the "Personal Preferences" link, or the Action Centre tab) or a task-relevant link from Observe/Decide/Control/Verify, never by finding it in the menu directly. Every hidden page still works by direct URL if you already know its slug. Reverse Tabnabbing and Scripts aren't <em>header</em> pillars, but they share the same hidden-page mechanism -- see <a href='#content-rewrites'>Content rewrite protections</a> below.</p>
         <div class='card-grid'>
           <article class='card'>
             <h3>1. Initialise safely</h3>

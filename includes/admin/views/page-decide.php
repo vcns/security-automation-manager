@@ -26,6 +26,9 @@ $pending_sources = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}cs
 
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}sam_exceptions WHERE review_status = 'active'" );
+
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+$campaigns_awaiting = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}sam_campaigns WHERE status = 'detected'" );
 ?>
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Decide', 'vcns-security-automation-manager' ); ?></h1>
@@ -131,6 +134,32 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-scripts&tab=external' ) ); ?>">
 						<?php esc_html_e( 'View Dependency Classification', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+			<tr>
+				<td class="wp-sam-col-primary">
+					<strong><?php esc_html_e( 'Campaigns', 'vcns-security-automation-manager' ); ?></strong>
+					<p class="description"><?php esc_html_e( 'Possible coordinated activity: many different sources triggering the same detector, awaiting an acknowledge, dismiss, or block decision.', 'vcns-security-automation-manager' ); ?></p>
+				</td>
+				<td class="wp-sam-col-status">
+					<?php if ( $campaigns_awaiting > 0 ) : ?>
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: number of detected campaigns not yet acknowledged, dismissed, or blocked */
+								_n( '%d campaign awaiting a decision.', '%d campaigns awaiting a decision.', $campaigns_awaiting, 'vcns-security-automation-manager' ),
+								$campaigns_awaiting
+							)
+						);
+						?>
+					<?php else : ?>
+						<?php esc_html_e( 'Nothing awaiting a decision.', 'vcns-security-automation-manager' ); ?>
+					<?php endif; ?>
+				</td>
+				<td class="wp-sam-col-actions">
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=campaigns' ) ); ?>">
+						<?php esc_html_e( 'View Campaigns', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
