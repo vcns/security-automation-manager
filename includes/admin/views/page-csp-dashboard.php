@@ -99,7 +99,7 @@ unset( $wp_sam_mode_key );
 
 // Shared pagination defaults.
 $per_page = 20;
-$page_num = max( 1, (int) ( isset( $_GET['paged'] ) ? $_GET['paged'] : 1 ) );
+$page_num = max( 1, intval( wp_unslash( $_GET['paged'] ?? 1 ) ) );
 $offset   = ( $page_num - 1 ) * $per_page;
 
 // Violations are queried in full (filtered, sorted, paginated) inside the
@@ -527,7 +527,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$src_total = (int) $wpdb->get_var( $count_sql );
 
 		$src_pages = max( 1, (int) ceil( $src_total / $per_page ) );
-		$page_num  = min( max( 1, (int) ( isset( $_GET['paged'] ) ? $_GET['paged'] : 1 ) ), $src_pages );
+		$page_num  = min( max( 1, intval( wp_unslash( $_GET['paged'] ?? 1 ) ) ), $src_pages );
 		$offset    = ( $page_num - 1 ) * $per_page;
 
 		$query_args = array_merge( $src_args, array( $per_page, $offset ) );
@@ -802,7 +802,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 
 		$pc_total      = count( $policy_events_sorted );
 		$pc_pages      = max( 1, (int) ceil( $pc_total / $per_page ) );
-		$pc_page_num   = min( max( 1, (int) ( isset( $_GET['pc_paged'] ) ? $_GET['pc_paged'] : 1 ) ), $pc_pages );
+		$pc_page_num   = min( max( 1, intval( wp_unslash( $_GET['pc_paged'] ?? 1 ) ) ), $pc_pages );
 		$pc_offset     = ( $pc_page_num - 1 ) * $per_page;
 		$policy_events = array_slice( $policy_events_sorted, $pc_offset, $per_page );
 
@@ -1135,7 +1135,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$viol_total = (int) $wpdb->get_var( $viol_count_sql );
 
 		$viol_pages    = max( 1, (int) ceil( $viol_total / $per_page ) );
-		$viol_page_num = min( max( 1, (int) ( isset( $_GET['v_paged'] ) ? $_GET['v_paged'] : 1 ) ), $viol_pages );
+		$viol_page_num = min( max( 1, intval( wp_unslash( $_GET['v_paged'] ?? 1 ) ) ), $viol_pages );
 		$viol_offset   = ( $viol_page_num - 1 ) * $per_page;
 
 		$viol_data_args = array_merge( $viol_args, array( $per_page, $viol_offset ) );

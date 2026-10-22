@@ -365,8 +365,8 @@ class Violation_Reporter {
 		$status_code_value             = null === $r['status_code'] ? -1 : (int) $r['status_code'];
 		$disposition_sanitized         = in_array( isset( $r['disposition'] ) ? $r['disposition'] : '', array( 'enforce', 'report' ), true ) ? $r['disposition'] : 'report';
 		$referrer_sanitized            = sanitize_text_field( substr( isset( $r['referrer'] ) ? $r['referrer'] : '', 0, 2048 ) );
-		$user_agent_raw                = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
-		$user_agent_sanitized          = sanitize_text_field( substr( (string) $user_agent_raw, 0, 512 ) );
+		$user_agent_raw                = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+		$user_agent_sanitized          = substr( $user_agent_raw, 0, 512 );
 		$sample_sanitized              = sanitize_text_field( substr( isset( $r['sample'] ) ? $r['sample'] : '', 0, 256 ) );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -552,10 +552,11 @@ class Violation_Reporter {
 	private function has_existing_source_proposal( string $surface, string $directive, string $host ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_source_inventory';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$id = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT id FROM {$table} WHERE surface = %s AND directive = %s AND source_host = %s LIMIT 1",
+				'SELECT id FROM %i WHERE surface = %s AND directive = %s AND source_host = %s LIMIT 1',
+				$table,
 				$surface,
 				$directive,
 				$host
