@@ -25,6 +25,12 @@ class Reverse_Tabnabbing_Builder extends Content_Rewriter {
 
 	public const PILLAR_KEY = 'reverse-tabnabbing';
 
+	/**
+	 * Checks whether the pillar is enabled for a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return bool True when enabled.
+	 */
 	protected function is_active( string $surface ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_pillar_profiles';
@@ -33,6 +39,13 @@ class Reverse_Tabnabbing_Builder extends Content_Rewriter {
 		return ! empty( $enabled );
 	}
 
+	/**
+	 * Adds noopener protection to links that have a target attribute.
+	 *
+	 * @param string $html    HTML of the page.
+	 * @param string $surface Surface slug, unused.
+	 * @return string The HTML, unchanged when no link has a target.
+	 */
 	protected function rewrite( string $html, string $surface ): string {
 		unset( $surface );
 
