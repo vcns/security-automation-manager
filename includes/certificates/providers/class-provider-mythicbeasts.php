@@ -21,10 +21,20 @@ class Provider_Mythicbeasts extends Dns_Provider {
 
 	private ?string $token = null;
 
+	/**
+	 * Returns the display name of the Mythic Beasts provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Mythic Beasts';
 	}
 
+	/**
+	 * Describes the credentials the Mythic Beasts provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'key_id' => array(
@@ -37,6 +47,13 @@ class Provider_Mythicbeasts extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Mythic Beasts API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -57,6 +74,13 @@ class Provider_Mythicbeasts extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Mythic Beasts API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -68,6 +92,13 @@ class Provider_Mythicbeasts extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Finds the Mythic Beasts zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		$list  = $this->request( 'GET', self::API . '/zones', $this->headers() );
 		$zones = (array) ( $list['body']['zones'] ?? array() );
@@ -81,6 +112,12 @@ class Provider_Mythicbeasts extends Dns_Provider {
 		throw new \RuntimeException( "Mythic Beasts: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the Mythic Beasts request headers, fetching an access token on first use.
+	 *
+	 * @return array Header map.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function headers(): array {
 		if ( null === $this->token ) {
 			$response = wp_remote_post(

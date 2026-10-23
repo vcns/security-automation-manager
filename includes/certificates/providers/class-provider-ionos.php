@@ -17,10 +17,20 @@ class Provider_Ionos extends Dns_Provider {
 
 	private const API = 'https://api.hosting.ionos.com/dns/v1';
 
+	/**
+	 * Returns the display name of the IONOS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'IONOS';
 	}
 
+	/**
+	 * Describes the credentials the IONOS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
@@ -30,6 +40,13 @@ class Provider_Ionos extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the IONOS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -48,6 +65,13 @@ class Provider_Ionos extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the IONOS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone   = $this->zone( $fqdn );
 		$detail = $this->request(
@@ -83,6 +107,11 @@ class Provider_Ionos extends Dns_Provider {
 		throw new \RuntimeException( "IONOS: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the IONOS request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'X-API-Key' => $this->credential( 'api_key' ) );
 	}

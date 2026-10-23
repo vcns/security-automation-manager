@@ -17,10 +17,20 @@ class Provider_Vultr extends Dns_Provider {
 
 	private const API = 'https://api.vultr.com/v2';
 
+	/**
+	 * Returns the display name of the Vultr provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Vultr';
 	}
 
+	/**
+	 * Describes the credentials the Vultr provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
@@ -29,6 +39,13 @@ class Provider_Vultr extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Vultr API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -45,6 +62,13 @@ class Provider_Vultr extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Vultr API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -57,6 +81,13 @@ class Provider_Vultr extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the Vultr zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			try {
@@ -70,6 +101,11 @@ class Provider_Vultr extends Dns_Provider {
 		throw new \RuntimeException( "Vultr: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the Vultr request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'Authorization' => 'Bearer ' . $this->credential( 'api_key' ) );
 	}

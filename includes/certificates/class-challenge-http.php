@@ -25,10 +25,22 @@ class Challenge_Http {
 	private const OPTION = 'wp_sam_acme_http_tokens';
 	private const PREFIX = '/.well-known/acme-challenge/';
 
+	/**
+	 * Registers the request hook that serves HTTP-01 challenge tokens.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'parse_request', array( $this, 'maybe_serve_token' ), 0 );
 	}
 
+	/**
+	 * Stores a challenge token and its key authorization.
+	 *
+	 * @param string $token             Challenge token.
+	 * @param string $key_authorization Key authorization to serve for the token.
+	 * @return void
+	 */
 	public function put_token( string $token, string $key_authorization ): void {
 		$tokens = $this->tokens();
 
@@ -40,6 +52,12 @@ class Challenge_Http {
 		update_option( self::OPTION, $tokens, false );
 	}
 
+	/**
+	 * Removes a stored challenge token.
+	 *
+	 * @param string $token Challenge token.
+	 * @return void
+	 */
 	public function delete_token( string $token ): void {
 		$tokens = $this->tokens();
 		unset( $tokens[ $token ] );
@@ -74,18 +92,41 @@ class Challenge_Http {
 	// production always calls status_header()/header()/echo/exit() exactly
 	// as before. See test/unit/ChallengeHttpTest.php.
 
+	/**
+	 * Sends an HTTP status code.
+	 *
+	 * @param int $status Status code.
+	 * @return void
+	 */
 	protected function emit_status( int $status ): void {
 		status_header( $status );
 	}
 
+	/**
+	 * Sends a Content-Type header.
+	 *
+	 * @param string $content_type Content type.
+	 * @return void
+	 */
 	protected function emit_content_type( string $content_type ): void {
 		header( 'Content-Type: ' . $content_type );
 	}
 
+	/**
+	 * Outputs the response body.
+	 *
+	 * @param string $body Body text.
+	 * @return void
+	 */
 	protected function emit_body( string $body ): void {
 		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- RFC 8555 key authorization string (base64url token . thumbprint), no markup context.
 	}
 
+	/**
+	 * Ends the request.
+	 *
+	 * @return void
+	 */
 	protected function terminate(): void {
 		exit;
 	}
@@ -127,6 +168,11 @@ class Challenge_Http {
 		);
 	}
 
+	/**
+	 * Returns the stored challenge tokens.
+	 *
+	 * @return array Tokens keyed by token value.
+	 */
 	private function tokens(): array {
 		$tokens = get_option( self::OPTION, array() );
 

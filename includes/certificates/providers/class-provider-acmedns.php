@@ -25,10 +25,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Provider_Acmedns extends Dns_Provider {
 
+	/**
+	 * Returns the display name of the acme-dns (works with any provider via CNAME delegation) provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'acme-dns (works with any provider via CNAME delegation)';
 	}
 
+	/**
+	 * Describes the credentials the acme-dns (works with any provider via CNAME delegation) provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'server_url' => array(
@@ -50,6 +60,14 @@ class Provider_Acmedns extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the acme-dns (works with any provider via CNAME delegation) API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$body = $this->request_raw(
 			'POST',
@@ -73,6 +91,13 @@ class Provider_Acmedns extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the acme-dns (works with any provider via CNAME delegation) API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		// acme-dns keeps a rolling window of the last two TXT values and has
 		// no delete endpoint; old values age out on the next update.
