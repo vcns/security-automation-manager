@@ -518,6 +518,20 @@ $tab_help = array(
 				$classification = $bot_classifier->classify( $row, $traffic_block );
 				$recent_paths   = json_decode( (string) ( $row['recent_paths'] ?? '' ), true );
 				$recent_paths   = is_array( $recent_paths ) ? $recent_paths : array();
+
+				// recent_paths keeps one entry per request, so a source hitting
+				// one URL repeatedly (e.g. WP-Cron's own loopback to
+				// /wp-cron.php) listed the same path ten times. Group it,
+				// first-seen order, with a count.
+				$recent_path_counts = array_count_values( array_map( 'strval', $recent_paths ) );
+				$recent_paths_title = implode(
+					', ',
+					array_map(
+						static fn ( $path, int $count ): string => $count > 1 ? sprintf( '%s ×%d', (string) $path, $count ) : (string) $path,
+						array_keys( $recent_path_counts ),
+						$recent_path_counts
+					)
+				);
 				?>
 			<tr>
 				<td class="wp-sam-col-primary"><?php echo esc_html( '' !== (string) $row['claimed_identity'] ? (string) $row['claimed_identity'] : __( '(unrecognised)', 'vcns-security-automation-manager' ) ); ?></td>
@@ -544,11 +558,18 @@ $tab_help = array(
 					<?php endif; ?>
 				</td>
 				<td class="wp-sam-col-description">
-					<span<?php echo ! empty( $recent_paths ) ? ' title="' . esc_attr( implode( ', ', $recent_paths ) ) . '"' : ''; ?>>
+					<span<?php echo ! empty( $recent_paths ) ? ' title="' . esc_attr( $recent_paths_title ) . '"' : ''; ?>>
 						<?php echo esc_html( $classification_labels[ $classification ] ?? $classification ); ?>
 					</span>
 					<?php if ( ! empty( $recent_paths ) ) : ?>
-						<br /><small class="description"><?php echo esc_html( sprintf( /* translators: %d: number of recently observed request paths */ _n( '%d recent path logged', '%d recent paths logged', count( $recent_paths ), 'vcns-security-automation-manager' ), count( $recent_paths ) ) ); ?></small>
+						<br /><small class="description">
+							<?php
+							echo esc_html( sprintf( /* translators: %d: number of recently logged requests */ _n( '%d recent request logged', '%d recent requests logged', count( $recent_paths ), 'vcns-security-automation-manager' ), count( $recent_paths ) ) );
+							if ( count( $recent_path_counts ) < count( $recent_paths ) ) {
+								echo ' ' . esc_html( sprintf( /* translators: %d: number of distinct paths among the recently logged requests */ _n( '(%d distinct path)', '(%d distinct paths)', count( $recent_path_counts ), 'vcns-security-automation-manager' ), count( $recent_path_counts ) ) );
+							}
+							?>
+						</small>
 					<?php endif; ?>
 				</td>
 				<td class="wp-sam-col-status"><?php echo esc_html( $state_labels[ $state ] ?? $state ); ?></td>
