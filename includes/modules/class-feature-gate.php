@@ -47,6 +47,11 @@ class Feature_Gate {
 	private ?array $entitlement_cache = null;
 	private bool $cache_loaded        = false;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param object|null $entitlements Entitlement service, or null when none is installed.
+	 */
 	public function __construct( ?object $entitlements = null ) {
 		$this->entitlements = $entitlements;
 	}
@@ -95,6 +100,11 @@ class Feature_Gate {
 
 	// ── Internal ──────────────────────────────────────────────────────────────
 
+	/**
+	 * Loads the site entitlement once and caches it for the rest of the request.
+	 *
+	 * @return array<string,mixed>|null The entitlement, or null when there is none.
+	 */
 	private function load_entitlement(): ?array {
 		if ( ! $this->cache_loaded ) {
 			if ( null !== $this->entitlements ) {

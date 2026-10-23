@@ -41,6 +41,11 @@ final class Github_Update_Checker {
 	 */
 	public const DIAGNOSTICS_OPTION = 'wp_sam_update_diagnostics';
 
+	/**
+	 * Registers the update, plugin information, download verification and auto-update hooks.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'inject_update' ) );
 		add_filter( 'site_transient_update_plugins', array( $this, 'suppress_stale_update_offer' ), 20 );
@@ -52,6 +57,12 @@ final class Github_Update_Checker {
 		add_action( 'load-update-core.php', array( $this, 'clear_remote_cache' ) );
 	}
 
+	/**
+	 * Adds the GitHub release to the update_plugins transient when it is newer than the installed version.
+	 *
+	 * @param mixed $transient The update_plugins site transient.
+	 * @return mixed The transient, with the update offer added when one applies.
+	 */
 	public function inject_update( mixed $transient ): mixed {
 		if ( ! is_object( $transient ) || empty( $transient->checked ) ) {
 			return $transient;
@@ -86,6 +97,12 @@ final class Github_Update_Checker {
 		return $transient;
 	}
 
+	/**
+	 * Removes an update offer that is not newer than the installed version.
+	 *
+	 * @param mixed $transient The update_plugins site transient.
+	 * @return mixed The transient without the stale offer.
+	 */
 	public function suppress_stale_update_offer( mixed $transient ): mixed {
 		if ( ! is_object( $transient ) || empty( $transient->response ) || ! is_array( $transient->response ) ) {
 			return $transient;
@@ -114,6 +131,14 @@ final class Github_Update_Checker {
 		return $transient;
 	}
 
+	/**
+	 * Supplies the plugin details shown in the "View details" modal.
+	 *
+	 * @param mixed  $result The current plugins_api result.
+	 * @param string $action The plugins_api action.
+	 * @param object $args   The request arguments, including the plugin slug.
+	 * @return mixed The plugin information object, or the unchanged result.
+	 */
 	public function plugin_info( mixed $result, string $action, object $args ): mixed {
 		if ( 'plugin_information' !== $action || self::SLUG !== ( $args->slug ?? '' ) ) {
 			return $result;
@@ -142,6 +167,13 @@ final class Github_Update_Checker {
 		return $info;
 	}
 
+	/**
+	 * Clears the cached release data and records the outcome after this plugin has been updated.
+	 *
+	 * @param object $upgrader   The upgrader instance.
+	 * @param array  $hook_extra Details of the completed upgrade.
+	 * @return void
+	 */
 	public function after_update( object $upgrader, array $hook_extra ): void {
 		if (
 			isset( $hook_extra['type'], $hook_extra['action'] )
@@ -179,10 +211,22 @@ final class Github_Update_Checker {
 		);
 	}
 
+	/**
+	 * Deletes the cached release manifest so the next check fetches a fresh one.
+	 *
+	 * @return void
+	 */
 	public function clear_remote_cache(): void {
 		delete_transient( self::CACHE_KEY );
 	}
 
+	/**
+	 * Blocks automatic updates for this plugin when the disable constant is set.
+	 *
+	 * @param bool|null $update Whether WordPress would auto-update the item.
+	 * @param object    $item   The update item.
+	 * @return bool|null False when auto-updates are disabled for this plugin, otherwise the incoming value.
+	 */
 	public function auto_update_gate( ?bool $update, object $item ): ?bool {
 		if ( ! isset( $item->plugin ) || WP_SAM_PLUGIN_BASENAME !== $item->plugin ) {
 			return $update;
@@ -195,6 +239,15 @@ final class Github_Update_Checker {
 		return $update;
 	}
 
+	/**
+	 * Downloads the update package and verifies its SHA-256 checksum against the manifest.
+	 *
+	 * @param mixed  $reply      The download short-circuit value, false to proceed.
+	 * @param string $package    URL of the package being downloaded.
+	 * @param object $upgrader   The upgrader instance.
+	 * @param array  $hook_extra Details of the upgrade.
+	 * @return mixed The downloaded file path, a WP_Error when verification fails, or the incoming reply for other packages.
+	 */
 	public function verify_package_download( mixed $reply, string $package, object $upgrader, array $hook_extra ): mixed {
 		unset( $upgrader );
 
@@ -235,6 +288,12 @@ final class Github_Update_Checker {
 		return $file;
 	}
 
+	/**
+	 * Stores the outcome of the latest checksum verification.
+	 *
+	 * @param string $result Short status code.
+	 * @return void
+	 */
 	private function record_checksum_result( string $result ): void {
 		$this->update_diagnostics(
 			array(
@@ -244,6 +303,11 @@ final class Github_Update_Checker {
 		);
 	}
 
+	/**
+	 * Fetches and validates the release manifest, caching both successes and failures.
+	 *
+	 * @return object|null The validated release data, or null when unavailable or invalid.
+	 */
 	public function get_remote_info(): ?object {
 		$cached = get_transient( self::CACHE_KEY );
 		if ( is_array( $cached ) ) {
@@ -309,6 +373,12 @@ final class Github_Update_Checker {
 		update_option( self::DIAGNOSTICS_OPTION, array_merge( $current, $changes ) );
 	}
 
+	/**
+	 * Removes this plugin from the transient's response and no_update lists.
+	 *
+	 * @param object $transient The update_plugins site transient, modified in place.
+	 * @return void
+	 */
 	private function clear_update_entries( object $transient ): void {
 		foreach ( array( 'response', 'no_update' ) as $property ) {
 			if ( ! isset( $transient->{$property} ) ) {
@@ -321,6 +391,12 @@ final class Github_Update_Checker {
 		}
 	}
 
+	/**
+	 * Checks that the manifest names this plugin, has a valid version, and points at an allowed package URL.
+	 *
+	 * @param object $data Decoded manifest.
+	 * @return bool True when the manifest is acceptable.
+	 */
 	private function validate_remote_info( object $data ): bool {
 		if ( self::SLUG !== (string) ( $data->slug ?? '' ) ) {
 			return false;
@@ -337,10 +413,22 @@ final class Github_Update_Checker {
 		return ! empty( $data->sha256 ) && $this->is_valid_sha256( (string) $data->sha256 );
 	}
 
+	/**
+	 * Checks that a version string is in MAJOR.MINOR.PATCH form, with an optional suffix.
+	 *
+	 * @param string $version Version string.
+	 * @return bool True when valid.
+	 */
 	private function is_valid_version( string $version ): bool {
 		return preg_match( '/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9_.-]+)?$/', $version ) === 1;
 	}
 
+	/**
+	 * Checks that a package URL is an https .zip on the update host, under the update path, with no ".." segment.
+	 *
+	 * @param string $url Package URL.
+	 * @return bool True when allowed.
+	 */
 	private function is_allowed_package_url( string $url ): bool {
 		$parts = wp_parse_url( $url );
 		if ( ! is_array( $parts ) ) {
@@ -368,10 +456,22 @@ final class Github_Update_Checker {
 			&& str_ends_with( $path, '.zip' );
 	}
 
+	/**
+	 * Checks that a string is a 64-character hexadecimal SHA-256 digest.
+	 *
+	 * @param string $hash Digest to check.
+	 * @return bool True when valid.
+	 */
 	private function is_valid_sha256( string $hash ): bool {
 		return preg_match( '/^[a-f0-9]{64}$/i', $hash ) === 1;
 	}
 
+	/**
+	 * Checks whether an upgrade concerns this plugin.
+	 *
+	 * @param array $hook_extra Details of the upgrade.
+	 * @return bool True when this plugin is being updated.
+	 */
 	private function is_plugin_update( array $hook_extra ): bool {
 		if ( isset( $hook_extra['plugin'] ) && WP_SAM_PLUGIN_BASENAME === $hook_extra['plugin'] ) {
 			return true;
