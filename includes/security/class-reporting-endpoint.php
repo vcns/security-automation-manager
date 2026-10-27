@@ -55,6 +55,12 @@ class Reporting_Endpoint {
 		return esc_url_raw( rest_url( 'sam/v1/report' ) );
 	}
 
+	/**
+	 * Checks that a report endpoint URL is http or https with a host and has no line breaks, quotes or backslashes.
+	 *
+	 * @param string $url URL to check.
+	 * @return bool True when the URL is allowed.
+	 */
 	public static function is_allowed_url( string $url ): bool {
 		if ( preg_match( '/[\r\n"\\\\]/', $url ) ) {
 			return false;

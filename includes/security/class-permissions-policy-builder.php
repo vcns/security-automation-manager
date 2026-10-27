@@ -49,11 +49,23 @@ class Permissions_Policy_Builder extends Pillar_Header_Builder {
 
 	public const ALLOWED_TOKENS = array( 'none', 'self', 'all' );
 
+	/**
+	 * Restricts a value to the allowed Permissions-Policy tokens.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string A permitted token, or an empty string.
+	 */
 	public static function sanitize_token( mixed $value ): string {
 		$value = strtolower( trim( (string) $value ) );
 		return in_array( $value, self::ALLOWED_TOKENS, true ) ? $value : '';
 	}
 
+	/**
+	 * Converts a token to its Permissions-Policy allowlist syntax.
+	 *
+	 * @param string $token Token such as none, self or all.
+	 * @return string Allowlist, for example () or (self).
+	 */
 	public static function token_to_allowlist( string $token ): string {
 		switch ( $token ) {
 			case 'none':
@@ -67,6 +79,13 @@ class Permissions_Policy_Builder extends Pillar_Header_Builder {
 		}
 	}
 
+	/**
+	 * Sends the Permissions-Policy header built from the profile's directives.
+	 *
+	 * @param array  $profile Pillar profile row.
+	 * @param string $surface Surface slug, unused.
+	 * @return bool True when a header was sent.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		unset( $surface );
 		$directives = self::extract_directives( $profile );

@@ -38,12 +38,22 @@ class Dependency_Integrity_Monitor {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the daily integrity scan on admin_init.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'admin_init', array( $this, 'maybe_run_scan' ) );
 	}

@@ -46,6 +46,11 @@ class Internal_Script_Integrity_Builder extends Request_Surface {
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the filters that add integrity attributes to script and style tags.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_filter( 'script_loader_tag', array( $this, 'add_script_integrity' ), 20, 3 );
 		add_filter( 'style_loader_tag', array( $this, 'add_style_integrity' ), 20, 4 );
@@ -53,15 +58,42 @@ class Internal_Script_Integrity_Builder extends Request_Surface {
 
 	// ── Filter callbacks ──────────────────────────────────────────────────────
 
+	/**
+	 * Adds an integrity attribute to a script tag for a local file.
+	 *
+	 * @param string $tag    Script tag HTML.
+	 * @param string $handle Script handle.
+	 * @param string $src    Script URL.
+	 * @return string The tag, with integrity added when applicable.
+	 */
 	public function add_script_integrity( string $tag, string $handle, string $src ): string {
 		return $this->maybe_add_integrity( $tag, self::RESOURCE_SCRIPT, $handle, $src, '<script ' );
 	}
 
+	/**
+	 * Adds an integrity attribute to a stylesheet tag for a local file.
+	 *
+	 * @param string $tag    Stylesheet tag HTML.
+	 * @param string $handle Stylesheet handle.
+	 * @param string $href   Stylesheet URL.
+	 * @param string $media  Media attribute, unused.
+	 * @return string The tag, with integrity added when applicable.
+	 */
 	public function add_style_integrity( string $tag, string $handle, string $href, string $media ): string {
 		unset( $media );
 		return $this->maybe_add_integrity( $tag, self::RESOURCE_STYLE, $handle, $href, '<link ' );
 	}
 
+	/**
+	 * Adds integrity and crossorigin attributes to a tag when the pillar is on and the file is local.
+	 *
+	 * @param string $tag           Tag HTML.
+	 * @param string $resource_type Resource type.
+	 * @param string $handle        Handle.
+	 * @param string $url           Resource URL.
+	 * @param string $needle        Opening tag text to add the attributes after.
+	 * @return string The tag, with the attributes added when applicable.
+	 */
 	private function maybe_add_integrity( string $tag, string $resource_type, string $handle, string $url, string $needle ): string {
 		if ( str_contains( $tag, 'integrity=' ) ) {
 			return $tag;
@@ -88,6 +120,12 @@ class Internal_Script_Integrity_Builder extends Request_Surface {
 
 	// ── Profile lookup ────────────────────────────────────────────────────────
 
+	/**
+	 * Checks whether the pillar is enabled for a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return bool True when enabled.
+	 */
 	private function is_active( string $surface ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_pillar_profiles';
@@ -153,6 +191,12 @@ class Internal_Script_Integrity_Builder extends Request_Surface {
 		return $real;
 	}
 
+	/**
+	 * Returns the path of a URL without a trailing slash.
+	 *
+	 * @param string $url URL.
+	 * @return string Path, or an empty string.
+	 */
 	private static function url_path( string $url ): string {
 		$parts = wp_parse_url( $url );
 		return is_array( $parts ) ? rtrim( (string) ( $parts['path'] ?? '' ), '/' ) : '';
