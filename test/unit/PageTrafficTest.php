@@ -163,9 +163,14 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringContainsString( 'wp_sam_network_rule_delete', $output );
 	}
 
-	// ── Network Intelligence tab -- compact stat-row layout ─────────────────
+	// ── Network Intelligence tab -- one table row per source/file ───────────
 
-	public function test_tor_subtab_renders_stats_as_a_compact_row_not_a_tall_table(): void {
+	/** The HTML of the first table carrying $class, or '' when there is none. */
+	private function table_with_class( string $output, string $class ): string {
+		return 1 === preg_match( '/<table class="[^"]*\b' . preg_quote( $class, '/' ) . '\b.*?<\/table>/s', $output, $match ) ? $match[0] : '';
+	}
+
+	public function test_tor_subtab_renders_as_one_table_row_with_its_refresh_button(): void {
 		$_GET['tab'] = 'network-intelligence';
 
 		ob_start();
@@ -174,12 +179,16 @@ class PageTrafficTest extends TestCase {
 
 		unset( $_GET['tab'] );
 
-		$this->assertStringContainsString( 'wp-sam-stat-row', $output );
-		$this->assertStringContainsString( 'Known exit nodes', $output );
+		$table = $this->table_with_class( $output, 'wp-sam-tor-table' );
+		$this->assertStringContainsString( 'Known exit nodes', $table );
+		$this->assertSame( 1, substr_count( $table, '<tr>' ) - 1 ); // One header row, one data row.
+		$this->assertStringContainsString( 'value="wp_sam_tor_list_refresh"', $table );
+		$this->assertStringContainsString( 'nothing here blocks a visitor', $table );
+		$this->assertStringNotContainsString( 'wp-sam-stat-row', $output );
 		$this->assertStringNotContainsString( 'max-width:600px', $output );
 	}
 
-	public function test_well_known_subtab_renders_every_file_as_a_stat_row(): void {
+	public function test_well_known_subtab_renders_every_file_as_a_row_of_one_table(): void {
 		$_GET['tab']    = 'network-intelligence';
 		$_GET['subtab'] = 'well-known';
 		$GLOBALS['_wpdb_get_results'] = array();
@@ -190,11 +199,36 @@ class PageTrafficTest extends TestCase {
 
 		unset( $_GET['tab'], $_GET['subtab'] );
 
+		$this->assertSame( 1, substr_count( $output, 'wp-sam-well-known-table' ) );
+		$table = $this->table_with_class( $output, 'wp-sam-well-known-table' );
+		$this->assertSame( 6, substr_count( $table, '<tr>' ) - 1 );
 		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt' ) as $well_known_label ) {
-			$this->assertStringContainsString( $well_known_label, $output );
+			$this->assertStringContainsString( '>' . $well_known_label . '<', $table );
 		}
+		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt' ) as $refresh ) {
+			$this->assertStringContainsString( 'value="wp_sam_' . $refresh . '_refresh"', $table );
+		}
+		$this->assertStringNotContainsString( 'wp-sam-stat-row', $output );
 		$this->assertStringNotContainsString( 'max-width:600px', $output );
 		$this->assertStringNotContainsString( 'width:200px', $output );
+	}
+
+	public function test_well_known_subtab_flags_an_expired_security_txt_in_its_row(): void {
+		$_GET['tab']    = 'network-intelligence';
+		$_GET['subtab'] = 'well-known';
+		$GLOBALS['_wpdb_get_results'] = array();
+		update_option( 'wp_sam_security_txt_last_fetch_status', 'success' );
+		update_option( 'wp_sam_security_txt_fields', array( 'Expires' => array( '2020-01-01T00:00:00Z' ) ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$table = $this->table_with_class( $output, 'wp-sam-well-known-table' );
+		$this->assertStringContainsString( 'Present, expires 2020-01-01T00:00:00Z', $table );
+		$this->assertStringContainsString( '(expired)', $table );
 	}
 
 	public function test_well_known_subtab_shows_an_absent_file_as_absent_not_failed(): void {
@@ -242,6 +276,18 @@ class PageTrafficTest extends TestCase {
 
 		unset( $_GET['tab'], $_GET['subtab'] );
 		return $output;
+	}
+
+	public function test_geoip_subtab_puts_provider_status_and_token_form_in_one_table_row(): void {
+		$output = $this->render_geoip_subtab();
+
+		$table = $this->table_with_class( $output, 'wp-sam-geoip-provider-table' );
+		$this->assertSame( 1, substr_count( $table, '<tr>' ) - 1 );
+		$this->assertStringContainsString( 'Disabled -- no token configured', $table );
+		$this->assertStringContainsString( 'https://ipinfo.io/signup', $table );
+		$this->assertStringContainsString( 'name="action" value="wp_sam_geoip_save_token"', $table );
+		$this->assertStringContainsString( 'id="ipinfo_token"', $table );
+		$this->assertStringContainsString( 'Save Token', $table );
 	}
 
 	public function test_geoip_subtab_offers_every_sanctions_list_until_a_site_country_is_chosen(): void {
@@ -529,15 +575,18 @@ class PageTrafficTest extends TestCase {
 	 *
 	 * @dataProvider tab_provider
 	 */
-	public function test_help_text_is_not_width_capped( string $tab ): void {
+	public function test_help_text_is_not_width_capped( string $tab, string $subtab = '' ): void {
 		$_GET['tab']                  = $tab;
 		$GLOBALS['_wpdb_get_results'] = array();
+		if ( '' !== $subtab ) {
+			$_GET['subtab'] = $subtab;
+		}
 
 		ob_start();
 		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
 		$output = (string) ob_get_clean();
 
-		unset( $_GET['tab'] );
+		unset( $_GET['tab'], $_GET['subtab'] );
 
 		$this->assertStringContainsString( '<p class="description"', $output );
 		$this->assertDoesNotMatchRegularExpression( '/<p class="description"[^>]*max-width/', $output );
@@ -548,7 +597,8 @@ class PageTrafficTest extends TestCase {
 			'policy'               => array( 'policy' ),
 			'ip-rules'             => array( 'ip-rules' ),
 			'blocks'               => array( 'blocks' ),
-			'network-intelligence' => array( 'network-intelligence' ),
+			// Tor Exit List, the default sub-tab, keeps its help text in its table row.
+			'network-intelligence' => array( 'network-intelligence', 'asn' ),
 			'detectors'            => array( 'detectors' ),
 			'custom-rules'         => array( 'custom-rules' ),
 		);
