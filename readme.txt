@@ -125,11 +125,15 @@ When an administrator configures automatic cPanel deployment, once a certificate
 * Fixed: a slow, steady source of requests -- your own scheduled tasks, an uptime monitor, an office behind one address -- could be rate-limited for exceeding a per-minute limit it never reached in any single minute. Each limit's count now starts afresh when its time window ends. Logged-in administrators no longer use up their address's allowance, and a source that has gone quiet steps back down one block stage per quiet hour. A persistent block you set stays until you release it.
 * Fixed: hashes learned from JSON-LD and other JSON data blocks before 2.11.3 are retired automatically on the next scan, freeing room in the policy for the hashes your real inline scripts need.
 * Fixed: the Geo-IP Country Block List shows every country at once, instead of hiding most of them behind a sideways scrollbar.
+* Fixed: when something outside the plugin, such as an IP allow-list in .htaccess, sends your site's own requests to itself elsewhere, the daily pinned-script check no longer checks the wrong page. SAM now says it couldn't check, explains what to allow so these requests get through, and never records where they were sent.
+* Fixed: help text on Control → Traffic Controls uses the page's full width.
 * Added: SAM now notices when a vendor changes a script you pinned by hash. A daily check re-fetches each pinned file and compares it with the approved hash. A change raises an Action Centre item and a notice, and Decide → Dependency Classification offers "Re-approve new hash" or "Allow by host instead" in one click.
 * Added: Google Tag Manager, Google Analytics, HubSpot, Cloudflare Turnstile and reCAPTCHA are recognised as frequently-updated vendors, shown as "allowed by host, not hash" with the reason.
 * Added: Control → Traffic Controls → Network Intelligence → Geo-IP: the Country Block List can tick or untick countries by group -- UN M49 continents and regions, the EU and EEA, and UK and US (OFAC) sanctions snapshots, each with its source and date. Every country stays individually editable, and nothing changes until you save.
 * Added: Control → Traffic Controls → IP Rules → This site's own addresses. List the public addresses your own servers use to reach the site, and they're treated like your private network: never rate-limited, escalated or counted into campaigns. SAM suggests addresses it has seen calling wp-cron.php for you to check, and never adds them itself.
+* Added: the Geo-IP country groups now include sanctions lists from the UN, the EU, Switzerland, Liechtenstein, Norway, Iceland, Canada, Australia, New Zealand, Japan, South Korea, Singapore, Taiwan and Ukraine, plus every country with a US OFAC program. A new "Where does this website operate?" choice shows only the lists that apply there.
 * Changed: the Settings home page now shows only the summary (scorecard, recent activity, protection status and Action Centre). The per-layer status tables have moved, unchanged, to a new Settings → All tab.
+* Changed: the Plugins screen in wp-admin lists the plugin as "Security Automation Manager".
 
 = 2.11.6 =
 

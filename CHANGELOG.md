@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
-## [2.12.0] - 2026-10-28
+## [2.12.0] - 2026-10-29
 
 ### Fixed
 
@@ -22,8 +22,21 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 - **The Geo-IP Country Block List shows every country without a sideways scroll** (#465). `.wp-sam-country-grid` had `columns: 220px 4` and `max-height: 420px`. A multi-column box with a fixed height adds overflow columns instead of scrolling, so most countries sat behind a horizontal scrollbar, and each of the four columns was about twice as wide as its names. It now uses as many `14em` columns as fit and grows downwards. Long names wrap with a hanging indent.
 - `Discovery::get_crawl_urls()` passed `'/'` to `get_home_url()` as the blog ID. It now calls `home_url( '/' )` (#462).
 - The GitHub-channel `update.json` reads `requires`, `tested` and `requires_php` from the packaged `readme.txt` instead of hard-coding them. `tested` had fallen behind at 7.0 (#462).
+- **The pinned-script check no longer compares another site's page** (#467). `Dependency_Integrity_Monitor::scan_surface()` fetched the home page with `wp_remote_get()`, which follows a redirect anywhere. An IP allow-list sending the server's own request elsewhere had it compare that page's markup with this site's pinned hashes, and nothing said so. It now uses `Same_Host_Fetcher`, and logs `scan_redirected_offsite` instead of comparing.
+- **SAM never records where its own requests were redirected** (#467). It knows this site's own address and nothing else, and a redirect often points at another copy of the same site.
+  - `Same_Host_Fetcher`'s `wp_sam_offsite_redirect` error says "Redirected away from this site (HTTP n)" and carries only the status code.
+  - Discovery's `crawl_redirected_offsite` line and the robots.txt, ads.txt, app-ads.txt, humans.txt, agents and security.txt checks no longer name the destination.
+  - Both redirect events show a plain-English admin notice. It explains that something outside SAM, usually an IP allow-list in .htaccess or the server configuration, is redirecting the request. It says to allow the single address the server uses to reach itself (shown in the access log under the `WP-CSP-Discovery` user agent), not a whole private range.
+  - Configuration export no longer writes the exporting site's URL into the file. Import never read it.
+- **Help text on Control → Traffic Controls uses the page's full width** (#464). The Policy, IP Rules and Blocks tabs capped their description paragraphs at `max-width:700px`, leaving a wide empty band beside them.
 
 ### Added
+
+- **Sanctions lists for every authority, narrowed to where the site operates** (#466).
+  - `Country_Groups` adds sanctions groups for the UN Security Council, the EU, every country with a US OFAC program, Switzerland, Liechtenstein, Norway, Iceland, Canada, Australia, New Zealand, Japan, South Korea, Singapore, Taiwan and Ukraine. They were researched from official sources on 2026-10-28.
+  - Each lists every country its authority publishes a country regime for. Ukraine is never ticked. One-country trade bans, boycott laws and "unfriendly countries" lists are deliberately not offered.
+  - Each sanctions group's `applies_in` lists where its measures bind, including dependent territories (for example Jersey for the UK, Gibraltar for both the UK and the EU, and Puerto Rico for the US).
+  - A "Where does this website operate?" dropdown on the Geo-IP sub-tab (`Site_Country`, option `wp_sam_site_country`) narrows the sanctions groups to the UN list plus those that bind there. Other groups are never narrowed. Left unchosen, it offers every list, because sanctions also follow people and companies. Reset Data and uninstall clear the option.
 
 - **Control → Traffic Controls → IP Rules → This site's own addresses** (#460). `Own_Address_Store` holds up to 64 public addresses or CIDR ranges that a site's own servers or containers use to reach it. Ranges broader than /16 (IPv4) or /48 (IPv6) are rejected, and private addresses are already covered. Listed addresses get the same treatment as private ones in `Traffic_Guard`, `Traffic_Block_Store::record_violation()`, `Identity_Resolver` and `Campaign_Detector`: never rate-limited or escalated, never counted into a campaign, and shown as this site on Identities. An explicit Block rule still applies.
   - The section suggests public addresses seen calling `/wp-cron.php` in the last 30 days, for the administrator to check. Nothing is added automatically, because an external cron service calls it too.
@@ -51,6 +64,8 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 - The Dependency Classification notice no longer claims hashes are never computed by fetching the remote URL.
 - `readme.txt`'s External services section now discloses the daily pinned-file check.
 - `docs/security-controls-inventory.md` and `docs/operating-model.html` no longer describe api as a CSP surface, which it hasn't been since 2.11.4 (#462).
+- **wp-admin lists the plugin as "Security Automation Manager"** (#463). Only the main file's `Plugin Name` header changed. The WordPress.org directory title (`readme.txt`'s `=== … ===` line), the slug and the text domain stay as they were, and `VersionConsistencyTest` pins both names.
+- The Geo-IP help text and two code comments say "never a shared credential" rather than "never a shared VCNS credential" (#464).
 
 ## [2.11.6] - 2026-10-27
 
