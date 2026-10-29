@@ -534,6 +534,29 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringNotContainsString( 'Seen calling /wp-cron.php', $output );
 	}
 
+	public function test_own_addresses_saved_notice_says_how_many_identities_were_relabelled(): void {
+		$_GET['tab']                  = 'ip-rules';
+		$_GET['own_saved']            = '1';
+		$_GET['own_relabelled']       = '3';
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		$_GET['own_relabelled'] = '0';
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$unchanged = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['own_saved'], $_GET['own_relabelled'] );
+
+		$this->assertStringContainsString( '3 identities on Observe → Continuous Intelligence → Identities were relabelled to match.', $output );
+		$this->assertStringContainsString( 'Saved.', $unchanged );
+		$this->assertStringNotContainsString( 'relabelled to match', $unchanged );
+	}
+
 	public function test_ip_rules_tab_suggests_wp_cron_callers_not_yet_listed(): void {
 		$_GET['tab'] = 'ip-rules';
 		\WP_SAM\Intelligence\Own_Address_Store::save( '185.177.72.38' );
