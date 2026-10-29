@@ -172,6 +172,22 @@ class PageOverviewTest extends TestCase {
 		$this->assertNotContains( $this->all_tab_csp_mode_query(), $GLOBALS['_wpdb_get_results_log'] );
 	}
 
+	public function test_overview_tab_summary_sits_below_the_tab_bar_like_every_other_tab(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output   = $this->render_tab( 'overview' );
+		$tab_help = strpos( $output, 'class="wp-sam-tab-help"' );
+
+		$this->assertNotFalse( $tab_help );
+		$this->assertLessThan( $tab_help, (int) strpos( $output, 'wp-sam-tab-wrapper' ) );
+		foreach ( array( 'wp-sam-scorecard', 'wp-sam-recent-activity', 'wp-sam-protection-status', 'wp-sam-action-centre-preview' ) as $section ) {
+			$this->assertGreaterThan( $tab_help, (int) strpos( $output, $section ), "{$section} renders above the tab bar" );
+		}
+	}
+
 	public function test_all_tab_renders_every_layer_table_without_the_home_summary(): void {
 		$GLOBALS['_wpdb_get_var']     = 0;
 		$GLOBALS['_wpdb_get_results'] = array();
@@ -221,8 +237,7 @@ class PageOverviewTest extends TestCase {
 			(int) strpos( $output, 'tab=overview' ),
 			(int) strpos( $output, 'tab=all' )
 		);
-		// The Overview tab renders no About-tab content now that it has no
-		// body of its own below the tab bar.
+		// The Overview tab renders no About-tab content.
 		$this->assertStringNotContainsString( 'wp-sam-about', $output );
 	}
 
