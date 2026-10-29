@@ -97,7 +97,7 @@ final class Surface_Classifier {
 			return '';
 		}
 
-		$value    = wp_unslash( (string) $_SERVER[ $key ] );
+		$value    = wp_unslash( (string) $_SERVER[ $key ] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- deliberately unsanitized; see the docblock above. Control characters are stripped below.
 		$filtered = preg_replace( '/[\x00-\x1F\x7F]/', '', $value );
 		return null !== $filtered ? $filtered : '';
 	}
