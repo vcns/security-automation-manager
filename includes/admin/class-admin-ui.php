@@ -90,6 +90,7 @@ use WP_SAM\Intelligence\Exception_Store;
 use WP_SAM\Intelligence\Geo_Ip_Store;
 use WP_SAM\Intelligence\Honeypath_Store;
 use WP_SAM\Intelligence\Humans_Txt_Store;
+use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Iso_Countries;
@@ -1366,11 +1367,15 @@ class Admin_UI {
 
 		$result = Own_Address_Store::save( sanitize_textarea_field( wp_unslash( $_POST['own_addresses'] ?? '' ) ) );
 
+		// Rows already on Observe → Continuous Intelligence → Identities
+		// would otherwise keep their old label until each address returned.
+		$relabelled = ( new Scanner_Identity_Store() )->relabel_own_addresses( new Identity_Resolver( new Scanner_Vendor_Store() ) );
+
 		// Exempting an address from automatic blocking is worth a record of who did it.
 		$this->plugin->audit->log(
 			'traffic_controls',
 			'own_addresses_saved',
-			sprintf( 'This site\'s own addresses set to: %s.', empty( $result['saved'] ) ? '(none)' : implode( ', ', $result['saved'] ) ),
+			sprintf( 'This site\'s own addresses set to: %s. %d recorded identities relabelled to match.', empty( $result['saved'] ) ? '(none)' : implode( ', ', $result['saved'] ), $relabelled ),
 			'info'
 		);
 
@@ -1378,7 +1383,7 @@ class Admin_UI {
 			set_transient( 'wp_sam_own_addresses_rejected_' . get_current_user_id(), $result['rejected'], 5 * MINUTE_IN_SECONDS );
 		}
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules&own_saved=1#wp-sam-own-addresses' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules&own_saved=1&own_relabelled=' . $relabelled . '#wp-sam-own-addresses' ) );
 		exit;
 	}
 

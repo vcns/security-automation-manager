@@ -78,6 +78,9 @@ final class Scanner_Identity_Store {
 	private const MAX_PER_HOUR_PER_KEY = 500;
 	private const RATE_LIMIT_WINDOW    = HOUR_IN_SECONDS;
 
+	/** Rows read, and ids updated, per query by relabel_own_addresses(). */
+	private const RELABEL_BATCH = 1000;
+
 	/** Bounded so recent_paths can never grow without limit -- see class docblock. */
 	public const MAX_RECENT_PATHS = 10;
 
@@ -316,6 +319,90 @@ final class Scanner_Identity_Store {
 		);
 
 		return array_slice( array_values( $public ), 0, $limit );
+	}
+
+	/**
+	 * Brings every recorded row into line with Own_Address_Store, after an
+	 * administrator changes the list on Control → Traffic Controls → IP
+	 * Rules → This site's own addresses.
+	 *
+	 * record() only labels a row when that address next makes a request.
+	 * Without this, an address added to the list kept its old label, and
+	 * the Authorise/Deny buttons, until it came back. One first recorded
+	 * under a crawler's name kept it for good, because its later requests
+	 * are recorded under no name, which is a different row. An address
+	 * taken off the list likewise stayed "this site's own" here, although
+	 * nothing else treated it as such any more.
+	 *
+	 * Rows carrying an administrator decision are left alone, as record()
+	 * leaves them. The table is read RELABEL_BATCH rows at a time, so a
+	 * large one is never loaded in one go.
+	 *
+	 * @return int The number of rows whose state changed.
+	 */
+	public function relabel_own_addresses( Identity_Resolver $resolver ): int {
+		global $wpdb;
+		$table        = $wpdb->prefix . 'sam_scanner_identities';
+		$placeholders = implode( ', ', array_fill( 0, count( self::AUTOMATIC_STATES ), '%s' ) );
+		$changes      = array();
+		$last_id      = 0;
+
+		do {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$rows = $wpdb->get_results(
+				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- one %s per automatic state, built into $placeholders above.
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT id, ip, claimed_identity, user_agent, verification_state FROM {$table} WHERE id > %d AND verification_state IN ({$placeholders}) ORDER BY id LIMIT %d",
+					...array_merge( array( $last_id ), self::AUTOMATIC_STATES, array( self::RELABEL_BATCH ) )
+				),
+				ARRAY_A
+			);
+			$rows = is_array( $rows ) ? $rows : array();
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row['id'];
+				$ip      = (string) $row['ip'];
+				$state   = (string) $row['verification_state'];
+
+				if ( Own_Address_Store::includes( $ip ) ) {
+					$new_state = 'loopback';
+				} elseif ( 'loopback' === $state ) {
+					// Labelled as a request from it would be labelled now. A
+					// row recorded under no name can only be 'unknown': a
+					// recognised crawler's requests go to a row under its name.
+					$new_state = '' === (string) $row['claimed_identity']
+						? 'unknown'
+						: $resolver->resolve( $ip, (string) $row['user_agent'] )['verification_state'];
+				} else {
+					continue;
+				}
+
+				if ( $new_state !== $state ) {
+					$changes[ $new_state ][] = $last_id;
+				}
+			}
+		} while ( count( $rows ) === self::RELABEL_BATCH );
+
+		$changed = 0;
+		foreach ( $changes as $new_state => $ids ) {
+			foreach ( array_chunk( $ids, self::RELABEL_BATCH ) as $chunk ) {
+				$id_placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%d' ) );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+				$result = $wpdb->query(
+					// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- one %d per id, built into $id_placeholders above.
+					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"UPDATE {$table} SET verification_state = %s WHERE id IN ({$id_placeholders})",
+						(string) $new_state,
+						...$chunk
+					)
+				);
+				$changed += false === $result ? 0 : (int) $result;
+			}
+		}
+
+		return $changed;
 	}
 
 	public function authorise( int $id, int $user_id, string $note ): bool {

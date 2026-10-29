@@ -275,7 +275,16 @@ $tab_help = array(
 			</ul>
 		</div>
 		<?php elseif ( isset( $_GET['own_saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only flag set by our own redirect. ?>
-		<div class="notice notice-success inline"><p><?php esc_html_e( 'Saved.', 'vcns-security-automation-manager' ); ?></p></div>
+			<?php $own_relabelled = isset( $_GET['own_relabelled'] ) ? absint( $_GET['own_relabelled'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only count set by our own redirect. ?>
+		<div class="notice notice-success inline"><p>
+			<?php esc_html_e( 'Saved.', 'vcns-security-automation-manager' ); ?>
+			<?php if ( $own_relabelled > 0 ) : ?>
+				<?php
+				/* translators: %d: number of identities whose label changed. */
+				echo esc_html( sprintf( _n( '%d identity on Observe → Continuous Intelligence → Identities was relabelled to match.', '%d identities on Observe → Continuous Intelligence → Identities were relabelled to match.', $own_relabelled, 'vcns-security-automation-manager' ), $own_relabelled ) );
+				?>
+			<?php endif; ?>
+		</p></div>
 		<?php endif; ?>
 		<?php if ( ! empty( $own_suggested ) ) : ?>
 		<p class="description">
