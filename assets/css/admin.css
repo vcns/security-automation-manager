@@ -877,3 +877,36 @@ details.wp-sam-filter-form form {
 		width: auto;
 	}
 }
+
+/* Well-known file editor: Control → Traffic Controls → Network Intelligence
+ * → Well-Known Files → Create/Edit. One template per line, button first. */
+.wp-sam-well-known-templates {
+	margin: 0 0 1.5em;
+}
+
+.wp-sam-well-known-templates li {
+	margin-bottom: 6px;
+}
+
+.wp-sam-well-known-templates .button {
+	min-width: 14em;
+	margin-right: 8px;
+	text-align: center;
+}
+
+label[for="wp-sam-well-known-content"] {
+	font-weight: 600;
+	margin-right: 8px;
+}
+
+#wp-sam-well-known-content {
+	margin: 6px 0 10px;
+}
+
+.wp-sam-well-known-remove {
+	margin-top: 1.5em;
+}
+
+.wp-sam-well-known-table .wp-sam-col-actions .button {
+	margin-right: 4px;
+}

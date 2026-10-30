@@ -105,6 +105,8 @@ use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Scanner_Vendor_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
+use WP_SAM\Intelligence\Well_Known_File_Catalog;
+use WP_SAM\Intelligence\Well_Known_File_Editor;
 use WP_SAM\Security\Cache_Control_Builder;
 use WP_SAM\Security\Cache_Control_Conflict_Detector;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
@@ -231,6 +233,8 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_humans_txt_refresh', array( $this, 'handle_humans_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_ads_txt_refresh', array( $this, 'handle_ads_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_app_ads_txt_refresh', array( $this, 'handle_app_ads_txt_refresh' ) );
+		add_action( 'admin_post_wp_sam_well_known_save', array( $this, 'handle_well_known_save' ) );
+		add_action( 'admin_post_wp_sam_well_known_remove', array( $this, 'handle_well_known_remove' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
 		add_action( 'admin_post_wp_sam_issue_certificate', array( $this, 'handle_issue_certificate' ) );
 		add_action( 'admin_post_wp_sam_download_certificate', array( $this, 'handle_download_certificate' ) );
@@ -1896,6 +1900,86 @@ class Admin_UI {
 		( new App_Ads_Txt_Store() )->refresh();
 
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
+	/** The editor for one file on Control → Traffic Controls → Network Intelligence → Well-Known Files. */
+	public static function well_known_editor_url( string $key, array $args = array() ): string {
+		return add_query_arg(
+			array_merge(
+				array(
+					'tab'    => 'network-intelligence',
+					'subtab' => 'well-known',
+					'file'   => $key,
+				),
+				$args
+			),
+			admin_url( 'admin.php?page=security-automation-manager-traffic' )
+		);
+	}
+
+	/**
+	 * Saves this plugin's version of a well-known file, which it then
+	 * serves. The text skips sanitize_textarea_field() on purpose: that
+	 * strips %XX escapes, which are valid in robots.txt paths and
+	 * security.txt URLs. Well_Known_File_Catalog::sanitize() normalises it
+	 * instead, and Well_Known_File_Server only ever sends it as text/plain
+	 * with nosniff.
+	 */
+	public function handle_well_known_save(): void {
+		check_admin_referer( 'wp_sam_well_known_save' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage well-known files.', 'vcns-security-automation-manager' ) );
+		}
+
+		$key = sanitize_key( wp_unslash( $_POST['file'] ?? '' ) );
+		if ( ! Well_Known_File_Catalog::has( $key ) || ! Well_Known_File_Catalog::serves_from_root() ) {
+			wp_die( esc_html__( 'This file can\'t be served from this site.', 'vcns-security-automation-manager' ) );
+		}
+
+		$raw    = isset( $_POST['content'] ) ? (string) wp_unslash( $_POST['content'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- normalised by Well_Known_File_Catalog::sanitize() inside save(); see this method's docblock.
+		$result = ( new Well_Known_File_Editor() )->save( $key, $raw, get_current_user_id() );
+
+		if ( ! $result['saved'] ) {
+			set_transient( 'wp_sam_well_known_errors_' . get_current_user_id(), $result['problems'], 5 * MINUTE_IN_SECONDS );
+			set_transient( 'wp_sam_well_known_input_' . get_current_user_id(), $result['content'], 5 * MINUTE_IN_SECONDS );
+			wp_safe_redirect( self::well_known_editor_url( $key ) );
+			exit;
+		}
+
+		$this->plugin->audit->log(
+			'well_known_files',
+			'file_saved',
+			sprintf( '%1$s saved (%2$d bytes) and served by this plugin. Check after saving: %3$s.', Well_Known_File_Catalog::files()[ $key ]['paths'][0], strlen( $result['content'] ), $result['check'] ),
+			'info'
+		);
+
+		wp_safe_redirect( self::well_known_editor_url( $key, array( 'saved' => $result['check'] ) ) );
+		exit;
+	}
+
+	/** Stops serving this plugin's version, so visitors get whatever the site served before. */
+	public function handle_well_known_remove(): void {
+		check_admin_referer( 'wp_sam_well_known_remove' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage well-known files.', 'vcns-security-automation-manager' ) );
+		}
+
+		$key = sanitize_key( wp_unslash( $_POST['file'] ?? '' ) );
+		if ( ! Well_Known_File_Catalog::has( $key ) ) {
+			wp_die( esc_html__( 'Unknown well-known file.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Well_Known_File_Editor() )->remove( $key );
+
+		$this->plugin->audit->log(
+			'well_known_files',
+			'file_removed',
+			sprintf( '%s is no longer served by this plugin.', Well_Known_File_Catalog::files()[ $key ]['paths'][0] ),
+			'info'
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known&removed=' . rawurlencode( $key ) ) );
 		exit;
 	}
 
