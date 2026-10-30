@@ -479,4 +479,31 @@ class ScannerIdentityStoreTest extends TestCase {
 		$this->assertStringContainsString( 'WHERE id > 1000 ', $GLOBALS['_wpdb_get_results_log'][1] );
 		$this->assertStringContainsString( 'WHERE id IN (1001)', $this->relabel_updates()[0] );
 	}
+
+	// ── addresses_for_asn() ───────────────────────────────────────────────
+
+	public function test_addresses_for_asn_groups_one_as_rows_by_address_most_recent_first(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'ip'           => '91.125.72.135',
+				'times_seen'   => '12',
+				'last_seen_at' => '2026-10-30 21:00:00',
+			),
+		);
+
+		$this->assertSame(
+			array(
+				array(
+					'ip'           => '91.125.72.135',
+					'times_seen'   => 12,
+					'last_seen_at' => '2026-10-30 21:00:00',
+				),
+			),
+			$this->store->addresses_for_asn( 6871, 10 )
+		);
+
+		$query = (string) $GLOBALS['_wpdb_last_get_results_query'];
+		$this->assertStringContainsString( 'WHERE asn = 6871 GROUP BY ip', $query );
+		$this->assertStringContainsString( 'ORDER BY MAX(last_seen_at) DESC LIMIT 10', $query );
+	}
 }

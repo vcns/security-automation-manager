@@ -149,4 +149,83 @@ class AsnLookupStoreTest extends TestCase {
 		$this->assertCount( 1, $GLOBALS['_wpdb_updated_rows'] );
 		$this->assertSame( array( 'id' => 7 ), $GLOBALS['_wpdb_updated_rows'][0]['where'] );
 	}
+
+	// ── network_range() and describe(), for the ASN Lookup page ──────────
+
+	/** @param array<int, string> $hostnames Every hostname queried, appended to. */
+	private function counting_store( array $txt_responses, array &$hostnames ): Asn_Lookup_Store {
+		return new Asn_Lookup_Store(
+			static function ( string $hostname ) use ( &$hostnames, $txt_responses ): array {
+				$hostnames[] = $hostname;
+				return $txt_responses[ $hostname ] ?? array();
+			}
+		);
+	}
+
+	public function test_network_range_is_the_prefix_from_the_origin_record_and_is_kept_for_a_day(): void {
+		$hostnames = array();
+		$store     = $this->counting_store( array( '135.72.125.91.origin.asn.cymru.com' => array( '6871 | 91.125.0.0/16 | GB | ripencc | 2006-10-09' ) ), $hostnames );
+
+		$this->assertSame( '91.125.0.0/16', $store->network_range( '91.125.72.135' ) );
+		$this->assertSame( '91.125.0.0/16', $store->network_range( '91.125.72.135' ) );
+		$this->assertSame( array( '135.72.125.91.origin.asn.cymru.com' ), $hostnames, 'The second call is answered from the transient.' );
+	}
+
+	public function test_network_range_is_null_for_no_record_a_malformed_one_or_a_non_ipv4_address(): void {
+		$hostnames = array();
+		$store     = $this->counting_store(
+			array(
+				'1.0.0.10.origin.asn.cymru.com' => array( '64500 | <b>10.0.0.0/8</b> | ZZ' ),
+			),
+			$hostnames
+		);
+
+		$this->assertNull( $store->network_range( '203.0.113.9' ) );
+		$this->assertNull( $store->network_range( '10.0.0.1' ) );
+		$this->assertNull( $store->network_range( '2001:db8::1' ) );
+		$this->assertNull( $store->network_range( 'nonsense' ) );
+		$this->assertCount( 2, $hostnames, 'Nothing is queried for an address that is not IPv4.' );
+		$this->assertNull( $store->network_range( '203.0.113.9' ) );
+		$this->assertCount( 2, $hostnames, 'A miss is kept too.' );
+	}
+
+	public function test_describe_reads_the_registry_record_and_keeps_it_for_a_day(): void {
+		$hostnames = array();
+		$store     = $this->counting_store( array( 'AS6871.asn.cymru.com' => array( '6871 | GB | ripencc | 1996-12-13 | Plusnet - British Telecommunications Limited, GB' ) ), $hostnames );
+
+		$expected = array(
+			'asn'       => 6871,
+			'name'      => 'Plusnet - British Telecommunications Limited, GB',
+			'country'   => 'GB',
+			'registry'  => 'ripencc',
+			'allocated' => '1996-12-13',
+		);
+		$this->assertSame( $expected, $store->describe( 6871 ) );
+		$this->assertSame( $expected, $store->describe( 6871 ) );
+		$this->assertCount( 1, $hostnames );
+	}
+
+	public function test_describe_leaves_out_anything_that_does_not_look_like_its_field(): void {
+		$store = $this->store( array( 'AS64500.asn.cymru.com' => array( '64500 | Great Britain | RIPE NCC | last year |  ' ) ) );
+
+		$this->assertSame(
+			array(
+				'asn'       => 64500,
+				'name'      => null,
+				'country'   => null,
+				'registry'  => null,
+				'allocated' => null,
+			),
+			$store->describe( 64500 )
+		);
+	}
+
+	public function test_describe_ignores_a_record_for_a_different_as_and_queries_nothing_for_zero(): void {
+		$hostnames = array();
+		$store     = $this->counting_store( array( 'AS64500.asn.cymru.com' => array( '15169 | US | arin | 2000-03-30 | GOOGLE, US' ) ), $hostnames );
+
+		$this->assertNull( $store->describe( 64500 )['name'] );
+		$this->assertNull( $store->describe( 0 )['name'] );
+		$this->assertSame( array( 'AS64500.asn.cymru.com' ), $hostnames );
+	}
 }

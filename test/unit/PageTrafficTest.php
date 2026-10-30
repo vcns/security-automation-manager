@@ -416,25 +416,95 @@ class PageTrafficTest extends TestCase {
 		return $output;
 	}
 
-	public function test_geoip_subtab_puts_provider_status_and_token_form_in_one_table_row(): void {
+	/** The HTML of the Geo-IP settings dialog, or '' when there is none. */
+	private function geoip_dialog( string $output ): string {
+		return 1 === preg_match( '/<dialog id="wp-sam-geoip-settings".*?<\/dialog>/s', $output, $match ) ? $match[0] : '';
+	}
+
+	public function test_geoip_subtab_keeps_the_ipinfo_token_behind_a_settings_cog(): void {
+		$output = $this->render_geoip_subtab();
+		$dialog = $this->geoip_dialog( $output );
+
+		$this->assertStringContainsString( '<button type="button" class="button wp-sam-settings-cog" data-wp-sam-dialog-open="wp-sam-geoip-settings" aria-haspopup="dialog"', $output );
+		$this->assertStringContainsString( 'dashicons-admin-generic', $output );
+		$this->assertNotSame( '', $dialog );
+		$this->assertStringContainsString( 'name="action" value="wp_sam_geoip_settings_save"', $dialog );
+		$this->assertStringContainsString( '<input type="password" id="ipinfo_token" name="ipinfo_token"', $dialog );
+		$this->assertStringContainsString( 'https://ipinfo.io/signup', $dialog );
+		$this->assertStringContainsString( 'data-wp-sam-dialog-close', $dialog );
+
+		$this->assertSame( '', $this->table_with_class( $output, 'wp-sam-geoip-provider-table' ) );
+		$this->assertStringNotContainsString( 'Save Token', $output );
+		$this->assertStringNotContainsString( 'Clear and Disable', $output );
+	}
+
+	public function test_geoip_subtab_without_a_token_says_geo_ip_is_off_and_offers_to_add_one(): void {
 		$output = $this->render_geoip_subtab();
 
-		$table = $this->table_with_class( $output, 'wp-sam-geoip-provider-table' );
+		$this->assertStringContainsString( 'Geo-IP is off, so the Country Block List below has no effect', $output );
+		$this->assertStringContainsString( 'data-wp-sam-dialog-open="wp-sam-geoip-settings">Add token</button>', $output );
+		$this->assertStringNotContainsString( 'id="geo_lookup_ip"', $output, 'No lookup without a token.' );
+		$this->assertStringNotContainsString( 'wp-sam-geoip-remove-token', $output, 'Nothing to remove yet.' );
+	}
+
+	/**
+	 * Pressing Enter in the token field submits the form with its first
+	 * submit button, so "Remove token" must not be one of that form's own.
+	 */
+	public function test_geoip_subtab_with_a_token_offers_the_lookup_and_a_remove_button_in_its_own_form(): void {
+		( new \WP_SAM\Intelligence\Geo_Ip_Store() )->save_token( 'a-real-token' );
+
+		$output = $this->render_geoip_subtab();
+		$dialog = $this->geoip_dialog( $output );
+
+		$this->assertStringContainsString( 'Geo-IP is on, using your IPinfo token.', $output );
+		$this->assertStringContainsString( 'id="geo_lookup_ip" name="geo_lookup_ip"', $output );
+		$this->assertStringContainsString( 'placeholder="Saved -- leave blank to keep"', $dialog );
+
+		$this->assertStringContainsString( '<button type="submit" form="wp-sam-geoip-remove-token" class="button-link button-link-delete">Remove token and turn Geo-IP off</button>', $dialog );
+		$this->assertMatchesRegularExpression( '/<form method="post" action="[^"]*" id="wp-sam-geoip-remove-token">.*?name="remove_token" value="1".*?<\/form>/s', $dialog );
+
+		preg_match( '/<form method="post"[^>]*>(.*?)<\/form>/s', $dialog, $settings_form );
+		$this->assertStringNotContainsString( 'name="remove_token"', $settings_form[1] );
+		$this->assertSame( 2, substr_count( $settings_form[1], 'type="submit"' ), 'Save, plus Remove -- which belongs to the other form.' );
+		$this->assertSame( 1, substr_count( $settings_form[1], 'form="wp-sam-geoip-remove-token"' ) );
+	}
+
+	public function test_geoip_subtab_confirms_a_settings_save(): void {
+		$_GET['settings_saved'] = '1';
+		$output                 = $this->render_geoip_subtab();
+		unset( $_GET['settings_saved'] );
+
+		$this->assertStringContainsString( 'Geo-IP settings saved.', $output );
+	}
+
+	public function test_geoip_subtab_shows_a_lookup_result_as_one_table_row(): void {
+		( new \WP_SAM\Intelligence\Geo_Ip_Store() )->save_token( 'a-real-token' );
+		$GLOBALS['_wpdb_get_row'] = array( // Geo_Ip_Store cache hit -- no live IPinfo call.
+			'country' => 'GB',
+			'region'  => 'England',
+			'city'    => 'London',
+		);
+		$_GET['geo_lookup_ip'] = '91.125.72.135';
+
+		$output = $this->render_geoip_subtab();
+		unset( $_GET['geo_lookup_ip'] );
+
+		$table = $this->table_with_class( $output, 'wp-sam-geoip-result-table' );
 		$this->assertSame( 1, substr_count( $table, '<tr>' ) - 1 );
-		$this->assertStringContainsString( 'Disabled -- no token configured', $table );
-		$this->assertStringContainsString( 'https://ipinfo.io/signup', $table );
-		$this->assertStringContainsString( 'name="action" value="wp_sam_geoip_save_token"', $table );
-		$this->assertStringContainsString( 'id="ipinfo_token"', $table );
-		$this->assertStringContainsString( 'Save Token', $table );
+		$this->assertStringContainsString( '<code>91.125.72.135</code>', $table );
+		$this->assertStringContainsString( 'United Kingdom (GB)', $table );
+		$this->assertStringContainsString( 'London', $table );
 	}
 
 	public function test_geoip_subtab_offers_every_sanctions_list_until_a_site_country_is_chosen(): void {
 		$output = $this->render_geoip_subtab();
+		$dialog = $this->geoip_dialog( $output );
 
-		$this->assertStringContainsString( 'Where does this website operate?', $output );
-		$this->assertStringContainsString( 'name="action" value="wp_sam_site_country_save"', $output );
-		$this->assertStringContainsString( '<select id="wp-sam-site-country-select" name="site_country"', $output );
-		$this->assertStringContainsString( 'Not chosen: offer every sanctions list', $output );
+		$this->assertStringContainsString( 'Where does this website operate?', $dialog );
+		$this->assertStringContainsString( '<select id="wp-sam-site-country-select" name="site_country"', $dialog );
+		$this->assertStringContainsString( 'Not chosen: offer every sanctions list', $dialog );
+		$this->assertStringContainsString( 'data-wp-sam-dialog-open="wp-sam-geoip-settings">Show only the sanctions lists that apply where this website operates</button>', $output );
 		foreach ( array( 'un-sanctions', 'eu-sanctions', 'uk-sanctions', 'us-ofac-comprehensive', 'jp-sanctions' ) as $key ) {
 			$this->assertStringContainsString( 'value="' . $key . '"', $output );
 		}
@@ -453,6 +523,7 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringNotContainsString( 'data-wp-sam-country-group-details="uk-sanctions"', $output );
 		$this->assertStringContainsString( 'value="eu"', $output, 'Blocs and regions are never narrowed.' );
 		$this->assertStringContainsString( 'Sanctions lists are narrowed to those that bind in France.', $output );
+		$this->assertStringContainsString( 'data-wp-sam-dialog-open="wp-sam-geoip-settings">Change where this website operates</button>', $output );
 	}
 
 	public function test_geoip_subtab_renders_country_grid_with_nothing_blocked(): void {
@@ -507,9 +578,9 @@ class PageTrafficTest extends TestCase {
 		unset( $_GET['tab'], $_GET['subtab'] );
 
 		$this->assertStringContainsString( 'Select by group', $output );
-		$this->assertStringContainsString( '<label for="wp-sam-country-group-select">', $output );
+		$this->assertStringContainsString( '<label for="wp-sam-country-group-select"><strong>Select by group</strong></label>', $output );
 		// No name attribute: the group choice is never submitted.
-		$this->assertStringContainsString( '<select id="wp-sam-country-group-select" aria-describedby="wp-sam-country-group-details">', $output );
+		$this->assertStringContainsString( '<select id="wp-sam-country-group-select" aria-describedby="wp-sam-country-group-help wp-sam-country-group-details">', $output );
 		$this->assertStringContainsString( '<optgroup label="Continents (UN M49 regions)">', $output );
 		$this->assertStringContainsString( '<optgroup label="Sanctions (snapshot)">', $output );
 		$this->assertStringContainsString( 'value="eu" data-codes="AT BE BG', $output );
@@ -583,6 +654,7 @@ class PageTrafficTest extends TestCase {
 		$_GET['lookup_ip'] = '203.0.113.42';
 		$GLOBALS['_wpdb_get_results'] = array();
 		$GLOBALS['_wpdb_get_row']     = array( 'asn' => 15169, 'asn_org' => 'GOOGLE' ); // Asn_Lookup_Store cache hit -- no live DNS lookup.
+		set_transient( 'wp_sam_asn_range_' . md5( '203.0.113.42' ), '' ); // Nor for its network range.
 
 		ob_start();
 		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
@@ -591,7 +663,7 @@ class PageTrafficTest extends TestCase {
 		unset( $_GET['tab'], $_GET['lookup_ip'] );
 
 		$this->assertStringContainsString( 'AS15169', $output );
-		$this->assertStringNotContainsString( 'IPinfo API token', $output );
+		$this->assertStringNotContainsString( 'Geo-IP settings', $output );
 	}
 
 	public function test_geo_lookup_ip_param_without_an_explicit_subtab_lands_on_geoip(): void {
@@ -605,7 +677,7 @@ class PageTrafficTest extends TestCase {
 
 		unset( $_GET['tab'], $_GET['geo_lookup_ip'] );
 
-		$this->assertStringContainsString( 'IPinfo API token', $output );
+		$this->assertStringContainsString( 'Geo-IP settings', $output );
 		$this->assertStringContainsString( 'Country Block List', $output );
 	}
 
@@ -763,5 +835,280 @@ class PageTrafficTest extends TestCase {
 			'detectors'            => array( 'detectors' ),
 			'custom-rules'         => array( 'custom-rules' ),
 		);
+	}
+
+	// ── Network Rules: the way back to Geo-IP, and pre-filling ─────────────
+
+	/** @param array<string, string> $get Extra query parameters. */
+	private function render_traffic( array $get ): string {
+		$_GET = array_merge( $_GET, $get );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		foreach ( array_keys( $get ) as $key ) {
+			unset( $_GET[ $key ] );
+		}
+		return $output;
+	}
+
+	private function network_rule_row( array $overrides ): array {
+		return array_merge(
+			array(
+				'id'        => 1,
+				'rule_type' => 'country',
+				'value'     => 'RU',
+				'surface'   => '',
+				'reason'    => 'Blocked via Geo-IP country list',
+			),
+			$overrides
+		);
+	}
+
+	public function test_network_rules_link_country_blocking_back_to_the_geo_ip_country_block_list(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$output = $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'network-rules' ) );
+
+		$this->assertMatchesRegularExpression( '#<a href="[^"]*subtab=geoip\#wp-sam-country-block-list">Geo-IP → Country Block List</a>#', $output );
+		$this->assertMatchesRegularExpression( '#<a href="[^"]*subtab=geoip\#wp-sam-country-block-list">Use the Country Block List on the Geo-IP tab</a>#', $output );
+		$this->assertStringNotContainsString( 'Country Block List above', $output );
+	}
+
+	public function test_network_rules_offer_change_on_geo_ip_only_for_the_country_rules_that_list_manages(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			$this->network_rule_row( array( 'id' => 1 ) ),
+			$this->network_rule_row( array( 'id' => 2, 'value' => 'CN', 'surface' => 'login' ) ),
+			$this->network_rule_row( array( 'id' => 3, 'rule_type' => 'asn', 'value' => '6871' ) ),
+		);
+
+		$output = $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'network-rules' ) );
+
+		$this->assertSame( 1, substr_count( $output, '>Change on Geo-IP</a>' ) );
+		$this->assertMatchesRegularExpression( '#<a href="[^"]*subtab=asn&(amp;)?asn=6871"><code>AS6871</code></a>#', $output );
+	}
+
+	public function test_network_rules_warn_that_country_rules_do_nothing_while_geo_ip_is_off(): void {
+		$GLOBALS['_wpdb_get_results'] = array( $this->network_rule_row( array() ) );
+
+		$output = $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'network-rules' ) );
+		$this->assertStringContainsString( 'The country rules below have no effect while Geo-IP is off', $output );
+
+		( new \WP_SAM\Intelligence\Geo_Ip_Store() )->save_token( 'a-real-token' );
+		$output = $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'network-rules' ) );
+		$this->assertStringNotContainsString( 'have no effect while Geo-IP is off', $output );
+	}
+
+	public function test_network_rules_form_can_be_pre_filled_from_the_address_bar(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$output = $this->render_traffic(
+			array(
+				'tab'         => 'network-intelligence',
+				'subtab'      => 'network-rules',
+				'rule_type'   => 'asn',
+				'rule_value'  => 'AS6871',
+				'rule_reason' => 'Looked up on ASN Lookup: AS6871, Plusnet',
+			)
+		);
+
+		$this->assertStringContainsString( 'id="wp-sam-network-rule-add"', $output );
+		$this->assertMatchesRegularExpression( "/<option value=\"asn\"\s+selected='selected'>/", $output );
+		$this->assertStringContainsString( 'name="value" required placeholder="AS15169, or a two-letter country code such as CN" style="width:100%;max-width:300px" value="AS6871"', $output );
+		$this->assertStringContainsString( 'value="Looked up on ASN Lookup: AS6871, Plusnet"', $output );
+	}
+
+	// ── IP Rules: pre-filling, and the self-lockout warning ────────────────
+
+	public function test_ip_rules_form_can_be_pre_filled_from_the_address_bar(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$output = $this->render_traffic(
+			array(
+				'tab'    => 'ip-rules',
+				'cidr'   => '91.125.0.0/16',
+				'reason' => 'Looked up on ASN Lookup: AS6871, Plusnet',
+			)
+		);
+
+		$this->assertStringContainsString( 'id="wp-sam-ip-rule-add"', $output );
+		$this->assertStringContainsString( 'name="cidr" required placeholder="203.0.113.42 or 203.0.113.0/24" style="width:100%;max-width:300px" value="91.125.0.0/16"', $output );
+		$this->assertStringContainsString( 'value="Looked up on ASN Lookup: AS6871, Plusnet"', $output );
+		$this->assertStringNotContainsString( 'confirm_lockout_risk', $output );
+	}
+
+	public function test_ip_rules_form_holds_a_rule_that_would_block_your_own_address_for_confirmation(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+		set_transient(
+			Admin_UI::IP_RULE_LOCKOUT_TRANSIENT_PREFIX . get_current_user_id(),
+			array(
+				'list_type'        => 'block',
+				'cidr'             => '91.125.0.0/16',
+				'surface'          => 'login',
+				'reason'           => 'Too many logins',
+				'expires_in_hours' => 24,
+				'message'          => 'Your own current IP address (91.125.72.135) is inside 91.125.0.0/16.',
+			)
+		);
+
+		$output = $this->render_traffic( array( 'tab' => 'ip-rules', 'cidr' => '198.51.100.7' ) );
+
+		$this->assertStringContainsString( 'This would block you:', $output );
+		$this->assertStringContainsString( 'Your own current IP address (91.125.72.135) is inside 91.125.0.0/16.', $output );
+		$this->assertStringContainsString( 'name="confirm_lockout_risk" value="1"', $output );
+		$this->assertStringContainsString( 'value="91.125.0.0/16"', $output, 'The held rule wins over a pre-fill.' );
+		$this->assertMatchesRegularExpression( "/<option value=\"login\"\s+selected='selected'>/", $output );
+		$this->assertStringContainsString( 'value="24"', $output );
+		$this->assertNotFalse( get_transient( Admin_UI::IP_RULE_LOCKOUT_TRANSIENT_PREFIX . get_current_user_id() ), 'Never cleared by a GET render.' );
+	}
+
+	// ── ASN Lookup: the result row's actions ───────────────────────────────
+
+	private function render_asn_lookup( string $ip, array $ip_rules = array(), array $network_rules = array() ): string {
+		$GLOBALS['_wpdb_get_row']           = array( 'asn' => 6871, 'asn_org' => 'Plusnet - British Telecommunications Limited, GB' ); // Asn_Lookup_Store cache hit.
+		$GLOBALS['_wpdb_get_results_queue'] = array( $ip_rules, $network_rules );
+		set_transient( 'wp_sam_asn_range_' . md5( $ip ), '91.125.0.0/16' ); // No live DNS lookup for the range either.
+
+		return $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'asn', 'lookup_ip' => $ip ) );
+	}
+
+	public function test_asn_lookup_shows_the_range_and_offers_to_block_the_ip_the_range_or_the_as(): void {
+		$_SERVER['REMOTE_ADDR'] = '91.125.72.135';
+		$output                 = $this->render_asn_lookup( '91.125.72.135' );
+		unset( $_SERVER['REMOTE_ADDR'] );
+
+		$table = $this->table_with_class( $output, 'wp-sam-asn-result-table' );
+		$this->assertSame( 1, substr_count( $table, '<tr>' ) - 1 );
+		$this->assertStringContainsString( '<code>91.125.0.0/16</code>', $table );
+		$this->assertStringContainsString( 'Your current address', $table );
+		$this->assertMatchesRegularExpression( '#<a href="[^"]*subtab=asn&(amp;)?asn=6871&(amp;)?lookup_ip=91.125.72.135" title="More about this network">AS6871</a>#', $table );
+		$this->assertMatchesRegularExpression( '#href="[^"]*tab=ip-rules&(amp;)?cidr=91.125.72.135&(amp;)?reason=Looked\+up\+on\+ASN\+Lookup[^"]*\#wp-sam-ip-rule-add">Block IP</a>#', $table );
+		$this->assertMatchesRegularExpression( '#href="[^"]*tab=ip-rules&(amp;)?cidr=91.125.0.0%2F16&[^"]*\#wp-sam-ip-rule-add">Block range</a>#', $table );
+		$this->assertMatchesRegularExpression( '#href="[^"]*subtab=network-rules&(amp;)?rule_type=asn&(amp;)?rule_value=AS6871&[^"]*\#wp-sam-network-rule-add">\s*Block AS6871\s*</a>#', $table );
+	}
+
+	public function test_asn_lookup_says_when_the_ip_or_the_as_is_already_blocked(): void {
+		$output = $this->render_asn_lookup(
+			'91.125.72.135',
+			array(
+				array(
+					'id'         => 1,
+					'list_type'  => 'block',
+					'cidr'       => '91.125.0.0/16',
+					'surface'    => '',
+					'expires_at' => null,
+				),
+			),
+			array( $this->network_rule_row( array( 'rule_type' => 'asn', 'value' => '6871' ) ) )
+		);
+
+		$table = $this->table_with_class( $output, 'wp-sam-asn-result-table' );
+		$this->assertStringContainsString( 'IP blocked', $table );
+		$this->assertStringContainsString( 'AS6871 blocked', $table );
+		$this->assertStringNotContainsString( '>Block IP</a>', $table );
+		$this->assertStringNotContainsString( '>Block range</a>', $table );
+		$this->assertStringNotContainsString( 'Block AS6871', $table );
+		$this->assertStringNotContainsString( 'Your current address', $table );
+	}
+
+	public function test_asn_lookup_notes_that_only_ipv4_addresses_are_looked_up(): void {
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		$output = $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'asn', 'lookup_ip' => '2001:db8::1' ) );
+
+		$table = $this->table_with_class( $output, 'wp-sam-asn-result-table' );
+		$this->assertStringContainsString( 'Not found', $table );
+		$this->assertStringContainsString( '>Block IP</a>', $table, 'An IPv6 address can still be blocked by IP.' );
+		$this->assertStringNotContainsString( 'Block range', $table );
+		$this->assertStringContainsString( 'ASN Lookup works for IPv4 addresses only.', $output );
+	}
+
+	// ── ASN Lookup: one AS's own view ──────────────────────────────────────
+
+	private function render_asn_profile( array $addresses = array(), array $network_rules = array(), array $ip_rules = array() ): string {
+		set_transient(
+			'wp_sam_asn_details_6871',
+			array(
+				'asn'       => 6871,
+				'name'      => 'Plusnet - British Telecommunications Limited, GB',
+				'country'   => 'GB',
+				'registry'  => 'ripencc',
+				'allocated' => '1996-12-13',
+			)
+		);
+		$GLOBALS['_wpdb_get_results_queue'] = array( $addresses, $network_rules, $ip_rules );
+
+		return $this->render_traffic( array( 'tab' => 'network-intelligence', 'subtab' => 'asn', 'asn' => 'AS6871', 'lookup_ip' => '91.125.72.135' ) );
+	}
+
+	public function test_asn_profile_shows_the_registry_record_and_offers_to_block_the_as(): void {
+		$output = $this->render_asn_profile();
+
+		$this->assertStringContainsString( 'AS6871 · Plusnet - British Telecommunications Limited, GB', $output );
+		$this->assertMatchesRegularExpression( '#<a href="[^"]*subtab=asn&(amp;)?lookup_ip=91.125.72.135">&larr; Back to ASN Lookup</a>#', $output );
+
+		$table = $this->table_with_class( $output, 'wp-sam-asn-profile-table' );
+		$this->assertStringContainsString( 'United Kingdom (GB)', $table );
+		$this->assertStringContainsString( 'RIPE NCC', $table );
+		$this->assertStringContainsString( '1996-12-13', $table );
+		$this->assertMatchesRegularExpression( '#<td class="wp-sam-col-status">\s*No\s*</td>#', $table );
+		$this->assertMatchesRegularExpression( '#href="[^"]*subtab=network-rules&(amp;)?rule_type=asn&(amp;)?rule_value=AS6871&(amp;)?rule_reason=Blocked\+from\+ASN\+Lookup[^"]*\#wp-sam-network-rule-add">\s*Block AS6871\s*</a>#', $table );
+		$this->assertStringNotContainsString( 'id="lookup_ip"', $output, 'The lookup form is not repeated here.' );
+	}
+
+	public function test_asn_profile_links_to_the_public_bgp_tools_without_sending_a_referrer(): void {
+		$output = $this->render_asn_profile();
+
+		$this->assertStringContainsString( '<a href="https://bgp.he.net/AS6871#_prefixes" target="_blank" rel="noopener noreferrer">', $output );
+		$this->assertStringContainsString( '<a href="https://stat.ripe.net/resource/AS6871" target="_blank" rel="noopener noreferrer">', $output );
+	}
+
+	public function test_asn_profile_lists_addresses_seen_from_the_as_each_with_a_block_button(): void {
+		$output = $this->render_asn_profile(
+			array(
+				array(
+					'ip'           => '91.125.72.135',
+					'times_seen'   => '1200',
+					'last_seen_at' => '2026-10-30 21:00:00',
+				),
+				array(
+					'ip'           => '91.125.9.9',
+					'times_seen'   => '3',
+					'last_seen_at' => '2026-10-29 08:00:00',
+				),
+			),
+			array(),
+			array(
+				array(
+					'id'         => 1,
+					'list_type'  => 'block',
+					'cidr'       => '91.125.9.9',
+					'surface'    => '',
+					'expires_at' => null,
+				),
+			)
+		);
+
+		$table = $this->table_with_class( $output, 'wp-sam-asn-addresses-table' );
+		$this->assertSame( 2, substr_count( $table, '<tr>' ) - 1 );
+		$this->assertStringContainsString( '1,200', $table );
+		$this->assertSame( 1, substr_count( $table, '>Block IP</a>' ) );
+		$this->assertMatchesRegularExpression( '#href="[^"]*tab=ip-rules&(amp;)?reason=Seen\+from\+AS6871[^"]*&(amp;)?cidr=91.125.72.135\#wp-sam-ip-rule-add">Block IP</a>#', $table );
+		$this->assertSame( 1, substr_count( $table, 'IP blocked' ) );
+	}
+
+	public function test_asn_profile_says_where_the_as_is_already_blocked(): void {
+		$output = $this->render_asn_profile( array(), array( $this->network_rule_row( array( 'rule_type' => 'asn', 'value' => '6871', 'surface' => 'login' ) ) ) );
+		$table  = $this->table_with_class( $output, 'wp-sam-asn-profile-table' );
+		$this->assertMatchesRegularExpression( '#<td class="wp-sam-col-status">\s*Login\s*</td>#', $table );
+		$this->assertStringContainsString( 'Block AS6871', $table, 'Still blockable on the other surfaces.' );
+
+		$output = $this->render_asn_profile( array(), array( $this->network_rule_row( array( 'rule_type' => 'asn', 'value' => '6871' ) ) ) );
+		$table  = $this->table_with_class( $output, 'wp-sam-asn-profile-table' );
+		$this->assertStringContainsString( 'On every surface', $table );
+		$this->assertStringNotContainsString( 'Block AS6871', $table );
+		$this->assertStringContainsString( '>Network Rules</a>', $table );
+		$this->assertStringContainsString( 'None recorded yet.', $output );
 	}
 }

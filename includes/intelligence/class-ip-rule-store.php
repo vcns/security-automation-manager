@@ -106,6 +106,15 @@ final class Ip_Rule_Store {
 		return null;
 	}
 
+	/**
+	 * Whether a rule for $cidr would apply to $ip -- the same test match()
+	 * makes, for a rule that hasn't been saved yet. Admin_UI uses it to warn
+	 * an administrator before they block their own address.
+	 */
+	public function covers( string $cidr, string $ip ): bool {
+		return '' !== trim( $cidr ) && Cidr_Matcher::ip_in_cidr( $ip, $this->normalise_cidr( trim( $cidr ) ) );
+	}
+
 	/** Accepts a bare IP (no "/N") as shorthand for an exact-address match. */
 	private function normalise_cidr( string $cidr ): string {
 		if ( str_contains( $cidr, '/' ) ) {

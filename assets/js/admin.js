@@ -691,4 +691,22 @@
 		showSelectedGroup();
 		updateCount();
 	}() );
+
+	// Settings dialogs opened by a button elsewhere on the page, such as the
+	// Geo-IP settings cog on Control → Traffic Controls → Network
+	// Intelligence → Geo-IP. A modal <dialog> moves focus into itself,
+	// closes on Escape, and hands focus back to the button that opened it.
+	$( document ).on( 'click', '[data-wp-sam-dialog-open]', function () {
+		const dialog = document.getElementById( $( this ).attr( 'data-wp-sam-dialog-open' ) );
+		if ( dialog && 'function' === typeof dialog.showModal && ! dialog.open ) {
+			dialog.showModal();
+		}
+	} );
+
+	$( document ).on( 'click', '[data-wp-sam-dialog-close]', function () {
+		const dialog = $( this ).closest( 'dialog' ).get( 0 );
+		if ( dialog && dialog.open ) {
+			dialog.close();
+		}
+	} );
 } )( jQuery );
