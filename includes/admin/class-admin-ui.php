@@ -150,6 +150,22 @@ class Admin_UI {
 		'dependency_integrity_monitor/scan_redirected_offsite' => 'This site\'s own request to its home page was sent away from this site before WordPress saw it, so pinned third-party script hashes could not be checked. Something outside this plugin is doing this, usually an IP allow-list in .htaccess or the web server\'s configuration, and the plugin cannot override it. To let these requests in, allow the one address this server uses to reach itself: your server\'s access log shows this plugin\'s requests with the user agent WP-CSP-Discovery, from the same address. Allow that single address rather than a whole private range, which other servers on your host\'s network may share.',
 	);
 
+	/**
+	 * Queued notices ("component/event") shown only to a user whose
+	 * presentation depth is Technical (see Presentation_Preferences).
+	 * Each reports a safety net doing its routine job, with nothing a
+	 * site owner can act on. The hash budget trims learned hashes
+	 * whenever a surface has more than fit in the header, which on
+	 * wp-admin is the normal state, so the warning is queued again every
+	 * hour and a Simple or Balanced user would see it on almost every
+	 * visit. For anyone else the entry stays queued, so a Technical
+	 * administrator still sees it, and sam_audit_log keeps every
+	 * occurrence.
+	 */
+	private const TECHNICAL_ONLY_NOTICES = array(
+		'policy_builder/hash_budget_exceeded',
+	);
+
 	private Plugin $plugin;
 
 	public function __construct( Plugin $plugin ) {
@@ -2545,9 +2561,16 @@ class Admin_UI {
 		if ( ! is_array( $notices ) || empty( $notices ) ) {
 			return;
 		}
+		$is_technical = 'technical' === Presentation_Preferences::get_for_user()['presentation_depth'];
+		$held         = array();
 		foreach ( $notices as $notice ) {
+			$key = $notice['component'] . '/' . $notice['event'];
+			if ( ! $is_technical && in_array( $key, self::TECHNICAL_ONLY_NOTICES, true ) ) {
+				$held[] = $notice;
+				continue;
+			}
+
 			$type    = 'error' === $notice['severity'] ? 'error' : 'warning';
-			$key     = $notice['component'] . '/' . $notice['event'];
 			$summary = self::ADMIN_NOTICE_SUMMARIES[ $key ] ?? null;
 			$action  = $this->admin_notice_action( (string) $notice['component'], (string) $notice['event'] );
 			$link    = null === $action
@@ -2576,7 +2599,12 @@ class Admin_UI {
 				$link // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- URL and label escaped while building $link above.
 			);
 		}
-		delete_option( 'wp_sam_admin_notices' );
+
+		if ( empty( $held ) ) {
+			delete_option( 'wp_sam_admin_notices' );
+		} else {
+			update_option( 'wp_sam_admin_notices', $held, false );
+		}
 	}
 
 	/**
