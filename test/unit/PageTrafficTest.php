@@ -247,6 +247,144 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringNotContainsString( 'Failed', $output );
 	}
 
+	// ── Network Intelligence tab -- Well-Known Files editor ──────────────────
+
+	/** Renders the Well-Known Files sub-tab with extra query args. */
+	private function render_well_known( array $args = array() ): string {
+		$_GET = array_merge(
+			array(
+				'tab'    => 'network-intelligence',
+				'subtab' => 'well-known',
+			),
+			$args
+		);
+		$GLOBALS['_wpdb_get_results'] = array();
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		$_GET = array();
+		return $output;
+	}
+
+	public function test_well_known_table_has_no_about_column_and_links_each_file_to_its_editor(): void {
+		update_option( 'wp_sam_ads_txt_last_fetch_status', 'absent' );
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertStringNotContainsString( '>About<', $table );
+		$this->assertStringNotContainsString( 'Refreshed automatically once a day', $table );
+		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads' ) as $key ) {
+			$this->assertMatchesRegularExpression( '#subtab=well-known&(amp;)?file=' . preg_quote( $key, '#' ) . '"#', $table );
+		}
+		$this->assertMatchesRegularExpression( '#file=ads"[^>]*>Create</a>#', $table, 'An absent file is created, not edited.' );
+		$this->assertMatchesRegularExpression( '#file=robots"[^>]*>Edit</a>#', $table );
+	}
+
+	public function test_well_known_table_says_which_files_this_plugin_serves(): void {
+		$store = new \WP_SAM\Intelligence\Well_Known_File_Store();
+		$store->save( 'humans', "Site: Example\n", 1 );
+		$store->record_check( 'humans', \WP_SAM\Intelligence\Well_Known_File_Store::CHECK_SERVED );
+		$store->save( 'ads', "example.com, 1, DIRECT\n", 1 );
+		$store->record_check( 'ads', \WP_SAM\Intelligence\Well_Known_File_Store::CHECK_NOT_SERVED );
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertSame( 1, substr_count( $table, 'Served by this plugin' ) );
+		$this->assertStringContainsString( 'Saved here, but visitors get another version', $table );
+	}
+
+	public function test_well_known_table_confirms_a_file_is_no_longer_served(): void {
+		$output = $this->render_well_known( array( 'removed' => 'security' ) );
+
+		$this->assertStringContainsString( 'This plugin no longer serves Security.txt.', $output );
+	}
+
+	public function test_well_known_editor_replaces_the_table_and_starts_from_the_first_template(): void {
+		$output = $this->render_well_known( array( 'file' => 'robots' ) );
+
+		$this->assertStringNotContainsString( 'wp-sam-well-known-table', $output );
+		$this->assertStringContainsString( '>Robots.txt</h3>', $output );
+		$this->assertStringContainsString( 'value="wp_sam_well_known_save"', $output );
+		$this->assertStringContainsString( 'name="file" value="robots"', $output );
+		$this->assertStringContainsString( '>WordPress default</a>', $output );
+		$this->assertStringContainsString( '>Block AI training crawlers</a>', $output );
+		$this->assertStringContainsString( 'value="Save and serve"', $output );
+		$this->assertStringContainsString( 'starts from the WordPress default template', $output );
+		$this->assertStringContainsString( "User-agent: *\nDisallow: /wp-admin/", $output );
+		$this->assertStringNotContainsString( 'Stop serving', $output );
+	}
+
+	public function test_well_known_editor_opens_with_what_the_site_serves_now(): void {
+		$GLOBALS['_wp_remote_get_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => "/* TEAM */\nDeveloper: Someone\n",
+		);
+
+		$output = $this->render_well_known( array( 'file' => 'humans' ) );
+
+		$this->assertStringContainsString( 'Developer: Someone', $output );
+		$this->assertStringContainsString( 'Showing what the site serves now.', $output );
+	}
+
+	public function test_well_known_editor_fills_the_box_with_a_chosen_template(): void {
+		$output = $this->render_well_known(
+			array(
+				'file'     => 'ads',
+				'template' => 'no-ads',
+			)
+		);
+
+		$this->assertStringContainsString( 'placeholder.example.com, placeholder, DIRECT, placeholder', $output );
+	}
+
+	public function test_well_known_editor_shows_the_saved_version_with_a_stop_serving_button(): void {
+		( new \WP_SAM\Intelligence\Well_Known_File_Store() )->save( 'humans', "Site: Saved here\n", 1 );
+
+		$output = $this->render_well_known(
+			array(
+				'file'  => 'humans',
+				'saved' => 'served',
+			)
+		);
+
+		$this->assertStringContainsString( 'Site: Saved here', $output );
+		$this->assertStringContainsString( 'Saved. Visitors now get this version.', $output );
+		$this->assertStringContainsString( 'value="wp_sam_well_known_remove"', $output );
+		$this->assertStringContainsString( 'value="Stop serving"', $output );
+		$this->assertStringContainsString( '>Saved version</a>', $output );
+		$this->assertStringContainsString( 'value="Save"', $output );
+	}
+
+	public function test_well_known_editor_keeps_text_that_failed_to_save(): void {
+		set_transient( 'wp_sam_well_known_errors_' . get_current_user_id(), array( 'Line 1 isn\'t a "Field: value" rule: oops' ) );
+		set_transient( 'wp_sam_well_known_input_' . get_current_user_id(), "oops\n" );
+
+		$output = $this->render_well_known( array( 'file' => 'robots' ) );
+
+		$this->assertStringContainsString( 'File not saved:', $output );
+		$this->assertStringContainsString( 'rule: oops', $output );
+		$this->assertMatchesRegularExpression( '#<textarea[^>]*>oops\s*</textarea>#', $output );
+	}
+
+	public function test_well_known_editor_names_an_seo_plugin_that_also_writes_robots_txt(): void {
+		add_filter( 'wp_sam_robots_txt_writer', static fn () => 'Yoast SEO' );
+
+		$robots = $this->render_well_known( array( 'file' => 'robots' ) );
+		$ads    = $this->render_well_known( array( 'file' => 'ads' ) );
+
+		$this->assertStringContainsString( 'Yoast SEO also writes robots.txt.', $robots );
+		$this->assertStringNotContainsString( 'Yoast SEO', $ads );
+	}
+
+	public function test_an_unknown_file_shows_the_table_instead_of_an_editor(): void {
+		$output = $this->render_well_known( array( 'file' => 'sitemap' ) );
+
+		$this->assertStringContainsString( 'wp-sam-well-known-table', $output );
+		$this->assertStringNotContainsString( 'wp_sam_well_known_save', $output );
+	}
+
 	// ── Network Intelligence tab -- Geo-IP sub-tab's Country Block List ─────
 
 	/**

@@ -42,6 +42,8 @@ use WP_SAM\Intelligence\Site_Country;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
+use WP_SAM\Intelligence\Well_Known_File_Catalog;
+use WP_SAM\Intelligence\Well_Known_File_Store;
 
 $base_url     = admin_url( 'admin.php?page=security-automation-manager-traffic' );
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'policy'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -743,128 +745,152 @@ $tab_help = array(
 
 		<?php elseif ( 'well-known' === $ni_subtab ) : ?>
 
-			<?php
-			$robots_rules_store   = new Robots_Rules_Store();
-			$agents_rules_store   = new Agents_Rules_Store();
-			$security_txt_store   = new Security_Txt_Store();
-			$humans_txt_store     = new Humans_Txt_Store();
-			$ads_txt_store        = new Ads_Txt_Store();
-			$app_ads_txt_store    = new App_Ads_Txt_Store();
-			$security_txt_expires = $security_txt_store->fields()['Expires'][0] ?? null;
-			$robots_rule_count    = count( $robots_rules_store->rules() );
-			$agents_rule_count    = count( $agents_rules_store->rules() );
-			$ads_record_count     = count( $ads_txt_store->records() );
-			$app_ads_record_count = count( $app_ads_txt_store->records() );
+			<?php $well_known_key = isset( $_GET['file'] ) ? sanitize_key( wp_unslash( $_GET['file'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 
-			if ( ! $security_txt_store->is_present() ) {
-				$security_txt_contents = __( 'Not present', 'vcns-security-automation-manager' );
-			} elseif ( null === $security_txt_expires ) {
-				$security_txt_contents = __( 'Present', 'vcns-security-automation-manager' );
-			} else {
-				/* translators: %s: the date in the file's Expires field */
-				$security_txt_contents = sprintf( __( 'Present, expires %s', 'vcns-security-automation-manager' ), $security_txt_expires );
-			}
+			<?php if ( Well_Known_File_Catalog::has( $well_known_key ) ) : ?>
 
-			// One row per file, in the order the sections used to be listed.
-			$well_known_files = array(
-				array(
-					'label'     => __( 'Robots.txt', 'vcns-security-automation-manager' ),
-					/* translators: %s: number of disallow rules */
-					'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $robots_rule_count, 'vcns-security-automation-manager' ), number_format( $robots_rule_count ) ),
-					'expired'   => false,
-					'refreshed' => $robots_rules_store->last_refreshed_at(),
-					'status'    => $robots_rules_store->last_fetch_status(),
-					'about'     => __( 'Refreshed automatically once a day from this site\'s own /robots.txt, fetched the same way a real crawler would. Used only to check whether a source already recognised as a known crawler/scanner vendor is requesting a path this site disallows -- an ordinary visitor is never evaluated against these rules.', 'vcns-security-automation-manager' ),
-					'action'    => 'wp_sam_robots_rules_refresh',
-				),
-				array(
-					'label'     => __( 'Agents.txt', 'vcns-security-automation-manager' ),
-					/* translators: %s: number of disallow rules */
-					'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $agents_rule_count, 'vcns-security-automation-manager' ), number_format( $agents_rule_count ) ),
-					'expired'   => false,
-					'refreshed' => $agents_rules_store->last_refreshed_at(),
-					'status'    => $agents_rules_store->last_fetch_status(),
-					'about'     => __( 'agents.txt is an emerging convention some AI crawlers support for scoping what an AI agent may access, using the same syntax as robots.txt. Refreshed automatically once a day; used the same way robots.txt rules are, only against a source already recognised as a known crawler/scanner vendor.', 'vcns-security-automation-manager' ),
-					'action'    => 'wp_sam_agents_rules_refresh',
-				),
-				array(
-					'label'     => __( 'Security.txt', 'vcns-security-automation-manager' ),
-					'contents'  => $security_txt_contents,
-					'expired'   => null !== $security_txt_expires && $security_txt_store->is_expired(),
-					'refreshed' => $security_txt_store->last_refreshed_at(),
-					'status'    => $security_txt_store->last_fetch_status(),
-					'about'     => __( 'Refreshed automatically once a day from this site\'s own /.well-known/security.txt (falling back to the legacy /security.txt location). Recorded for visibility only -- an expired file is a hygiene signal worth acting on, but nothing here evaluates or blocks a visitor.', 'vcns-security-automation-manager' ),
-					'action'    => 'wp_sam_security_txt_refresh',
-				),
-				array(
-					'label'     => __( 'Humans.txt', 'vcns-security-automation-manager' ),
-					'contents'  => $humans_txt_store->is_present() ? __( 'Present', 'vcns-security-automation-manager' ) : __( 'Not present', 'vcns-security-automation-manager' ),
-					'expired'   => false,
-					'refreshed' => $humans_txt_store->last_refreshed_at(),
-					'status'    => $humans_txt_store->last_fetch_status(),
-					'about'     => __( 'An informal credits/colophon convention with no rules of its own -- recorded only for the same presence/last-fetch visibility every well-known file here gets, so a source examining it is correlatable against its other activity.', 'vcns-security-automation-manager' ),
-					'action'    => 'wp_sam_humans_txt_refresh',
-				),
-				array(
-					'label'     => __( 'Ads.txt', 'vcns-security-automation-manager' ),
-					/* translators: %s: number of authorised-seller records */
-					'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $ads_record_count, 'vcns-security-automation-manager' ), number_format( $ads_record_count ) ),
-					'expired'   => false,
-					'refreshed' => $ads_txt_store->last_refreshed_at(),
-					'status'    => $ads_txt_store->last_fetch_status(),
-					'about'     => __( 'Refreshed automatically once a day. A sudden drop in record count or a fetch failure can indicate unauthorised tampering (a known ad-fraud vector) as easily as a legitimate change -- worth a look either way.', 'vcns-security-automation-manager' ),
-					'action'    => 'wp_sam_ads_txt_refresh',
-				),
-				array(
-					'label'     => __( 'App-Ads.txt', 'vcns-security-automation-manager' ),
-					/* translators: %s: number of authorised-seller records */
-					'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $app_ads_record_count, 'vcns-security-automation-manager' ), number_format( $app_ads_record_count ) ),
-					'expired'   => false,
-					'refreshed' => $app_ads_txt_store->last_refreshed_at(),
-					'status'    => $app_ads_txt_store->last_fetch_status(),
-					'about'     => __( 'The same IAB authorised-sellers format as Ads.txt above, applied to mobile-app inventory. Refreshed automatically once a day; tracked separately since it is a distinct file this site serves.', 'vcns-security-automation-manager' ),
-					'action'    => 'wp_sam_app_ads_txt_refresh',
-				),
-			);
-			?>
+				<?php require __DIR__ . '/partials/well-known-file-editor.php'; ?>
 
-			<div class="wp-sam-table-wrap">
-			<table class="widefat striped wp-sam-table wp-sam-well-known-table" style="margin-top:1em">
-				<thead>
-					<tr>
-						<th class="wp-sam-col-primary"><?php esc_html_e( 'File', 'vcns-security-automation-manager' ); ?></th>
-						<th class="wp-sam-col-status"><?php esc_html_e( 'Contents', 'vcns-security-automation-manager' ); ?></th>
-						<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
-						<th class="wp-sam-col-status"><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
-						<th class="wp-sam-col-description"><?php esc_html_e( 'About', 'vcns-security-automation-manager' ); ?></th>
-						<th class="wp-sam-col-actions"><?php esc_html_e( 'Action', 'vcns-security-automation-manager' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-				<?php foreach ( $well_known_files as $well_known_file ) : ?>
-					<tr>
-						<td class="wp-sam-col-primary"><?php echo esc_html( $well_known_file['label'] ); ?></td>
-						<td class="wp-sam-col-status">
-							<?php echo esc_html( $well_known_file['contents'] ); ?>
-							<?php if ( $well_known_file['expired'] ) : ?>
-							<strong style="color:#a94442"><?php esc_html_e( '(expired)', 'vcns-security-automation-manager' ); ?></strong>
-							<?php endif; ?>
-						</td>
-						<td class="wp-sam-col-datetime"><?php echo esc_html( $well_known_file['refreshed'] ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
-						<td class="wp-sam-col-status"><?php echo esc_html( '' !== $well_known_file['status'] ? ucfirst( $well_known_file['status'] ) : __( 'Not yet run', 'vcns-security-automation-manager' ) ); ?></td>
-						<td class="wp-sam-col-description"><?php echo esc_html( $well_known_file['about'] ); ?></td>
-						<td class="wp-sam-col-actions">
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
-								<?php wp_nonce_field( $well_known_file['action'] ); ?>
-								<input type="hidden" name="action" value="<?php echo esc_attr( $well_known_file['action'] ); ?>" />
-								<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary small', '', false ); ?>
-							</form>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-			</div>
+			<?php else : ?>
+
+				<?php
+				$robots_rules_store   = new Robots_Rules_Store();
+				$agents_rules_store   = new Agents_Rules_Store();
+				$security_txt_store   = new Security_Txt_Store();
+				$humans_txt_store     = new Humans_Txt_Store();
+				$ads_txt_store        = new Ads_Txt_Store();
+				$app_ads_txt_store    = new App_Ads_Txt_Store();
+				$security_txt_expires = $security_txt_store->fields()['Expires'][0] ?? null;
+				$robots_rule_count    = count( $robots_rules_store->rules() );
+				$agents_rule_count    = count( $agents_rules_store->rules() );
+				$ads_record_count     = count( $ads_txt_store->records() );
+				$app_ads_record_count = count( $app_ads_txt_store->records() );
+
+				if ( ! $security_txt_store->is_present() ) {
+					$security_txt_contents = __( 'Not present', 'vcns-security-automation-manager' );
+				} elseif ( null === $security_txt_expires ) {
+					$security_txt_contents = __( 'Present', 'vcns-security-automation-manager' );
+				} else {
+					/* translators: %s: the date in the file's Expires field */
+					$security_txt_contents = sprintf( __( 'Present, expires %s', 'vcns-security-automation-manager' ), $security_txt_expires );
+				}
+
+				// One row per file, in Well_Known_File_Catalog's order.
+				$well_known_files = array(
+					'robots'   => array(
+						/* translators: %s: number of disallow rules */
+						'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $robots_rule_count, 'vcns-security-automation-manager' ), number_format( $robots_rule_count ) ),
+						'expired'   => false,
+						'refreshed' => $robots_rules_store->last_refreshed_at(),
+						'status'    => $robots_rules_store->last_fetch_status(),
+						'action'    => 'wp_sam_robots_rules_refresh',
+					),
+					'agents'   => array(
+						/* translators: %s: number of disallow rules */
+						'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $agents_rule_count, 'vcns-security-automation-manager' ), number_format( $agents_rule_count ) ),
+						'expired'   => false,
+						'refreshed' => $agents_rules_store->last_refreshed_at(),
+						'status'    => $agents_rules_store->last_fetch_status(),
+						'action'    => 'wp_sam_agents_rules_refresh',
+					),
+					'security' => array(
+						'contents'  => $security_txt_contents,
+						'expired'   => null !== $security_txt_expires && $security_txt_store->is_expired(),
+						'refreshed' => $security_txt_store->last_refreshed_at(),
+						'status'    => $security_txt_store->last_fetch_status(),
+						'action'    => 'wp_sam_security_txt_refresh',
+					),
+					'humans'   => array(
+						'contents'  => $humans_txt_store->is_present() ? __( 'Present', 'vcns-security-automation-manager' ) : __( 'Not present', 'vcns-security-automation-manager' ),
+						'expired'   => false,
+						'refreshed' => $humans_txt_store->last_refreshed_at(),
+						'status'    => $humans_txt_store->last_fetch_status(),
+						'action'    => 'wp_sam_humans_txt_refresh',
+					),
+					'ads'      => array(
+						/* translators: %s: number of authorised-seller records */
+						'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $ads_record_count, 'vcns-security-automation-manager' ), number_format( $ads_record_count ) ),
+						'expired'   => false,
+						'refreshed' => $ads_txt_store->last_refreshed_at(),
+						'status'    => $ads_txt_store->last_fetch_status(),
+						'action'    => 'wp_sam_ads_txt_refresh',
+					),
+					'app-ads'  => array(
+						/* translators: %s: number of authorised-seller records */
+						'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $app_ads_record_count, 'vcns-security-automation-manager' ), number_format( $app_ads_record_count ) ),
+						'expired'   => false,
+						'refreshed' => $app_ads_txt_store->last_refreshed_at(),
+						'status'    => $app_ads_txt_store->last_fetch_status(),
+						'action'    => 'wp_sam_app_ads_txt_refresh',
+					),
+				);
+
+				$well_known_catalog       = Well_Known_File_Catalog::files();
+				$well_known_saved_store   = new Well_Known_File_Store();
+				$well_known_served_labels = array(
+					Well_Known_File_Store::CHECK_SERVED => __( 'Served by this plugin', 'vcns-security-automation-manager' ),
+					Well_Known_File_Store::CHECK_NOT_SERVED => __( 'Saved here, but visitors get another version', 'vcns-security-automation-manager' ),
+					Well_Known_File_Store::CHECK_UNREACHABLE => __( 'Saved here, not yet confirmed', 'vcns-security-automation-manager' ),
+				);
+
+				$well_known_removed = isset( $_GET['removed'] ) ? sanitize_key( wp_unslash( $_GET['removed'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only flag set by our own redirect.
+				?>
+
+				<?php if ( isset( $well_known_catalog[ $well_known_removed ] ) ) : ?>
+				<div class="notice notice-success inline"><p>
+					<?php
+					/* translators: %s: file name, e.g. Robots.txt */
+					echo esc_html( sprintf( __( 'This plugin no longer serves %s. Visitors get whatever the site served before.', 'vcns-security-automation-manager' ), $well_known_catalog[ $well_known_removed ]['label'] ) );
+					?>
+				</p></div>
+				<?php endif; ?>
+
+				<p class="description">
+					<?php esc_html_e( 'This plugin reads each file from the site once a day. Robots.txt and agents.txt rules are also used to spot known crawlers ignoring them; nothing here blocks a visitor. Create or Edit opens a guided editor, and this plugin serves what you save there.', 'vcns-security-automation-manager' ); ?>
+				</p>
+
+				<div class="wp-sam-table-wrap">
+				<table class="widefat striped wp-sam-table wp-sam-well-known-table" style="margin-top:1em">
+					<thead>
+						<tr>
+							<th class="wp-sam-col-primary"><?php esc_html_e( 'File', 'vcns-security-automation-manager' ); ?></th>
+							<th class="wp-sam-col-status"><?php esc_html_e( 'Contents', 'vcns-security-automation-manager' ); ?></th>
+							<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last refreshed', 'vcns-security-automation-manager' ); ?></th>
+							<th class="wp-sam-col-status"><?php esc_html_e( 'Last fetch status', 'vcns-security-automation-manager' ); ?></th>
+							<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php foreach ( $well_known_files as $well_known_file_key => $well_known_file ) : ?>
+						<?php $well_known_saved = $well_known_saved_store->get( $well_known_file_key ); ?>
+						<tr>
+							<td class="wp-sam-col-primary"><?php echo esc_html( $well_known_catalog[ $well_known_file_key ]['label'] ); ?></td>
+							<td class="wp-sam-col-status">
+								<?php echo esc_html( $well_known_file['contents'] ); ?>
+								<?php if ( $well_known_file['expired'] ) : ?>
+								<strong style="color:#a94442"><?php esc_html_e( '(expired)', 'vcns-security-automation-manager' ); ?></strong>
+								<?php endif; ?>
+								<?php if ( null !== $well_known_saved ) : ?>
+								<br /><span class="description"><?php echo esc_html( $well_known_served_labels[ $well_known_saved['check'] ] ?? __( 'Saved here', 'vcns-security-automation-manager' ) ); ?></span>
+								<?php endif; ?>
+							</td>
+							<td class="wp-sam-col-datetime"><?php echo esc_html( $well_known_file['refreshed'] ?? __( 'Never', 'vcns-security-automation-manager' ) ); ?></td>
+							<td class="wp-sam-col-status"><?php echo esc_html( '' !== $well_known_file['status'] ? ucfirst( $well_known_file['status'] ) : __( 'Not yet run', 'vcns-security-automation-manager' ) ); ?></td>
+							<td class="wp-sam-col-actions">
+								<a class="button button-small" href="<?php echo esc_url( Admin_UI::well_known_editor_url( $well_known_file_key ) ); ?>"><?php echo esc_html( null === $well_known_saved && 'absent' === $well_known_file['status'] ? __( 'Create', 'vcns-security-automation-manager' ) : __( 'Edit', 'vcns-security-automation-manager' ) ); ?></a>
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
+									<?php wp_nonce_field( $well_known_file['action'] ); ?>
+									<input type="hidden" name="action" value="<?php echo esc_attr( $well_known_file['action'] ); ?>" />
+									<?php submit_button( __( 'Refresh Now', 'vcns-security-automation-manager' ), 'secondary small', '', false ); ?>
+								</form>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+				</div>
+
+			<?php endif; ?>
 
 		<?php elseif ( 'network-rules' === $ni_subtab ) : ?>
 
