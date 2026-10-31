@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.12.0
+Stable tag: 2.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,18 @@ When an administrator configures automatic cPanel deployment, once a certificate
 
 == Changelog ==
 
+= 2.13.0 =
+
+* Added: create and edit robots.txt, security.txt, ads.txt and the other well-known files from starter templates, on Control → Traffic Controls → Network Intelligence → Well-Known Files. The plugin serves your saved version without writing any files, checks that visitors actually get it, and warns when an SEO plugin also writes robots.txt.
+* Added: Control → Traffic Controls → Network Intelligence → ASN Lookup shows which network range an address belongs to, with buttons to block the address, its range or its whole network. Click the network's number to see its registration details, where it's blocked, and the addresses your site has seen from it.
+* Changed: the IPinfo token and "Where does this website operate?" are now behind a settings cog on Control → Traffic Controls → Network Intelligence → Geo-IP, and the tab opens straight onto the Country Block List. Network Rules links back to it for blocking countries.
+* Changed: the Tor Exit List and Well-Known Files tabs show one row per item, with their buttons alongside.
+* Changed: the notice that the Content Security Policy trimmed older, unused approvals is shown only to administrators who chose Technical detail.
+* Changed: Settings' summary now sits below the tab bar, like every other tab's content.
+* Changed: this readme's External services section now lists the Tor Project, Team Cymru and IPinfo.
+* Fixed: adding an IP block rule that covers your own address now asks you to confirm first, as ASN and country rules already did.
+* Fixed: changing Control → Traffic Controls → IP Rules → This site's own addresses now updates the labels on Observe → Continuous Intelligence → Identities straight away, instead of waiting for each address to visit again.
+
 = 2.12.0 =
 
 * Fixed: Content Security Policy violation reports from your WordPress dashboard (the admin surface) were being turned away. The report endpoint's flood guard gave each IP address one shared allowance for every part of the site, and dashboard pages still being learned send many reports per visit, so staff browsing from one office address used it up. Admin and login reports now have their own allowance, and the Violations tab shows each surface separately: how many violations, when it last reported, when its policy was last sent, and whether any reports were turned away.
@@ -210,9 +222,5 @@ When an administrator configures automatic cPanel deployment, once a certificate
 = 2.9.104 =
 
 * Added: Recommendations Engine (Phase 4F) gains a fourth rule -- a report-only Content Security Policy surface that's stayed quiet (no violations) for 30 days, with no deliberate exception recorded against it, now suggests promoting that surface to Enforce.
-
-= 2.9.103 =
-
-* Added: Recommendations Engine (Phase 4F) gains its first three rules -- certificate renewal due, unexplained high/critical-risk configuration drift, and exceptions expiring soon. Each reuses evidence this plugin already collects (no new data source), links straight to where to act on it, and explains why it matters and what to do instead if the suggestion doesn't fit.
 
 Full changelog history: https://github.com/vcns/security-automation-manager/blob/main/CHANGELOG.md
