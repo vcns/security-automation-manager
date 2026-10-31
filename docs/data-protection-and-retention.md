@@ -15,8 +15,9 @@ Resolves roadmap issue #155.
 ## What data this plugin collects today
 
 All data below is stored in the site's own WordPress database (custom tables,
-prefixed per the site's table prefix) or as WordPress options. Nothing is
-transmitted off-site by the free/WordPress.org build. The commercial build
+prefixed per the site's table prefix) or as WordPress options. What is sent
+off-site, and when, is listed under "Data transmitted off-site" below and in
+the External services section of `readme.txt`. The commercial build
 additionally transmits data to Stripe as described below.
 
 | Table / option | What it holds | Personal or site-identifying? | Retention | Deletion |
@@ -43,12 +44,17 @@ changed here, since it's a product-behaviour decision, not just documentation.
 |---|---|---|---|
 | Stripe (`api.stripe.com`) | Site identity hash, product key, plugin version (as Checkout Session metadata); no page content, no visitor data | Commercial build only, when an admin initiates a purchase | Payment processing |
 | `vcns.github.io` (GitHub Pages) | Plugin slug and current version (implicit in the HTTPS request for the update manifest) | Every update check | Update manifest retrieval |
+| Tor Project (`check.torproject.org`) | Nothing but the request itself; its User-Agent names WordPress, SAM, their versions and the site's address | Daily, and on Refresh Now | Download the public Tor exit list |
+| Team Cymru (`origin.asn.cymru.com`, `asn.cymru.com`, DNS) | One IPv4 address (a visitor's or the administrator's) or one AS number per query | A detector flags a request; every request while an ASN/country rule exists; ASN Lookup; the ASN-rule self-lockout check. Kept 30 days per address | Find an address's network (ASN) |
+| IPinfo (`ipinfo.io`) | One IP address and the administrator's own API token; User-Agent as for the Tor Project | Only once a token is saved: a detector flags a request; every request while an ASN/country rule exists; a Geo-IP tab lookup; the country-rule self-lockout check. Kept 30 days per address | Country, region and city for an address |
+| Let's Encrypt, the chosen DNS-01 provider, a cPanel host | See `readme.txt` | Only when certificates are configured | Certificate issuance and installation |
 
-No visitor-facing data (violation reports, discovered sources, hashes) is
-transmitted anywhere off-site by the plugin itself today. This will change
-once the external verification service (#182) and webhook/SIEM integrations
-(#183) ship - see "Forward-looking requirements" below for what those must
-satisfy before they do.
+Visitor IP addresses are sent off-site: Network Intelligence sends them to
+Team Cymru and, once an administrator adds an IPinfo token, to IPinfo (above).
+No violation reports, discovered sources or hashes are. That will change once
+the external verification service (#182) and webhook/SIEM integrations (#183)
+ship - see "Forward-looking requirements" below for what those must satisfy
+before they do.
 
 ## §4.4 - Entitlement data minimisation
 
