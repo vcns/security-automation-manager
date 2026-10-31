@@ -204,16 +204,16 @@ final class Github_Update_Checker {
 
 		$remote = $this->get_remote_info();
 		if ( null === $remote || empty( $remote->download_url ) || $package !== $remote->download_url ) {
-			return new WP_Error( 'wp_sam_update_metadata_unavailable', 'Security Automation Manager update metadata could not be verified.' );
+			return new WP_Error( 'wp_sam_update_metadata_unavailable', __( 'Security Automation Manager update metadata could not be verified.', 'vcns-security-automation-manager' ) );
 		}
 
 		if ( empty( $remote->sha256 ) || ! $this->is_valid_sha256( (string) $remote->sha256 ) ) {
 			$this->record_checksum_result( 'missing' );
-			return new WP_Error( 'wp_sam_update_checksum_missing', 'Security Automation Manager update package checksum is missing or invalid.' );
+			return new WP_Error( 'wp_sam_update_checksum_missing', __( 'Security Automation Manager update package checksum is missing or invalid.', 'vcns-security-automation-manager' ) );
 		}
 
 		if ( ! function_exists( 'download_url' ) ) {
-			return new WP_Error( 'wp_sam_update_download_unavailable', 'WordPress package download support is unavailable.' );
+			return new WP_Error( 'wp_sam_update_download_unavailable', __( 'WordPress package download support is unavailable.', 'vcns-security-automation-manager' ) );
 		}
 
 		$file = download_url( $package, 300 );
@@ -228,7 +228,7 @@ final class Github_Update_Checker {
 			}
 
 			$this->record_checksum_result( 'mismatch' );
-			return new WP_Error( 'wp_sam_update_checksum_mismatch', 'Security Automation Manager update package checksum verification failed.' );
+			return new WP_Error( 'wp_sam_update_checksum_mismatch', __( 'Security Automation Manager update package checksum verification failed.', 'vcns-security-automation-manager' ) );
 		}
 
 		$this->record_checksum_result( 'verified' );
