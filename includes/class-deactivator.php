@@ -14,6 +14,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Deactivator {
 
+	/**
+	 * Plugin deactivation entry point: clears the scheduled scan and certificate events.
+	 *
+	 * @return void
+	 */
 	public static function deactivate(): void {
 		wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
 		wp_clear_scheduled_hook( 'wp_sam_cert_issue' );
