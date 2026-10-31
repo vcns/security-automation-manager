@@ -31,10 +31,20 @@ class Provider_Rfc2136 extends Dns_Provider {
 		'hmac-md5'    => array( 'hmac-md5.sig-alg.reg.int.', 'md5' ),
 	);
 
+	/**
+	 * Returns the display name of the RFC 2136 dynamic update (BIND, Knot, Windows DNS, ...) provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'RFC 2136 dynamic update (BIND, Knot, Windows DNS, ...)';
 	}
 
+	/**
+	 * Describes the credentials the RFC 2136 dynamic update (BIND, Knot, Windows DNS, ...) provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'server'    => array(
@@ -63,16 +73,39 @@ class Provider_Rfc2136 extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the RFC 2136 dynamic update (BIND, Knot, Windows DNS, ...) API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$this->send_update( $fqdn, $value, true );
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the RFC 2136 dynamic update (BIND, Knot, Windows DNS, ...) API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$this->send_update( $fqdn, $value, false );
 	}
 
 	// ── Wire protocol ─────────────────────────────────────────────────────────
 
+	/**
+	 * Sends an RFC 2136 dynamic update that adds or removes a TXT record.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @param bool   $add   True to add the record, false to remove it.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function send_update( string $fqdn, string $value, bool $add ): void {
 		$zone = rtrim( trim( $this->credential( 'zone' ) ), '.' );
 		if ( '' === $zone ) {
@@ -168,6 +201,13 @@ class Provider_Rfc2136 extends Dns_Provider {
 		return substr( $unsigned, 0, 10 ) . pack( 'n', 1 ) . substr( $unsigned, 12 ) . $tsig_rr;
 	}
 
+	/**
+	 * Sends a DNS message to the configured server and returns its reply.
+	 *
+	 * @param string $message Wire-format DNS message.
+	 * @return string Reply message.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function exchange( string $message ): string {
 		$server = trim( $this->credential( 'server' ) );
 		$port   = 53;

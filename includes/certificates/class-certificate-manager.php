@@ -37,6 +37,14 @@ class Certificate_Manager {
 	private Deployer $deployer;
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Certificate_Store $store          Certificate store.
+	 * @param Challenge_Http    $http_challenge HTTP-01 challenge handler.
+	 * @param Deployer          $deployer       Deployer.
+	 * @param Audit_Log         $audit          Audit log.
+	 */
 	public function __construct( Certificate_Store $store, Challenge_Http $http_challenge, Deployer $deployer, Audit_Log $audit ) {
 		$this->store          = $store;
 		$this->http_challenge = $http_challenge;
@@ -138,6 +146,15 @@ class Certificate_Manager {
 
 	// ── Order flow ────────────────────────────────────────────────────────────
 
+	/**
+	 * Runs a full ACME order: account, authorizations, finalisation, storage and deployment.
+	 *
+	 * @param array  $config      Certificate settings.
+	 * @param array  $domains     Domains to cover.
+	 * @param string $environment Environment, staging or production.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function run_order( array $config, array $domains, string $environment ): void {
 		$directory = $config['staging'] ? Acme_Client::DIRECTORY_STAGING : Acme_Client::DIRECTORY_PRODUCTION;
 		$account   = $this->store->get_account( $environment );
@@ -195,6 +212,15 @@ class Certificate_Manager {
 		$this->deployer->deploy( $config, $domains[0], $cert_key, $fullchain );
 	}
 
+	/**
+	 * Proves control of one domain by answering its HTTP-01 or DNS-01 challenge.
+	 *
+	 * @param Acme_Client $client    ACME client.
+	 * @param array       $config    Certificate settings.
+	 * @param string      $authz_url Authorization URL.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function satisfy_authorization( Acme_Client $client, array $config, string $authz_url ): void {
 		$authz  = $client->fetch( $authz_url );
 		$domain = (string) ( $authz['identifier']['value'] ?? '' );
@@ -256,6 +282,16 @@ class Certificate_Manager {
 		}
 	}
 
+	/**
+	 * Asks the CA to check a challenge and waits for the result.
+	 *
+	 * @param Acme_Client $client        ACME client.
+	 * @param string      $challenge_url Challenge URL.
+	 * @param string      $authz_url     Authorization URL.
+	 * @param string      $domain        Domain being validated.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function validate_challenge( Acme_Client $client, string $challenge_url, string $authz_url, string $domain ): void {
 		$client->respond_challenge( $challenge_url );
 
@@ -289,6 +325,13 @@ class Certificate_Manager {
 		throw new \RuntimeException( 'ACME polling timed out: ' . $timeout_message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Stores the outcome of the latest issue or renewal run.
+	 *
+	 * @param string $status Status code.
+	 * @param string $detail Detail message, trimmed to 500 characters.
+	 * @return void
+	 */
 	private function record_run( string $status, string $detail ): void {
 		update_option(
 			self::STATUS_OPTION,

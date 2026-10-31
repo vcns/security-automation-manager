@@ -17,10 +17,20 @@ class Provider_Netlify extends Dns_Provider {
 
 	private const API = 'https://api.netlify.com/api/v1';
 
+	/**
+	 * Returns the display name of the Netlify DNS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Netlify DNS';
 	}
 
+	/**
+	 * Describes the credentials the Netlify DNS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
@@ -29,6 +39,13 @@ class Provider_Netlify extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Netlify DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -45,6 +62,13 @@ class Provider_Netlify extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Netlify DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 		$list = $this->request( 'GET', self::API . "/dns_zones/{$zone['id']}/dns_records", $this->headers() );
@@ -76,6 +100,11 @@ class Provider_Netlify extends Dns_Provider {
 		throw new \RuntimeException( "Netlify DNS: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Builds the Netlify DNS request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'Authorization' => 'Bearer ' . $this->credential( 'api_token' ) );
 	}
