@@ -223,9 +223,8 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_robots_rules_refresh', array( $this, 'handle_robots_rules_refresh' ) );
 		add_action( 'admin_post_wp_sam_information_masking_check', array( $this, 'handle_information_masking_check' ) );
 		add_action( 'admin_post_wp_sam_cache_control_cdn_acknowledge', array( $this, 'handle_cache_control_cdn_acknowledge' ) );
-		add_action( 'admin_post_wp_sam_geoip_save_token', array( $this, 'handle_geoip_save_token' ) );
+		add_action( 'admin_post_wp_sam_geoip_settings_save', array( $this, 'handle_geoip_settings_save' ) );
 		add_action( 'admin_post_wp_sam_geoip_country_block_save', array( $this, 'handle_geoip_country_block_save' ) );
-		add_action( 'admin_post_wp_sam_site_country_save', array( $this, 'handle_site_country_save' ) );
 		add_action( 'admin_post_wp_sam_network_rule_add', array( $this, 'handle_network_rule_add' ) );
 		add_action( 'admin_post_wp_sam_network_rule_delete', array( $this, 'handle_network_rule_delete' ) );
 		add_action( 'admin_post_wp_sam_agents_rules_refresh', array( $this, 'handle_agents_rules_refresh' ) );
@@ -1346,25 +1345,76 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Adds an IP allow/block rule. A block rule covering the requesting
+	 * administrator's own current address is held for confirmation first,
+	 * the same way handle_network_rule_add() holds an ASN or country rule
+	 * (see network_rule_lockout_warning()): Traffic_Guard applies an explicit
+	 * IP block even to a logged-in administrator, and a block always wins
+	 * over an allow for the same address, so nothing else would stop it.
+	 */
 	public function handle_ip_rule_add(): void {
 		check_admin_referer( 'wp_sam_ip_rule_add' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to manage traffic controls.', 'vcns-security-automation-manager' ) );
 		}
 
+		$list_type  = sanitize_key( wp_unslash( $_POST['list_type'] ?? 'block' ) );
+		$cidr       = sanitize_text_field( wp_unslash( $_POST['cidr'] ?? '' ) );
+		$surface    = sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) );
+		$reason     = sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) );
 		$expires_in = isset( $_POST['expires_in_hours'] ) ? absint( $_POST['expires_in_hours'] ) : 0;
+		$user_id    = get_current_user_id();
+
+		if ( 'block' === $list_type && empty( $_POST['confirm_lockout_risk'] ) ) {
+			$lockout_message = $this->ip_rule_lockout_warning( $cidr );
+			if ( null !== $lockout_message ) {
+				set_transient(
+					self::IP_RULE_LOCKOUT_TRANSIENT_PREFIX . $user_id,
+					array(
+						'list_type'        => $list_type,
+						'cidr'             => $cidr,
+						'surface'          => $surface,
+						'reason'           => $reason,
+						'expires_in_hours' => $expires_in,
+						'message'          => $lockout_message,
+					),
+					5 * MINUTE_IN_SECONDS
+				);
+
+				wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules#wp-sam-ip-rule-add' ) );
+				exit;
+			}
+		}
 
 		( new Ip_Rule_Store() )->add(
-			sanitize_key( wp_unslash( $_POST['list_type'] ?? 'block' ) ),
-			sanitize_text_field( wp_unslash( $_POST['cidr'] ?? '' ) ),
-			sanitize_key( wp_unslash( $_POST['surface'] ?? '' ) ),
-			sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) ),
-			get_current_user_id(),
+			$list_type,
+			$cidr,
+			$surface,
+			$reason,
+			$user_id,
 			$expires_in > 0 ? $expires_in * HOUR_IN_SECONDS : null
 		);
 
+		delete_transient( self::IP_RULE_LOCKOUT_TRANSIENT_PREFIX . $user_id );
+
 		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=ip-rules' ) );
 		exit;
+	}
+
+	/** @return string|null A warning when blocking $cidr would block the requesting administrator's own current address, otherwise null. */
+	private function ip_rule_lockout_warning( string $cidr ): ?string {
+		$own_ip = Ip_Resolver::resolve();
+		if ( '' === $own_ip || ! ( new Ip_Rule_Store() )->covers( $cidr, $own_ip ) ) {
+			return null;
+		}
+
+		return sprintf(
+			/* translators: 1: the administrator's own IP address, 2: the IP address or range being blocked */
+			__( 'Your own current IP address (%1$s) is inside %2$s, so this rule would block you too. A block rule applies even to a logged-in administrator, and an allow rule for the same address does not override it. Tick the box below and add it anyway if you\'re sure (e.g. you have another way to reach this site).', 'vcns-security-automation-manager' ),
+			$own_ip,
+			trim( $cidr )
+		);
 	}
 
 	public function handle_ip_rule_delete(): void {
@@ -2022,56 +2072,48 @@ class Admin_UI {
 	}
 
 	/**
-	 * Saves (or clears) the administrator's own IPinfo API token for
-	 * Geo-IP (Phase 4A, third increment). Sealed via Credential_Vault --
-	 * see Geo_Ip_Store's own docblock for why this is never a shared VCNS
-	 * credential. An empty submission clears the token and disables
-	 * Geo-IP again, same "blank = keep/clear" convention as the
-	 * certificate settings form.
+	 * Saves the Geo-IP settings dialog (the cog on the Geo-IP sub-tab): the
+	 * administrator's own IPinfo API token, and "Where does this website
+	 * operate?", which only narrows the sanctions lists the Country Block
+	 * List's "Select by group" offers (see Site_Country).
+	 *
+	 * The token is sealed via Credential_Vault -- see Geo_Ip_Store's own
+	 * docblock for why it is never a shared VCNS credential. A blank token
+	 * field keeps the saved one; only the dialog's "Remove token" button
+	 * clears it and turns Geo-IP off. An unknown country code is ignored and
+	 * the previous choice kept.
 	 */
-	public function handle_geoip_save_token(): void {
-		check_admin_referer( 'wp_sam_geoip_save_token' );
+	public function handle_geoip_settings_save(): void {
+		check_admin_referer( 'wp_sam_geoip_settings_save' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to change Geo-IP settings.', 'vcns-security-automation-manager' ) );
 		}
 
-		$token = isset( $_POST['ipinfo_token'] ) ? (string) wp_unslash( $_POST['ipinfo_token'] ) : '';
-		if ( '' !== trim( $token ) ) {
-			( new Geo_Ip_Store() )->save_token( $token );
-		} elseif ( isset( $_POST['clear_token'] ) ) {
-			( new Geo_Ip_Store() )->save_token( '' );
+		$geo_store = new Geo_Ip_Store();
+		$token     = isset( $_POST['ipinfo_token'] ) ? (string) wp_unslash( $_POST['ipinfo_token'] ) : '';
+		if ( isset( $_POST['remove_token'] ) ) {
+			$geo_store->save_token( '' );
+		} elseif ( '' !== trim( $token ) ) {
+			$geo_store->save_token( $token );
 		}
 
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip' ) );
+		if ( isset( $_POST['site_country'] ) ) {
+			Site_Country::save( sanitize_text_field( wp_unslash( $_POST['site_country'] ) ) );
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip&settings_saved=1' ) );
 		exit;
 	}
 
 	/**
-	 * Saves "Where does this website operate?" on the Geo-IP sub-tab, which
-	 * only narrows the sanctions lists the Country Block List's "Select by
-	 * group" offers (see Site_Country). An unknown code is ignored and the
-	 * previous choice kept.
-	 */
-	public function handle_site_country_save(): void {
-		check_admin_referer( 'wp_sam_site_country_save' );
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to change Geo-IP settings.', 'vcns-security-automation-manager' ) );
-		}
-
-		Site_Country::save( sanitize_text_field( wp_unslash( $_POST['site_country'] ?? '' ) ) );
-
-		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=geoip#wp-sam-site-country' ) );
-		exit;
-	}
-
-	/**
-	 * Shared transient-key prefixes for the two self-lockout warning flows
-	 * below (see network_rule_lockout_warning()'s own docblock) -- public so
+	 * Shared transient-key prefixes for the self-lockout warning flows (see
+	 * network_rule_lockout_warning() and ip_rule_lockout_warning()) -- public so
 	 * page-traffic.php's view can read the same pending state this class
 	 * writes, without a second, independently-typo-able copy of the string.
 	 */
 	public const GEOIP_LOCKOUT_TRANSIENT_PREFIX        = 'wp_sam_geoip_lockout_pending_';
 	public const NETWORK_RULE_LOCKOUT_TRANSIENT_PREFIX = 'wp_sam_network_rule_lockout_pending_';
+	public const IP_RULE_LOCKOUT_TRANSIENT_PREFIX      = 'wp_sam_ip_rule_lockout_pending_';
 
 	/**
 	 * Saves the administrator's Geo-IP country block/allow selections

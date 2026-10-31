@@ -278,6 +278,12 @@ if ( ! function_exists( 'esc_attr_e' ) ) {
 	}
 }
 
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( string $text, string $domain = 'default' ): string {
+		return esc_attr( __( $text, $domain ) );
+	}
+}
+
 if ( ! function_exists( 'wp_json_encode' ) ) {
 	function wp_json_encode( mixed $data, int $options = 0, int $depth = 512 ): string|false {
 		return json_encode( $data, $options, $depth );

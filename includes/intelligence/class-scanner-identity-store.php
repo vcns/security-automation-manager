@@ -322,6 +322,40 @@ final class Scanner_Identity_Store {
 	}
 
 	/**
+	 * The addresses recorded from one AS, most recently seen first, one row
+	 * per address: how many times it was seen across all its identities,
+	 * and when it was last seen. An address only gets an ASN here once a
+	 * detector has looked at one of its requests (see record()), so this is
+	 * the AS's visitors that drew attention, not every one.
+	 *
+	 * @return array<int, array{ip:string, times_seen:int, last_seen_at:string}>
+	 */
+	public function addresses_for_asn( int $asn, int $limit = 50 ): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sam_scanner_identities';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT ip, SUM(occurrence_count) AS times_seen, MAX(last_seen_at) AS last_seen_at FROM {$table} WHERE asn = %d GROUP BY ip ORDER BY MAX(last_seen_at) DESC LIMIT %d",
+				$asn,
+				$limit
+			),
+			ARRAY_A
+		);
+
+		return array_map(
+			static fn( array $row ): array => array(
+				'ip'           => (string) $row['ip'],
+				'times_seen'   => (int) $row['times_seen'],
+				'last_seen_at' => (string) $row['last_seen_at'],
+			),
+			is_array( $rows ) ? $rows : array()
+		);
+	}
+
+	/**
 	 * Brings every recorded row into line with Own_Address_Store, after an
 	 * administrator changes the list on Control → Traffic Controls → IP
 	 * Rules → This site's own addresses.
