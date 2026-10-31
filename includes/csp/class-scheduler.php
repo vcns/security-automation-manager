@@ -39,12 +39,22 @@ class Scheduler {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the daily scan callback.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'wp_sam_daily_scan', array( $this, 'run_daily_scan' ) );
 	}
@@ -397,18 +407,38 @@ class Scheduler {
 		$this->log_well_known_refresh( 'agents_rules', ( new Agents_Rules_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes security.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_security_txt(): void {
 		$this->log_well_known_refresh( 'security_txt', ( new Security_Txt_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes humans.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_humans_txt(): void {
 		$this->log_well_known_refresh( 'humans_txt', ( new Humans_Txt_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes ads.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_ads_txt(): void {
 		$this->log_well_known_refresh( 'ads_txt', ( new Ads_Txt_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes app-ads.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_app_ads_txt(): void {
 		$this->log_well_known_refresh( 'app_ads_txt', ( new App_Ads_Txt_Store() )->refresh() );
 	}
@@ -436,6 +466,12 @@ class Scheduler {
 
 	// ── Notification ──────────────────────────────────────────────────────────
 
+	/**
+	 * Emails the notification address when a scheduled scan changed the policy.
+	 *
+	 * @param array $results Scan results.
+	 * @return void
+	 */
 	private function maybe_notify( array $results ): void {
 		if ( empty( $results['policy_changed'] ) ) {
 			return;

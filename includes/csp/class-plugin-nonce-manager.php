@@ -13,6 +13,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Plugin_Nonce_Manager {
+	/**
+	 * Returns the nonce of the plugin's own nonce manager, cached for the request.
+	 *
+	 * @return string The nonce, or an empty string when there is no nonce manager.
+	 */
 	public static function get_instance_nonce(): string {
 		static $nonce = null;
 		if ( null === $nonce ) {
