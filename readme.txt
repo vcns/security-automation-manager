@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.12.0
+Stable tag: 2.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,6 +64,14 @@ The Scripts page's External tab has a "Suggest" button, only triggered by an adm
 
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
 
+Network Intelligence (Control → Traffic Controls → Network Intelligence) adds network facts to requests a detector has already flagged, and applies the ASN and country rules an administrator adds under Network Rules. It uses three third-party services:
+
+* Tor Project exit list -- The Tor Project, Inc. Once a day, and whenever an administrator clicks Refresh Now on the Tor Exit List tab, the plugin downloads the public list of Tor exit addresses from https://check.torproject.org/torbulkexitlist with a plain HTTPS GET. No visitor data is sent; the request's User-Agent header names WordPress, this plugin, their versions and this site's address. No terms of service are published for this list -- Privacy: https://www.torproject.org/about/privacy_policy/
+* Team Cymru IP-to-ASN mapping -- Team Cymru, Inc. To find which network (autonomous system) an IP address belongs to, the plugin sends DNS queries to Team Cymru's free IP-to-ASN service (origin.asn.cymru.com and asn.cymru.com) through this server's own DNS resolver. Each query contains a single IPv4 address, with its parts reversed, or a single AS number -- nothing else. An address is looked up when a detector flags one of its requests; on every visitor request while at least one ASN or country rule exists; when an administrator uses ASN Lookup or opens an AS's details; and to check that a new ASN rule won't block the administrator's own address. Each address's result is kept for 30 days (its network range and the AS's registry details for one day), so an address is normally queried once a month at most. No account is needed. No separate terms of service are published; the service's usage notes: https://www.team-cymru.com/ip-asn-mapping -- Privacy: https://www.team-cymru.com/privacy
+* IPinfo -- IPinfo Inc. Off until an administrator adds their own IPinfo API token in the Geo-IP tab's settings; nothing is sent to IPinfo without one, and removing the token stops it. With a token saved, the plugin asks https://ipinfo.io for an IP address's country, region and city, sending the IP address and the administrator's token; the request's User-Agent header names WordPress, this plugin, their versions and this site's address. An address is looked up when a detector flags one of its requests; on every visitor request while at least one ASN or country rule exists; when an administrator looks it up on the Geo-IP tab; and to check that a new country rule won't block the administrator's own address. Each result is kept for 30 days. Terms: https://ipinfo.io/terms-of-service -- Privacy: https://ipinfo.io/privacy-policy
+
+The IP addresses sent to Team Cymru and IPinfo belong to visitors to this site, or to the administrator. Nothing else about a visitor's request is sent to either service: not the page requested, the visitor's user agent, or cookies.
+
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. Nothing is contacted until certificates are explicitly configured. Credentials and private keys are encrypted at rest. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and https://vcns.github.io/security-automation-manager/certificates.html explains the basic steps for other platforms.
 
 Every certificate request or renewal contacts the certificate authority:
@@ -118,6 +126,18 @@ The remaining three DNS-01 drivers (acme-dns, PowerDNS, and RFC 2136 dynamic DNS
 When an administrator configures automatic cPanel deployment, once a certificate is successfully issued the plugin sends an HTTPS request to the cPanel host the administrator specifies (cPanel's UAPI SSL::install_ssl endpoint), containing: the cPanel account username and API token supplied by the administrator (as an Authorization header); the domain name; the issued certificate; the certificate chain; and the certificate's private key. This is the one automatic-deployment method that transmits the private key itself, since installing a certificate requires it. Nothing is sent unless cPanel deployment is explicitly configured, and it happens once per issuance or renewal, immediately after the certificate is issued. Because the endpoint is the administrator's own hosting provider, not a service this plugin operates or has a relationship with, no single Terms of Service or Privacy Policy governs it -- those are whatever the administrator's own hosting provider publishes for their account and API access.
 
 == Changelog ==
+
+= 2.13.0 =
+
+* Added: create and edit robots.txt, security.txt, ads.txt and the other well-known files from starter templates, on Control → Traffic Controls → Network Intelligence → Well-Known Files. The plugin serves your saved version without writing any files, checks that visitors actually get it, and warns when an SEO plugin also writes robots.txt.
+* Added: Control → Traffic Controls → Network Intelligence → ASN Lookup shows which network range an address belongs to, with buttons to block the address, its range or its whole network. Click the network's number to see its registration details, where it's blocked, and the addresses your site has seen from it.
+* Changed: the IPinfo token and "Where does this website operate?" are now behind a settings cog on Control → Traffic Controls → Network Intelligence → Geo-IP, and the tab opens straight onto the Country Block List. Network Rules links back to it for blocking countries.
+* Changed: the Tor Exit List and Well-Known Files tabs show one row per item, with their buttons alongside.
+* Changed: the notice that the Content Security Policy trimmed older, unused approvals is shown only to administrators who chose Technical detail.
+* Changed: Settings' summary now sits below the tab bar, like every other tab's content.
+* Changed: this readme's External services section now lists the Tor Project, Team Cymru and IPinfo.
+* Fixed: adding an IP block rule that covers your own address now asks you to confirm first, as ASN and country rules already did.
+* Fixed: changing Control → Traffic Controls → IP Rules → This site's own addresses now updates the labels on Observe → Continuous Intelligence → Identities straight away, instead of waiting for each address to visit again.
 
 = 2.12.0 =
 
@@ -202,9 +222,5 @@ When an administrator configures automatic cPanel deployment, once a certificate
 = 2.9.104 =
 
 * Added: Recommendations Engine (Phase 4F) gains a fourth rule -- a report-only Content Security Policy surface that's stayed quiet (no violations) for 30 days, with no deliberate exception recorded against it, now suggests promoting that surface to Enforce.
-
-= 2.9.103 =
-
-* Added: Recommendations Engine (Phase 4F) gains its first three rules -- certificate renewal due, unexplained high/critical-risk configuration drift, and exceptions expiring soon. Each reuses evidence this plugin already collects (no new data source), links straight to where to act on it, and explains why it matters and what to do instead if the suggestion doesn't fit.
 
 Full changelog history: https://github.com/vcns/security-automation-manager/blob/main/CHANGELOG.md

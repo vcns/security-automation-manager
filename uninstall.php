@@ -74,6 +74,7 @@ $wp_sam_options = array(
 	'wp_sam_update_diagnostics',
 	'wp_sam_own_addresses',
 	'wp_sam_site_country',
+	'wp_sam_well_known_files',
 );
 
 // Extension-owned option names (e.g. a paid automation mode's own

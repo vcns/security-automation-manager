@@ -129,7 +129,7 @@
           </article>
           <article class='faq-item'>
             <h3>What's the difference between Simple, Balanced, and Technical?</h3>
-            <p>They control how much technical detail is visible by default, never what's true. Simple leads with plain-language outcomes; Balanced (the default) adds recognisable technical terminology alongside them; Technical expands every "Technical details" disclosure automatically. Every depth can reach the same underlying evidence -- Simple mode means less technical presentation, not less visibility of risk, and critical warnings are always fully visible regardless of depth.</p>
+            <p>They control how much technical detail is visible by default, never what's true. Simple leads with plain-language outcomes; Balanced (the default) adds recognisable technical terminology alongside them; Technical expands every "Technical details" disclosure automatically, and also shows routine housekeeping notices that need no action, such as Content Security Policy trimming learned approvals to fit its header. Every depth can reach the same underlying evidence -- Simple mode means less technical presentation, not less visibility of risk, and critical warnings are always fully visible regardless of depth.</p>
           </article>
           <article class='faq-item'>
             <h3>What do the Security Scorecard's Protected / Learning / Needs attention numbers mean?</h3>
@@ -389,6 +389,10 @@
           <article class='faq-item'>
             <h3>What about older browsers?</h3>
             <p>Some reporting and CSP3 behaviour varies by browser. By default the plugin emits both direct report-uri delivery and Reporting API headers together, so older browsers still get prompt, direct reports while newer ones batch their delivery via the Reporting API. You can restrict this to one transport or the other in Settings.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Can the plugin create robots.txt, security.txt or ads.txt for me?</h3>
+            <p>Yes. Go to Control → Traffic Controls → Network Intelligence → Well-Known Files and choose Create or Edit next to robots.txt, agents.txt, security.txt, humans.txt, ads.txt or app-ads.txt. The editor offers starting templates, such as WordPress's default robots.txt with or without a block on AI training crawlers, and refuses a version that would be wrong for every reader, such as a security.txt without a Contact or Expires line. Nothing changes until you save. The plugin then serves the file through WordPress and checks what visitors actually get. It never writes a file into your site's folder, and Stop serving or deactivating the plugin puts back whatever the site served before. A real file already in the site's folder always wins, because the web server sends it without running WordPress; the editor tells you when that's the case. If an SEO plugin such as Yoast SEO also writes robots.txt, the editor says so and opens with the current version, so you can keep that plugin's lines.</p>
           </article>
         </div>
       </section>

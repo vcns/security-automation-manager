@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.13.0] - 2026-10-31
+
+### Added
+
+- **Create and serve well-known files from guided templates** (#475). Control → Traffic Controls → Network Intelligence → Well-Known Files offers Create (when the file is absent) or Edit for robots.txt, agents.txt, security.txt, humans.txt, ads.txt and app-ads.txt.
+  - `Well_Known_File_Catalog` holds each file's paths, purpose, starter templates and checks. Templates are built from the site's own details:
+    - robots.txt: WordPress's default rules (from `admin_url()`), or those plus a block on AI-training crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended, meta-externalagent). Search crawlers are left alone;
+    - agents.txt: keep AI agents out of the admin area, or out of the whole site;
+    - security.txt: RFC 9116, with an Expires date under a year ahead;
+    - humans.txt: simple credits;
+    - ads.txt and app-ads.txt: Google's line, or the IAB "no authorised sellers" placeholder record.
+  - Saving refuses content that would be wrong for every reader, listing at most five problems. That covers a robots rule outside a User-agent group, a security.txt without Contact or with a past Expires, an ads.txt line that isn't a record or a variable, the placeholder publisher ID, anything over 64 KB, and text that isn't UTF-8.
+  - `Well_Known_File_Server` serves saved files through WordPress and never writes to disk. robots.txt goes through core's `robots_txt` filter at `PHP_INT_MAX`. The others are answered at `parse_request` priority 0 as `text/plain` with `nosniff`, and security.txt at both `/.well-known/` and the root.
+  - A real file on disk still wins. After each save, `Well_Known_File_Editor` fetches the address through `Same_Host_Fetcher` and records whether visitors get the saved version. The table says when they don't.
+  - When an SEO plugin also writes robots.txt (Yoast SEO, Rank Math, AIOSEO, SEOPress or The SEO Framework, plus filter `wp_sam_robots_txt_writer`), the editor names it, opens with its lines and warns that saving replaces them. Save is hidden for a site that isn't at the root of its domain.
+  - Stop serving, or deactivating the plugin, puts back whatever the site served before. Saves and removals are audit-logged. Option `wp_sam_well_known_files` is not autoloaded and is cleared on uninstall.
+- **ASN Lookup can block what it finds, and opens each AS's own view** (#476).
+  - A lookup is a one-row table: IP, routed network range, ASN, organisation, and Block IP, Block range and Block AS buttons. The range comes from the same Team Cymru origin query (`Asn_Lookup_Store::network_range()`).
+  - Each button pre-fills the IP Rules or Network Rules form, so the administrator still chooses surface and expiry. The row says when the IP or AS is already blocked, and labels the administrator's own current address.
+  - The AS number opens a drill-down showing:
+    - the registry record (`Asn_Lookup_Store::describe()`): name, country, registry and allocation date;
+    - which surfaces it is blocked on;
+    - the addresses recorded from it (`Scanner_Identity_Store::addresses_for_asn()`), each with Block IP;
+    - links to the Hurricane Electric BGP Toolkit and RIPEstat for its full list of ranges.
+  - The range and registry details are kept for a day in transients. Network Rules links each ASN rule to the same view.
+
+### Changed
+
+- **Geo-IP settings are behind a cog** (#476).
+  - The IPinfo token and "Where does this website operate?" moved into a dialog. It opens from a cog at the right of Control → Traffic Controls → Network Intelligence → Geo-IP. It replaces the provider table's Save Token and Clear and Disable buttons, and the separate site-country form.
+  - The tab opens with one line, then the Country Block List. That line is either a "Geo-IP is off" notice with Add token, or the lookup box.
+  - "Remove token and turn Geo-IP off" posts its own form, so pressing Enter in the token field can only press Save.
+  - The `wp_sam_geoip_save_token` and `wp_sam_site_country_save` admin-post actions are replaced by `wp_sam_geoip_settings_save`.
+- **Network Rules links country blocking back to Geo-IP** (#476).
+  - Links in its intro and under the Type field.
+  - A "Change on Geo-IP" button on the country rules the Country Block List manages.
+  - A warning when country rules exist while Geo-IP is off.
+- **Network Intelligence shows one row per item** (#472, #475). The Tor Exit List and Well-Known Files are each a single table with the buttons at the end of each row. Well-Known Files' About column gave way to Create/Edit and a note when the plugin serves the file.
+- **The hash-budget notice is shown only to Technical-depth users** (#474). `policy_builder/hash_budget_exceeded` is held in the notice queue while the administrator viewing chose Simple or Balanced. It appears to the next administrator on Technical.
+- **Settings' summary sits below the tab bar** (#470). The scorecard, Recent activity, Protection status and Needs your attention are now the Overview tab's body, like every other tab's content.
+- `readme.txt`'s External services section lists the Tor Project exit list, Team Cymru's IP-to-ASN lookup and IPinfo, with what each is sent and when (#477). `docs/data-protection-and-retention.md` no longer says that nothing leaves the site.
+
+### Fixed
+
+- **Blocking your own address is held for confirmation** (#476). An explicit IP block applies even to a logged-in administrator, and it wins over an allow rule. Blocking your own address from IP Rules, or from ASN Lookup's Block IP, therefore locked you out without warning. `Admin_UI::handle_ip_rule_add()` now holds such a rule behind an "add it anyway" checkbox (`Ip_Rule_Store::covers()`), as ASN and country rules already were.
+- **Identities follow this site's own addresses when the list changes** (#473). Saving Control → Traffic Controls → IP Rules → This site's own addresses calls `Scanner_Identity_Store::relabel_own_addresses()`:
+  - rows now covered become `loopback`;
+  - `loopback` rows no longer covered go back to `unknown` or their vendor's state;
+  - rows with an administrator decision are left alone.
+  
+  Rows are read and updated 1,000 at a time. The Saved notice and the audit entry give the count.
+
+Database schema is unchanged at 48.
+
 ## [2.12.0] - 2026-10-29
 
 ### Fixed

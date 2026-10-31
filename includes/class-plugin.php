@@ -60,6 +60,7 @@ use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Guard;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
+use WP_SAM\Intelligence\Well_Known_File_Server;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
@@ -360,6 +361,12 @@ final class Plugin {
 		$this->cert_schedule = new Certificates\Renewal_Scheduler( $this->cert_manager );
 		$this->cert_http->register();
 		$this->cert_schedule->register();
+
+		// Well-known files an administrator saved on Control → Traffic
+		// Controls → Network Intelligence → Well-Known Files. Answered on
+		// every request, like the http-01 responder above; nothing is read
+		// unless the request's path is one of those files.
+		( new Well_Known_File_Server() )->register();
 
 		// Conflict detection runs once per admin pageload.
 		if ( is_admin() ) {

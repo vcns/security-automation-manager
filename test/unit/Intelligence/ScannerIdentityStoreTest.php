@@ -11,7 +11,10 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
+use WP_SAM\Intelligence\Identity_Resolver;
+use WP_SAM\Intelligence\Own_Address_Store;
 use WP_SAM\Intelligence\Scanner_Identity_Store;
+use WP_SAM\Intelligence\Scanner_Vendor_Store;
 
 class ScannerIdentityStoreTest extends TestCase {
 
@@ -365,5 +368,142 @@ class ScannerIdentityStoreTest extends TestCase {
 		$GLOBALS['_wpdb_get_col'] = array( '203.0.113.1', '203.0.113.2', '203.0.113.3' );
 
 		$this->assertSame( array( '203.0.113.1', '203.0.113.2' ), $this->store->recent_wp_cron_callers( 30, 2 ) );
+	}
+
+	// ── relabel_own_addresses() ───────────────────────────────────────────
+
+	private function identity_row( int $id, string $ip, string $state, string $claimed = '', string $user_agent = 'curl/8.0' ): array {
+		return array(
+			'id'                 => $id,
+			'ip'                 => $ip,
+			'claimed_identity'   => $claimed,
+			'user_agent'         => $user_agent,
+			'verification_state' => $state,
+		);
+	}
+
+	private function resolver(): Identity_Resolver {
+		return new Identity_Resolver( new Scanner_Vendor_Store() );
+	}
+
+	/** @return array<int, string> The UPDATE statements relabel_own_addresses() issued. */
+	private function relabel_updates(): array {
+		return array_values( array_filter( $GLOBALS['_wpdb_queries'], static fn( string $sql ): bool => str_starts_with( $sql, 'UPDATE' ) ) );
+	}
+
+	public function test_relabel_marks_every_row_from_a_newly_listed_address_as_this_sites_own(): void {
+		update_option( Own_Address_Store::OPTION, array( '198.51.100.0/24' ) );
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(
+				$this->identity_row( 1, '198.51.100.7', 'unknown' ),
+				// First recorded under a crawler's name: later requests go to the unnamed row.
+				$this->identity_row( 2, '198.51.100.7', 'known_crawler', 'Googlebot', 'Mozilla/5.0 Googlebot' ),
+				$this->identity_row( 3, '203.0.113.9', 'unknown' ),
+				$this->identity_row( 4, '198.51.100.8', 'loopback' ),
+			),
+		);
+
+		$GLOBALS['_wpdb_query_result'] = 2; // Rows the one UPDATE affects.
+
+		$this->assertSame( 2, $this->store->relabel_own_addresses( $this->resolver() ) );
+
+		$updates = $this->relabel_updates();
+		$this->assertCount( 1, $updates );
+		$this->assertStringContainsString( "SET verification_state = 'loopback' WHERE id IN (1, 2)", $updates[0] );
+	}
+
+	public function test_relabel_never_reads_or_changes_a_row_with_an_administrator_decision(): void {
+		update_option( Own_Address_Store::OPTION, array( '198.51.100.0/24' ) );
+
+		$this->store->relabel_own_addresses( $this->resolver() );
+
+		$select = $GLOBALS['_wpdb_get_results_log'][0];
+		foreach ( Scanner_Identity_Store::AUTOMATIC_STATES as $state ) {
+			$this->assertStringContainsString( "'{$state}'", $select );
+		}
+		foreach ( Scanner_Identity_Store::DECISION_STATES as $state ) {
+			$this->assertStringNotContainsString( "'{$state}'", $select );
+		}
+		$this->assertSame( array(), $this->relabel_updates() );
+	}
+
+	public function test_relabel_returns_an_address_taken_off_the_list_to_how_a_request_from_it_is_labelled_now(): void {
+		update_option( Own_Address_Store::OPTION, array() );
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(
+				$this->identity_row( 5, '198.51.100.7', 'loopback' ),
+				$this->identity_row( 6, '198.51.100.7', 'loopback', 'Googlebot', 'Mozilla/5.0 Googlebot' ),
+				// Private addresses are always this site's own.
+				$this->identity_row( 7, '10.16.17.55', 'loopback' ),
+			),
+			// Scanner_Vendor_Store::all(), read by the resolver for row 6.
+			array(
+				array(
+					'vendor_key'          => 'googlebot',
+					'vendor_name'         => 'Googlebot',
+					'category'            => 'known_crawler',
+					'ua_pattern'          => 'Googlebot',
+					'rdns_suffixes'       => '[]',
+					'cidr_ranges'         => '[]',
+					'source_url'          => '',
+					'verification_method' => 'none',
+					'notes'               => '',
+					'is_builtin'          => 1,
+				),
+			),
+		);
+
+		$this->assertSame( 2, $this->store->relabel_own_addresses( $this->resolver() ) );
+
+		$updates = $this->relabel_updates();
+		$this->assertCount( 2, $updates );
+		$this->assertStringContainsString( "SET verification_state = 'unknown' WHERE id IN (5)", $updates[0] );
+		$this->assertStringContainsString( "SET verification_state = 'known_crawler' WHERE id IN (6)", $updates[1] );
+	}
+
+	public function test_relabel_reads_the_table_in_batches_after_the_last_id_seen(): void {
+		update_option( Own_Address_Store::OPTION, array( '198.51.100.0/24' ) );
+		$full_batch = array();
+		for ( $id = 1; $id <= 1000; $id++ ) {
+			$full_batch[] = $this->identity_row( $id, '203.0.113.9', 'unknown' );
+		}
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			$full_batch,
+			array( $this->identity_row( 1001, '198.51.100.7', 'unknown' ) ),
+		);
+
+		$this->store->relabel_own_addresses( $this->resolver() );
+
+		$this->assertCount( 2, $GLOBALS['_wpdb_get_results_log'] );
+		$this->assertStringContainsString( 'WHERE id > 0 ', $GLOBALS['_wpdb_get_results_log'][0] );
+		$this->assertStringContainsString( 'WHERE id > 1000 ', $GLOBALS['_wpdb_get_results_log'][1] );
+		$this->assertStringContainsString( 'WHERE id IN (1001)', $this->relabel_updates()[0] );
+	}
+
+	// ── addresses_for_asn() ───────────────────────────────────────────────
+
+	public function test_addresses_for_asn_groups_one_as_rows_by_address_most_recent_first(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array(
+				'ip'           => '91.125.72.135',
+				'times_seen'   => '12',
+				'last_seen_at' => '2026-10-30 21:00:00',
+			),
+		);
+
+		$this->assertSame(
+			array(
+				array(
+					'ip'           => '91.125.72.135',
+					'times_seen'   => 12,
+					'last_seen_at' => '2026-10-30 21:00:00',
+				),
+			),
+			$this->store->addresses_for_asn( 6871, 10 )
+		);
+
+		$query = (string) $GLOBALS['_wpdb_last_get_results_query'];
+		$this->assertStringContainsString( 'WHERE asn = 6871 GROUP BY ip', $query );
+		$this->assertStringContainsString( 'ORDER BY MAX(last_seen_at) DESC LIMIT 10', $query );
 	}
 }
