@@ -11,10 +11,10 @@
   <file>uninstall.php</file>
   <file>includes</file>
 
-  <exclude-pattern>vendor/*</exclude-pattern>
-  <exclude-pattern>.git/*</exclude-pattern>
-  <exclude-pattern>docs/*</exclude-pattern>
-  <exclude-pattern>test/*</exclude-pattern>
+  <exclude-pattern type="relative">^vendor/*</exclude-pattern>
+  <exclude-pattern type="relative">^.git/*</exclude-pattern>
+  <exclude-pattern type="relative">^docs/*</exclude-pattern>
+  <exclude-pattern type="relative">^test/*</exclude-pattern>
 
   <rule ref="WordPress-Core"/>
 
