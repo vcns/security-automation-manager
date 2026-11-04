@@ -690,3 +690,12 @@ already performed. A mismatch fails CI on any PR that bumps the schema
 without updating this document. See `docs/consolidation-ledger.md` for the
 older SPECIFICATION.md-was-5-generations-stale incident this check exists to
 prevent from recurring.
+
+
+---
+
+## 15. Planned VCNS Fleet Integration (not yet implemented)
+
+The agreed 4 November 2026 WordPress-side requirements are in [`docs/fleet-edge-integration-requirements.md`](docs/fleet-edge-integration-requirements.md). They describe SAM's own enrolment, policy trust, agency signature validation, clone/reinitialisation behaviour, local policy authority, ownership-limited drift remediation, evidence reporting and target CSP approval-posture entitlement fallback.
+
+These are **requirements for future development**, not a description of released capabilities. In particular, the target commercial Level 0 expiry behaviour is to fall back to **effective Level 3, all manual**; existing release documentation in §9 describes the implementation baseline and should not be mistaken for this target. Any future release that implements these behaviours must reconcile this product specification, README, readme.txt, admin UI, tests and user documentation. Fleet resolution and Zabbix tenant configuration belong outside this repository.
