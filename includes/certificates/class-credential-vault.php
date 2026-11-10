@@ -86,6 +86,11 @@ class Credential_Vault {
 		return self::is_sealed( $value ) && null === self::open( $value );
 	}
 
+	/**
+	 * Derives the encryption key from WP_SAM_CERT_VAULT_KEY when defined, otherwise from the site's auth salt.
+	 *
+	 * @return string Binary key.
+	 */
 	private static function key(): string {
 		if ( defined( 'WP_SAM_CERT_VAULT_KEY' ) && is_string( WP_SAM_CERT_VAULT_KEY ) && '' !== WP_SAM_CERT_VAULT_KEY ) {
 			return hash( 'sha256', 'wp-sam-cert-vault|' . WP_SAM_CERT_VAULT_KEY, true );
