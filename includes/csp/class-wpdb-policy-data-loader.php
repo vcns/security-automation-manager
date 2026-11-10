@@ -17,6 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Wpdb_Policy_Data_Loader implements Policy_Data_Loader {
 
+	/**
+	 * Loads the policy profile row of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array|null Profile row, or null when not found.
+	 */
 	public function load_profile( string $surface ): ?array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_policy_profiles';
@@ -60,6 +66,12 @@ final class Wpdb_Policy_Data_Loader implements Policy_Data_Loader {
 		return ! empty( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Loads the approved sources of a surface.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Source rows.
+	 */
 	public function load_approved_sources( string $surface ): array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_source_inventory';

@@ -121,6 +121,17 @@ class Decision_Engine {
 		);
 	}
 
+	/**
+	 * Appends one rule result to the findings list.
+	 *
+	 * @param array  $findings          Findings list, extended by reference.
+	 * @param string $rule_id           Rule identifier.
+	 * @param string $result            Rule result.
+	 * @param string $risk_effect       Effect of the rule on the risk level.
+	 * @param string $automation_effect Effect of the rule on automation.
+	 * @param string $explanation       Human-readable explanation.
+	 * @return void
+	 */
 	private function add_finding( array &$findings, string $rule_id, string $result, string $risk_effect, string $automation_effect, string $explanation ): void {
 		$findings[] = array(
 			'rule_id'           => $rule_id,
@@ -132,6 +143,13 @@ class Decision_Engine {
 		);
 	}
 
+	/**
+	 * Returns the more severe of two risk levels.
+	 *
+	 * @param string $a First risk level.
+	 * @param string $b Second risk level.
+	 * @return string The more severe level.
+	 */
 	private function max_risk( string $a, string $b ): string {
 		$order = array(
 			'low'      => 1,
@@ -154,6 +172,13 @@ class Decision_Engine {
 		return in_array( $risk, Automation_Mode_Registry::allowed_risks( $mode ), true );
 	}
 
+	/**
+	 * Builds the one-line summary of an evaluation.
+	 *
+	 * @param string $risk       Overall risk level.
+	 * @param array  $exclusions Hard automation exclusions that applied.
+	 * @return string Summary text.
+	 */
 	private function summarise( string $risk, array $exclusions ): string {
 		if ( ! empty( $exclusions ) ) {
 			return 'Hard automation exclusion: ' . implode( ', ', array_unique( $exclusions ) ) . '.';
