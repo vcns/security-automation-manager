@@ -140,7 +140,11 @@ final class Security_Txt_Store {
 		return array(
 			'status'  => 'refreshed',
 			'count'   => count( $fields ),
-			'message' => sprintf( 'Refreshed %d field(s).', count( $fields ) ),
+			'message' => sprintf(
+				/* translators: %d: number of records/rules/fields/nodes parsed */
+				__( 'Refreshed %d field(s).', 'vcns-security-automation-manager' ),
+				count( $fields )
+			),
 		);
 	}
 

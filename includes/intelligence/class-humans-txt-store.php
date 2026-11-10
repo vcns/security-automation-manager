@@ -71,7 +71,13 @@ final class Humans_Txt_Store {
 		$response = ( $this->http_get )( home_url( '/humans.txt' ) );
 
 		if ( is_wp_error( $response ) ) {
-			return $this->record_failure( 'Fetch failed: ' . $response->get_error_message() );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %s: error message returned by the HTTP request */
+					__( 'Fetch failed: %s', 'vcns-security-automation-manager' ),
+					$response->get_error_message()
+				)
+			);
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
@@ -79,7 +85,13 @@ final class Humans_Txt_Store {
 			return $this->record_absent( $code );
 		}
 		if ( 200 !== $code ) {
-			return $this->record_failure( "Fetch returned HTTP {$code}." );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Fetch returned HTTP %d.', 'vcns-security-automation-manager' ),
+					$code
+				)
+			);
 		}
 
 		$content = (string) wp_remote_retrieve_body( $response );
@@ -91,7 +103,7 @@ final class Humans_Txt_Store {
 		return array(
 			'status'  => 'refreshed',
 			'count'   => strlen( $content ),
-			'message' => 'Refreshed humans.txt.',
+			'message' => __( 'Refreshed humans.txt.', 'vcns-security-automation-manager' ),
 		);
 	}
 
