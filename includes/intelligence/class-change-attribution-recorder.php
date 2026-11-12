@@ -29,10 +29,20 @@ final class Change_Attribution_Recorder {
 
 	private Change_Log_Store $log;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Change_Log_Store $log Change log that records the events.
+	 */
 	public function __construct( Change_Log_Store $log ) {
 		$this->log = $log;
 	}
 
+	/**
+	 * Registers the hooks for plugin, theme and core changes.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'upgrader_process_complete', array( $this, 'on_upgrader_process_complete' ), 10, 2 );
 		add_action( 'activated_plugin', array( $this, 'on_plugin_activated' ), 10, 1 );
@@ -40,6 +50,13 @@ final class Change_Attribution_Recorder {
 		add_action( 'switch_theme', array( $this, 'on_switch_theme' ), 10, 3 );
 	}
 
+	/**
+	 * Records plugin, theme and core updates after an upgrade completes.
+	 *
+	 * @param object $upgrader   Upgrader instance, unused.
+	 * @param array  $hook_extra Details of the completed upgrade.
+	 * @return void
+	 */
 	public function on_upgrader_process_complete( object $upgrader, array $hook_extra ): void {
 		unset( $upgrader );
 		$type = (string) ( $hook_extra['type'] ?? '' );
@@ -68,14 +85,34 @@ final class Change_Attribution_Recorder {
 		}
 	}
 
+	/**
+	 * Records a plugin activation.
+	 *
+	 * @param string $plugin Plugin file.
+	 * @return void
+	 */
 	public function on_plugin_activated( string $plugin ): void {
 		$this->log->record( 'plugin_activated', $plugin, '', $this->plugin_version( $plugin ) );
 	}
 
+	/**
+	 * Records a plugin deactivation.
+	 *
+	 * @param string $plugin Plugin file.
+	 * @return void
+	 */
 	public function on_plugin_deactivated( string $plugin ): void {
 		$this->log->record( 'plugin_deactivated', $plugin, $this->plugin_version( $plugin ), '' );
 	}
 
+	/**
+	 * Records a theme switch.
+	 *
+	 * @param string    $new_name  New theme name, unused.
+	 * @param \WP_Theme $new_theme New theme.
+	 * @param \WP_Theme $old_theme Previous theme.
+	 * @return void
+	 */
 	public function on_switch_theme( string $new_name, \WP_Theme $new_theme, \WP_Theme $old_theme ): void {
 		unset( $new_name );
 		$this->log->record(

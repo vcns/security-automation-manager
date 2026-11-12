@@ -23,6 +23,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Ip_Resolver {
 
+	/**
+	 * Returns the visitor's IP address from REMOTE_ADDR.
+	 *
+	 * @return string A valid IP address, or an empty string.
+	 */
 	public static function resolve(): string {
 		$candidate = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		if ( '' === $candidate ) {

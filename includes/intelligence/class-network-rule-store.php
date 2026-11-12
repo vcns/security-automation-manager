@@ -53,6 +53,16 @@ final class Network_Rule_Store {
 		return null !== $wpdb->get_var( "SELECT id FROM {$table} LIMIT 1" );
 	}
 
+	/**
+	 * Adds a network rule.
+	 *
+	 * @param string $rule_type  Rule type.
+	 * @param string $value      Rule value.
+	 * @param string $surface    Surface slug.
+	 * @param string $reason     Reason for the rule, required.
+	 * @param int    $created_by User id of the creator.
+	 * @return bool True when the rule was added.
+	 */
 	public function add( string $rule_type, string $value, string $surface, string $reason, int $created_by ): bool {
 		$value = $this->normalise_value( $rule_type, $value );
 		if ( ! in_array( $rule_type, self::RULE_TYPES, true ) || '' === $value || '' === trim( $reason ) ) {
@@ -77,6 +87,12 @@ final class Network_Rule_Store {
 		return false !== $result;
 	}
 
+	/**
+	 * Deletes a network rule.
+	 *
+	 * @param int $id Rule id.
+	 * @return bool True when a rule was deleted.
+	 */
 	public function delete( int $id ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_network_rules';

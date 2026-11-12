@@ -36,10 +36,20 @@ final class Account_Integrity_Recorder {
 
 	private Change_Log_Store $log;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Change_Log_Store $log Change log that records the events.
+	 */
 	public function __construct( Change_Log_Store $log ) {
 		$this->log = $log;
 	}
 
+	/**
+	 * Registers the hook that records new administrator roles.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'set_user_role', array( $this, 'on_set_user_role' ), 10, 3 );
 	}

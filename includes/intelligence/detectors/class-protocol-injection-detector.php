@@ -21,22 +21,48 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Protocol_Injection_Detector extends Pattern_Detector {
 
+	/**
+	 * Returns the stable id of the protocol injection detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'protocol-injection';
 	}
 
+	/**
+	 * Returns the family the protocol injection detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'protocol-injection';
 	}
 
+	/**
+	 * Returns the plain-language description of the protocol injection detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags php://, file://, and other non-HTTP URI schemes injected as a parameter value.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the protocol injection detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the request data (path, query string) that the protocol injection rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		$path         = (string) ( $context['path'] ?? '' );
 		$query_string = (string) ( $context['query_string'] ?? '' );
@@ -44,6 +70,11 @@ final class Protocol_Injection_Detector extends Pattern_Detector {
 		return '' !== $query_string ? $path . '?' . $query_string : $path;
 	}
 
+	/**
+	 * Returns the protocol injection detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		return array(
 			array(

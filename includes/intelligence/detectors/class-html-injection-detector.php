@@ -24,26 +24,57 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Html_Injection_Detector extends Pattern_Detector {
 
+	/**
+	 * Returns the stable id of the HTML injection detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'html-injection';
 	}
 
+	/**
+	 * Returns the family the HTML injection detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'html-injection';
 	}
 
+	/**
+	 * Returns the plain-language description of the HTML injection detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags script tags, event-handler attributes, and other markup/XSS injection attempts in a request.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the HTML injection detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the control actions the HTML injection detector may be set to.
+	 *
+	 * @return array Control action keys.
+	 */
 	public function allowed_control_actions(): array {
 		return array( 'observe', 'enforce' );
 	}
 
+	/**
+	 * Returns the request data (path, query string) that the HTML injection rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		$path         = (string) ( $context['path'] ?? '' );
 		$query_string = (string) ( $context['query_string'] ?? '' );
@@ -51,6 +82,11 @@ final class Html_Injection_Detector extends Pattern_Detector {
 		return '' !== $query_string ? $path . '?' . $query_string : $path;
 	}
 
+	/**
+	 * Returns the HTML injection detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		return array(
 			array(

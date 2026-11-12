@@ -51,6 +51,19 @@ final class Drift_Store {
 		return ! empty( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Records a drift between the baseline and the current state.
+	 *
+	 * @param string $category          Category.
+	 * @param string $surface           Surface slug.
+	 * @param string $item_key          Item key.
+	 * @param string $old_value         Baseline value.
+	 * @param string $new_value         Current value.
+	 * @param string $risk_level        Risk level.
+	 * @param string $risk_reason       Reason for the risk level.
+	 * @param string $correlated_change Description of a correlated recorded change, or null.
+	 * @return void
+	 */
 	public function record(
 		string $category,
 		string $surface,
@@ -154,6 +167,15 @@ final class Drift_Store {
 		);
 	}
 
+	/**
+	 * Sets an administrator's disposition on a drift record; a note is required.
+	 *
+	 * @param int    $id          Drift record id.
+	 * @param string $disposition New disposition: expected or approved.
+	 * @param int    $admin_id    Administrator user id.
+	 * @param string $note        Reason note.
+	 * @return bool True when the disposition was stored.
+	 */
 	public function disposition( int $id, string $disposition, int $admin_id, string $note ): bool {
 		if ( ! in_array( $disposition, array( 'expected', 'approved' ), true ) ) {
 			return false; // 'unexplained' is the default state, never re-set by an admin; 'resolved' is scanner-only.
@@ -181,6 +203,14 @@ final class Drift_Store {
 		return false !== $result;
 	}
 
+	/**
+	 * Builds the fingerprint that identifies a drifting item.
+	 *
+	 * @param string $category Category.
+	 * @param string $surface  Surface slug.
+	 * @param string $item_key Item key.
+	 * @return string SHA-256 hash.
+	 */
 	private function fingerprint( string $category, string $surface, string $item_key ): string {
 		return hash( 'sha256', $category . '|' . $surface . '|' . $item_key );
 	}

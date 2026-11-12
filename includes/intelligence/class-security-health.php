@@ -136,6 +136,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the Drift row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function drift_row(): array {
 		$baseline = ( new Baseline_Store() )->get_current();
 		if ( null === $baseline ) {
@@ -162,6 +167,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the Certificates row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function certificates_row(): array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_certificates';
@@ -219,6 +229,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the Dependencies row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function dependencies_row(): array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_dependency_inventory';
@@ -268,6 +283,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the Exceptions row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function exceptions_row(): array {
 		global $wpdb;
 		$now = current_time( 'mysql', true );
@@ -341,6 +361,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the Automation row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function automation_row(): array {
 		$config      = ( new Automation_Config() )->all();
 		$mode_counts = array();
@@ -361,6 +386,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the Evidence freshness row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function evidence_freshness_row(): array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_scan_logs';
@@ -397,6 +427,11 @@ final class Security_Health {
 		);
 	}
 
+	/**
+	 * Builds the External verification row of the security health summary.
+	 *
+	 * @return array Row with a label, value, status and detail.
+	 */
 	private function external_verification_row(): array {
 		return array(
 			'label'  => __( 'External verification', 'vcns-security-automation-manager' ),

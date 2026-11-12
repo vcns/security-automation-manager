@@ -42,6 +42,17 @@ final class Traffic_Policy_Store {
 		return ! empty( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Stores the traffic policy of a surface.
+	 *
+	 * @param string $surface                   Surface slug.
+	 * @param string $mode                      Policy mode.
+	 * @param int    $rate_limit_max_requests   Requests allowed per window.
+	 * @param int    $rate_limit_window_seconds Window length in seconds.
+	 * @param int    $login_max_failed_attempts Failed logins allowed before lockout.
+	 * @param int    $login_lockout_seconds     Lockout length in seconds.
+	 * @return bool True when the policy was stored.
+	 */
 	public function update(
 		string $surface,
 		string $mode,

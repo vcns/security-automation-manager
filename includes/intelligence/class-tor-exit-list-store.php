@@ -41,6 +41,12 @@ final class Tor_Exit_List_Store {
 	 */
 	private const MIN_PLAUSIBLE_COUNT = 100;
 
+	/**
+	 * Checks whether an IP address is a known Tor exit node.
+	 *
+	 * @param string $ip IP address.
+	 * @return bool True when it is a known exit node.
+	 */
 	public function is_exit_node( string $ip ): bool {
 		if ( '' === $ip ) {
 			return false;
@@ -61,6 +67,11 @@ final class Tor_Exit_List_Store {
 		return null !== $found;
 	}
 
+	/**
+	 * Counts the stored exit nodes.
+	 *
+	 * @return int Number of nodes.
+	 */
 	public function count(): int {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_tor_exit_nodes';
@@ -68,11 +79,21 @@ final class Tor_Exit_List_Store {
 		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
 	}
 
+	/**
+	 * Returns when the exit list was last refreshed successfully.
+	 *
+	 * @return string|null Time of the last refresh, or null when it has not been refreshed.
+	 */
 	public function last_refreshed_at(): ?string {
 		$value = get_option( 'wp_sam_tor_list_refreshed_at', '' );
 		return '' !== $value ? (string) $value : null;
 	}
 
+	/**
+	 * Returns the outcome of the last exit list fetch.
+	 *
+	 * @return string Status code, or an empty string when none has run.
+	 */
 	public function last_fetch_status(): string {
 		return (string) get_option( 'wp_sam_tor_list_last_fetch_status', '' );
 	}

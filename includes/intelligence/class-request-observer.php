@@ -112,6 +112,16 @@ final class Request_Observer {
 	/** @var callable():bool Real is_user_logged_in()+manage_options check by default, the same one Traffic_Guard uses; injectable for tests. */
 	private $is_privileged_user;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Detector_Engine               $engine               Detector engine.
+	 * @param Event_Store                   $events               Event store.
+	 * @param Identity_Resolver             $identity_resolver    Identity resolver.
+	 * @param Scanner_Identity_Store        $identities           Scanner identity store.
+	 * @param Network_Intelligence_Resolver $network_intelligence Network intelligence resolver.
+	 * @param Traffic_Block_Store|null      $blocks               Traffic block store, a new one is created when omitted.
+	 */
 	public function __construct(
 		Detector_Engine $engine,
 		Event_Store $events,
@@ -132,6 +142,11 @@ final class Request_Observer {
 		};
 	}
 
+	/**
+	 * Registers the hooks that observe each request.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'send_headers', array( $this, 'observe' ) );
 		add_action( 'login_init', array( $this, 'observe' ) );
@@ -147,12 +162,24 @@ final class Request_Observer {
 		add_action( 'shutdown', array( $this, 'flush_identity_write' ), 10, 0 );
 	}
 
+	/**
+	 * Observes the request before a redirect is issued.
+	 *
+	 * @param string $location Redirect location.
+	 * @param int    $status   Redirect status, unused.
+	 * @return string The unchanged location.
+	 */
 	public function observe_before_redirect( string $location, int $status = 302 ): string {
 		unset( $status );
 		$this->observe();
 		return $location;
 	}
 
+	/**
+	 * Runs the detectors on the current request once and stores their findings.
+	 *
+	 * @return void
+	 */
 	public function observe(): void {
 		if ( $this->observed ) {
 			return;
