@@ -170,12 +170,22 @@ class Admin_UI {
 
 	private Plugin $plugin;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Plugin $plugin Plugin instance whose services the admin screens use.
+	 */
 	public function __construct( Plugin $plugin ) {
 		$this->plugin = $plugin;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the menu, settings, asset, notice, form handler and AJAX hooks.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_menu_pages' ) );
 		add_action( 'admin_head', array( $this, 'print_hidden_menu_css' ) );
@@ -266,6 +276,11 @@ class Admin_UI {
 
 	// ── Menu registration ─────────────────────────────────────────────────────
 
+	/**
+	 * Adds the top-level menu and its sub-pages.
+	 *
+	 * @return void
+	 */
 	public function add_menu_pages(): void {
 		add_menu_page(
 			__( 'Security Automation Manager', 'vcns-security-automation-manager' ),
@@ -559,6 +574,11 @@ class Admin_UI {
 
 	// ── Settings API ──────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the plugin options with their sanitize callbacks.
+	 *
+	 * @return void
+	 */
 	public function register_settings(): void {
 		$settings = array(
 			'wp_sam_cron_hour'                     => 'absint',
@@ -651,6 +671,12 @@ class Admin_UI {
 		return false;
 	}
 
+	/**
+	 * Adds a Settings link to the plugin's row on the Plugins screen.
+	 *
+	 * @param array $links Existing action links.
+	 * @return array Action links including Settings.
+	 */
 	public function add_plugin_action_links( array $links ): array {
 		$settings_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
@@ -670,6 +696,13 @@ class Admin_UI {
 		) + $links;
 	}
 
+	/**
+	 * Adds update-channel information to the plugin's row on the Plugins screen.
+	 *
+	 * @param array  $links Existing row meta links.
+	 * @param string $file  Plugin file the row belongs to.
+	 * @return array Row meta links.
+	 */
 	public function add_plugin_row_meta( array $links, string $file ): array {
 		if ( plugin_basename( WP_SAM_FILE ) !== $file ) {
 			return $links;
@@ -708,6 +741,12 @@ class Admin_UI {
 		return is_string( $text ) ? $text : '';
 	}
 
+	/**
+	 * Sanitizes the custom CSP report endpoint URL.
+	 *
+	 * @param mixed $url Submitted URL.
+	 * @return string A valid URL, or an empty string.
+	 */
 	public function sanitize_report_endpoint_url( mixed $url ): string {
 		$url = trim( (string) $url );
 		if ( '' === $url ) {
@@ -733,16 +772,34 @@ class Admin_UI {
 		return $url;
 	}
 
+	/**
+	 * Sanitizes the custom policy header name.
+	 *
+	 * @param mixed $header_name Submitted header name.
+	 * @return string A valid header name, or an empty string.
+	 */
 	public function sanitize_policy_header_name( mixed $header_name ): string {
 		return Policy_Builder::sanitize_custom_policy_header_name( $header_name );
 	}
 
 	// ── Asset enqueue ─────────────────────────────────────────────────────────
 
+	/**
+	 * Sanitizes the reporting transport setting.
+	 *
+	 * @param mixed $transport Submitted transport.
+	 * @return string A known transport key.
+	 */
 	public function sanitize_reporting_transport( mixed $transport ): string {
 		return Policy_Builder::sanitize_reporting_transport( $transport );
 	}
 
+	/**
+	 * Sanitizes the submitted automation configuration and keeps only modes this build can use.
+	 *
+	 * @param mixed $config Submitted configuration.
+	 * @return array The normalised configuration.
+	 */
 	public function sanitize_automation_config( mixed $config ): array {
 		$raw        = is_array( $config ) ? $config : array();
 		$normalised = ( new Automation_Config() )->normalise_admin_input( $raw );
@@ -821,6 +878,12 @@ class Admin_UI {
 		return 'security-automation-manager_page_security-automation-manager-certificates';
 	}
 
+	/**
+	 * Loads the admin scripts and styles on this plugin's screens only.
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 * @return void
+	 */
 	public function enqueue_assets( string $hook_suffix ): void {
 		$is_shared_admin_page = in_array( $hook_suffix, $this->plugin_page_hooks(), true );
 		$is_certificates_page = $this->certificates_page_hook() === $hook_suffix;
@@ -902,6 +965,11 @@ class Admin_UI {
 
 	// ── Page renderers ────────────────────────────────────────────────────────
 
+	/**
+	 * Renders the Overview admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_overview(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -910,6 +978,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-overview.php';
 	}
 
+	/**
+	 * Renders the CSP dashboard admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_dashboard(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -917,6 +990,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
 	}
 
+	/**
+	 * Renders the X-Frame-Options admin page.
+	 *
+	 * @return void
+	 */
 	public function render_x_frame_options(): void {
 		$this->render_pillar_page(
 			X_Frame_Options_Builder::PILLAR_KEY,
@@ -930,6 +1008,11 @@ class Admin_UI {
 		);
 	}
 
+	/**
+	 * Renders the X-Content-Type-Options admin page.
+	 *
+	 * @return void
+	 */
 	public function render_x_content_type_options(): void {
 		$this->render_pillar_page(
 			X_Content_Type_Options_Builder::PILLAR_KEY,
@@ -940,6 +1023,11 @@ class Admin_UI {
 		);
 	}
 
+	/**
+	 * Renders the Information Masking admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_information_masking(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -947,6 +1035,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-information-masking.php';
 	}
 
+	/**
+	 * Renders the Cache-Control admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_cache_control(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -954,6 +1047,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-cache-control.php';
 	}
 
+	/**
+	 * Renders the Cross-Origin admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_cross_origin(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -961,6 +1059,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-cross-origin.php';
 	}
 
+	/**
+	 * Renders the Intelligence admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_intelligence(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -968,6 +1071,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
 	}
 
+	/**
+	 * Renders the Traffic admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_traffic(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -975,6 +1083,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
 	}
 
+	/**
+	 * Renders the Baseline admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_baseline(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -982,6 +1095,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-baseline.php';
 	}
 
+	/**
+	 * Renders the Advanced admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_advanced(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -989,6 +1107,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-advanced.php';
 	}
 
+	/**
+	 * Renders the Observe admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_observe(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -996,6 +1119,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-observe.php';
 	}
 
+	/**
+	 * Renders the Decide admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_decide(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1003,6 +1131,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-decide.php';
 	}
 
+	/**
+	 * Renders the Control admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_control(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1010,6 +1143,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-control.php';
 	}
 
+	/**
+	 * Renders the Verify admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_verify(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1034,6 +1172,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-welcome.php';
 	}
 
+	/**
+	 * Renders the Referrer-Policy admin page.
+	 *
+	 * @return void
+	 */
 	public function render_referrer_policy(): void {
 		// Values the spec itself singles out as risky get a short warning
 		// suffix rather than appearing as a bare token indistinguishable
@@ -1072,6 +1215,11 @@ class Admin_UI {
 		);
 	}
 
+	/**
+	 * Renders the Permissions-Policy admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_permissions_policy(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1093,6 +1241,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-pillar-simple.php';
 	}
 
+	/**
+	 * Renders the HSTS admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_hsts(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1100,6 +1253,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-hsts.php';
 	}
 
+	/**
+	 * Renders the Reverse Tabnabbing admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_reverse_tabnabbing(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1107,6 +1265,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-reverse-tabnabbing.php';
 	}
 
+	/**
+	 * Renders the Scripts admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_scripts(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -1114,6 +1277,11 @@ class Admin_UI {
 		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
 	}
 
+	/**
+	 * Handles the Reset Data form post: checks the nonce, the capability and the current password, resets plugin data, then redirects to `security-automation-manager&tab=recovery`.
+	 *
+	 * @return void
+	 */
 	public function handle_reset_data(): void {
 		check_admin_referer( 'wp_sam_reset_data' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1230,6 +1398,13 @@ class Admin_UI {
 		$this->redirect_to_recovery_import( 'success' );
 	}
 
+	/**
+	 * Redirects to `security-automation-manager&tab=recovery` with the result of a snapshot restore, then exits.
+	 *
+	 * @param string $result Result code.
+	 * @param string $reason Optional failure reason.
+	 * @return void
+	 */
 	private function redirect_to_recovery_restore( string $result, string $reason = '' ): void {
 		$args = array(
 			'tab'            => 'recovery',
@@ -1274,6 +1449,11 @@ class Admin_UI {
 
 	// ── Continuous Intelligence: scanner/vendor identity (Phase 3D) ──────────
 
+	/**
+	 * Handles the scanner identity decision form post: checks the nonce and the manage_options capability, records an authorise, deny or clear decision with a note, then redirects to `security-automation-manager-intelligence&tab=identities`.
+	 *
+	 * @return void
+	 */
 	public function handle_scanner_identity_decide(): void {
 		check_admin_referer( 'wp_sam_scanner_identity_decide' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1302,6 +1482,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the scanner vendor form post: checks the nonce and the manage_options capability, adds or updates a vendor in the catalogue, then redirects to `security-automation-manager-intelligence&tab=vendors`.
+	 *
+	 * @return void
+	 */
 	public function handle_scanner_vendor_upsert(): void {
 		check_admin_referer( 'wp_sam_scanner_vendor_upsert' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1325,6 +1510,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the scanner vendor delete form post: checks the nonce and the manage_options capability, removes a vendor from the catalogue, then redirects to `security-automation-manager-intelligence&tab=vendors`.
+	 *
+	 * @return void
+	 */
 	public function handle_scanner_vendor_delete(): void {
 		check_admin_referer( 'wp_sam_scanner_vendor_delete' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1349,6 +1539,11 @@ class Admin_UI {
 
 	// ── Traffic Controls (Phase 3E) ───────────────────────────────────────────
 
+	/**
+	 * Handles the traffic policy form post: checks the nonce and the manage_options capability, saves the rate limit and login lockout settings for a surface, then redirects to `security-automation-manager-traffic&tab=policy`.
+	 *
+	 * @return void
+	 */
 	public function handle_traffic_policy_update(): void {
 		check_admin_referer( 'wp_sam_traffic_policy_update' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1441,6 +1636,11 @@ class Admin_UI {
 		);
 	}
 
+	/**
+	 * Handles the IP rule delete form post: checks the nonce and the manage_options capability, deletes an IP rule, then redirects to `security-automation-manager-traffic&tab=ip-rules`.
+	 *
+	 * @return void
+	 */
 	public function handle_ip_rule_delete(): void {
 		check_admin_referer( 'wp_sam_ip_rule_delete' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1453,6 +1653,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the "this site's own addresses" save form post: checks the nonce and the manage_options capability, saves the address list, relabels recorded identities to match, then redirects to `security-automation-manager-traffic&tab=ip-rules` (anchored at the own-addresses panel).
+	 *
+	 * @return void
+	 */
 	public function handle_own_addresses_save(): void {
 		check_admin_referer( 'wp_sam_own_addresses_save' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1481,6 +1686,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the block release form post: checks the nonce and the manage_options capability, releases a traffic block, then redirects to `security-automation-manager-traffic&tab=blocks`.
+	 *
+	 * @return void
+	 */
 	public function handle_traffic_block_release(): void {
 		check_admin_referer( 'wp_sam_traffic_block_release' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1493,6 +1703,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the block persist form post: checks the nonce and the manage_options capability, makes a traffic block persistent, then redirects to `security-automation-manager-traffic&tab=blocks`.
+	 *
+	 * @return void
+	 */
 	public function handle_traffic_block_persist(): void {
 		check_admin_referer( 'wp_sam_traffic_block_persist' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1576,6 +1791,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the custom rule delete form post: checks the nonce and the manage_options capability, deletes a custom detector rule, then redirects to `security-automation-manager-traffic&tab=custom-rules`.
+	 *
+	 * @return void
+	 */
 	public function handle_custom_rule_delete(): void {
 		check_admin_referer( 'wp_sam_custom_rule_delete' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1610,6 +1830,11 @@ class Admin_UI {
 
 	// ── Time-bound exceptions (GitHub issue #177) ─────────────────────────────
 
+	/**
+	 * Handles the exception form post: checks the nonce and the manage_options capability, creates a security exception, then redirects to `security-automation-manager&tab=exceptions`.
+	 *
+	 * @return void
+	 */
 	public function handle_exception_create(): void {
 		check_admin_referer( 'wp_sam_exception_create' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1642,6 +1867,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the exception extend form post: checks the nonce and the manage_options capability, extends an exception's expiry date, then redirects to `security-automation-manager&tab=exceptions`.
+	 *
+	 * @return void
+	 */
 	public function handle_exception_extend(): void {
 		check_admin_referer( 'wp_sam_exception_extend' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1661,6 +1891,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the exception revoke form post: checks the nonce and the manage_options capability, revokes an exception, then redirects to `security-automation-manager&tab=exceptions`.
+	 *
+	 * @return void
+	 */
 	public function handle_exception_revoke(): void {
 		check_admin_referer( 'wp_sam_exception_revoke' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1683,6 +1918,11 @@ class Admin_UI {
 
 	// ── Baseline and Drift (Phase 3F) ─────────────────────────────────────────
 
+	/**
+	 * Handles the baseline capture form post: checks the nonce and the manage_options capability, captures the current security state as a new baseline, then redirects to `security-automation-manager-baseline&tab=history`.
+	 *
+	 * @return void
+	 */
 	public function handle_baseline_capture(): void {
 		check_admin_referer( 'wp_sam_baseline_capture' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1703,6 +1943,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the drift scan form post: checks the nonce and the manage_options capability, scans for drift from the baseline, then redirects to `security-automation-manager-baseline&tab=drift`.
+	 *
+	 * @return void
+	 */
 	public function handle_drift_scan(): void {
 		check_admin_referer( 'wp_sam_drift_scan' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1721,6 +1966,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the drift disposition form post: checks the nonce and the manage_options capability, records a disposition and note for a drift record, then redirects to `security-automation-manager-baseline&tab=drift`.
+	 *
+	 * @return void
+	 */
 	public function handle_drift_disposition(): void {
 		check_admin_referer( 'wp_sam_drift_disposition' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1740,6 +1990,11 @@ class Admin_UI {
 
 	// ── Advanced Intelligence (Phase 3J) ──────────────────────────────────────
 
+	/**
+	 * Handles the campaign scan form post: checks the nonce and the manage_options capability, scans recent events for attack campaigns, then redirects to `security-automation-manager-advanced&tab=campaigns`.
+	 *
+	 * @return void
+	 */
 	public function handle_campaign_scan(): void {
 		check_admin_referer( 'wp_sam_campaign_scan' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1752,6 +2007,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the campaign disposition form post: checks the nonce and the manage_options capability, records a disposition and note for a campaign, then redirects to `security-automation-manager-advanced&tab=campaigns`.
+	 *
+	 * @return void
+	 */
 	public function handle_campaign_disposition(): void {
 		check_admin_referer( 'wp_sam_campaign_disposition' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1800,6 +2060,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the honey path form post: checks the nonce and the manage_options capability, adds a honey path, then redirects to `security-automation-manager-advanced&tab=honeypaths`.
+	 *
+	 * @return void
+	 */
 	public function handle_honeypath_add(): void {
 		check_admin_referer( 'wp_sam_honeypath_add' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1816,6 +2081,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the honey path delete form post: checks the nonce and the manage_options capability, deletes a honey path, then redirects to `security-automation-manager-advanced&tab=honeypaths`.
+	 *
+	 * @return void
+	 */
 	public function handle_honeypath_delete(): void {
 		check_admin_referer( 'wp_sam_honeypath_delete' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1828,6 +2098,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the change window form post: checks the nonce and the manage_options capability, opens a change window, optionally limited to a number of hours, then redirects to `security-automation-manager-advanced&tab=change-windows`.
+	 *
+	 * @return void
+	 */
 	public function handle_change_window_open(): void {
 		check_admin_referer( 'wp_sam_change_window_open' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1899,6 +2174,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the robots.txt rules refresh form post: checks the nonce and the manage_options capability, refreshes the robots.txt rules, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
 	public function handle_robots_rules_refresh(): void {
 		check_admin_referer( 'wp_sam_robots_rules_refresh' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1929,6 +2209,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the security.txt refresh form post: checks the nonce and the manage_options capability, refreshes security.txt, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
 	public function handle_security_txt_refresh(): void {
 		check_admin_referer( 'wp_sam_security_txt_refresh' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1941,6 +2226,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the humans.txt refresh form post: checks the nonce and the manage_options capability, refreshes humans.txt, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
 	public function handle_humans_txt_refresh(): void {
 		check_admin_referer( 'wp_sam_humans_txt_refresh' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1953,6 +2243,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the ads.txt refresh form post: checks the nonce and the manage_options capability, refreshes ads.txt, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
 	public function handle_ads_txt_refresh(): void {
 		check_admin_referer( 'wp_sam_ads_txt_refresh' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1965,6 +2260,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the app-ads.txt refresh form post: checks the nonce and the manage_options capability, refreshes app-ads.txt, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
 	public function handle_app_ads_txt_refresh(): void {
 		check_admin_referer( 'wp_sam_app_ads_txt_refresh' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2359,6 +2659,11 @@ class Admin_UI {
 		return null;
 	}
 
+	/**
+	 * Handles the network rule delete form post: checks the nonce and the manage_options capability, deletes a network rule, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=network-rules`.
+	 *
+	 * @return void
+	 */
 	public function handle_network_rule_delete(): void {
 		check_admin_referer( 'wp_sam_network_rule_delete' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2373,6 +2678,11 @@ class Admin_UI {
 
 	// ── Certificates (ACME) ───────────────────────────────────────────────────
 
+	/**
+	 * Renders the Certificates admin page for users who can manage options.
+	 *
+	 * @return void
+	 */
 	public function render_certificates(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'vcns-security-automation-manager' ) );
@@ -2524,6 +2834,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the certificate issue form post: checks the nonce and the manage_options capability, queues a certificate issue, then redirects to the Certificates page.
+	 *
+	 * @return void
+	 */
 	public function handle_issue_certificate(): void {
 		check_admin_referer( 'wp_sam_issue_certificate' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2536,6 +2851,11 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Sends the latest certificate chain or private key as a PEM download after checking the nonce and capability, and logs the download.
+	 *
+	 * @return void
+	 */
 	public function handle_download_certificate(): void {
 		check_admin_referer( 'wp_sam_download_certificate' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2584,6 +2904,11 @@ class Admin_UI {
 
 	// ── Recommendations (Phase 4F) ────────────────────────────────────────────
 
+	/**
+	 * Handles the recommendation dismissal form post: checks the nonce and the manage_options capability, dismisses a recommendation with a reason, then redirects to `security-automation-manager&tab=recommendations`.
+	 *
+	 * @return void
+	 */
 	public function handle_dismiss_recommendation(): void {
 		check_admin_referer( 'wp_sam_dismiss_recommendation' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2636,6 +2961,12 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Checks a password against the current user's stored hash.
+	 *
+	 * @param string $password Password to check.
+	 * @return bool True when it matches.
+	 */
 	private function current_user_password_is_valid( string $password ): bool {
 		if ( '' === $password || ! function_exists( 'wp_get_current_user' ) || ! function_exists( 'wp_check_password' ) ) {
 			return false;
@@ -2649,6 +2980,12 @@ class Admin_UI {
 		return wp_check_password( $password, (string) $user->user_pass, (int) $user->ID );
 	}
 
+	/**
+	 * Redirects to `security-automation-manager&tab=recovery` with the result of a data reset, then exits.
+	 *
+	 * @param string $result Result code.
+	 * @return void
+	 */
 	private function redirect_to_recovery( string $result ): void {
 		$url = add_query_arg(
 			array(
@@ -2662,6 +2999,13 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Redirects to `security-automation-manager&tab=recovery` with the result of a configuration import, then exits.
+	 *
+	 * @param string $result Result code.
+	 * @param string $reason Optional failure reason.
+	 * @return void
+	 */
 	private function redirect_to_recovery_import( string $result, string $reason = '' ): void {
 		$args = array(
 			'tab'           => 'recovery',
@@ -2679,6 +3023,11 @@ class Admin_UI {
 
 	// ── Admin notices ─────────────────────────────────────────────────────────
 
+	/**
+	 * Prints the plugin's admin warnings and any stored notices.
+	 *
+	 * @return void
+	 */
 	public function display_admin_notices(): void {
 		// admin_notices fires on every wp-admin screen, including a
 		// subscriber's own profile.php, and the queue below is drained the
@@ -2969,6 +3318,11 @@ class Admin_UI {
 
 	// ── AJAX: manual scan ─────────────────────────────────────────────────────
 
+	/**
+	 * AJAX handler that runs a manual scan and returns the results.
+	 *
+	 * @return void
+	 */
 	public function ajax_manual_scan(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2987,6 +3341,11 @@ class Admin_UI {
 
 	// ── AJAX: approve/deny source ─────────────────────────────────────────────
 
+	/**
+	 * AJAX handler that approves a proposed source.
+	 *
+	 * @return void
+	 */
 	public function ajax_approve_source(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -2995,6 +3354,11 @@ class Admin_UI {
 		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'approved' );
 	}
 
+	/**
+	 * AJAX handler that rejects a proposed source.
+	 *
+	 * @return void
+	 */
 	public function ajax_deny_source(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3003,6 +3367,11 @@ class Admin_UI {
 		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'rejected' );
 	}
 
+	/**
+	 * AJAX handler that reverts an approved source.
+	 *
+	 * @return void
+	 */
 	public function ajax_revert_source(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3011,6 +3380,11 @@ class Admin_UI {
 		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'reverted' );
 	}
 
+	/**
+	 * AJAX handler that undoes a source decision.
+	 *
+	 * @return void
+	 */
 	public function ajax_undo_source_decision(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3019,6 +3393,13 @@ class Admin_UI {
 		$this->decide_source( intval( wp_unslash( $_POST['source_id'] ?? 0 ) ), 'undone' );
 	}
 
+	/**
+	 * Applies a source decision from an AJAX request and sends the JSON result.
+	 *
+	 * @param int    $id     Source inventory id.
+	 * @param string $action Decision to apply: approved, rejected, reverted or undone.
+	 * @return void
+	 */
 	private function decide_source( int $id, string $action ): void {
 		if ( $id <= 0 ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid source ID.', 'vcns-security-automation-manager' ) ) );
@@ -3048,6 +3429,11 @@ class Admin_UI {
 
 	// ── AJAX: toggle surface mode ─────────────────────────────────────────────
 
+	/**
+	 * AJAX handler that sets a surface to report-only, enforce or disabled.
+	 *
+	 * @return void
+	 */
 	public function ajax_toggle_mode(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3099,6 +3485,11 @@ class Admin_UI {
 		wp_send_json_success();
 	}
 
+	/**
+	 * AJAX handler that turns Trusted Types on or off for a surface.
+	 *
+	 * @return void
+	 */
 	public function ajax_set_trusted_types(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3182,6 +3573,11 @@ class Admin_UI {
 		wp_send_json_success();
 	}
 
+	/**
+	 * AJAX handler that sets a surface's automation mode.
+	 *
+	 * @return void
+	 */
 	public function ajax_set_automation_mode(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3226,6 +3622,11 @@ class Admin_UI {
 
 	// ── AJAX: simple pillar profiles ──────────────────────────────────────────
 
+	/**
+	 * AJAX handler that saves a pillar's setting for a surface.
+	 *
+	 * @return void
+	 */
 	public function ajax_set_pillar_value(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -3487,6 +3888,11 @@ class Admin_UI {
 
 	// ── AJAX: dependency governance ───────────────────────────────────────────
 
+	/**
+	 * AJAX handler that sets the dependency monitoring mode for a surface.
+	 *
+	 * @return void
+	 */
 	public function ajax_set_dependency_mode(): void {
 		check_ajax_referer( 'wp_sam_admin_nonce', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {

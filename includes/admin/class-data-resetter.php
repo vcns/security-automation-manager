@@ -16,6 +16,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Data_Resetter {
 
+	/**
+	 * Clears the plugin tables, deletes its options and transients, and disables the policy profiles.
+	 *
+	 * @return array Lists of tables cleared, missing and failed, and the options and transients deleted.
+	 */
 	public function reset(): array {
 		global $wpdb;
 
@@ -70,6 +75,12 @@ class Data_Resetter {
 		return $result;
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name.
+	 * @return bool True when it exists.
+	 */
 	private function table_exists( string $table ): bool {
 		global $wpdb;
 
@@ -77,6 +88,11 @@ class Data_Resetter {
 		return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 	}
 
+	/**
+	 * Sets every surface's policy profile to disabled.
+	 *
+	 * @return void
+	 */
 	private function disable_policy_profiles(): void {
 		global $wpdb;
 
