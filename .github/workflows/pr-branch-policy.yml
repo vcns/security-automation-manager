@@ -15,6 +15,13 @@ name: PR Branch Policy
 # that branch pattern treated as a first-class source for any target.
 on:
   pull_request:
+    # `edited` re-checks a PR whose target branch is changed. The default
+    # types (opened, synchronize, reopened) don't include a retarget, and
+    # re-running an old run replays the old target, so #480 kept a failure
+    # from when it targeted main after it was moved to development. Title and
+    # body edits fire it too; the check always runs in full rather than
+    # skipping, so an edit can never turn an earlier failure into a pass.
+    types: [opened, synchronize, reopened, edited]
     branches:
       - development
       - main
@@ -28,16 +35,19 @@ jobs:
     name: Enforce PR Source Branch Policy
     runs-on: ubuntu-latest
 
+    # The Dependabot exemption keys on who opened the PR, not github.actor:
+    # on an `edited` event the actor is whoever edited it, so retitling or
+    # retargeting a Dependabot PR would otherwise fail its own branch check.
     steps:
       - name: Validate source branch for development
         if: github.base_ref == 'development'
         shell: bash
         env:
-          ACTOR: ${{ github.actor }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          if [[ "$ACTOR" == "dependabot[bot]" && "$HEAD_REF" =~ ^dependabot/ ]]; then
+          if [[ "$PR_AUTHOR" == "dependabot[bot]" && "$HEAD_REF" =~ ^dependabot/ ]]; then
             exit 0
           fi
           if [[ ! "$HEAD_REF" =~ ^chore/ && ! "$HEAD_REF" =~ ^docs/ && ! "$HEAD_REF" =~ ^feature/ && ! "$HEAD_REF" =~ ^fix/ && ! "$HEAD_REF" =~ ^hotfix/ && ! "$HEAD_REF" =~ ^release/ ]]; then
@@ -49,11 +59,11 @@ jobs:
         if: github.base_ref == 'main'
         shell: bash
         env:
-          ACTOR: ${{ github.actor }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          if [[ "$ACTOR" == "dependabot[bot]" && "$HEAD_REF" =~ ^dependabot/ ]]; then
+          if [[ "$PR_AUTHOR" == "dependabot[bot]" && "$HEAD_REF" =~ ^dependabot/ ]]; then
             exit 0
           fi
           if [[ ! "$HEAD_REF" =~ ^development$ && ! "$HEAD_REF" =~ ^release/ && ! "$HEAD_REF" =~ ^hotfix/ ]]; then
