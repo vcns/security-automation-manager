@@ -243,7 +243,9 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 
 if ( ! function_exists( '__' ) ) {
 	function __( string $text, string $domain = 'default' ): string {
-		return $text;
+		// Tests may set $GLOBALS['wp_test_translations'][ $text ] to prove a
+		// string actually passes through the translation layer.
+		return $GLOBALS['wp_test_translations'][ $text ] ?? $text;
 	}
 }
 
@@ -275,6 +277,12 @@ if ( ! function_exists( 'esc_html_e' ) ) {
 if ( ! function_exists( 'esc_attr_e' ) ) {
 	function esc_attr_e( string $text, string $domain = 'default' ): void {
 		echo esc_attr( __( $text, $domain ) );
+	}
+}
+
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( string $text, string $domain = 'default' ): string {
+		return esc_attr( __( $text, $domain ) );
 	}
 }
 
@@ -623,8 +631,16 @@ if ( ! function_exists( 'home_url' ) ) {
 }
 
 if ( ! function_exists( 'get_home_url' ) ) {
-	function get_home_url( int $blog_id = 0, string $path = '', string $scheme = '' ): string {
+	// $blog_id is untyped, as in core -- Discovery::get_crawl_urls() calls
+	// get_home_url( '/' ), which core accepts on a single site.
+	function get_home_url( $blog_id = null, string $path = '', string $scheme = '' ): string {
 		return home_url( $path, $scheme );
+	}
+}
+
+if ( ! function_exists( 'wp_login_url' ) ) {
+	function wp_login_url( string $redirect = '', bool $force_reauth = false ): string {
+		return 'https://example.com/wp-login.php';
 	}
 }
 
@@ -846,6 +862,10 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 			$this->params[ $key ] = $value;
 		}
 
+		public function get_param( string $key ): mixed {
+			return $this->params[ $key ] ?? null;
+		}
+
 		public function offsetExists( mixed $offset ): bool {
 			return isset( $this->params[ $offset ] );
 		}
@@ -874,7 +894,19 @@ if ( ! class_exists( 'WP_REST_Server' ) ) {
 
 if ( ! class_exists( 'WP_REST_Response' ) ) {
 	class WP_REST_Response {
-		public function __construct( public mixed $data = null, public int $status = 200 ) {}
+		/** @param array<string, string> $headers */
+		public function __construct( public mixed $data = null, public int $status = 200, public array $headers = array() ) {}
+
+		public function header( string $key, string $value, bool $replace = true ): void {
+			if ( $replace || ! isset( $this->headers[ $key ] ) ) {
+				$this->headers[ $key ] = $value;
+			}
+		}
+
+		/** @return array<string, string> */
+		public function get_headers(): array {
+			return $this->headers;
+		}
 
 		public function get_status(): int {
 			return $this->status;
@@ -1118,6 +1150,38 @@ if ( ! function_exists( 'dbDelta' ) ) {
 if ( ! function_exists( 'current_user_can' ) ) {
 	function current_user_can( string $capability ): bool {
 		return $GLOBALS['_wp_current_user_can'][ $capability ] ?? false;
+	}
+}
+
+// ── AJAX response stubs ───────────────────────────────────────────────────────
+// Core's wp_send_json_*() print JSON and die; these throw instead, so a test
+// can call an Admin_UI AJAX handler directly, catch the response, and know
+// nothing after it ran. check_ajax_referer() always passes -- nonce checks
+// are covered separately (NonceManagerTest) and aren't what these tests are
+// about.
+if ( ! class_exists( 'WP_SAM_Test_Json_Response' ) ) {
+	class WP_SAM_Test_Json_Response extends RuntimeException {
+		public function __construct( public readonly bool $success, public readonly mixed $data = null, public readonly ?int $status_code = null ) {
+			parent::__construct( $success ? 'wp_send_json_success' : 'wp_send_json_error' );
+		}
+	}
+}
+
+if ( ! function_exists( 'check_ajax_referer' ) ) {
+	function check_ajax_referer( $action = -1, $query_arg = false, $stop = true ): int {
+		return 1;
+	}
+}
+
+if ( ! function_exists( 'wp_send_json_error' ) ) {
+	function wp_send_json_error( mixed $value = null, ?int $status_code = null, int $flags = 0 ): never {
+		throw new WP_SAM_Test_Json_Response( false, $value, $status_code );
+	}
+}
+
+if ( ! function_exists( 'wp_send_json_success' ) ) {
+	function wp_send_json_success( mixed $value = null, ?int $status_code = null, int $flags = 0 ): never {
+		throw new WP_SAM_Test_Json_Response( true, $value, $status_code );
 	}
 }
 

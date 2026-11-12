@@ -22,6 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use WP_SAM\CSP\Csp_Surfaces;
 use WP_SAM\Intelligence\Recommendation_Engine;
 
 class Action_Centre {
@@ -43,6 +44,7 @@ class Action_Centre {
 		'csp_enforce_ready_'            => 'Enabling enforcement means browsers will begin rejecting activity that falls outside the approved policy for this surface.',
 		'pillar_enforce_ready_'         => 'Enabling enforcement means this control becomes active for real traffic on this surface, instead of only being observed.',
 		'detector_disabled_but_firing_' => 'Re-enabling this detector means matching activity is evaluated (and can be acted on) again; it stays silent while disabled.',
+		'dependency_sri_drift_'         => 'Re-approving updates the hash SAM expects, but browsers keep blocking the file until the integrity attribute in the markup that loads it is updated too. Allowing by host instead stops SAM comparing hashes for this origin.',
 	);
 
 	/**
@@ -98,7 +100,7 @@ class Action_Centre {
 					$unclassified_dependencies
 				),
 				'why_it_matters'     => __( 'An unclassified dependency has not been reviewed as expected, pinned, or flagged as suspicious -- that review is what lets SAM tell a routine update apart from an unexpected change.', 'vcns-security-automation-manager' ),
-				'recommended_action' => __( 'Classify each dependency on the Scripts page.', 'vcns-security-automation-manager' ),
+				'recommended_action' => __( 'Classify each dependency under Decide → Dependency Classification.', 'vcns-security-automation-manager' ),
 				'what_will_happen'   => __( 'Classifying a dependency records your decision about it; it does not change whether the script currently runs.', 'vcns-security-automation-manager' ),
 				'evidence_url'       => admin_url( 'admin.php?page=security-automation-manager-scripts' ),
 				'risk'               => 'low',
@@ -146,14 +148,15 @@ class Action_Centre {
 		return '';
 	}
 
+	/** CSP's own surfaces only, matching what For Review lists -- an older install's 'api' rows are never counted (see Csp_Surfaces). */
 	private function pending_csp_source_count(): int {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_source_inventory';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT COUNT(*) FROM {$table} WHERE approval_state = %s",
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Csp_Surfaces::sql_list() is a hard-coded constant list, not input.
+				"SELECT COUNT(*) FROM {$table} WHERE approval_state = %s AND surface IN (" . Csp_Surfaces::sql_list() . ')',
 				'pending'
 			)
 		);

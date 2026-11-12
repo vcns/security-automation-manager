@@ -37,8 +37,9 @@ abstract class Request_Surface {
 
 	/**
 	 * Conflict_Detector issues an internal request carrying CONFLICT_PROBE_HEADER
-	 * to see what security headers other plugins/web-server config are already
-	 * sending, without this plugin's own header masking the result.
+	 * (with a live Conflict_Probe_Token as its value) to see what security
+	 * headers other plugins/web-server config are already sending, without
+	 * this plugin's own header masking the result.
 	 */
 	protected function is_conflict_probe_request(): bool {
 		return Surface_Classifier::is_conflict_probe_request();

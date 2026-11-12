@@ -130,7 +130,7 @@
 	border: 1px solid #dcdcde;
 }
 
-/* Settings/Overview status badges. Rendered by WP_SAM\Admin\Status_Badge --
+/* Settings → All status badges. Rendered by WP_SAM\Admin\Status_Badge --
    the Layer 4/Layer 5 pillar tables' cross-pillar status vocabulary.
    Colour values mirror .mode-report-only/.mode-enforce/.wp-sam-readiness-badge
    above for visual consistency, but this is a deliberately separate class
@@ -397,6 +397,9 @@ details.wp-sam-filter-form form {
 	z-index: 10;
 	width: 360px;
 	max-width: 80vw;
+	/* A campaign can list up to 100 IPs; scroll inside rather than run off-screen. */
+	max-height: 60vh;
+	overflow-y: auto;
 	margin-top: 6px;
 	padding: 10px 12px;
 	background: #fff;
@@ -414,6 +417,21 @@ details.wp-sam-filter-form form {
 .wp-sam-meta-icon:hover .wp-sam-meta-popover,
 .wp-sam-meta-icon:focus .wp-sam-meta-popover {
 	display: block;
+}
+
+/* The info glyph is its own .dashicons child, not the hover target itself,
+ * so the popover is never a descendant of .dashicons -- that class sets the
+ * icon font and a 20px box, which the popover's text otherwise inherited. */
+.wp-sam-meta-icon > .dashicons {
+	vertical-align: top;
+}
+
+/* .wp-sam-table-wrap scrolls sideways (overflow-x: auto), which also clips
+ * anything absolutely positioned below its bottom edge -- an open popover
+ * on a table's last rows was cut off. Let it overflow only while one is
+ * actually open. */
+.wp-sam-table-wrap:has( :is( .wp-sam-meta-icon, .wp-sam-risk-badge--has-note, .wp-sam-status-badge--has-note, .wp-sam-known-source-badge ):is( :hover, :focus ) ) {
+	overflow: visible;
 }
 
 .wp-sam-meta-row {
@@ -486,15 +504,20 @@ details.wp-sam-filter-form form {
 
 /*
  * Geo-IP country grid (Traffic Controls > Network Intelligence > Geo-IP):
- * a flowing multi-column list of checkboxes, one per ISO country, instead
- * of a single narrow list -- wide enough to actually use the page instead
- * of leaving most of it empty.
+ * one checkbox per ISO country, in as many alphabetical columns as the
+ * page has room for.
+ *
+ * Deliberately no height cap and no column-count cap. A multi-column box
+ * with a fixed height doesn't scroll down -- it adds overflow columns to
+ * the right -- so the old 420px cap hid most countries behind a
+ * horizontal scrollbar, and the old 4-column cap made each column on a
+ * wide screen about twice as wide as the names in it. Names too long for
+ * a column wrap under themselves (the hanging indent clears the
+ * checkbox) instead of running into the next column.
  */
 .wp-sam-country-grid {
-	columns: 220px 4;
+	column-width: 14em;
 	column-gap: 1.5em;
-	max-height: 420px;
-	overflow-y: auto;
 	border: 1px solid #dcdcde;
 	background: #fff;
 	padding: 12px 16px;
@@ -503,8 +526,117 @@ details.wp-sam-filter-form form {
 
 .wp-sam-country-grid label {
 	display: block;
-	white-space: nowrap;
-	padding: 2px 0;
+	break-inside: avoid;
+	padding: 2px 0 2px 1.5rem;
+	text-indent: -1.5rem;
+}
+
+.wp-sam-country-groups {
+	border: 1px solid #dcdcde;
+	background: #f6f7f7;
+	padding: 12px 16px;
+	margin-bottom: 0.5em;
+}
+
+.wp-sam-country-groups select {
+	max-width: 100%;
+	margin-right: 0.5em;
+}
+
+.wp-sam-country-group-details p {
+	margin: 0.5em 0;
+}
+
+.wp-sam-country-count {
+	margin-left: auto;
+}
+
+/*
+ * A short form laid out on one line -- a lookup box and its button, or the
+ * country-group picker -- wrapping onto further lines when it runs out of
+ * room.
+ */
+.wp-sam-inline-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 8px;
+}
+
+.wp-sam-inline-form label,
+.wp-sam-inline-form select,
+.wp-sam-inline-form .button {
+	margin: 0;
+}
+
+/* Geo-IP sub-tab: status or lookup on the left, settings cog on the right. */
+.wp-sam-geoip-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	margin-top: 1em;
+}
+
+.wp-sam-geoip-header-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.wp-sam-geoip-header .notice {
+	margin: 0;
+}
+
+.wp-sam-geoip-header .notice p .button {
+	margin-left: 4px;
+	vertical-align: baseline;
+}
+
+.wp-sam-geoip-status {
+	margin-right: 8px;
+	color: #646970;
+}
+
+.wp-sam-settings-cog.button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 6px;
+}
+
+/* A modal settings dialog opened by a cog (see assets/js/admin.js). */
+.wp-sam-dialog {
+	width: min(560px, calc(100vw - 32px));
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 16px 24px;
+	box-shadow: 0 3px 30px rgba(0, 0, 0, 0.2);
+}
+
+.wp-sam-dialog::backdrop {
+	background: rgba(0, 0, 0, 0.35);
+}
+
+.wp-sam-dialog h2 {
+	margin-top: 0;
+}
+
+.wp-sam-dialog .regular-text,
+.wp-sam-dialog select {
+	width: 100%;
+	max-width: 100%;
+}
+
+.wp-sam-dialog-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 1.5em;
+}
+
+/* "Remove token" sits on the far left, away from Save. */
+.wp-sam-dialog-actions .button-link-delete {
+	margin-right: auto;
 }
 
 /*
@@ -646,6 +778,13 @@ details.wp-sam-filter-form form {
 	.wp-sam-stat-row {
 		flex-direction: column;
 	}
+
+	/* WordPress enlarges checkboxes at this width; the country grid's
+	   hanging indent has to grow with them. */
+	.wp-sam-country-grid label {
+		padding-left: 2.1rem;
+		text-indent: -2.1rem;
+	}
 }
 
 /*
@@ -768,4 +907,94 @@ details.wp-sam-filter-form form {
 .wp-sam-col-actions {
 	width: 1%;
 	white-space: nowrap;
+}
+
+/* ── Settings → All: the Layer 1–5 tables ───────────────────────────────────
+ *
+ * Five short tables stacked down one page, each with the same three
+ * columns. Under the auto layout every other SAM table uses, each sized
+ * its columns from its own content -- Layer 2 and 4's Status cells hold a
+ * row of per-surface badges that `nowrap` kept on one line -- so no two
+ * layers' columns lined up. A fixed layout with shared widths makes every
+ * layer read as one continuous table, and lets the badges wrap.
+ */
+.wp-sam-layer-table {
+	table-layout: fixed;
+	width: 100%;
+}
+
+.wp-sam-layer-table th,
+.wp-sam-layer-table td {
+	padding: 10px 12px;
+	vertical-align: middle;
+}
+
+.wp-sam-layer-table .wp-sam-col-primary {
+	width: 26%;
+	min-width: 0;
+}
+
+.wp-sam-layer-table .wp-sam-col-status {
+	width: 52%;
+	white-space: normal;
+	line-height: 1.9;
+}
+
+.wp-sam-layer-table .wp-sam-col-actions {
+	width: 22%;
+	white-space: normal;
+	overflow-wrap: break-word;
+}
+
+.wp-sam-layer-table .wp-sam-col-status .wp-sam-status-badge,
+.wp-sam-layer-table .wp-sam-col-status .wp-sam-readiness-badge {
+	margin: 2px 6px 2px 0;
+	white-space: nowrap;
+}
+
+/* Below this width the fixed shares get too narrow for the badge rows;
+ * fall back to the auto layout and let .wp-sam-table-wrap scroll. */
+@media screen and (max-width: 782px) {
+	.wp-sam-layer-table {
+		table-layout: auto;
+	}
+
+	.wp-sam-layer-table .wp-sam-col-primary,
+	.wp-sam-layer-table .wp-sam-col-status,
+	.wp-sam-layer-table .wp-sam-col-actions {
+		width: auto;
+	}
+}
+
+/* Well-known file editor: Control → Traffic Controls → Network Intelligence
+ * → Well-Known Files → Create/Edit. One template per line, button first. */
+.wp-sam-well-known-templates {
+	margin: 0 0 1.5em;
+}
+
+.wp-sam-well-known-templates li {
+	margin-bottom: 6px;
+}
+
+.wp-sam-well-known-templates .button {
+	min-width: 14em;
+	margin-right: 8px;
+	text-align: center;
+}
+
+label[for="wp-sam-well-known-content"] {
+	font-weight: 600;
+	margin-right: 8px;
+}
+
+#wp-sam-well-known-content {
+	margin: 6px 0 10px;
+}
+
+.wp-sam-well-known-remove {
+	margin-top: 1.5em;
+}
+
+.wp-sam-well-known-table .wp-sam-col-actions .button {
+	margin-right: 4px;
 }

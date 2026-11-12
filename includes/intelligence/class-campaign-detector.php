@@ -54,7 +54,7 @@ final class Campaign_Detector {
 			$detector_id = (string) $combo['detector_id'];
 			$surface     = (string) $combo['surface'];
 
-			$ips = $this->events->distinct_ips( $detector_id, $surface, $window_hours );
+			$ips = self::external_ips( $this->events->distinct_ips( $detector_id, $surface, $window_hours ) );
 			if ( count( $ips ) < $min_participants ) {
 				continue;
 			}
@@ -76,14 +76,58 @@ final class Campaign_Detector {
 	}
 
 	/**
-	 * Explicit, admin-triggered response: adds every currently-live
-	 * participant IP as a permanent sam_ip_rules block (all surfaces), then
-	 * marks the campaign 'blocked'. Re-queries live participants at call
-	 * time rather than trusting the campaign row's own (possibly stale)
-	 * participant_count.
+	 * The live participant IPs a campaign block would actually act on:
+	 * never the acting administrator's own IP, nor a loopback or
+	 * private-network address (see external_ips()). An
+	 * explicit sam_ip_rules block applies even to a logged-in admin, so
+	 * without this, an admin whose own IP had tripped the same detector
+	 * (e.g. while testing) would lock themselves out of every surface,
+	 * wp-admin included.
+	 *
+	 * @param array<int, string> $ips
+	 * @return array<int, string>
 	 */
-	public function block_participants( array $campaign, int $admin_id, string $note, Ip_Rule_Store $ip_rules, int $window_hours = self::DEFAULT_WINDOW_HOURS ): int {
-		$ips = $this->events->distinct_ips( (string) $campaign['detector_id'], (string) $campaign['surface'], $window_hours );
+	public static function blockable_ips( array $ips, string $actor_ip ): array {
+		return array_values(
+			array_filter(
+				self::external_ips( $ips ),
+				static fn( string $ip ): bool => $ip !== $actor_ip
+			)
+		);
+	}
+
+	/**
+	 * Drops loopback and private-network addresses, and any declared as
+	 * this site's own (Own_Address_Store::includes()), from a participant
+	 * list. Those are this site's own servers, containers
+	 * or load balancers -- e.g. WP-Cron or a security plugin's scan
+	 * requesting this site's own URLs -- so they are neither counted toward
+	 * a campaign nor offered for blocking.
+	 *
+	 * @param array<int, string> $ips
+	 * @return array<int, string>
+	 */
+	public static function external_ips( array $ips ): array {
+		return array_values(
+			array_filter(
+				$ips,
+				static fn( string $ip ): bool => ! Own_Address_Store::includes( $ip )
+			)
+		);
+	}
+
+	/**
+	 * Explicit, admin-triggered response: adds every currently-live
+	 * participant IP (except those blockable_ips() excludes) as a permanent
+	 * sam_ip_rules block (all surfaces), then marks the campaign 'blocked'.
+	 * Re-queries live participants at call time rather than trusting the
+	 * campaign row's own (possibly stale) participant_count.
+	 */
+	public function block_participants( array $campaign, int $admin_id, string $note, Ip_Rule_Store $ip_rules, int $window_hours = self::DEFAULT_WINDOW_HOURS, string $actor_ip = '' ): int {
+		$ips = self::blockable_ips(
+			$this->events->distinct_ips( (string) $campaign['detector_id'], (string) $campaign['surface'], $window_hours ),
+			$actor_ip
+		);
 
 		$blocked = 0;
 		foreach ( $ips as $ip ) {

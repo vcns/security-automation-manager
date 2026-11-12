@@ -61,7 +61,9 @@
  *   rather than folded into either of the two above.
  * - Else, whether this source has actually escalated through Traffic_
  *   Block_Store's existing progressive-response ladder (throttle or
- *   worse): 'aggressive_unidentified' if so, else 'unclassified' -- the
+ *   worse, after Traffic_Block_Store::effective_stage()'s decay, so a
+ *   source that has since gone quiet stops being labelled aggressive):
+ *   'aggressive_unidentified' if so, else 'unclassified' -- the
  *   overwhelming majority of ordinary, unremarkable traffic, deliberately
  *   not asserted as anything more specific than that.
  */
@@ -130,7 +132,7 @@ final class Bot_Classifier {
 			return 'error_probing_scanner';
 		}
 
-		$stage = null !== $traffic_block ? (string) ( $traffic_block['stage'] ?? 'observe' ) : 'observe';
+		$stage = Traffic_Block_Store::effective_stage( $traffic_block );
 		return in_array( $stage, self::ESCALATED_STAGES, true ) ? 'aggressive_unidentified' : 'unclassified';
 	}
 }

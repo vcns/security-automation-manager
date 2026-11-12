@@ -72,7 +72,7 @@ final class Recommendation_Rule_Certificate_Renewal implements Recommendation_Ru
 					'not_after'   => $latest['not_after'],
 					'environment' => $latest['environment'] ?? 'production',
 				),
-				'recommended_action'  => __( 'Renew the certificate from the Certificates page.', 'vcns-security-automation-manager' ),
+				'recommended_action'  => __( 'Renew the certificate from Control → Certificates.', 'vcns-security-automation-manager' ),
 				'alternative_action'  => __( 'If this domain now gets HTTPS from your host or CDN instead, remove the configured domains here so this plugin stops tracking it.', 'vcns-security-automation-manager' ),
 				'automation_eligible' => false,
 				'rollback_position'   => __( 'Issuing a new certificate does not remove or invalidate the current one before it expires.', 'vcns-security-automation-manager' ),

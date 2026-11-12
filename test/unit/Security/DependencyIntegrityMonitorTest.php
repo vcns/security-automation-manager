@@ -71,6 +71,53 @@ class DependencyIntegrityMonitorTest extends TestCase {
 		$this->assertSame( array(), $GLOBALS['_wp_remote_get_requests'] );
 	}
 
+	// ── Fetching the page ────────────────────────────────────────────────────
+	//
+	// Reached through reflection: scan_surface() only fetches once
+	// WP_HTML_Tag_Processor exists, which this environment doesn't load.
+
+	private function fetch_page( Dependency_Integrity_Monitor $monitor, string $url ): ?string {
+		return ( new ReflectionMethod( Dependency_Integrity_Monitor::class, 'fetch_page' ) )->invoke( $monitor, $url );
+	}
+
+	public function test_a_redirect_away_from_this_site_is_logged_without_its_destination_and_not_followed(): void {
+		$GLOBALS['_wp_remote_get_response_queue'] = array(
+			array(
+				'response' => array( 'code' => 302 ),
+				'headers'  => array( 'location' => 'https://other-copy.example.org/' ),
+				'body'     => '',
+			),
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => '<script src="https://cdn.example.net/app.js" integrity="sha384-other"></script>',
+			),
+		);
+		$audit = $this->createMock( Audit_Log::class );
+		$audit->expects( $this->once() )
+			->method( 'log' )
+			->with(
+				'dependency_integrity_monitor',
+				'scan_redirected_offsite',
+				$this->logicalAnd(
+					$this->stringContains( 'https://example.com/ redirected away from this site (HTTP 302)' ),
+					$this->logicalNot( $this->stringContains( 'other-copy' ) )
+				),
+				'warning'
+			);
+
+		$this->assertNull( $this->fetch_page( new Dependency_Integrity_Monitor( $audit ), 'https://example.com/' ) );
+		$this->assertCount( 1, $GLOBALS['_wp_remote_get_requests'], 'The other site is never requested, so its markup is never compared.' );
+	}
+
+	public function test_the_page_is_read_when_this_site_serves_it(): void {
+		$GLOBALS['_wp_remote_get_response'] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => '<p>home</p>',
+		);
+
+		$this->assertSame( '<p>home</p>', $this->fetch_page( $this->monitor, 'https://example.com/' ) );
+	}
+
 	// ── maybe_run_scan() gating ──────────────────────────────────────────────
 
 	public function test_maybe_run_scan_sets_the_daily_transient_gate(): void {

@@ -53,4 +53,54 @@ class RateLimiterTest extends TestCase {
 
 		$this->assertTrue( $this->limiter->exceeded( '203.0.113.42', 'frontend', 3, 60 ) ); // 4th hit.
 	}
+
+	public function test_a_new_window_starts_once_the_first_hits_window_has_ended(): void {
+		$now     = 1_000_000;
+		$limiter = new Rate_Limiter( static function () use ( &$now ): int {
+			return $now;
+		} );
+
+		$this->assertSame( 1, $limiter->hit( '203.0.113.42', 'frontend', 60 ) );
+		$now += 59;
+		$this->assertSame( 2, $limiter->hit( '203.0.113.42', 'frontend', 60 ) );
+		$now += 1; // 60s after the first hit.
+		$this->assertSame( 1, $limiter->hit( '203.0.113.42', 'frontend', 60 ) );
+	}
+
+	/**
+	 * The regression: one request every 30 seconds never left a full idle
+	 * minute, so the old counter climbed past a limit of 3 per minute on
+	 * the 4th request.
+	 */
+	public function test_a_slow_steady_source_never_exceeds_a_per_minute_limit(): void {
+		$now     = 1_000_000;
+		$limiter = new Rate_Limiter( static function () use ( &$now ): int {
+			return $now;
+		} );
+
+		for ( $i = 0; $i < 120; $i++ ) {
+			$this->assertFalse( $limiter->exceeded( '203.0.113.42', 'frontend', 3, 60 ), "request {$i}" );
+			$now += 30;
+		}
+	}
+
+	public function test_the_transient_expires_when_the_window_ends_not_after_the_latest_hit(): void {
+		$now     = 1_000_000;
+		$limiter = new Rate_Limiter( static function () use ( &$now ): int {
+			return $now;
+		} );
+
+		$limiter->hit( '203.0.113.42', 'frontend', 60 );
+		$now += 45;
+		$limiter->hit( '203.0.113.42', 'frontend', 60 );
+
+		$state = $GLOBALS['_wp_transients'][ 'wp_sam_rate_frontend_' . md5( '203.0.113.42' ) ];
+		$this->assertSame( array( 'start' => 1_000_000, 'count' => 2 ), $state );
+	}
+
+	public function test_a_bare_count_from_the_old_format_starts_a_fresh_window(): void {
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_frontend_' . md5( '203.0.113.42' ) ] = 500;
+
+		$this->assertSame( 1, $this->limiter->hit( '203.0.113.42', 'frontend', 60 ) );
+	}
 }

@@ -42,7 +42,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 
 	<div class="notice notice-warning inline" style="padding:12px 16px;margin:1em 0;">
 		<p style="margin:0;">
-			<?php esc_html_e( 'Only the Frontend row below has any observable effect. This protection works by rewriting a completed page response rather than by sending a header, and that rewrite step is never reached at all for a request to wp-admin, wp-login.php, the REST API, AJAX, XML-RPC, cron, or CLI -- before this pillar\'s own per-surface setting is even consulted. The Admin, Login, and Api rows exist for the same configuration shape every other surface-based pillar uses, and can be switched on, but doing so changes nothing today. External Scripts (on the Scripts page) shares this same limitation, for the same underlying reason.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'Only the Frontend row below has any observable effect. This protection works by rewriting a completed page response rather than by sending a header, and that rewrite step is never reached at all for a request to wp-admin, wp-login.php, the REST API, AJAX, XML-RPC, cron, or CLI -- before this pillar\'s own per-surface setting is even consulted. The Admin, Login, and Api rows exist for the same configuration shape every other surface-based pillar uses, and can be switched on, but doing so changes nothing today. External Scripts (Decide → Dependency Classification) shares this same limitation, for the same underlying reason.', 'vcns-security-automation-manager' ); ?>
 		</p>
 	</div>
 

@@ -139,7 +139,7 @@ $current        = $baseline_store->get_current();
 				<td class="wp-sam-col-description"><?php echo esc_html( (string) $drift['correlated_change'] ); ?></td>
 				<td class="wp-sam-col-status"><?php echo esc_html( ucfirst( (string) $drift['disposition'] ) ); ?></td>
 				<td class="wp-sam-col-compact">
-					<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+					<span class="wp-sam-meta-icon" tabindex="0"><span class="dashicons dashicons-info-outline" aria-hidden="true"></span>
 						<span class="wp-sam-meta-popover" role="tooltip">
 							<div class="wp-sam-meta-row"><strong><?php esc_html_e( 'Baseline said:', 'vcns-security-automation-manager' ); ?></strong> <code><?php echo esc_html( mb_substr( (string) $drift['old_value'], 0, 200 ) ); ?></code></div>
 							<div class="wp-sam-meta-row"><strong><?php esc_html_e( 'Currently:', 'vcns-security-automation-manager' ); ?></strong> <code><?php echo esc_html( mb_substr( (string) $drift['new_value'], 0, 200 ) ); ?></code></div>

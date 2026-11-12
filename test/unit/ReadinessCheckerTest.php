@@ -21,10 +21,12 @@ class ReadinessCheckerTest extends TestCase {
 			$get_var_queue[] = 'wp_' . $suffix;
 			$get_var_queue[] = 3;
 		}
+		// One profile per CSP surface -- frontend, admin, login. 'api' isn't
+		// a CSP surface (Csp_Surfaces), so it's neither expected nor counted.
 		$get_var_queue[] = 'wp_csp_policy_profiles';
-		$get_var_queue[] = 4;
+		$get_var_queue[] = 3;
 		$get_var_queue[] = 'wp_sam_policy_versions';
-		$get_var_queue[] = 4;
+		$get_var_queue[] = 3;
 
 		$GLOBALS['_wpdb_get_var_queue'] = $get_var_queue;
 		$GLOBALS['_wp_options']         = array(
@@ -33,6 +35,7 @@ class ReadinessCheckerTest extends TestCase {
 				'frontend' => array( 'mode' => 'manual' ),
 				'admin'    => array( 'mode' => 'manual' ),
 				'login'    => array( 'mode' => 'manual' ),
+				// Left over from an older release; must not be reported.
 				'api'      => array( 'mode' => 'manual' ),
 			),
 			'wp_sam_policy_header_name' => 'X-Origin-CSP-Policy',
@@ -48,6 +51,9 @@ class ReadinessCheckerTest extends TestCase {
 		$this->assertSame( 'pass', $report['plugin'][1]['status'] );
 		$this->assertSame( 'pass', $report['schema'][0]['status'] );
 		$this->assertSame( 'pass', $report['health'][0]['status'] );
+		$this->assertSame( '3 of 3 expected surfaces are present', $report['health'][0]['value'] );
+		$this->assertSame( 'pass', $report['health'][1]['status'] );
 		$this->assertStringContainsString( 'X-Origin-CSP-Policy', $report['health'][3]['value'] );
+		$this->assertSame( 'frontend: manual, admin: manual, login: manual', $report['health'][5]['value'] );
 	}
 }

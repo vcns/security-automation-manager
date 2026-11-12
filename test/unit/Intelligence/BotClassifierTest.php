@@ -123,6 +123,16 @@ class BotClassifierTest extends TestCase {
 		$this->assertSame( 'aggressive_unidentified', $this->classifier->classify( $this->identity(), $block ) );
 	}
 
+	public function test_unknown_identity_that_has_since_gone_quiet_is_no_longer_aggressive(): void {
+		// Throttled, then nothing for three hours: decayed back below 'throttle'.
+		$block = array(
+			'stage'        => 'throttle',
+			'last_seen_at' => gmdate( 'Y-m-d H:i:s', time() - 3 * 3600 ),
+		);
+
+		$this->assertSame( 'unclassified', $this->classifier->classify( $this->identity(), $block ) );
+	}
+
 	public function test_unknown_identity_escalated_to_persistent_block_is_aggressive(): void {
 		$block = array( 'stage' => 'persistent_block' );
 

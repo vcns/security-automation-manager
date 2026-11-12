@@ -48,23 +48,39 @@ class SecurityHealthTest extends TestCase {
 	// Query order (GitHub issue #175, per-surface + exception-awareness):
 	// 1. get_results() -- every csp_policy_profiles (surface, mode) row.
 	// 2. get_var() -- traffic-control surfaces enforcing.
-	// 3. get_var() once per surface NOT already in 'enforce' mode --
+	// 3. get_var() once per CSP surface (Csp_Surfaces: frontend, admin,
+	//    login -- not 'api') NOT already in 'enforce' mode --
 	//    Exception_Store::has_active_for('csp_enforce', $surface).
 
 	public function test_enforcement_is_info_when_nothing_is_enforcing(): void {
-		$GLOBALS['_wpdb_get_results']   = array(); // No CSP rows -- all 4 surfaces default to report-only.
-		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0, 0, 0, 0 ); // traffic=0, then 4 has_active_for checks (report-only, admin, login, api all default to false).
+		$GLOBALS['_wpdb_get_results']   = array(); // No CSP rows -- all 3 CSP surfaces default to report-only.
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0, 0, 0 ); // traffic=0, then 3 has_active_for checks (frontend, admin, login all default to false).
 
 		$row = $this->invoke( 'enforcement_row' );
 
 		$this->assertSame( 'info', $row['status'] );
 		$this->assertArrayHasKey( 'per_surface', $row );
-		$this->assertCount( 4, $row['per_surface'] );
+		$this->assertSame( array( 'frontend', 'admin', 'login' ), array_keys( $row['per_surface'] ) );
+		$this->assertStringContainsString( 'CSP enforcing on 0/3 surfaces, Traffic Controls on 0/4', $row['value'] );
+	}
+
+	public function test_enforcement_ignores_a_stale_api_csp_profile_row(): void {
+		// An older install's 'api' profile row stays in the table, but the
+		// REST API isn't a CSP surface, so even an 'enforce' mode there
+		// neither counts as CSP enforcing nor appears per surface.
+		$GLOBALS['_wpdb_get_results']   = array( array( 'surface' => 'api', 'mode' => 'enforce' ) );
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0, 0, 0 );
+
+		$row = $this->invoke( 'enforcement_row' );
+
+		$this->assertSame( 'info', $row['status'] );
+		$this->assertArrayNotHasKey( 'api', $row['per_surface'] );
+		$this->assertStringContainsString( 'CSP enforcing on 0/3 surfaces', $row['value'] );
 	}
 
 	public function test_enforcement_is_pass_when_something_is_enforcing(): void {
 		$GLOBALS['_wpdb_get_results']   = array( array( 'surface' => 'frontend', 'mode' => 'enforce' ) );
-		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0, 0, 0 ); // traffic=0, then 3 has_active_for checks (admin/login/api -- frontend is already enforcing, skipped).
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0, 0 ); // traffic=0, then 2 has_active_for checks (admin/login -- frontend is already enforcing, skipped).
 
 		$row = $this->invoke( 'enforcement_row' );
 
@@ -73,10 +89,10 @@ class SecurityHealthTest extends TestCase {
 	}
 
 	public function test_enforcement_names_a_surface_exempted_by_an_active_exception(): void {
-		$GLOBALS['_wpdb_get_results']   = array(); // All 4 surfaces default to report-only.
-		// traffic=0, then has_active_for() for frontend/admin/login/api in
-		// that order -- only frontend (1) has an active exception.
-		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 1, 0, 0, 0 );
+		$GLOBALS['_wpdb_get_results']   = array(); // All 3 CSP surfaces default to report-only.
+		// traffic=0, then has_active_for() for frontend/admin/login in that
+		// order -- only frontend (1) has an active exception.
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 1, 0, 0 );
 
 		$row = $this->invoke( 'enforcement_row' );
 
@@ -169,9 +185,19 @@ class SecurityHealthTest extends TestCase {
 	}
 
 	public function test_dependencies_is_warning_when_some_unclassified(): void {
-		$GLOBALS['_wpdb_get_var'] = 3;
+		$GLOBALS['_wpdb_get_var_queue'] = array( 3, 0 ); // unclassified=3, drifted=0.
 
 		$this->assertSame( 'warning', $this->invoke( 'dependencies_row' )['status'] );
+	}
+
+	public function test_dependencies_fails_when_a_pinned_hash_has_drifted(): void {
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 2 ); // unclassified=0, drifted=2.
+
+		$row = $this->invoke( 'dependencies_row' );
+
+		$this->assertSame( 'fail', $row['status'] );
+		$this->assertStringContainsString( '2 pinned hashes drifted', $row['value'] );
+		$this->assertStringContainsString( 'Decide → Dependency Classification', $row['detail'] );
 	}
 
 	// ── exceptions_row() ─────────────────────────────────────────────────────

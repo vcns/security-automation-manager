@@ -45,13 +45,18 @@ class DataResetterTest extends TestCase {
 		$GLOBALS['_wpdb_get_var']       = 'wp_csp_policy_profiles';
 		$GLOBALS['_wp_options']         = array(
 			'wp_sam_db_version'          => '7',
+			// Already-applied one-time migration: a reset must only touch the four profile rows.
+			'wp_sam_admin_csp_held_v47'  => true,
 			'wp_sam_report_endpoint_url' => 'https://public.example.com/wp-json/custom-endpoint/v1/report',
 		);
 		$GLOBALS['_wp_transients']      = array(
 			'wp_sam_conflict_probe_ran'  => 1,
 			'unrelated_plugin_transient' => 1,
 		);
-		$GLOBALS['_wp_cron']            = array( 'wp_sam_daily_scan' => time() + 3600 );
+		$GLOBALS['_wp_cron']            = array(
+			'wp_sam_daily_scan'            => time() + 3600,
+			'wp_sam_dependency_hash_check' => time() + 3600,
+		);
 
 		$result = ( new Data_Resetter() )->reset();
 
@@ -64,6 +69,7 @@ class DataResetterTest extends TestCase {
 		$this->assertArrayNotHasKey( 'wp_sam_conflict_probe_ran', $GLOBALS['_wp_transients'] );
 		$this->assertArrayHasKey( 'unrelated_plugin_transient', $GLOBALS['_wp_transients'] );
 		$this->assertArrayHasKey( 'wp_sam_daily_scan', $GLOBALS['_wp_cron'] );
+		$this->assertArrayNotHasKey( 'wp_sam_dependency_hash_check', $GLOBALS['_wp_cron'] );
 		$this->assertSame( WP_SAM_DB_VERSION, $GLOBALS['_wp_options']['wp_sam_db_version'] );
 		$this->assertCount( 4, $GLOBALS['_wpdb_updated_rows'] );
 		$this->assertSame(

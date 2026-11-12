@@ -75,6 +75,58 @@ class PageAdvancedTest extends TestCase {
 		$this->assertStringContainsString( 'No campaign detected yet.', $output );
 	}
 
+	public function test_campaigns_tab_labels_live_and_detected_counts_separately(): void {
+		$_GET['tab'] = 'campaigns';
+		$GLOBALS['_wpdb_get_results'] = array( $this->campaign_row() );
+		$GLOBALS['_wpdb_get_col']     = array( '203.0.113.10', '203.0.113.11' );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-advanced.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( '2 active', $output );
+		$this->assertStringContainsString( '26 when detected', $output );
+		$this->assertStringContainsString( 'IPs active in the last 24 hours:', $output );
+		$this->assertStringContainsString( 'Block 2 Active IPs', $output );
+	}
+
+	public function test_campaigns_tab_marks_the_viewers_ip_and_leaves_it_out_of_the_block_count(): void {
+		$_GET['tab']            = 'campaigns';
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+		$GLOBALS['_wpdb_get_results'] = array( $this->campaign_row() );
+		$GLOBALS['_wpdb_get_col']     = array( '203.0.113.10', '203.0.113.11' );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-advanced.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_SERVER['REMOTE_ADDR'] );
+
+		$this->assertStringContainsString( '<code>203.0.113.10 (your IP)</code>', $output );
+		$this->assertStringContainsString( 'Block 1 Active IP', $output );
+		$this->assertStringNotContainsString( 'Block 2 Active IPs', $output );
+	}
+
+	public function test_campaigns_tab_disables_block_when_only_the_viewers_ip_is_active(): void {
+		$_GET['tab']            = 'campaigns';
+		$_SERVER['REMOTE_ADDR'] = '91.125.72.135';
+		$GLOBALS['_wpdb_get_results'] = array( $this->campaign_row() );
+		$GLOBALS['_wpdb_get_col']     = array( '91.125.72.135' );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-advanced.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_SERVER['REMOTE_ADDR'] );
+
+		$this->assertStringContainsString( 'Nothing to Block', $output );
+		$this->assertStringNotContainsString( 'return confirm(', $output );
+		$this->assertStringContainsString( '1 active', $output );
+		$this->assertStringContainsString( '26 when detected', $output );
+	}
+
 	/** @return array<string, mixed> */
 	private function campaign_row(): array {
 		return array(

@@ -18,13 +18,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 global $wpdb;
 
 // Same shape as the per-surface pending-count query already used on the CSP
-// dashboard's own banner (page-csp-dashboard.php), just without the surface
-// filter -- a plugin-wide total, not new aggregation logic.
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-$pending_sources = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}csp_source_inventory WHERE approval_state = 'pending'" );
+// dashboard's own banner (page-csp-dashboard.php), summed across every CSP
+// surface (Csp_Surfaces) so it matches what For Review lists -- a plugin-wide
+// total, not new aggregation logic.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared -- Csp_Surfaces::sql_list() is a hard-coded constant list, not input.
+$pending_sources = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}csp_source_inventory WHERE approval_state = 'pending' AND surface IN (" . \WP_SAM\CSP\Csp_Surfaces::sql_list() . ')' );
 
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}sam_exceptions WHERE review_status = 'active'" );
+
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+$campaigns_awaiting = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}sam_campaigns WHERE status = 'detected'" );
 ?>
 <div class="wrap wp-sam-wrap">
 	<h1><?php esc_html_e( 'Decide', 'vcns-security-automation-manager' ); ?></h1>
@@ -130,6 +134,32 @@ $active_exceptions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}
 				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-scripts&tab=external' ) ); ?>">
 						<?php esc_html_e( 'View Dependency Classification', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+			<tr>
+				<td class="wp-sam-col-primary">
+					<strong><?php esc_html_e( 'Campaigns', 'vcns-security-automation-manager' ); ?></strong>
+					<p class="description"><?php esc_html_e( 'Possible coordinated activity: many different sources triggering the same detector, awaiting an acknowledge, dismiss, or block decision.', 'vcns-security-automation-manager' ); ?></p>
+				</td>
+				<td class="wp-sam-col-status">
+					<?php if ( $campaigns_awaiting > 0 ) : ?>
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: number of detected campaigns not yet acknowledged, dismissed, or blocked */
+								_n( '%d campaign awaiting a decision.', '%d campaigns awaiting a decision.', $campaigns_awaiting, 'vcns-security-automation-manager' ),
+								$campaigns_awaiting
+							)
+						);
+						?>
+					<?php else : ?>
+						<?php esc_html_e( 'Nothing awaiting a decision.', 'vcns-security-automation-manager' ); ?>
+					<?php endif; ?>
+				</td>
+				<td class="wp-sam-col-actions">
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=campaigns' ) ); ?>">
+						<?php esc_html_e( 'View Campaigns', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>

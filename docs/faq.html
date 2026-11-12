@@ -129,7 +129,7 @@
           </article>
           <article class='faq-item'>
             <h3>What's the difference between Simple, Balanced, and Technical?</h3>
-            <p>They control how much technical detail is visible by default, never what's true. Simple leads with plain-language outcomes; Balanced (the default) adds recognisable technical terminology alongside them; Technical expands every "Technical details" disclosure automatically. Every depth can reach the same underlying evidence -- Simple mode means less technical presentation, not less visibility of risk, and critical warnings are always fully visible regardless of depth.</p>
+            <p>They control how much technical detail is visible by default, never what's true. Simple leads with plain-language outcomes; Balanced (the default) adds recognisable technical terminology alongside them; Technical expands every "Technical details" disclosure automatically, and also shows routine housekeeping notices that need no action, such as Content Security Policy trimming learned approvals to fit its header. Every depth can reach the same underlying evidence -- Simple mode means less technical presentation, not less visibility of risk, and critical warnings are always fully visible regardless of depth.</p>
           </article>
           <article class='faq-item'>
             <h3>What do the Security Scorecard's Protected / Learning / Needs attention numbers mean?</h3>
@@ -269,11 +269,11 @@
       <section id='other-pillars' class='section'>
         <p class='section-label'>Other pillars</p>
         <h2>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, and the four cross-origin/legacy headers.</h2>
-        <p class='section-note'>None of these eleven pillars appear in the left-hand admin sidebar -- each has its own page, but it's reached with a "Manage" link from <strong>Security Automation Manager -> Settings -> Overview</strong> (or, for the two Cross-Origin Policies tabs, a single <strong>-> Cross-Origin Policies</strong> page), not by finding it in the menu directly.</p>
+        <p class='section-note'>None of these eleven pillars appear in the left-hand admin sidebar -- each has its own page, but it's reached with a "Manage" link from <strong>Security Automation Manager -> Settings -> All</strong> (or, for the two Cross-Origin Policies tabs, a single <strong>-> Cross-Origin Policies</strong> page), not by finding it in the menu directly.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>What other headers does the plugin manage besides CSP?</h3>
-            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies. Each is configured per surface (frontend, admin, login, API), reached from a "Manage" link on <strong>Security Automation Manager -> Settings -> Overview</strong> -- see the note above.</p>
+            <p>X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Cache-Control, Information Masking, Cross-Origin-Resource-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and X-Permitted-Cross-Domain-Policies. Each is configured per surface (frontend, admin, login, API), reached from a "Manage" link on <strong>Security Automation Manager -> Settings -> All</strong> -- see the note above.</p>
           </article>
           <article class='faq-item'>
             <h3>Do these eleven pillars have a report-only mode like CSP?</h3>
@@ -333,7 +333,7 @@
       <section id='content-rewrites' class='section'>
         <p class='section-label'>Content rewrite protections</p>
         <h2>Reverse Tabnabbing, External Scripts, and Internal Script Integrity.</h2>
-        <p class='section-note'>Reverse Tabnabbing is <strong>Security Automation Manager -> Reverse Tabnabbing</strong>; External Scripts and Internal Script Integrity are the External and Internal tabs on <strong>-> Scripts</strong>. Neither appears in the left-hand sidebar -- both are reached via a "Manage" link on <strong>-> Settings -> Overview</strong>.</p>
+        <p class='section-note'>Reverse Tabnabbing is <strong>Security Automation Manager -> Reverse Tabnabbing</strong>; External Scripts and Internal Script Integrity are the External and Internal tabs on <strong>-> Scripts</strong>. Neither appears in the left-hand sidebar -- both are reached via a "Manage" link on <strong>-> Settings -> All</strong>.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>How are these different from the header pillars?</h3>
@@ -349,7 +349,7 @@
           </article>
           <article class='faq-item'>
             <h3>Does this plugin generate Subresource Integrity hashes for me?</h3>
-            <p>For third-party scripts, no, and deliberately so -- computing a hash by fetching the remote URL would defeat the point of SRI, since a compromised origin would just have its tampered file hashed and trusted. "Approved -- immutable" only ever compares against a hash you paste in yourself, from a source you already trust. For your own theme/plugin/core files it's different: Internal Script Integrity (<strong>Security Automation Manager -> Scripts -> Internal</strong> tab) reads the exact local file this site is about to serve and computes its hash automatically, since there's no third party in that loop to defeat SRI's trust model.</p>
+            <p>For third-party scripts, never on its own, and deliberately so -- trusting whatever hash a remote URL currently produces would defeat the point of SRI, since a compromised origin would just have its tampered file hashed and trusted. "Approved -- immutable" compares against a hash you choose: one you paste in from a source you already trust, or one the "Suggest" button computes from the exact URL you confirm. Once a day SAM also re-fetches each pinned file and compares it with your hash; if the vendor has changed it, the row is flagged under <strong>Decide → Dependency Classification</strong> for you to re-approve (and update the <code>integrity</code> attribute in your markup) or allow by host instead -- nothing is re-approved automatically. For your own theme/plugin/core files it's different: Internal Script Integrity (<strong>Security Automation Manager -> Scripts -> Internal</strong> tab) reads the exact local file this site is about to serve and computes its hash automatically, since there's no third party in that loop to defeat SRI's trust model.</p>
           </article>
           <article class='faq-item'>
             <h3>What's stored in the External Scripts inventory?</h3>
@@ -389,6 +389,10 @@
           <article class='faq-item'>
             <h3>What about older browsers?</h3>
             <p>Some reporting and CSP3 behaviour varies by browser. By default the plugin emits both direct report-uri delivery and Reporting API headers together, so older browsers still get prompt, direct reports while newer ones batch their delivery via the Reporting API. You can restrict this to one transport or the other in Settings.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>Can the plugin create robots.txt, security.txt or ads.txt for me?</h3>
+            <p>Yes. Go to Control → Traffic Controls → Network Intelligence → Well-Known Files and choose Create or Edit next to robots.txt, agents.txt, security.txt, humans.txt, ads.txt or app-ads.txt. The editor offers starting templates, such as WordPress's default robots.txt with or without a block on AI training crawlers, and refuses a version that would be wrong for every reader, such as a security.txt without a Contact or Expires line. Nothing changes until you save. The plugin then serves the file through WordPress and checks what visitors actually get. It never writes a file into your site's folder, and Stop serving or deactivating the plugin puts back whatever the site served before. A real file already in the site's folder always wins, because the web server sends it without running WordPress; the editor tells you when that's the case. If an SEO plugin such as Yoast SEO also writes robots.txt, the editor says so and opens with the current version, so you can keep that plugin's lines.</p>
           </article>
         </div>
       </section>
@@ -450,7 +454,7 @@
       <section id='troubleshooting' class='section'>
         <p class='section-label'>Troubleshooting</p>
         <h2>Fast answers during incidents.</h2>
-        <p class='section-note'>Mode is changed on <strong>Security Automation Manager -> CSP -> Profiles</strong>; evidence to act on is reviewed on <strong>-> Violations</strong> and <strong>-> Policy Changes</strong>. Every non-CSP pillar is reverted the same way -- its own page, reached via a "Manage" link on <strong>-> Settings -> Overview</strong> -- there's no report-only mode to fall back to, just change the value back.</p>
+        <p class='section-note'>Mode is changed on <strong>Security Automation Manager -> CSP -> Profiles</strong>; evidence to act on is reviewed on <strong>-> Violations</strong> and <strong>-> Policy Changes</strong>. Every non-CSP pillar is reverted the same way -- its own page, reached via a "Manage" link on <strong>-> Settings -> All</strong> -- there's no report-only mode to fall back to, just change the value back.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>My site broke after I enabled enforce mode. What should I do?</h3>

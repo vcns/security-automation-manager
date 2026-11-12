@@ -24,6 +24,8 @@ declare( strict_types=1 );
 namespace WP_SAM\Intelligence;
 
 use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Csp_Surfaces;
+use WP_SAM\Security\Pinned_Dependency_Checker;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -75,7 +77,10 @@ final class Security_Health {
 	private function enforcement_row(): array {
 		global $wpdb;
 
-		$surfaces = array( 'frontend', 'admin', 'login', 'api' );
+		// CSP's own surfaces -- an older install's 'api' profile row is
+		// ignored (see Csp_Surfaces). Traffic Controls, counted below, still
+		// cover all four surfaces.
+		$surfaces = Csp_Surfaces::ALL;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$csp_rows  = $wpdb->get_results( "SELECT surface, mode FROM {$wpdb->prefix}csp_policy_profiles", ARRAY_A );
@@ -108,9 +113,10 @@ final class Security_Health {
 		}
 
 		$value = sprintf(
-			/* translators: 1: CSP surfaces enforcing, 2: traffic-control surfaces enforcing */
-			__( 'CSP enforcing on %1$d/4 surfaces, Traffic Controls on %2$d/4', 'vcns-security-automation-manager' ),
+			/* translators: 1: CSP surfaces enforcing, 2: number of CSP surfaces, 3: traffic-control surfaces enforcing */
+			__( 'CSP enforcing on %1$d/%2$d surfaces, Traffic Controls on %3$d/4', 'vcns-security-automation-manager' ),
 			$csp_enforcing,
+			count( $surfaces ),
 			$traffic_enforcing
 		);
 		if ( $exempted > 0 ) {
@@ -152,7 +158,7 @@ final class Security_Health {
 				$count
 			),
 			'status' => $count > 0 ? 'warning' : 'pass',
-			'detail' => __( 'Review open drift on the Baseline & Drift page.', 'vcns-security-automation-manager' ),
+			'detail' => __( 'Review open drift under Verify → Baseline & Drift.', 'vcns-security-automation-manager' ),
 		);
 	}
 
@@ -225,15 +231,40 @@ final class Security_Health {
 			)
 		);
 
+		// Pinned files whose content no longer matches the approved hash
+		// (Pinned_Dependency_Checker). Already failing for visitors, so it
+		// outranks an unclassified origin.
+		$drifted = Pinned_Dependency_Checker::drifted_count();
+
+		$value = sprintf(
+			/* translators: %d: number of unclassified dependencies */
+			_n( '%d unclassified', '%d unclassified', $unclassified, 'vcns-security-automation-manager' ),
+			$unclassified
+		);
+		if ( $drifted > 0 ) {
+			$value = sprintf(
+				/* translators: 1: number of pinned dependencies whose hash has drifted, 2: "N unclassified" */
+				_n( '%1$d pinned hash drifted, %2$s', '%1$d pinned hashes drifted, %2$s', $drifted, 'vcns-security-automation-manager' ),
+				$drifted,
+				$value
+			);
+		}
+
+		if ( $drifted > 0 ) {
+			$status = 'fail';
+		} elseif ( $unclassified > 0 ) {
+			$status = 'warning';
+		} else {
+			$status = 'pass';
+		}
+
 		return array(
 			'label'  => __( 'Third-party dependencies', 'vcns-security-automation-manager' ),
-			'value'  => sprintf(
-				/* translators: %d: number of unclassified dependencies */
-				_n( '%d unclassified', '%d unclassified', $unclassified, 'vcns-security-automation-manager' ),
-				$unclassified
-			),
-			'status' => $unclassified > 0 ? 'warning' : 'pass',
-			'detail' => __( 'Review the Scripts page to approve, pin, or reject each origin.', 'vcns-security-automation-manager' ),
+			'value'  => $value,
+			'status' => $status,
+			'detail' => $drifted > 0
+				? __( 'A pinned script or stylesheet has changed at its source, so browsers are refusing it. Review it under Decide → Dependency Classification: re-approve the new hash or allow the origin by host instead.', 'vcns-security-automation-manager' )
+				: __( 'Review each origin under Decide → Dependency Classification to approve, pin, or reject it.', 'vcns-security-automation-manager' ),
 		);
 	}
 

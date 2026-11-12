@@ -18,10 +18,20 @@ class Provider_Dynu extends Dns_Provider {
 
 	private const API = 'https://api.dynu.com/v2';
 
+	/**
+	 * Returns the display name of the Dynu provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Dynu';
 	}
 
+	/**
+	 * Describes the credentials the Dynu provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_key' => array(
@@ -30,6 +40,13 @@ class Provider_Dynu extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Dynu API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -47,6 +64,13 @@ class Provider_Dynu extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Dynu API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 		$list = $this->request( 'GET', self::API . "/dns/{$zone['id']}/record", $this->headers() );
@@ -75,6 +99,11 @@ class Provider_Dynu extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Builds the Dynu request headers, including authentication.
+	 *
+	 * @return array Header map.
+	 */
 	private function headers(): array {
 		return array( 'API-Key' => $this->credential( 'api_key' ) );
 	}

@@ -25,11 +25,11 @@ final class Agents_Rules_Store {
 
 	private const MAX_RULES = 200;
 
-	/** @var callable(string):(array|\WP_Error) Real wp_remote_get() by default; injectable so tests never make a real HTTP call. */
+	/** @var callable(string):(array|\WP_Error) Same_Host_Fetcher (wp_remote_get() that never follows a redirect off this site) by default; injectable so tests never make a real HTTP call. */
 	private $http_get;
 
 	public function __construct( ?callable $http_get = null ) {
-		$this->http_get = $http_get ?? static fn ( string $url ) => wp_remote_get(
+		$this->http_get = $http_get ?? static fn ( string $url ) => ( new Same_Host_Fetcher() )->get(
 			$url,
 			array(
 				'timeout'    => 10,
@@ -68,7 +68,9 @@ final class Agents_Rules_Store {
 
 	/**
 	 * Fetches this site's own /agents.txt and replaces the cached rule set
-	 * on success. Never touches cached rules on failure.
+	 * on success, or clears it when the site has no such file (HTTP 404/
+	 * 410 -- an answer, not a failure). Never touches cached rules on
+	 * failure.
 	 *
 	 * @return array{status:string, count:int, message:string}
 	 */
@@ -76,12 +78,27 @@ final class Agents_Rules_Store {
 		$response = ( $this->http_get )( home_url( '/agents.txt' ) );
 
 		if ( is_wp_error( $response ) ) {
-			return $this->record_failure( 'Fetch failed: ' . $response->get_error_message() );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %s: error message returned by the HTTP request */
+					__( 'Fetch failed: %s', 'vcns-security-automation-manager' ),
+					$response->get_error_message()
+				)
+			);
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 404 === $code || 410 === $code ) {
+			return $this->record_absent( $code );
+		}
 		if ( 200 !== $code ) {
-			return $this->record_failure( "Fetch returned HTTP {$code}." );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Fetch returned HTTP %d.', 'vcns-security-automation-manager' ),
+					$code
+				)
+			);
 		}
 
 		$rules = $this->parse( (string) wp_remote_retrieve_body( $response ) );
@@ -93,7 +110,11 @@ final class Agents_Rules_Store {
 		return array(
 			'status'  => 'refreshed',
 			'count'   => count( $rules ),
-			'message' => sprintf( 'Refreshed %d disallow rule(s).', count( $rules ) ),
+			'message' => sprintf(
+				/* translators: %d: number of records/rules/fields/nodes parsed */
+				__( 'Refreshed %d disallow rule(s).', 'vcns-security-automation-manager' ),
+				count( $rules )
+			),
 		);
 	}
 
@@ -136,6 +157,19 @@ final class Agents_Rules_Store {
 		}
 
 		return $rules;
+	}
+
+	/** @return array{status:string, count:int, message:string} */
+	private function record_absent( int $code ): array {
+		delete_option( 'wp_sam_agents_disallow_rules' );
+		update_option( 'wp_sam_agents_rules_refreshed_at', current_time( 'mysql', true ) );
+		update_option( 'wp_sam_agents_rules_last_fetch_status', 'absent' );
+
+		return array(
+			'status'  => 'absent',
+			'count'   => 0,
+			'message' => "No /agents.txt on this site (HTTP {$code}).",
+		);
 	}
 
 	/** @return array{status:string, count:int, message:string} */

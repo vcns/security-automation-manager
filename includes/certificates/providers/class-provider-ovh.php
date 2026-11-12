@@ -24,10 +24,20 @@ class Provider_Ovh extends Dns_Provider {
 
 	private ?int $time_delta = null;
 
+	/**
+	 * Returns the display name of the OVH provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'OVH';
 	}
 
+	/**
+	 * Describes the credentials the OVH provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'endpoint'           => array(
@@ -47,6 +57,13 @@ class Provider_Ovh extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the OVH API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -63,6 +80,13 @@ class Provider_Ovh extends Dns_Provider {
 		$this->signed( 'POST', "/domain/zone/{$zone}/refresh" );
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the OVH API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -77,6 +101,13 @@ class Provider_Ovh extends Dns_Provider {
 		$this->signed( 'POST', "/domain/zone/{$zone}/refresh" );
 	}
 
+	/**
+	 * Finds the OVH zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		$zones = json_decode( $this->signed( 'GET', '/domain/zone' ), true );
 		$zones = is_array( $zones ) ? $zones : array();
@@ -90,12 +121,25 @@ class Provider_Ovh extends Dns_Provider {
 		throw new \RuntimeException( "OVH: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Returns the API base URL for the configured OVH endpoint.
+	 *
+	 * @return string Base URL.
+	 */
 	private function endpoint(): string {
 		$key = strtolower( trim( $this->credential( 'endpoint' ) ) );
 
 		return self::ENDPOINTS[ $key ] ?? self::ENDPOINTS['ovh-eu'];
 	}
 
+	/**
+	 * Sends a signed request to the OVH API.
+	 *
+	 * @param string     $method HTTP method.
+	 * @param string     $path   API path.
+	 * @param array|null $body   Request body, or null.
+	 * @return string Response body.
+	 */
 	private function signed( string $method, string $path, ?array $body = null ): string {
 		$url       = $this->endpoint() . $path;
 		$body_json = null === $body ? '' : (string) wp_json_encode( $body );

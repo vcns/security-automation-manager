@@ -14,6 +14,7 @@ namespace WP_SAM;
 
 use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Violation_Reporter;
+use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Security\Cache_Control_Builder;
 use WP_SAM\Security\Cross_Origin_Embedder_Policy_Builder;
 use WP_SAM\Security\Cross_Origin_Opener_Policy_Builder;
@@ -32,6 +33,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Activator {
 
+	/**
+	 * Plugin activation entry point: creates or upgrades tables, runs data migrations, seeds defaults and schedules cron.
+	 *
+	 * @return void
+	 */
 	public static function activate(): void {
 		self::create_tables();
 		self::migrate_v9_option_renames();
@@ -40,6 +46,7 @@ class Activator {
 		self::migrate_loosen_media_src_default();
 		self::migrate_consolidate_bypass_flags_into_json();
 		self::migrate_default_reporting_transport_to_both();
+		self::migrate_hold_admin_csp_at_report_only();
 
 		// Generic, empty-by-default extension point: an extension (see
 		// includes/extensions/, physically absent from the WordPress.org-
@@ -181,6 +188,50 @@ class Activator {
 	 * bump calling activate() again. Guarded by its own one-time completion
 	 * marker instead.
 	 */
+	/**
+	 * Schema v47: Policy_Builder now sends the admin surface's policy (it
+	 * hooks admin_init; WordPress never fires send_headers on wp-admin
+	 * pages, so until now no admin policy was ever sent). A site whose
+	 * admin profile was already set to enforce has therefore been running
+	 * with no admin policy at all, and would start enforcing a never-tested
+	 * one on its dashboard the moment it updated. Hold any such profile at
+	 * report-only, once, so its real reports can be reviewed before an
+	 * administrator promotes it again. Flag-guarded, so a deliberate
+	 * re-promotion afterwards is never undone.
+	 */
+	private static function migrate_hold_admin_csp_at_report_only(): void {
+		if ( get_option( 'wp_sam_admin_csp_held_v47', false ) ) {
+			return;
+		}
+		update_option( 'wp_sam_admin_csp_held_v47', true );
+
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$held = $wpdb->update(
+			$wpdb->prefix . 'csp_policy_profiles',
+			array(
+				'mode'       => 'report-only',
+				'updated_at' => current_time( 'mysql', true ),
+			),
+			array(
+				'surface' => 'admin',
+				'mode'    => 'enforce',
+			),
+			array( '%s', '%s' ),
+			array( '%s', '%s' )
+		);
+
+		if ( ! empty( $held ) ) {
+			( new Audit_Log() )->log(
+				'policy_change',
+				'admin_csp_held_report_only',
+				'The admin surface\'s Content Security Policy was switched from Enforce to Report-only. Earlier versions never actually sent the admin policy, so it has never been tested on your dashboard. Review its reports under Observe → CSP Violations, then promote it again from Control → CSP Profiles once they are clean.',
+				'warning'
+			);
+		}
+	}
+
 	private static function migrate_default_reporting_transport_to_both(): void {
 		if ( get_option( 'wp_sam_reporting_transport_defaulted_v39', false ) ) {
 			return;
@@ -309,6 +360,14 @@ class Activator {
 		return $missing;
 	}
 
+	/**
+	 * Returns the core table suffixes only.
+	 *
+	 * Suffixes an extension registers through the wp_sam_table_suffixes filter
+	 * are not included; use get_all_table_suffixes() for those.
+	 *
+	 * @return string[] Table names without the WordPress prefix.
+	 */
 	public static function get_table_suffixes(): array {
 		return array(
 			'csp_policy_profiles',
@@ -361,6 +420,14 @@ class Activator {
 		return apply_filters( 'wp_sam_table_suffixes', self::get_table_suffixes() );
 	}
 
+	/**
+	 * Returns the core option names only.
+	 *
+	 * Options an extension registers through the wp_sam_option_names filter
+	 * are not included; use get_all_option_names() for the full list.
+	 *
+	 * @return string[] Option names.
+	 */
 	public static function get_option_names(): array {
 		return array(
 			'wp_sam_db_version',
@@ -385,6 +452,8 @@ class Activator {
 			'wp_sam_tor_list_last_fetch_status',
 			'wp_sam_geoip_provider',
 			'wp_sam_geoip_ipinfo_token',
+			'wp_sam_own_addresses',
+			'wp_sam_site_country',
 		);
 	}
 
@@ -400,6 +469,11 @@ class Activator {
 		return apply_filters( 'wp_sam_option_names', self::get_option_names() );
 	}
 
+	/**
+	 * Returns every transient name the plugin owns.
+	 *
+	 * @return string[] Transient names.
+	 */
 	public static function get_transient_names(): array {
 		return array(
 			'wp_sam_conflict_probe_ran',
@@ -408,6 +482,11 @@ class Activator {
 
 	// ── Database tables ───────────────────────────────────────────────────────
 
+	/**
+	 * Creates or updates every plugin table with dbDelta().
+	 *
+	 * @return void
+	 */
 	private static function create_tables(): void {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -722,14 +801,28 @@ class Activator {
 		// classification defaults to 'unclassified': a fresh discovery is
 		// neither trusted nor blocked until an administrator decides, matching
 		// this plugin's report-first philosophy everywhere else. expected_sri is
-		// admin-supplied only -- this plugin never fetches a remote resource to
-		// compute a hash itself.
+		// only ever set by an administrator's own action (typed, Suggest, or
+		// Re-approve) -- a remote fetch is only used to suggest or compare a
+		// hash, never to approve one by itself.
 		// v19: adds last_seen_url -- the most recently observed full URL (path
 		// and query included) for this origin. Needed because the "Suggest"
 		// hash helper (ajax_suggest_dependency_sri()) fetches a real file and
 		// computes its hash for review, which requires an exact file URL, not
 		// just an origin -- previously the administrator had to already know
 		// or go find that URL themselves before they could use Suggest at all.
+		// v48: adds the pinned-hash drift columns read and written by
+		// Security\Pinned_Dependency_Checker's daily job. pinned_url is the
+		// exact URL whose content the pinned expected_sri was taken from
+		// (set by Suggest to the URL it hashed, or on a manual pin to the
+		// row's last_seen_url at that moment). integrity_checked_at is the
+		// last successful re-fetch whose hash matched or was compared;
+		// drift_detected_at/drift_observed_sri record the first time the
+		// file stopped matching and the hash it serves now.
+		// integrity_attempted_at/integrity_check_error are the separate
+		// "couldn't check" state: a fetch failure is never recorded as
+		// drift. Nothing here is ever approved automatically -- only an
+		// administrator's "Re-approve new hash" click copies
+		// drift_observed_sri into expected_sri.
 		dbDelta(
 			"CREATE TABLE {$p}sam_dependency_inventory (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -739,6 +832,12 @@ class Activator {
   classification varchar(32) NOT NULL DEFAULT 'unclassified',
   expected_sri varchar(128) DEFAULT NULL,
   last_seen_url varchar(2048) DEFAULT NULL,
+  pinned_url varchar(2048) DEFAULT NULL,
+  integrity_checked_at datetime DEFAULT NULL,
+  integrity_attempted_at datetime DEFAULT NULL,
+  integrity_check_error varchar(64) DEFAULT NULL,
+  drift_detected_at datetime DEFAULT NULL,
+  drift_observed_sri varchar(128) DEFAULT NULL,
   evidence_count bigint(20) UNSIGNED NOT NULL DEFAULT 1,
   first_seen_at datetime NOT NULL,
   last_seen_at datetime NOT NULL,
@@ -1585,6 +1684,16 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Rolls violation reports up to one row per fingerprint.
+	 *
+	 * Backfills first_reported_at and last_reported_at from reported_at, merges
+	 * historic duplicate fingerprints into a single row with summed counts, then
+	 * makes the fingerprint index unique.
+	 * Does nothing when the table does not exist.
+	 *
+	 * @return void
+	 */
 	private static function migrate_violation_report_rollups(): void {
 		global $wpdb;
 
@@ -1654,6 +1763,11 @@ class Activator {
 
 	// ── Default options ───────────────────────────────────────────────────────
 
+	/**
+	 * Adds the default value of each option that is not already stored.
+	 *
+	 * @return void
+	 */
 	private static function set_default_options(): void {
 		$defaults = array(
 			'wp_sam_cron_hour'                     => 2,
@@ -1695,6 +1809,11 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Returns the default CSP automation configuration for a fresh install.
+	 *
+	 * @return array<string,mixed> Automation settings keyed by name.
+	 */
 	private static function default_automation_config(): array {
 		// Automatic (high approvals only): every proposal below the high-risk
 		// threshold is auto-approved into the report-only policy on its own
@@ -1741,6 +1860,11 @@ class Activator {
 
 	// ── Seed default CSP profiles ─────────────────────────────────────────────
 
+	/**
+	 * Creates a report-only policy profile for each surface that does not have one.
+	 *
+	 * @return void
+	 */
 	private static function seed_default_profiles(): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_policy_profiles';
@@ -2226,6 +2350,13 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Captures an initial policy version for each surface that has none.
+	 *
+	 * Does nothing when the policy versions table does not exist.
+	 *
+	 * @return void
+	 */
 	private static function seed_initial_policy_versions(): void {
 		if ( ! class_exists( 'WP_SAM\CSP\Policy_Version_Manager' ) ) {
 			return;
@@ -2254,6 +2385,12 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name, including the prefix.
+	 * @return bool True when the table exists.
+	 */
 	private static function table_exists( string $table ): bool {
 		global $wpdb;
 
@@ -2261,6 +2398,12 @@ class Activator {
 		return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 	}
 
+	/**
+	 * Returns the default CSP directives for a surface.
+	 *
+	 * @param string $surface Surface slug: frontend, admin, login or api.
+	 * @return array<string,string[]|null> Source list for each directive; sandbox is null when disabled.
+	 */
 	private static function default_directives( string $surface ): array {
 		// 'report-sample' added to script/style-src so browsers include the offending
 		// inline code snippet in violation reports (R7). Harmless when no violation occurs.
@@ -2337,6 +2480,11 @@ class Activator {
 
 	// ── WP Cron ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Schedules the daily scan at the configured hour unless it is already scheduled.
+	 *
+	 * @return void
+	 */
 	private static function schedule_events(): void {
 		$hook = 'wp_sam_daily_scan';
 		if ( wp_next_scheduled( $hook ) ) {
@@ -2349,6 +2497,11 @@ class Activator {
 		wp_schedule_event( $first_run, 'daily', $hook );
 	}
 
+	/**
+	 * Stores the current database version as the last verified schema version.
+	 *
+	 * @return void
+	 */
 	public static function mark_schema_verified(): void {
 		update_option( 'wp_sam_schema_verified_version', WP_SAM_DB_VERSION );
 	}

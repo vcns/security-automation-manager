@@ -4,7 +4,7 @@
 
 **Version:** 1.0
 **Date:** 2026-08-19
-**DB schema alignment:** v46
+**DB schema alignment:** v48
 **Status:** Active
 
 **Supersedes:** v0.3 (2026-06-07), which described a CSP-only product aligned to
@@ -236,10 +236,20 @@ Report mode (default) never removes anything; enforce mode only removes an
 origin explicitly marked Blocked, or an "immutable" origin whose SRI hash no
 longer matches what the page actually served. SRI hashes are never fetched
 from a third party and auto-trusted - only computed from a URL the
-administrator themselves supplies, or typed in directly. A daily check
-re-verifies pinned hashes against this site's own homepage (never
-third-party content) so drift is caught before a real visitor triggers a
-removal.
+administrator themselves supplies, or typed in directly. Two daily checks
+look for drift: one re-reads this site's own homepage and compares the
+markup's `integrity` attribute with the pinned hash; the other
+(`Pinned_Dependency_Checker`, schema v48) re-fetches each pinned file from
+the URL its hash was taken from (https only, the row's own origin, 10 s
+timeout, 5 MB cap, at most 25 files per run) and hashes it with the pinned
+hash's own algorithm. A changed file is recorded as drift and raised as an
+admin notice and a high-risk recommendation; the administrator re-approves
+the new hash (which also requires updating the markup's `integrity`
+attribute, since SAM never injects one) or reclassifies the origin as a
+mutable provider. A fetch failure is recorded separately and never as
+drift; nothing is re-approved automatically. Known frequently-changing
+vendors (`Known_Vendor_Profiles`, filterable) are badged with a
+recommendation to allow them by host instead of pinning them.
 
 **Internal Script Integrity.** Per-surface opt-in; when enabled, reads a
 first-party script/stylesheet's local file directly (never a network fetch),
@@ -250,13 +260,16 @@ serves it. Nothing to classify or approve: the hash can never legitimately
 drift from what's on disk.
 
 **Data stored.** Dependency inventory (origin, classification, last-seen
-URL), hash inventory, and a separate first-party asset inventory table
+URL, pinned URL, last check result and any detected drift), hash inventory, and a separate first-party asset inventory table
 (`sam_internal_asset_inventory`).
 
-**External services contacted.** None automatically. The "Suggest" SRI
-helper fetches only a URL the administrator explicitly supplies and returns
-only the computed hash - the fetched content itself is never stored or sent
-elsewhere.
+**External services contacted.** The "Suggest" SRI helper fetches only a
+URL the administrator explicitly supplies and returns only the computed
+hash. Once an administrator has pinned a third-party file by hash, the
+daily drift check fetches that same file from its own origin (a plain GET
+with no site data sent). In both cases the fetched content is never stored
+or sent elsewhere - only its hash is kept. Nothing is fetched for an origin
+that has not been pinned.
 
 **Known limitations.** SRI enforcement assumes a third-party origin serves
 byte-stable content at a pinned URL; a provider that legitimately rotates

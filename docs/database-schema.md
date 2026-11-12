@@ -52,6 +52,8 @@ The plugin creates custom tables on activation. All table names are prefixed wit
 | v44 | adds `recent_errors` to `sam_scanner_identities` (Phase 4C carried-forward item: the "repeated errors" signal §10's own list names, the second and last of the two). Bounded JSON array of 0/1 ints, appended in lockstep with `recent_paths`/`recent_seen_at`, recording whether each request's eventual HTTP response was >= 400. Required moving `Scanner_Identity_Store::record()` itself from `Request_Observer`'s main `observe()` flow to a new `shutdown` hook (`flush_identity_write()`) -- the eventual response status isn't known yet at `send_headers` time, since WordPress hasn't run `query_posts()`/`handle_404()` yet at that point. Identity *resolution* stays where it was; only the *write* is deferred. Read by the new `Repeated_Error_Analyzer`, wired into `Bot_Classifier` as a fourth signal: a new `error_probing_scanner` classification state when a disproportionate share of a source's recent requests were 4xx/5xx. See `Intelligence\Scanner_Identity_Store`, `Intelligence\Request_Observer`, `Intelligence\Repeated_Error_Analyzer`, and `Intelligence\Bot_Classifier`. |
 | v45 | adds `sam_recommendation_dismissals` (Phase 4F, Recommendations Engine -- `.roadmap/phase3_early_plan.md` §22, Foundation increment). The only new table this feature needs: one row per administrator decision not to act on a live recommendation yet, with a required reason. Recommendation content itself is never persisted -- it is always recomputed from existing evidence on each admin page load; a dismissal reopens automatically once that evidence changes after the dismissal timestamp. Ships with no rules registered yet. See `Intelligence\Recommendation_Engine`, `Intelligence\Recommendation_Registry`, and `Intelligence\Recommendation_Dismissal_Store`. |
 | v46 | no new table -- bumped purely to re-run `Activator::activate()`'s new generic `wp_sam_extension_migrations` hook on every already-upgraded site. `includes/extensions/fully-automatic-mode.php` listens on it to remove any of the 8 direct-Stripe option values (secret/price/webhook) a previous private/commercial build may have stored, now that it no longer has a direct-Stripe checkout path (`docs/threat-model.md` "Stripe secret storage" finding; `docs/sam-portal-requirements-spec.md` §21.2). That cleanup deliberately lives in the extension, not in `Activator` itself, since a core migration referencing those exact option-name strings would defeat `.github/scripts/verify-wporg-package.sh`'s forbidden-string scan. Only ever mattered on a private/commercial build; neither public release channel has shipped a working checkout path. |
+| v47 | no new table -- bumped to run `Activator::migrate_hold_admin_csp_at_report_only()` once on every already-upgraded site. `Policy_Builder` now sends the admin surface's policy (it hooks `admin_init`; WordPress never fires `send_headers` on wp-admin pages, so no admin policy was ever sent before). Any `csp_policy_profiles` row with `surface = 'admin'` and `mode = 'enforce'` is set back to `report-only` so a never-tested admin policy isn't suddenly enforced on the dashboard; guarded by the `wp_sam_admin_csp_held_v47` option so a later re-promotion is never undone. Also adds the per-surface `wp_sam_csp_delivery_{surface}` options (`Csp_Delivery_Log`: first/last time a policy was sent, last hash trim), which `Recommendation_Rule_Csp_Enforce_Ready` now requires before recommending enforce. |
+| v48 | adds `pinned_url`, `integrity_checked_at`, `integrity_attempted_at`, `integrity_check_error`, `drift_detected_at`, and `drift_observed_sri` to `sam_dependency_inventory` for the daily pinned-hash drift check (`Security\Pinned_Dependency_Checker`). Each `immutable_pinned` row's file is re-fetched from `pinned_url` (the exact URL its hash was taken from; `last_seen_url` for rows pinned earlier) and re-hashed with `expected_sri`'s own algorithm. A changed file records `drift_detected_at`/`drift_observed_sri` for the administrator to re-approve or reclassify under Decide → Dependency Classification; a fetch failure only records `integrity_check_error`, never drift. Nothing is approved automatically. Existing rows need no data migration: the new columns start `NULL`. |
 
 ## Table list
 
@@ -138,7 +140,7 @@ Key columns:
 - `first_seen_at`, `last_seen_at` - `last_seen_at` is bumped (without a new row) every time identical content is seen again; a row whose `last_seen_at` stops advancing is a candidate for `Hash_Manager::prune_stale_by_age()`
 - `retired_at` - set when the block is no longer observed during rescans, or pruned by age
 
-Growth safety (added after the 2026-08-19 incident -- see `Hash_Manager::MAX_NEW_HASHES_PER_HOUR` and `Policy_Builder::MAX_HASH_TOKEN_BUDGET_BYTES`): a single surface is capped at 30 brand-new rows per rolling hour, and the header built from this table can never emit more than a fixed byte budget of hash tokens regardless of how many active rows exist, dropping the least-recently-seen ones first. `Hash_Manager::prune_stale_by_age()` (run from the daily cron scan) retires any active row not seen again within 30 days, independent of any in-request capture data.
+Growth safety (added after the 2026-08-19 incident -- see `Hash_Manager::MAX_NEW_HASHES_PER_HOUR` and `Policy_Builder::MAX_HASH_TOKEN_BUDGET_BYTES`): a single surface is capped at 30 brand-new rows per rolling hour, and the header built from this table can never emit more than a fixed byte budget of hash tokens regardless of how many active rows exist, dropping the least-recently-seen ones first. `Hash_Manager::prune_stale_by_age()` (run from the daily cron scan and from a manual rescan) retires any active row not seen again within 30 days, independent of any in-request capture data. The same two scans first run `Hash_Manager::retire_json_data_hashes()`, which retires active rows whose `source_context` opens with a JSON object key (`{"…":` or `[{"…":`). Those are JSON-LD and other JSON data blocks learned before extraction started skipping them; CSP never applies to such blocks, and that opening can't begin a working script or stylesheet.
 
 Root cause, and the actual fix (also added after the same incident): WordPress core's own Global Styles inline stylesheet (and any theme/plugin inline `<style>` block added via `wp_add_inline_style()`) can genuinely differ in content between renders of the exact same page -- an exact-content hash allowlist can never usefully cover that, no matter how the growth-safety caps above are tuned. `Hash_Manager::inject_nonce_into_wp_inline_style_blocks()` nonces any `<style id="{handle}-inline-css">` block (WordPress's stable naming convention for `wp_add_inline_style()` output) before hash extraction runs, so that whole category of content is covered by the per-request nonce instead and never reaches `csp_hash_inventory` at all.
 
@@ -384,6 +386,31 @@ Operational notes:
 
 - unique on `(pillar, surface)` - one row per pillar per surface
 - added in v10; empty and unused until X-Frame-Options, X-Content-Type-Options, and Referrer-Policy ship
+
+### `sam_dependency_inventory`
+
+Purpose:
+
+- third-party `<script src>` / `<link rel="stylesheet">` origins observed on real page loads, and the administrator's classification of each (Decide → Dependency Classification)
+
+Key columns:
+
+- `id`
+- `surface`, `resource_type` (`script` | `style`), `origin` (scheme + host) - unique together
+- `classification` - `unclassified` (default), `immutable_pinned`, `mutable_provider`, `exception`, `prohibited`
+- `expected_sri` - the administrator-approved Subresource Integrity hash (`sha256-`/`sha384-`/`sha512-` + base64), `immutable_pinned` rows only. Set only by an administrator's action: typed, "Suggest", or "Re-approve new hash"
+- `last_seen_url` (v19) - most recently observed full URL for this origin
+- `pinned_url` (v48) - the exact URL whose content `expected_sri` was taken from: the URL "Suggest" hashed, or `last_seen_url` at the moment a hash was typed in
+- `integrity_checked_at` (v48) - last time the daily check fetched and hashed the file
+- `integrity_attempted_at`, `integrity_check_error` (v48) - last attempt and, if it failed, a short reason code (`fetch_failed`, `http_status`, `empty_or_too_large`, `origin_mismatch`, `not_https`, `no_url`). A failure is never treated as drift
+- `drift_detected_at`, `drift_observed_sri` (v48) - first time the file stopped matching `expected_sri` (kept while it stays drifted), and the hash it serves now
+- `evidence_count`, `first_seen_at`, `last_seen_at`, `created_at`, `updated_at`
+
+Operational notes:
+
+- `Security\Pinned_Dependency_Checker` (daily WP-Cron hook `wp_sam_dependency_hash_check`) checks at most 25 rows per run, least recently attempted first; the fetch is https-only, restricted to the row's own origin, with TLS verification, a 10 s timeout, and a 5 MB cap (`Security\Dependency_Sri_Fetcher`, shared with "Suggest")
+- a new hash, re-approval, or leaving `immutable_pinned` clears the drift and check columns
+- included in configuration export/import and pre-migration snapshots (`SELECT *`), so the new columns travel with it
 
 ## Relationships
 

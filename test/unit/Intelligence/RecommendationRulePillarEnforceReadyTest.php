@@ -92,14 +92,14 @@ class RecommendationRulePillarEnforceReadyTest extends TestCase {
 	public function test_a_quiet_unexempted_report_only_coop_row_fires(): void {
 		$GLOBALS['_wpdb_get_results_queue'] = array(
 			array(), // COEP -- nothing enabled.
-			array( $this->profile_row( array( 'surface' => 'admin' ) ) ), // COOP.
+			array( $this->profile_row( array( 'surface' => 'login' ) ) ), // COOP.
 		);
 		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0 );
 
 		$results = $this->rule->evaluate();
 
 		$this->assertCount( 1, $results );
-		$this->assertSame( 'pillar_enforce_ready_cross-origin-opener-policy_admin', $results[0]['key'] );
+		$this->assertSame( 'pillar_enforce_ready_cross-origin-opener-policy_login', $results[0]['key'] );
 		$this->assertSame( 'Cross-Origin-Opener-Policy', $results[0]['pillar'] );
 	}
 
@@ -114,5 +114,18 @@ class RecommendationRulePillarEnforceReadyTest extends TestCase {
 
 		$this->assertStringContainsString( 'page=security-automation-manager-cross-origin', $results[0]['cta_url'] );
 		$this->assertStringContainsString( 'tab=coep', $results[0]['cta_url'] );
+	}
+
+	public function test_admin_and_api_rows_never_fire_because_their_headers_are_never_sent(): void {
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(), // COEP -- nothing enabled.
+			array( // COOP.
+				$this->profile_row( array( 'surface' => 'admin' ) ),
+				$this->profile_row( array( 'surface' => 'api' ) ),
+			),
+		);
+		$GLOBALS['_wpdb_get_var_queue'] = array( 0, 0, 0, 0 );
+
+		$this->assertSame( array(), $this->rule->evaluate() );
 	}
 }

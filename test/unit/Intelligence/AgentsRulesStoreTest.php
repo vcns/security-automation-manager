@@ -55,6 +55,30 @@ class AgentsRulesStoreTest extends TestCase {
 		$this->assertSame( array( '/private/' ), get_option( 'wp_sam_agents_disallow_rules' ) );
 	}
 
+	public function test_refresh_treats_a_404_or_410_as_absent_and_clears_cached_rules(): void {
+		foreach ( array( 404, 410 ) as $code ) {
+			update_option( 'wp_sam_agents_disallow_rules', array( '/private/' ) );
+			$store = new Agents_Rules_Store( fn( string $url ) => $this->http_response( '', $code ) );
+
+			$result = $store->refresh();
+
+			$this->assertSame( 'absent', $result['status'] );
+			$this->assertSame( "No /agents.txt on this site (HTTP {$code}).", $result['message'] );
+			$this->assertSame( array(), $store->rules() );
+			$this->assertSame( 'absent', $store->last_fetch_status() );
+		}
+	}
+
+	public function test_refresh_keeps_existing_rules_on_a_500_response(): void {
+		update_option( 'wp_sam_agents_disallow_rules', array( '/private/' ) );
+		$store = new Agents_Rules_Store( fn( string $url ) => $this->http_response( '', 500 ) );
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'failed', $result['status'] );
+		$this->assertSame( array( '/private/' ), $store->rules() );
+	}
+
 	public function test_refresh_strips_an_inline_comment_from_a_user_agent_line(): void {
 		// Without stripping, "* # applies to everyone" never equals '*',
 		// so $in_wildcard_block would never be set and every Disallow line

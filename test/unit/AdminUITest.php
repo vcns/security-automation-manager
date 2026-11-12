@@ -8,6 +8,7 @@ declare( strict_types=1 );
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Admin\Admin_UI;
 use WP_SAM\Admin\Pillar_Registry;
+use WP_SAM\Admin\Presentation_Preferences;
 use WP_SAM\Plugin;
 use WP_SAM\Rollback_Guard;
 
@@ -179,6 +180,31 @@ class AdminUITest extends TestCase {
 		$this->assertContains( 'security-automation-manager_page_security-automation-manager-verify', $hooks );
 	}
 
+	public function test_every_registered_page_loads_the_shared_admin_assets(): void {
+		// Advanced Intelligence was registered in 2.9.44 but never added to
+		// plugin_page_hooks(), so it rendered without admin.css/admin.js
+		// until 2.11.5 -- open popovers stacked down the page, and the
+		// Campaigns forms never received their required note. Certificates
+		// is the one deliberate exception (certificates_page_hook()).
+		wp_test_reset_globals();
+		$ui = $this->make_admin_ui();
+		$ui->add_menu_pages();
+
+		$method = new ReflectionMethod( Admin_UI::class, 'plugin_page_hooks' );
+		$hooks  = $method->invoke( $ui );
+
+		foreach ( array_unique( array_column( $GLOBALS['_wp_submenu_pages']['security-automation-manager'], 'menu_slug' ) ) as $slug ) {
+			if ( 'security-automation-manager-certificates' === $slug ) {
+				continue;
+			}
+			$hook = 'security-automation-manager' === $slug
+				? 'toplevel_page_security-automation-manager'
+				: 'security-automation-manager_page_' . $slug;
+
+			$this->assertContains( $hook, $hooks, "{$slug} is registered but would load without admin.css/admin.js" );
+		}
+	}
+
 	public function test_add_menu_pages_registers_settings_first_then_lifecycle_pages_in_roadmap_order(): void {
 		wp_test_reset_globals();
 		$ui = $this->make_admin_ui();
@@ -275,6 +301,26 @@ class AdminUITest extends TestCase {
 		) {
 			$this->assertStringContainsString( 'page=' . $pillar_slug, $css );
 		}
+	}
+
+	public function test_advanced_intelligence_is_hidden_from_the_menu_but_still_registered(): void {
+		// Its tabs are linked from Observe, Decide, Control and Verify; the
+		// page itself must stay registered so those links (and direct URLs)
+		// keep working.
+		wp_test_reset_globals();
+		$ui = $this->make_admin_ui();
+		$ui->add_menu_pages();
+
+		$this->assertContains(
+			'security-automation-manager-advanced',
+			array_column( $GLOBALS['_wp_submenu_pages']['security-automation-manager'], 'menu_slug' )
+		);
+
+		ob_start();
+		$ui->print_hidden_menu_css();
+		$css = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'page=security-automation-manager-advanced"', $css );
 	}
 
 	public function test_print_hidden_menu_css_does_not_hide_lifecycle_or_settings_pages(): void {
@@ -434,6 +480,56 @@ class AdminUITest extends TestCase {
 
 		$this->assertStringNotContainsString( 'Page 9999', $output );
 		$this->assertStringContainsString( 'Page 3 of 3', $output );
+	}
+
+	public function test_scripts_external_shows_drift_banner_with_both_hashes_and_actions(): void {
+		$_GET['tab'] = 'external';
+		$GLOBALS['_wpdb_get_var']           = 1;
+		$row                                = $this->dependency_inventory_rows( 1 )[0];
+		$row['classification']              = 'immutable_pinned';
+		$row['expected_sri']                = 'sha384-pinnedOLD';
+		$row['pinned_url']                  = 'https://cdn1.example.test/lib.js';
+		$row['drift_detected_at']           = '2026-10-20 02:00:00';
+		$row['drift_observed_sri']          = 'sha384-servedNEW';
+		$GLOBALS['_wpdb_get_results_queue'] = array( array(), array( $row ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'This file has changed at its source.', $output );
+		$this->assertStringContainsString( '2026-10-20 02:00:00', $output );
+		$this->assertStringContainsString( 'sha384-pinnedOLD', $output );
+		$this->assertStringContainsString( 'data-value="sha384-servedNEW"', $output );
+		$this->assertStringContainsString( 'wp-sam-dependency-reapprove', $output );
+		$this->assertStringContainsString( 'Allow by host instead', $output );
+		$this->assertStringContainsString( 'integrity attribute in the theme or plugin markup', $output );
+		// Drifted rows sort first so the recommendation's link lands on them.
+		$this->assertStringContainsString( "ORDER BY ( classification = 'immutable_pinned' AND drift_detected_at IS NOT NULL ) DESC", (string) $GLOBALS['_wpdb_last_get_results_query'] );
+	}
+
+	public function test_scripts_external_badges_a_known_vendor_with_its_reason(): void {
+		$_GET['tab'] = 'external';
+		$GLOBALS['_wpdb_get_var']           = 1;
+		$row                                = $this->dependency_inventory_rows( 1 )[0];
+		$row['origin']                      = 'https://www.google.com';
+		$row['last_seen_url']               = 'https://www.google.com/recaptcha/api.js';
+		$row['classification']              = 'immutable_pinned';
+		$row['expected_sri']                = 'sha384-abc';
+		$GLOBALS['_wpdb_get_results_queue'] = array( array(), array( $row ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-scripts.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'Known vendor: Google reCAPTCHA -- allowed by host, not hash', $output );
+		$this->assertStringContainsString( 'release-specific script', $output );
+		$this->assertStringContainsString( 'Consider &quot;Approved -- mutable provider&quot; instead', $output );
+		$this->assertStringNotContainsString( 'never one computed by fetching the remote URL', $output );
 	}
 
 	public function test_scripts_external_filter_survives_page_change(): void {
@@ -697,6 +793,7 @@ class AdminUITest extends TestCase {
 		// "source_file/source_context") reached ordinary site owners
 		// verbatim in a wp-admin banner. A known event must show a plain-
 		// English summary as the primary text instead.
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
 		update_option(
 			'wp_sam_admin_notices',
 			array(
@@ -721,6 +818,7 @@ class AdminUITest extends TestCase {
 	}
 
 	public function test_display_admin_notices_keeps_the_technical_detail_available_but_collapsed(): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
 		update_option(
 			'wp_sam_admin_notices',
 			array(
@@ -743,10 +841,46 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'captured for surface', $output );
 	}
 
+	/**
+	 * @dataProvider redirected_self_request_events
+	 */
+	public function test_a_redirected_self_request_notice_explains_the_fix_without_naming_where_it_went( string $component, string $event ): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => $component,
+					'event'     => $event,
+					'detail'    => 'https://example.com/ redirected away from this site (HTTP 302), so this page was not crawled.',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'sent away from this site before WordPress saw it', $output );
+		$this->assertStringContainsString( 'user agent WP-CSP-Discovery', $output );
+		$this->assertStringContainsString( 'rather than a whole private range', $output );
+		$this->assertStringContainsString( '<details>', $output, 'The technical detail stays available, collapsed.' );
+	}
+
+	/** @return array<string, array{0: string, 1: string}> */
+	public static function redirected_self_request_events(): array {
+		return array(
+			'discovery crawl'      => array( 'discovery', 'crawl_redirected_offsite' ),
+			'pinned script check'  => array( 'dependency_integrity_monitor', 'scan_redirected_offsite' ),
+		);
+	}
+
 	public function test_display_admin_notices_falls_back_to_raw_detail_for_unlisted_events(): void {
 		// Only events actually found to need simplification are listed in
 		// ADMIN_NOTICE_SUMMARIES -- anything else keeps today's behaviour
 		// rather than silently losing detail because it wasn't added yet.
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
 		update_option(
 			'wp_sam_admin_notices',
 			array(
@@ -768,6 +902,177 @@ class AdminUITest extends TestCase {
 		$this->assertStringContainsString( 'discovery/crawl_failed', $output );
 		$this->assertStringContainsString( 'Failed to fetch', $output );
 		$this->assertStringNotContainsString( '<details>', $output );
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string, 2: string}>
+	 */
+	public static function notice_action_links(): array {
+		return array(
+			'SRI mismatch -> External Scripts'   => array( 'dependency_integrity_monitor', 'sri_mismatch', 'admin.php?page=security-automation-manager-scripts&tab=external' ),
+			'pinned hash drift -> Dependencies'  => array( 'dependency_integrity_monitor', 'pinned_hash_drift', 'admin.php?page=security-automation-manager-scripts&tab=external' ),
+			'discovery -> Scan Log'              => array( 'discovery', 'crawl_http_error', 'admin.php?page=security-automation-manager-dashboard&tab=scan-log' ),
+			'conflict -> Control CSP Profiles'   => array( 'conflict_detector', 'csp_conflict', 'admin.php?page=security-automation-manager-dashboard&tab=profiles' ),
+			'hash budget -> Policy Audit'        => array( 'policy_builder', 'hash_budget_exceeded', 'admin.php?page=security-automation-manager-dashboard&tab=policy-audit' ),
+			'proposal -> For Review'             => array( 'policy_change', 'source_proposed', 'admin.php?page=security-automation-manager-dashboard&tab=sources' ),
+			'admin CSP held -> Profiles'         => array( 'policy_change', 'admin_csp_held_report_only', 'admin.php?page=security-automation-manager-dashboard&tab=profiles' ),
+			'certificate -> Certificates'        => array( 'certificates', 'cert_issue_failed', 'admin.php?page=security-automation-manager-certificates&tab=renew' ),
+			'import -> Recovery'                 => array( 'config_portability', 'config_imported', 'admin.php?page=security-automation-manager&tab=recovery#wp-sam-portability' ),
+			'rollback -> Recovery'               => array( 'rollback', 'snapshot_restored', 'admin.php?page=security-automation-manager&tab=recovery' ),
+			'security.txt -> Well-Known Files'   => array( 'scheduler', 'security_txt_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ),
+			'app-ads.txt -> Well-Known Files'    => array( 'scheduler', 'app_ads_txt_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ),
+			'Tor list -> Tor Exit List'          => array( 'scheduler', 'tor_exit_list_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=tor' ),
+			'scan exception -> Scan Log'         => array( 'scheduler', 'scan_exception', 'admin.php?page=security-automation-manager-dashboard&tab=scan-log' ),
+		);
+	}
+
+	/**
+	 * @dataProvider notice_action_links
+	 */
+	public function test_display_admin_notices_links_each_notice_to_where_it_can_be_acted_on( string $component, string $event, string $expected_path ): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		// Technical, so the hash-budget notice (Technical-only) renders too.
+		Presentation_Preferences::save_for_user( get_current_user_id(), array( 'presentation_depth' => 'technical' ) );
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => $component,
+					'event'     => $event,
+					'detail'    => 'Something happened.',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'href="https://example.com/wp-admin/' . $expected_path . '"', $output );
+		// Staff only see Settings, Observe, Decide, Control and Verify in the
+		// left-hand menu; every other SAM page is reached through one of
+		// them, so a label naming a hidden page alone is a dead end.
+		$this->assertMatchesRegularExpression( '#">Open (Settings|Observe|Decide|Control|Verify) → [^<]+</a>#u', $output );
+	}
+
+	public function test_display_admin_notices_adds_no_link_for_an_unmapped_component(): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => 'something_new',
+					'event'     => 'happened',
+					'detail'    => 'Something happened.',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'something_new/happened', $output );
+		$this->assertStringNotContainsString( '<a ', $output );
+	}
+
+	/**
+	 * Routine hash trimming has nothing for a site owner to act on, and on
+	 * wp-admin it recurs every hour, so only a Technical user is shown it.
+	 *
+	 * @dataProvider non_technical_depths
+	 */
+	public function test_hash_budget_notice_is_held_back_for_a_non_technical_user( ?string $depth ): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		if ( null !== $depth ) {
+			Presentation_Preferences::save_for_user( get_current_user_id(), array( 'presentation_depth' => $depth ) );
+		}
+		$hash_budget = array(
+			'component' => 'policy_builder',
+			'event'     => 'hash_budget_exceeded',
+			'detail'    => 'Dropped 57 least-recently-seen approved hash(es) for surface "admin".',
+			'severity'  => 'warning',
+		);
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				$hash_budget,
+				array(
+					'component' => 'discovery',
+					'event'     => 'crawl_failed',
+					'detail'    => 'Failed to fetch https://example.com/: some error',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringNotContainsString( 'trimmed', $output );
+		$this->assertStringNotContainsString( 'Dropped 57', $output );
+		$this->assertStringContainsString( 'Failed to fetch', $output, 'Other notices still show.' );
+		$this->assertSame( array( $hash_budget ), get_option( 'wp_sam_admin_notices' ), 'Kept for a Technical administrator; everything shown is cleared.' );
+	}
+
+	/** @return array<string, array{0: ?string}> */
+	public static function non_technical_depths(): array {
+		return array(
+			'simple'               => array( 'simple' ),
+			'balanced'             => array( 'balanced' ),
+			'no preference chosen' => array( null ),
+		);
+	}
+
+	public function test_hash_budget_notice_is_shown_to_a_technical_user_and_cleared(): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		Presentation_Preferences::save_for_user( get_current_user_id(), array( 'presentation_depth' => 'technical' ) );
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => 'policy_builder',
+					'event'     => 'hash_budget_exceeded',
+					'detail'    => 'Dropped 57 least-recently-seen approved hash(es) for surface "admin".',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'trimmed', $output );
+		$this->assertStringContainsString( 'Dropped 57', $output );
+		$this->assertFalse( get_option( 'wp_sam_admin_notices' ) );
+	}
+
+	public function test_display_admin_notices_neither_shows_nor_clears_the_queue_for_a_user_without_manage_options(): void {
+		// admin_notices fires on every wp-admin screen, including a
+		// subscriber's own profile.php -- the once-only queue must not be
+		// shown to, or drained by, someone who cannot open SAM's pages.
+		$notices = array(
+			array(
+				'component' => 'discovery',
+				'event'     => 'crawl_failed',
+				'detail'    => 'Failed to fetch https://example.com/: some error',
+				'severity'  => 'warning',
+			),
+		);
+		update_option( 'wp_sam_admin_notices', $notices );
+
+		$ui = $this->make_admin_ui();
+
+		ob_start();
+		$ui->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertSame( '', $output );
+		$this->assertSame( $notices, get_option( 'wp_sam_admin_notices' ) );
 	}
 
 	/**

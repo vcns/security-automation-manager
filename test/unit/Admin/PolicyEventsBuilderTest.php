@@ -141,6 +141,35 @@ class PolicyEventsBuilderTest extends TestCase {
 		}
 	}
 
+	// ── CSP surface scope (Csp_Surfaces -- 'api' is never listed) ────────────────
+
+	public function test_unfiltered_decision_and_version_queries_are_scoped_to_csp_surfaces(): void {
+		Policy_Events_Builder::fetch( $GLOBALS['wpdb'], array() );
+
+		$log = $GLOBALS['_wpdb_get_results_log'];
+		$this->assertCount( 3, $log );
+		$this->assertStringContainsString( 'sam_policy_change_decisions', $log[0] );
+		$this->assertStringContainsString( "surface IN ('frontend','admin','login')", $log[0] );
+		$this->assertStringContainsString( 'sam_policy_versions', $log[1] );
+		$this->assertStringContainsString( "surface IN ('frontend','admin','login')", $log[1] );
+	}
+
+	public function test_surface_filter_drops_non_csp_surfaces(): void {
+		Policy_Events_Builder::fetch( $GLOBALS['wpdb'], array( 'surface' => array( 'admin', 'api' ) ) );
+
+		$log = $GLOBALS['_wpdb_get_results_log'];
+		$this->assertCount( 2, $log );
+		$this->assertStringContainsString( "surface IN ('admin')", $log[0] );
+		$this->assertStringContainsString( "surface IN ('admin')", $log[1] );
+	}
+
+	public function test_api_only_surface_filter_runs_no_query_at_all(): void {
+		$result = Policy_Events_Builder::fetch( $GLOBALS['wpdb'], array( 'surface' => array( 'api' ) ) );
+
+		$this->assertSame( array(), $result['events'] );
+		$this->assertSame( array(), $GLOBALS['_wpdb_get_results_log'] );
+	}
+
 	public function test_directive_filter_skips_versions_and_discovery(): void {
 		$GLOBALS['_wpdb_get_results_queue'] = array(
 			array( $this->decision_row() ),

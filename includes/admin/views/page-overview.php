@@ -1,8 +1,10 @@
 <?php
 /**
  * Admin view: Security Automation Manager overview.
- * Landing page for the top-level menu. Tabs: Overview (per-pillar status
- * summary, the default), Getting Started (a suggested-order setup checklist
+ * Landing page for the top-level menu. Tabs: Overview (the home summary --
+ * scorecard, recent activity, Protection Status and Action Centre preview;
+ * the default), All (every layer and pillar with its per-surface status and
+ * a Manage link to each one), Getting Started (a suggested-order setup checklist
  * for a new install, live status per step, Phase 4G), Security Health (a
  * plain-language outcomes summary plus evidence export), Readiness
  * (plugin-specific schema/runtime checks only), Recovery (schema-downgrade
@@ -29,6 +31,7 @@ use WP_SAM\Admin\Security_Scorecard;
 use WP_SAM\Admin\Status_Badge;
 use WP_SAM\Certificates\Certificate_Store;
 use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Csp_Surfaces;
 use WP_SAM\Intelligence\Baseline_Store;
 use WP_SAM\Intelligence\Detector_Registry;
 use WP_SAM\Intelligence\Recommendation_Engine;
@@ -40,7 +43,7 @@ global $wpdb;
 
 // Current tab.
 $tab          = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'overview';
-$allowed_tabs = array( 'overview', 'getting-started', 'health', 'action-centre', 'recommendations', 'readiness', 'recovery', 'exceptions', 'updates', 'about' );
+$allowed_tabs = array( 'overview', 'all', 'getting-started', 'health', 'action-centre', 'recommendations', 'readiness', 'recovery', 'exceptions', 'updates', 'about' );
 if ( ! in_array( $tab, $allowed_tabs, true ) ) {
 	$tab = 'overview';
 }
@@ -49,7 +52,11 @@ $base_url = admin_url( 'admin.php?page=security-automation-manager' );
 $tab_help = array(
 	'overview'        => array(
 		'label'       => __( 'Overview', 'vcns-security-automation-manager' ),
-		'description' => __( 'At-a-glance status for every pillar this plugin manages, and a link to configure each one.', 'vcns-security-automation-manager' ),
+		'description' => __( 'A summary of your site\'s security: the scorecard, recent activity, protection status, and anything that needs your attention.', 'vcns-security-automation-manager' ),
+	),
+	'all'             => array(
+		'label'       => __( 'All', 'vcns-security-automation-manager' ),
+		'description' => __( 'Every layer and pillar SAM manages, with its current status and a link to configure each one.', 'vcns-security-automation-manager' ),
 	),
 	'getting-started' => array(
 		'label'       => __( 'Getting Started', 'vcns-security-automation-manager' ),
@@ -106,15 +113,14 @@ if ( 'action-centre' === $tab ) {
 }
 
 // ── Overview tab data ────────────────────────────────────────────────────────
-// Scoped to the Overview tab only -- Pillar_Registry::fetch_rows() and the
-// Certificate_Store/Certificate_Manager calls below have no reason to run
-// when e.g. the Updates or Recovery tab is what's actually being rendered.
+// Scoped to the Overview tab only -- the home summary's own queries have no
+// reason to run when another tab is what's actually being rendered.
 if ( 'overview' === $tab ) {
 	// Customer-Centred Administration Experience: scorecard, recent
 	// activity, outcome-oriented protection status, and the Action Centre
-	// preview -- rendered above the existing per-layer tables below, whose
-	// technical detail remains exactly as it was (spec §13.7: existing
-	// specialist views stay available, nothing here replaces them).
+	// preview. The per-layer tables live on the All tab, whose technical
+	// detail remains exactly as it was (spec §13.7: existing specialist
+	// views stay available, nothing here replaces them).
 	$wp_sam_home_prefs        = Presentation_Preferences::get_for_user();
 	$wp_sam_scorecard_counts  = ( new Security_Scorecard() )->counts();
 	$wp_sam_activity_metrics  = ( new Recent_Activity() )->metrics();
@@ -149,8 +155,18 @@ if ( 'overview' === $tab ) {
 	} else {
 		$wp_sam_home_section_order = array( 'action', 'activity', 'protection' );
 	}
+}
 
-	$surfaces = Automation_Config::SURFACES;
+// ── All tab data ─────────────────────────────────────────────────────────────
+// Scoped to the All tab only -- Pillar_Registry::fetch_rows() and the
+// Certificate_Store/Certificate_Manager calls below have no reason to run
+// when e.g. the Overview or Recovery tab is what's actually being rendered.
+if ( 'all' === $tab ) {
+	// Every site surface, for the non-CSP pillar rows below -- they still
+	// apply to the REST API. CSP's own rows use $csp_surfaces instead, which
+	// leaves 'api' out (see Csp_Surfaces).
+	$surfaces     = array( 'frontend', 'admin', 'login', 'api' );
+	$csp_surfaces = Csp_Surfaces::ALL;
 
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	$profiles_raw     = $wpdb->get_results( "SELECT surface, mode FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
@@ -219,13 +235,16 @@ if ( 'overview' === $tab ) {
 // Each step's "done" signal reuses the same stores the relevant page itself
 // reads from -- nothing new is computed or persisted here, and nothing on
 // this tab changes what those stores actually decide (Observe/Enforce,
-// enabled/disabled). This is read-only status, same as the Overview tab
+// enabled/disabled). This is read-only status, same as the All tab
 // above; there is no dismiss/hide state to persist, so the checklist simply
 // reflects live configuration on every page load.
 if ( 'getting-started' === $tab ) {
+	// CSP's own surfaces only -- an older install's 'api' profile row
+	// doesn't count (see Csp_Surfaces).
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	$gs_csp_active_count = (int) $wpdb->get_var(
-		"SELECT COUNT(*) FROM {$wpdb->prefix}csp_policy_profiles WHERE mode != 'disabled'"
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Csp_Surfaces::sql_list() is a hard-coded constant list, not input.
+		"SELECT COUNT(*) FROM {$wpdb->prefix}csp_policy_profiles WHERE mode != 'disabled' AND surface IN (" . Csp_Surfaces::sql_list() . ')'
 	);
 
 	$gs_pillar_rows   = Pillar_Registry::fetch_rows();
@@ -266,26 +285,6 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 
 	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
 
-	<?php if ( 'overview' === $tab ) : ?>
-	<!-- ── Customer-Centred Administration Experience: scorecard + home sections ── -->
-		<?php require WP_SAM_DIR . 'includes/admin/views/partials/security-scorecard.php'; ?>
-		<?php
-		foreach ( $wp_sam_home_section_order as $wp_sam_section ) {
-			switch ( $wp_sam_section ) {
-				case 'activity':
-					require WP_SAM_DIR . 'includes/admin/views/partials/recent-activity.php';
-					break;
-				case 'protection':
-					require WP_SAM_DIR . 'includes/admin/views/partials/protection-status.php';
-					break;
-				case 'action':
-					require WP_SAM_DIR . 'includes/admin/views/partials/action-centre-preview.php';
-					break;
-			}
-		}
-		?>
-	<?php endif; ?>
-
 	<!-- ── Tabs ──────────────────────────────────────────────────────────── -->
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Overview sections', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tab_help as $tab_key => $tab_data ) : ?>
@@ -308,6 +307,25 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 	</div>
 
 	<?php if ( 'overview' === $tab ) : ?>
+	<!-- ── Customer-Centred Administration Experience: scorecard + home sections ── -->
+		<?php require WP_SAM_DIR . 'includes/admin/views/partials/security-scorecard.php'; ?>
+		<?php
+		foreach ( $wp_sam_home_section_order as $wp_sam_section ) {
+			switch ( $wp_sam_section ) {
+				case 'activity':
+					require WP_SAM_DIR . 'includes/admin/views/partials/recent-activity.php';
+					break;
+				case 'protection':
+					require WP_SAM_DIR . 'includes/admin/views/partials/protection-status.php';
+					break;
+				case 'action':
+					require WP_SAM_DIR . 'includes/admin/views/partials/action-centre-preview.php';
+					break;
+			}
+		}
+		?>
+
+	<?php elseif ( 'all' === $tab ) : ?>
 
 	<p>
 		<?php esc_html_e( "Everything below is organised into five layers, roughly ordered from foundational to visible: whether the plugin itself is healthy, how much it's trusted to act on your behalf, what it's watching for right now, what it tells visitors' browsers to do, and whether the connection to your site can be trusted in the first place. A problem in an earlier layer can undermine every layer listed after it -- if something here looks wrong, it's usually worth checking the layers above it first.", 'vcns-security-automation-manager' ); ?>
@@ -318,7 +336,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php esc_html_e( "This is a check on the plugin itself, not on your site. It confirms the database matches what the running code expects, the environment meets requirements, and no schema rollback is stuck half-finished. Treat every other layer's status with suspicion until a Fail here is resolved -- they all read from the same tables this layer is verifying.", 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table wp-sam-layer-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
@@ -386,7 +404,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php esc_html_e( 'Writing a Content Security Policy by hand means listing every script, style, and font your site is allowed to load -- get it wrong and you either break the site or leave a gap wide open. Deterministic automation builds that list for you from what your site is actually running (its active theme, plugins, and known integrations), worked out separately for each surface below, so a strict policy can exist here without you writing it line by line.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table wp-sam-layer-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
@@ -398,7 +416,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<tr>
 				<td class="wp-sam-col-primary"><strong><?php esc_html_e( 'CSP Deterministic Automation', 'vcns-security-automation-manager' ); ?></strong></td>
 				<td class="wp-sam-col-status">
-					<?php foreach ( $surfaces as $surface ) : ?>
+					<?php foreach ( $csp_surfaces as $surface ) : ?>
 						<?php $automation_mode = $automation_config->for_surface( $surface )['mode']; ?>
 						<?php echo Status_Badge::render_automation( ucfirst( $surface ) . ': ' . Automation_Config::mode_label( $automation_mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_automation() returns pre-escaped HTML. ?>
 					<?php endforeach; ?>
@@ -415,10 +433,10 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 
 	<h2><?php esc_html_e( 'Layer 3: Continuous Intelligence', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
-		<?php esc_html_e( 'Every request your site receives passes through a set of pattern-matching detectors that recognise the signature of common attacks -- SQL injection attempts, path traversal, malicious bots, and more. Each detector can simply watch and record evidence, or actively block, entirely under your control from the Continuous Intelligence page; the row below just shows how many are switched on right now.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'Every request your site receives passes through a set of pattern-matching detectors that recognise the signature of common attacks -- SQL injection attempts, path traversal, malicious bots, and more. Each detector can simply watch and record evidence, or actively block, entirely under your control from Control → Traffic Controls → Detectors; the row below just shows how many are switched on right now.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table wp-sam-layer-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Area', 'vcns-security-automation-manager' ); ?></th>
@@ -467,7 +485,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php esc_html_e( "These are instructions sent to every visitor's browser, telling it how to defend your site on their end -- for example, refusing to run a script you haven't approved, or refusing to let another site frame your pages inside a hidden iframe for a clickjacking attack. Content Security Policy is the most capable of these; the rest are narrower, single-purpose headers. Most can run in report-only mode first, so you can see what would have been blocked before anything actually is.", 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table wp-sam-layer-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
@@ -481,7 +499,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 					<strong><?php esc_html_e( 'Content Security Policy', 'vcns-security-automation-manager' ); ?></strong>
 				</td>
 				<td class="wp-sam-col-status">
-					<?php foreach ( $surfaces as $surface ) : ?>
+					<?php foreach ( $csp_surfaces as $surface ) : ?>
 						<?php $mode = $modes_by_surface[ $surface ] ?? 'disabled'; ?>
 						<?php $state = $csp_status_by_mode[ $mode ] ?? Status_Badge::STATE_DISABLED; ?>
 						<?php echo Status_Badge::render( $state, ucfirst( $surface ) . ': ' . ( $csp_status_labels[ $state ] ?? $mode ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
@@ -534,7 +552,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php esc_html_e( 'Every layer above assumes visitors reach your site over a trusted, encrypted connection -- this is where that trust comes from. If a TLS certificate expires or was never issued, browsers show visitors a warning page before any of your other protections get a chance to matter.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<div class="wp-sam-table-wrap">
-	<table class="widefat striped wp-sam-readiness-table wp-sam-table">
+	<table class="widefat striped wp-sam-readiness-table wp-sam-table wp-sam-layer-table">
 		<thead>
 			<tr>
 				<th class="wp-sam-col-primary"><?php esc_html_e( 'Pillar', 'vcns-security-automation-manager' ); ?></th>
@@ -599,15 +617,15 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 				<td class="wp-sam-col-primary">
 					<strong><?php esc_html_e( '2. Turn on the other header pillars', 'vcns-security-automation-manager' ); ?></strong>
 					<p class="description" style="margin:0.3em 0 0;">
-						<?php esc_html_e( 'Fourteen further headers, each an independent on/off switch per surface. Unlike CSP, most need no learning period, so most are safe to switch on straight away -- see the Layer 4 table on the Overview tab for the full list and current status of each.', 'vcns-security-automation-manager' ); ?>
+						<?php esc_html_e( 'Fourteen further headers, each an independent on/off switch per surface. Unlike CSP, most need no learning period, so most are safe to switch on straight away -- see the Layer 4 table on the All tab for the full list and current status of each.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
 				<td class="wp-sam-col-status">
 					<?php echo Status_Badge::render( $gs_any_pillar_on ? Status_Badge::STATE_ACTIVE : Status_Badge::STATE_NOT_CONFIGURED, $gs_any_pillar_on ? __( 'At least one enabled', 'vcns-security-automation-manager' ) : __( 'None enabled yet', 'vcns-security-automation-manager' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render() returns pre-escaped HTML. ?>
 				</td>
 				<td class="wp-sam-col-actions">
-					<a href="<?php echo esc_url( add_query_arg( 'tab', 'overview', $base_url ) ); ?>">
-						<?php esc_html_e( 'Overview -- Layer 4', 'vcns-security-automation-manager' ); ?>
+					<a href="<?php echo esc_url( add_query_arg( 'tab', 'all', $base_url ) ); ?>">
+						<?php esc_html_e( 'All -- Layer 4', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
@@ -771,7 +789,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 					<th scope="row" class="wp-sam-col-primary">
 						<?php echo esc_html( $item['label'] ); ?>
 						<?php if ( '' !== $item['detail'] ) : ?>
-						<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+						<span class="wp-sam-meta-icon" tabindex="0"><span class="dashicons dashicons-info-outline" aria-hidden="true"></span>
 							<span class="wp-sam-meta-popover" role="tooltip"><?php echo esc_html( $item['detail'] ); ?></span>
 						</span>
 						<?php endif; ?>
@@ -1541,7 +1559,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 
 	<?php endif; ?>
 
-	<?php else /* about */ : ?>
+	<?php elseif ( 'about' === $tab ) : ?>
 
 	<div class="wp-sam-about" style="margin-top: 1em;">
 		<p>

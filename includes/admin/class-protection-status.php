@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use WP_SAM\Certificates\Certificate_Store;
-use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Csp_Surfaces;
 use WP_SAM\Intelligence\Baseline_Store;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
@@ -59,11 +59,11 @@ class Protection_Status {
 		);
 	}
 
-	/** Reads csp_policy_profiles.mode per surface -- the same query and mode vocabulary (disabled/report-only/enforce) already used by page-overview.php's own Overview tab. */
+	/** Reads csp_policy_profiles.mode per CSP surface (Csp_Surfaces -- an older install's 'api' row is ignored) -- the same query and mode vocabulary (disabled/report-only/enforce) already used by page-overview.php's own All tab. */
 	private function browser_content_area(): array {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$modes = $wpdb->get_col( "SELECT mode FROM {$wpdb->prefix}csp_policy_profiles" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared -- Csp_Surfaces::sql_list() is a hard-coded constant list, not input.
+		$modes = $wpdb->get_col( "SELECT mode FROM {$wpdb->prefix}csp_policy_profiles WHERE surface IN (" . Csp_Surfaces::sql_list() . ')' );
 		$modes = ! empty( $modes ) ? $modes : array();
 
 		if ( in_array( 'enforce', $modes, true ) ) {
@@ -130,7 +130,9 @@ class Protection_Status {
 		$pillar_key     = Dependency_Governance_Builder::PILLAR_KEY;
 		$surface_rows   = $rows[ $pillar_key ] ?? array();
 		$enabled_states = array();
-		foreach ( Automation_Config::SURFACES as $surface ) {
+		// Every site surface -- unlike CSP, dependency governance still
+		// applies to the REST API.
+		foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $surface ) {
 			$enabled_states[] = Pillar_Registry::resolve_status( $pillar_key, $surface_rows[ $surface ] ?? null )['state'];
 		}
 

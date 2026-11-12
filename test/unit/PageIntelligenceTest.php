@@ -215,8 +215,32 @@ class PageIntelligenceTest extends TestCase {
 
 		unset( $_GET['tab'] );
 
-		$this->assertStringContainsString( 'Auto-authorised (loopback)', $output );
+		$this->assertStringContainsString( 'Auto-authorised (this site&#039;s own servers or network)', $output );
 		$this->assertStringNotContainsString( 'value="authorise"', $output );
+	}
+
+	public function test_identities_groups_repeated_recent_paths_with_a_count(): void {
+		$_GET['tab']              = 'identities';
+		$GLOBALS['_wpdb_get_var'] = 1;
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(
+				$this->identity_rows(
+					1,
+					array( 'recent_paths' => wp_json_encode( array_merge( array_fill( 0, 9, '/wp-cron.php' ), array( '/robots.txt' ) ) ) )
+				)[0],
+			),
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'title="/wp-cron.php ×9, /robots.txt"', $output );
+		$this->assertStringNotContainsString( '/wp-cron.php, /wp-cron.php', $output );
+		$this->assertStringContainsString( '10 recent requests logged', $output );
+		$this->assertStringContainsString( '(2 distinct paths)', $output );
 	}
 
 	// ── Vendors tab ──────────────────────────────────────────────────────────────

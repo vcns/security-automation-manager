@@ -25,6 +25,12 @@ class Acme_Crypto {
 
 	// ── Encoding ──────────────────────────────────────────────────────────────
 
+	/**
+	 * Encodes data as unpadded base64url, as ACME requires.
+	 *
+	 * @param string $data Data to encode.
+	 * @return string Encoded string.
+	 */
 	public static function base64url( string $data ): string {
 		return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' );
 	}
