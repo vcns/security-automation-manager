@@ -109,23 +109,17 @@ final class Request_Observer {
 	private Network_Intelligence_Resolver $network_intelligence;
 	private Traffic_Block_Store $blocks;
 
-	/**
-	 * Constructor.
-	 *
-	 * @param Detector_Engine               $engine               Detector engine.
-	 * @param Event_Store                   $events               Event store.
-	 * @param Identity_Resolver             $identity_resolver    Identity resolver.
-	 * @param Scanner_Identity_Store        $identities           Scanner identity store.
-	 * @param Network_Intelligence_Resolver $network_intelligence Network intelligence resolver.
-	 * @param Traffic_Block_Store|null      $blocks               Traffic block store, a new one is created when omitted.
-	 */
+	/** @var callable():bool Real is_user_logged_in()+manage_options check by default, the same one Traffic_Guard uses; injectable for tests. */
+	private $is_privileged_user;
+
 	public function __construct(
 		Detector_Engine $engine,
 		Event_Store $events,
 		Identity_Resolver $identity_resolver,
 		Scanner_Identity_Store $identities,
 		Network_Intelligence_Resolver $network_intelligence,
-		?Traffic_Block_Store $blocks = null
+		?Traffic_Block_Store $blocks = null,
+		?callable $is_privileged_user = null
 	) {
 		$this->engine               = $engine;
 		$this->events               = $events;
@@ -133,6 +127,9 @@ final class Request_Observer {
 		$this->identities           = $identities;
 		$this->network_intelligence = $network_intelligence;
 		$this->blocks               = $blocks ?? new Traffic_Block_Store();
+		$this->is_privileged_user   = $is_privileged_user ?? static function (): bool {
+			return is_user_logged_in() && current_user_can( 'manage_options' );
+		};
 	}
 
 	/**
@@ -255,7 +252,11 @@ final class Request_Observer {
 				)
 			);
 
-			if ( 'enforce' === ( $finding['control_action'] ?? 'observe' ) && '' !== $context['ip'] ) {
+			// The event above is still recorded, but an administrator's own
+			// request never escalates their address -- see Traffic_Guard's
+			// class docblock. Editing a post that quotes SQL or <script> must
+			// not get the office blocked once they log out.
+			if ( 'enforce' === ( $finding['control_action'] ?? 'observe' ) && '' !== $context['ip'] && ! ( $this->is_privileged_user )() ) {
 				$this->blocks->record_violation(
 					$context['ip'],
 					(string) ( $finding['surface'] ?? $context['surface'] ),

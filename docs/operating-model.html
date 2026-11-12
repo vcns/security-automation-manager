@@ -95,7 +95,7 @@ sequenceDiagram
     WP->>Browser: Emit report-only CSP header for each surface
     WP->>Browser: Add per-request nonces to managed scripts and styles
     Admin->>WP: Run manual scan
-    WP->>WP: Crawl representative frontend, admin, login and API URLs
+    WP->>WP: Crawl the frontend home page and the login page
     WP->>DB: Store scan log and pending source proposals
 
     Browser->>WP: Request real site journeys

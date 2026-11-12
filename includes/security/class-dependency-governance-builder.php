@@ -19,11 +19,13 @@
  * never silently blocked, even in enforce mode.
  *
  * SRI is never fabricated: expected_sri only ever comes from an
- * administrator typing/pasting a hash they already trust (e.g. from a
- * locally downloaded copy of the vetted file, or the vendor's published
- * hash) into the admin UI. This class only ever *compares* against that
- * value -- it never computes a hash from a live remote fetch, which would
- * defeat the entire point of SRI if the remote origin were compromised.
+ * administrator's own action in the admin UI -- typing/pasting a hash they
+ * already trust (e.g. from a locally downloaded copy of the vetted file, or
+ * the vendor's published hash), "Suggest" on a URL they confirm, or
+ * "Re-approve new hash" on drift Pinned_Dependency_Checker detected. This
+ * class only ever *compares* against that value -- it never computes a
+ * hash from a live remote fetch, which would defeat the entire point of
+ * SRI if the remote origin were compromised.
  */
 
 declare( strict_types=1 );

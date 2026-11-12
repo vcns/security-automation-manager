@@ -146,6 +146,12 @@ class ConfigPortabilityTest extends TestCase {
 		$this->assertSame( array( 'example.com' ), $export['cert_config']['domains'] );
 	}
 
+	public function test_export_never_includes_the_exporting_sites_own_url(): void {
+		// The file is usually imported into another copy of the same site,
+		// and SAM must never be told about one.
+		$this->assertArrayNotHasKey( 'site_url', $this->portability->export() );
+	}
+
 	public function test_apply_cert_config_never_writes_secret_fields_from_an_imported_file(): void {
 		( new Certificate_Store() )->save_config(
 			array(

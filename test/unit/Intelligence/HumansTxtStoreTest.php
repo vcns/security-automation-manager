@@ -44,9 +44,22 @@ class HumansTxtStoreTest extends TestCase {
 		$this->assertStringContainsString( 'Developer: Someone', $store->content() );
 	}
 
-	public function test_refresh_keeps_existing_content_on_a_non_200_response(): void {
+	public function test_refresh_treats_a_404_as_absent_and_clears_cached_content(): void {
 		update_option( 'wp_sam_humans_txt_content', 'previous content' );
+		update_option( 'wp_sam_humans_txt_last_fetch_status', 'success' );
 		$store = new Humans_Txt_Store( fn( string $url ) => $this->http_response( '', 404 ) );
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'absent', $result['status'] );
+		$this->assertSame( 'No /humans.txt on this site (HTTP 404).', $result['message'] );
+		$this->assertSame( '', $store->content() );
+		$this->assertFalse( $store->is_present() );
+	}
+
+	public function test_refresh_keeps_existing_content_on_a_500_response(): void {
+		update_option( 'wp_sam_humans_txt_content', 'previous content' );
+		$store = new Humans_Txt_Store( fn( string $url ) => $this->http_response( '', 500 ) );
 
 		$result = $store->refresh();
 

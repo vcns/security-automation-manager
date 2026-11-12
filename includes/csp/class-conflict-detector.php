@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace WP_SAM\CSP;
 
 use WP_SAM\Modules\Audit_Log;
+use WP_SAM\Security\Conflict_Probe_Token;
 use WP_SAM\Security\Reporting_Endpoint;
 use WP_SAM\Security\Request_Surface;
 
@@ -34,12 +35,22 @@ class Conflict_Detector {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log that records detected conflicts.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the wp_headers check and the daily probe.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		// Hook late into wp_headers to detect competing CSP values already queued.
 		add_filter( 'wp_headers', array( $this, 'check_headers_filter' ), PHP_INT_MAX );
@@ -149,14 +160,20 @@ class Conflict_Detector {
 	 * @return array       List of conflicting header names found.
 	 */
 	public function run_probe( string $url ): array {
+		$token    = Conflict_Probe_Token::issue();
 		$response = wp_remote_head(
 			$url,
 			array(
-				'timeout'   => 10,
-				'sslverify' => true,
-				'headers'   => array( Request_Surface::CONFLICT_PROBE_HEADER => '1' ),
+				'timeout'     => 10,
+				'sslverify'   => true,
+				// WordPress already defaults HEAD requests to no redirects;
+				// stated explicitly so the token can never be forwarded to
+				// another host.
+				'redirection' => 0,
+				'headers'     => array( Request_Surface::CONFLICT_PROBE_HEADER => $token ),
 			)
 		);
+		Conflict_Probe_Token::revoke( $token );
 
 		if ( is_wp_error( $response ) ) {
 			return array();
@@ -205,6 +222,14 @@ class Conflict_Detector {
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Writes a warning to the audit log for a competing CSP header.
+	 *
+	 * @param string $source Where the competing header was found.
+	 * @param string $header Header name.
+	 * @param string $value  Header value, only a prefix is logged.
+	 * @return void
+	 */
 	private function record_conflict( string $source, string $header, string $value ): void {
 		$guidance = $this->get_source_guidance( $source );
 		$this->audit->log(
@@ -246,6 +271,12 @@ class Conflict_Detector {
 		);
 	}
 
+	/**
+	 * Returns the advice shown for a given conflict source.
+	 *
+	 * @param string $source Conflict source identifier.
+	 * @return string Guidance text.
+	 */
 	private function get_source_guidance( string $source ): string {
 		return match ( $source ) {
 			'htaccess'        => 'Review Apache or LiteSpeed .htaccess Header directives before enabling enforcement here.',

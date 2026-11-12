@@ -8,6 +8,7 @@ declare( strict_types=1 );
 namespace WP_SAM\Admin;
 
 use WP_SAM\Activator;
+use WP_SAM\CSP\Csp_Surfaces;
 use WP_SAM\CSP\Policy_Builder;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -86,21 +87,25 @@ class Readiness_Checker {
 			$report_endpoint = rest_url( 'sam/v1/report' );
 		}
 
-		$profile_count = $this->count_table_rows_where(
+		// CSP's own surfaces only: an older install's 'api' profile row stays
+		// in the table but isn't expected or counted (see Csp_Surfaces).
+		$expected_profiles = count( Csp_Surfaces::ALL );
+		$profile_count     = $this->count_table_rows_where(
 			'csp_policy_profiles',
-			"surface IN ('frontend', 'admin', 'login', 'api')"
+			'surface IN (' . Csp_Surfaces::sql_list() . ')'
 		);
-		$version_count = $this->count_table_rows_where( 'sam_policy_versions', '1=1' );
+		$version_count     = $this->count_table_rows_where( 'sam_policy_versions', '1=1' );
 
 		return array(
 			array(
 				'label'  => __( 'Required policy profiles', 'vcns-security-automation-manager' ),
 				'value'  => sprintf(
-					/* translators: %d: policy profile count */
-					__( '%d of 4 expected surfaces are present', 'vcns-security-automation-manager' ),
-					$profile_count
+					/* translators: 1: policy profile count, 2: number of CSP surfaces expected */
+					__( '%1$d of %2$d expected surfaces are present', 'vcns-security-automation-manager' ),
+					$profile_count,
+					$expected_profiles
 				),
-				'status' => 4 === $profile_count ? 'pass' : 'fail',
+				'status' => $expected_profiles === $profile_count ? 'pass' : 'fail',
 			),
 			array(
 				'label'  => __( 'Policy version snapshots', 'vcns-security-automation-manager' ),
@@ -109,7 +114,7 @@ class Readiness_Checker {
 					__( '%d snapshot records found', 'vcns-security-automation-manager' ),
 					$version_count
 				),
-				'status' => $version_count >= 4 ? 'pass' : 'warning',
+				'status' => $version_count >= $expected_profiles ? 'pass' : 'warning',
 			),
 			array(
 				'label'  => __( 'Reporting endpoint', 'vcns-security-automation-manager' ),
@@ -177,7 +182,7 @@ class Readiness_Checker {
 		}
 
 		$modes = array();
-		foreach ( array( 'frontend', 'admin', 'login', 'api' ) as $surface ) {
+		foreach ( Csp_Surfaces::ALL as $surface ) {
 			$surface_config = $config[ $surface ] ?? array();
 			$modes[]        = $surface . ': ' . ( is_array( $surface_config ) ? ( $surface_config['mode'] ?? 'manual' ) : 'manual' );
 		}

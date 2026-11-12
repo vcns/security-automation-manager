@@ -20,13 +20,17 @@
  *   - media-src is discoverable from <audio> and <video> src attributes.
  *   - manifest-src is discoverable from <link rel="manifest"> href.
  *
- * Multi-surface crawl covers frontend, admin, login, and REST API URLs.
+ * Multi-surface crawl covers CSP's own surfaces (Csp_Surfaces::ALL) -- in
+ * practice the frontend and login URLs, since admin has no anonymous crawl
+ * target. The REST API is not crawled: it isn't a CSP surface, and a JSON
+ * response has no subresources to discover anyway.
  */
 
 declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+use WP_SAM\Intelligence\Same_Host_Fetcher;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -40,6 +44,13 @@ class Discovery {
 	private Feature_Gate $gate;
 	private Policy_Change_Manager $policy_changes;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log                  $audit          Audit log.
+	 * @param Feature_Gate               $gate           Feature gate.
+	 * @param Policy_Change_Manager|null $policy_changes Policy change manager, a new one is created when omitted.
+	 */
 	public function __construct( Audit_Log $audit, Feature_Gate $gate, ?Policy_Change_Manager $policy_changes = null ) {
 		$this->audit          = $audit;
 		$this->gate           = $gate;
@@ -60,7 +71,7 @@ class Discovery {
 		$surfaces = array( 'frontend' );
 
 		if ( $this->gate->is_allowed( 'multi_surface_scan' ) ) {
-			$surfaces = array( 'frontend', 'admin', 'login', 'api' );
+			$surfaces = Csp_Surfaces::ALL;
 		}
 
 		foreach ( $surfaces as $surface ) {
@@ -77,9 +88,16 @@ class Discovery {
 
 	/**
 	 * Discovers sources from a single URL and stores them.
+	 *
+	 * Uses Same_Host_Fetcher so a redirect away from this site (e.g. an IP
+	 * allow-list sending unrecognised addresses elsewhere) is reported --
+	 * without saying where it pointed -- rather than silently crawled as if
+	 * it were this site. A 401/403 is logged at info
+	 * only: it is almost always a firewall or login protection refusing an
+	 * anonymous request, not something wrong with this plugin or the site.
 	 */
 	public function crawl_url( string $url, string $surface ): array {
-		$response = wp_remote_get(
+		$response = ( new Same_Host_Fetcher() )->get(
 			$url,
 			array(
 				'timeout'    => 20,
@@ -87,6 +105,16 @@ class Discovery {
 				'sslverify'  => true,
 			)
 		);
+
+		if ( is_wp_error( $response ) && 'wp_sam_offsite_redirect' === $response->get_error_code() ) {
+			$data = (array) $response->get_error_data();
+			$code = (int) ( $data['code'] ?? 0 );
+			$this->audit->log( 'discovery', 'crawl_redirected_offsite', "{$url} redirected away from this site (HTTP {$code}), so this page was not crawled.", 'warning' );
+			return array(
+				'added'   => 0,
+				'updated' => 0,
+			);
+		}
 
 		if ( is_wp_error( $response ) ) {
 			$this->audit->log( 'discovery', 'crawl_failed', "Failed to fetch {$url}: " . $response->get_error_message(), 'warning' );
@@ -97,6 +125,13 @@ class Discovery {
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 401 === $code || 403 === $code ) {
+			$this->audit->log( 'discovery', 'crawl_blocked', "HTTP {$code} for {$url}: the request was refused, likely by a firewall or login protection, so this page was not crawled.", 'info' );
+			return array(
+				'added'   => 0,
+				'updated' => 0,
+			);
+		}
 		if ( $code < 200 || $code >= 400 ) {
 			$this->audit->log( 'discovery', 'crawl_http_error', "HTTP {$code} for {$url}.", 'warning' );
 			return array(
@@ -297,6 +332,13 @@ class Discovery {
 
 	// ── DB upsert ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Adds newly discovered sources to the inventory or refreshes the ones already known.
+	 *
+	 * @param array  $sources Discovered sources.
+	 * @param string $surface Surface slug.
+	 * @return array Counts of sources added and updated.
+	 */
 	private function upsert_sources( array $sources, string $surface ): array {
 		$added   = 0;
 		$updated = 0;
@@ -329,6 +371,14 @@ class Discovery {
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Resolves a URL found in a page and describes it as a policy source.
+	 *
+	 * @param string $raw_url   URL as found in the markup.
+	 * @param string $directive CSP directive it was found under.
+	 * @param string $base_url  Base URL used to resolve relative URLs.
+	 * @return array|null Source details, or null when the URL cannot be used.
+	 */
 	private function classify_url( string $raw_url, string $directive, string $base_url ): ?array {
 		$resolved = $this->resolve_url( $raw_url, $base_url );
 		if ( null === $resolved ) {
@@ -384,6 +434,12 @@ class Discovery {
 		return $base_dir . $raw_url;
 	}
 
+	/**
+	 * Checks whether a source is inline data (a data: or blob: URI).
+	 *
+	 * @param string $src Source value.
+	 * @return bool True for data: and blob: sources.
+	 */
 	private function is_inline_data( string $src ): bool {
 		return str_starts_with( $src, 'data:' ) || str_starts_with( $src, 'blob:' );
 	}
@@ -393,7 +449,7 @@ class Discovery {
 	 */
 	private function get_crawl_urls( string $surface ): array {
 		return match ( $surface ) {
-			'frontend' => array( get_home_url( '/' ) ),
+			'frontend' => array( home_url( '/' ) ),
 			// No admin_url() target: an anonymous wp_remote_get() to wp-admin
 			// never sees real admin content -- WordPress redirects a logged-out
 			// request to wp-login.php, which the 'login' surface already crawls
@@ -408,7 +464,6 @@ class Discovery {
 			// connect-src/worker-src.
 			'admin'    => array(),
 			'login'    => array( wp_login_url() ),
-			'api'      => array( rest_url() ),
 			default    => array(),
 		};
 	}

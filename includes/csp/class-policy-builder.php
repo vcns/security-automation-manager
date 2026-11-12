@@ -17,7 +17,8 @@
  *     BYPASS_CATALOG entry, since it's a scanner-flaggable keyword an admin
  *     must explicitly opt into per surface, same as any other entry -- CSP3
  *     §6.1.2 requires it before any approved hash takes effect in an
- *     attribute context.
+ *     attribute context, so until it's present those hashes are left out
+ *     of the header (and its byte budget) altogether.
  *   - Approved hosts from csp_source_inventory appended per directive.
  *   - report-uri appended automatically for direct browser reporting.
  *   - Reporting API headers and the report-to directive are optional because direct
@@ -233,11 +234,75 @@ class Policy_Builder extends Header_Builder {
 	);
 
 	/**
+	 * Translated label and risk note for one BYPASS_CATALOG entry.
+	 *
+	 * The catalog is a class constant, which cannot call __(), so the
+	 * user-facing English text lives here where the translation functions
+	 * can be extracted. The constant's own 'label' and 'risk_note' values
+	 * remain as the untranslated fallback for an unknown flag.
+	 *
+	 * @param string $flag A BYPASS_CATALOG key.
+	 * @return array{label: string, risk_note: string} Translated text, or the catalog's English text.
+	 */
+	public static function bypass_text( string $flag ): array {
+		$text = array(
+			'img_src_data'                  => array(
+				'label'     => __( 'Allow data: URIs for images', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline image data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'img_src_blob'                  => array(
+				'label'     => __( 'Allow blob: URIs for images', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: like data:, a blob: image source cannot execute as script -- common with canvas exports and client-side file/image previews.', 'vcns-security-automation-manager' ),
+			),
+			'font_src_data'                 => array(
+				'label'     => __( 'Allow data: URIs for fonts', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline font data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'media_src_data'                => array(
+				'label'     => __( 'Allow data: URIs for audio/video', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline audio/video data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'media_src_blob'                => array(
+				'label'     => __( 'Allow blob: URIs for audio/video', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: a blob: media source cannot execute as script -- common with streaming/adaptive-bitrate players built on the Media Source Extensions API.', 'vcns-security-automation-manager' ),
+			),
+			'style_src_attr_unsafe_hashes'  => array(
+				'label'     => __( 'Allow inline style attributes via hash approval (adds \'unsafe-hashes\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2); does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.', 'vcns-security-automation-manager' ),
+			),
+			'script_src_attr_unsafe_hashes' => array(
+				'label'     => __( 'Allow inline event handler attributes via hash approval (adds \'unsafe-hashes\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2), and only for that exact hashed value -- does not enable \'unsafe-inline\' or affect script-src/script-src-elem. Covers inline event handler attributes such as onclick=""; script-src-attr is otherwise \'none\' everywhere in this codebase.', 'vcns-security-automation-manager' ),
+			),
+			'script_src_wasm_unsafe_eval'   => array(
+				'label'     => __( 'Allow WebAssembly compilation (adds \'wasm-unsafe-eval\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: CSP3\'s \'wasm-unsafe-eval\' keyword permits only WebAssembly instantiation/compilation -- unlike \'unsafe-eval\', it does not permit eval(), new Function(), or any other string-to-JS execution path. Needed by some image/video-processing, PDF-rendering, or cryptography libraries compiled to WebAssembly.', 'vcns-security-automation-manager' ),
+			),
+			'worker_src_blob'               => array(
+				'label'     => __( 'Allow blob: URIs for workers', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Higher risk than the other entries here: unlike an image, font, or media source, a Worker constructed from a blob: URL does execute as JavaScript. Only enable this if a specific, identified library on this site genuinely constructs its worker from a blob (common with PDF.js and some video encoders, or bundler-generated workers) -- if nothing on the site does this, leave it off.', 'vcns-security-automation-manager' ),
+			),
+		);
+
+		if ( isset( $text[ $flag ] ) ) {
+			return $text[ $flag ];
+		}
+
+		$entry = self::BYPASS_CATALOG[ $flag ] ?? array();
+		return array(
+			'label'     => (string) ( $entry['label'] ?? '' ),
+			'risk_note' => (string) ( $entry['risk_note'] ?? '' ),
+		);
+	}
+
+	/**
 	 * Hard byte budget for the cumulative worst-case cost of approved
 	 * hashes appended to the header. script-src/style-src hashes count
 	 * twice (once for the base directive, once for its -elem counterpart
 	 * -- see the hash-append loop in build_policy_string()); style-src-attr
-	 * hashes count once. Exists purely as a safety net against unbounded
+	 * hashes count once, and only on a surface whose style-src-attr carries
+	 * 'unsafe-hashes' -- otherwise they're inert and never emitted at all.
+	 * Exists purely as a safety net against unbounded
 	 * csp_hash_inventory growth: a runaway hash-learning bug (an inline
 	 * script whose content varies every request, never matching
 	 * Hash_Manager's exact-content dedup) can otherwise grow the emitted
@@ -294,11 +359,53 @@ class Policy_Builder extends Header_Builder {
 
 	// ── Header emission ───────────────────────────────────────────────────────
 
+	/**
+	 * Header_Builder's send_headers/login_init/wp_redirect hooks never reach
+	 * an ordinary wp-admin page: WordPress fires send_headers only from
+	 * WP::main(), the frontend pipeline, which wp-admin never runs. So the
+	 * admin surface's policy was never sent, and its "no violations" meant
+	 * nothing. admin_init fires on every admin page before any output.
+	 * CSP only, deliberately: the other header pillars also skip wp-admin,
+	 * and some of them (X-Frame-Options, COOP/COEP) can break admin
+	 * features, so extending them there is a separate decision.
+	 */
+	public function register(): void {
+		parent::register();
+		add_action( 'admin_init', array( $this, 'emit_admin_header' ), 1 );
+	}
+
+	/**
+	 * admin-ajax.php also fires admin_init; its responses are JSON or HTML
+	 * fragments that never render as a page, so building a policy for each
+	 * one would be pure overhead.
+	 */
+	public function emit_admin_header(): void {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+		$this->emit_header();
+	}
+
 	protected function is_profile_active( array $profile ): bool {
 		return 'disabled' !== $profile['mode'];
 	}
 
+	/**
+	 * Builds a profile's policy and sends it as a response header.
+	 *
+	 * @param array  $profile Policy profile row.
+	 * @param string $surface Surface slug.
+	 * @return bool True when a header was sent.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
+		// REST responses are JSON: they load nothing a policy could govern,
+		// and WordPress serves them during parse_request, before
+		// send_headers, so this surface's learned policy never applied.
+		// Rest_Csp_Header sends a fixed lock-down policy on them instead.
+		if ( 'api' === $surface ) {
+			return false;
+		}
+
 		$policy = $this->build_policy_string( $profile, $surface );
 		if ( empty( $policy ) ) {
 			return false;
@@ -310,11 +417,23 @@ class Policy_Builder extends Header_Builder {
 		// Declare the Reporting API endpoint only when explicitly enabled. The default
 		// direct report-uri path is intentionally quicker and easier to observe.
 		if ( $this->uses_reporting_api() ) {
-			Reporting_Endpoint::emit_headers();
+			foreach ( Reporting_Endpoint::header_lines( $surface ) as $line ) {
+				$this->send_header( $line );
+			}
 		}
 
-		header( $header_name . ': ' . $policy );
+		$this->send_header( $header_name . ': ' . $policy );
+		Csp_Delivery_Log::record_sent( $surface );
 		return true;
+	}
+
+	/**
+	 * The one place this class calls header(). header() output can't be
+	 * observed from the CLI SAPI PHPUnit runs under, so tests override
+	 * this to capture exactly what a request would have been sent.
+	 */
+	protected function send_header( string $line ): void {
+		header( $line );
 	}
 
 	public function get_policy_header_name( bool $is_report_only ): string {
@@ -326,6 +445,12 @@ class Policy_Builder extends Header_Builder {
 		return $is_report_only ? self::DEFAULT_REPORT_ONLY_HEADER : self::DEFAULT_ENFORCE_HEADER;
 	}
 
+	/**
+	 * Validates a reporting transport value.
+	 *
+	 * @param mixed $transport Stored or submitted value.
+	 * @return string A known transport, falling back to both.
+	 */
 	public static function sanitize_reporting_transport( mixed $transport ): string {
 		$transport = (string) $transport;
 		if ( in_array( $transport, self::get_reporting_transport_options(), true ) ) {
@@ -340,6 +465,11 @@ class Policy_Builder extends Header_Builder {
 		return self::REPORTING_TRANSPORT_BOTH;
 	}
 
+	/**
+	 * Lists the allowed reporting transports.
+	 *
+	 * @return array Transport keys.
+	 */
 	public static function get_reporting_transport_options(): array {
 		return array(
 			self::REPORTING_TRANSPORT_DIRECT,
@@ -348,6 +478,11 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
+	/**
+	 * Checks whether the configured transport includes the Reporting API.
+	 *
+	 * @return bool True for the api and both transports.
+	 */
 	private function uses_reporting_api(): bool {
 		return in_array(
 			$this->get_reporting_transport(),
@@ -356,12 +491,24 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
+	/**
+	 * Returns the configured reporting transport.
+	 *
+	 * @return string Transport key.
+	 */
 	private function get_reporting_transport(): string {
 		return self::sanitize_reporting_transport( get_option( 'wp_sam_reporting_transport', self::REPORTING_TRANSPORT_BOTH ) );
 	}
 
 	// ── Policy assembly ───────────────────────────────────────────────────────
 
+	/**
+	 * Builds the CSP header value for a profile.
+	 *
+	 * @param array  $profile Policy profile row.
+	 * @param string $surface Surface slug.
+	 * @return string Header value, or an empty string when the profile cannot be built.
+	 */
 	public function build_policy_string( array $profile, string $surface ): string {
 		$nonce      = Plugin_Nonce_Manager::get_instance_nonce();
 		$directives = json_decode( $profile['directives'], true );
@@ -412,10 +559,21 @@ class Policy_Builder extends Header_Builder {
 		//
 		// Directives already scoped to attribute context (style-src-attr) apply
 		// only to themselves -- there is no "style-src-attr-elem" counterpart.
-		// Note: a hash recorded under style-src-attr has no effect unless the
-		// admin has also enabled the style_src_attr_unsafe_hashes bypass entry
-		// below (CSP3 §6.1.2) -- captured hashes sit inert until then, same as
-		// they did before any hash-capture support existed.
+		// Note: a hash recorded under style-src-attr has no effect unless that
+		// directive also carries 'unsafe-hashes' (CSP3 §6.1.2) -- in practice
+		// the admin enabling the style_src_attr_unsafe_hashes bypass entry
+		// below, or an override. Until then such a token matches nothing, so
+		// it's left out of the header entirely rather than spending the byte
+		// budget that element hashes (a real inline <script>) need. The
+		// inventory row itself is untouched and is emitted again as soon as
+		// the surface opts in. Leaving it out never loosens the policy: an
+		// attribute directive still always carries EMPTY_CONTENT_HASH_TOKEN
+		// (below), so it never ends up empty, and any 'unsafe-inline' on it
+		// stays neutralised by that hash source exactly as before.
+		$enabled_bypass_flags = json_decode( (string) ( $profile['bypass_flags'] ?? '' ), true );
+		$enabled_bypass_flags = is_array( $enabled_bypass_flags ) ? $enabled_bypass_flags : array();
+		$attr_hashes_apply    = array();
+
 		$hashes            = $this->load_approved_hashes( $surface );
 		$hash_budget_bytes = (int) apply_filters( 'wp_sam_max_hash_token_budget_bytes', self::MAX_HASH_TOKEN_BUDGET_BYTES, $surface );
 		$hash_bytes_used   = 0;
@@ -424,9 +582,17 @@ class Policy_Builder extends Header_Builder {
 		foreach ( $hashes as $hash ) {
 			$hash_token = "'{$hash['hash_algo']}-{$hash['hash_value']}'";
 			$base_dir   = $hash['directive'];
-			$targets    = str_ends_with( $base_dir, '-attr' )
+			$is_attr    = str_ends_with( $base_dir, '-attr' );
+			$targets    = $is_attr
 				? array( $base_dir )
 				: array( $base_dir, $base_dir . '-elem' );
+
+			if ( $is_attr ) {
+				$attr_hashes_apply[ $base_dir ] ??= $this->directive_will_have_unsafe_hashes( $directives, $base_dir, $enabled_bypass_flags );
+				if ( ! $attr_hashes_apply[ $base_dir ] ) {
+					continue;
+				}
+			}
 
 			// Worst-case byte cost of admitting this hash: the token is
 			// appended once per target directive (twice for script-src/
@@ -451,6 +617,7 @@ class Policy_Builder extends Header_Builder {
 		}
 
 		if ( $hashes_dropped > 0 ) {
+			Csp_Delivery_Log::record_trimmed( $surface );
 			$this->log_once_per_hour(
 				$surface,
 				'hash_budget_exceeded',
@@ -527,8 +694,7 @@ class Policy_Builder extends Header_Builder {
 		// BYPASS_CATALOG's docblock: entries span low through high risk,
 		// but every one is individually reasoned about and requires this
 		// explicit per-surface opt-in -- nothing here is ever automatic.
-		$enabled_bypass_flags = json_decode( (string) ( $profile['bypass_flags'] ?? '' ), true );
-		$enabled_bypass_flags = is_array( $enabled_bypass_flags ) ? $enabled_bypass_flags : array();
+		// $enabled_bypass_flags is decoded above, before the hash loop.
 		foreach ( self::BYPASS_CATALOG as $flag => $entry ) {
 			if ( ! in_array( $flag, $enabled_bypass_flags, true ) ) {
 				continue;
@@ -589,7 +755,7 @@ class Policy_Builder extends Header_Builder {
 		// browsers ignore report-uri when report-to is present, which delays learning.
 		$reporting_transport = $this->get_reporting_transport();
 		if ( self::REPORTING_TRANSPORT_API !== $reporting_transport ) {
-			$directives['report-uri'] = array( Reporting_Endpoint::url() );
+			$directives['report-uri'] = array( Reporting_Endpoint::url_for_surface( $surface ) );
 		}
 		if ( in_array( $reporting_transport, array( self::REPORTING_TRANSPORT_API, self::REPORTING_TRANSPORT_BOTH ), true ) ) {
 			$directives['report-to'] = array( Reporting_Endpoint::GROUP_NAME );
@@ -663,6 +829,12 @@ class Policy_Builder extends Header_Builder {
 		$this->audit->log( $component, $event, $detail, $severity );
 	}
 
+	/**
+	 * Removes 'none' from any directive that also lists other sources.
+	 *
+	 * @param array $directives Directives keyed by name.
+	 * @return array Cleaned directives.
+	 */
 	private function normalize_none_sources( array $directives ): array {
 		foreach ( $directives as $directive => $sources_list ) {
 			if ( ! is_array( $sources_list ) || count( array_filter( $sources_list ) ) < 2 ) {
@@ -684,6 +856,33 @@ class Policy_Builder extends Header_Builder {
 		return $directives;
 	}
 
+	/**
+	 * Whether $directive will carry 'unsafe-hashes' in the emitted policy:
+	 * already present in the profile/override source list (keywords match
+	 * case-insensitively), or added later in build_policy_string() by an
+	 * enabled BYPASS_CATALOG entry for that directive. Only when it will do
+	 * attribute-context hashes for that directive take effect (CSP3 §6.1.2).
+	 */
+	private function directive_will_have_unsafe_hashes( array $directives, string $directive, array $enabled_bypass_flags ): bool {
+		if ( ! isset( $directives[ $directive ] ) || ! is_array( $directives[ $directive ] ) ) {
+			return false;
+		}
+
+		foreach ( $directives[ $directive ] as $source ) {
+			if ( is_string( $source ) && 0 === strcasecmp( trim( $source ), "'unsafe-hashes'" ) ) {
+				return true;
+			}
+		}
+
+		foreach ( self::BYPASS_CATALOG as $flag => $entry ) {
+			if ( $directive === $entry['directive'] && "'unsafe-hashes'" === $entry['token'] && in_array( $flag, $enabled_bypass_flags, true ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	// ── Policy input (delegated to $data_loader; see class docblock and
 	// Policy_Data_Loader's own for why this is the sole seam) ───────────────
 
@@ -697,10 +896,22 @@ class Policy_Builder extends Header_Builder {
 		return $this->data_loader->load_profile( $surface );
 	}
 
+	/**
+	 * Loads the approved hashes for a surface from the data loader.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Approved hashes.
+	 */
 	private function load_approved_hashes( string $surface ): array {
 		return $this->data_loader->load_approved_hashes( $surface );
 	}
 
+	/**
+	 * Loads the approved sources for a surface from the data loader.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Approved sources.
+	 */
 	private function load_approved_sources( string $surface ): array {
 		return $this->data_loader->load_approved_sources( $surface );
 	}

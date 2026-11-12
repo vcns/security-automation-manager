@@ -107,6 +107,39 @@ class ActivatorTest extends TestCase {
 		$this->assertTrue( $fired );
 	}
 
+	public function test_activate_holds_an_enforcing_admin_csp_profile_at_report_only_once(): void {
+		$GLOBALS['_wpdb_update_result'] = 1;
+
+		Activator::activate();
+
+		$held = $this->admin_hold_updates();
+		$this->assertCount( 1, $held );
+		$this->assertSame( 'report-only', $held[0]['data']['mode'] );
+		$this->assertTrue( get_option( 'wp_sam_admin_csp_held_v47' ) );
+		$this->assertContains(
+			'admin_csp_held_report_only',
+			array_column( (array) get_option( 'wp_sam_admin_notices', array() ), 'event' )
+		);
+	}
+
+	public function test_the_admin_csp_hold_never_runs_again_after_it_has_run(): void {
+		update_option( 'wp_sam_admin_csp_held_v47', true );
+
+		Activator::activate();
+
+		$this->assertSame( array(), $this->admin_hold_updates() );
+	}
+
+	/** @return array<int, array<string, mixed>> */
+	private function admin_hold_updates(): array {
+		return array_values(
+			array_filter(
+				$GLOBALS['_wpdb_updated_rows'] ?? array(),
+				static fn ( array $row ): bool => array( 'surface' => 'admin', 'mode' => 'enforce' ) === $row['where']
+			)
+		);
+	}
+
 	public function test_activate_seeds_enforce_gate_violation_window_option(): void {
 		Activator::activate();
 

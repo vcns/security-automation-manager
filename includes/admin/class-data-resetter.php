@@ -8,6 +8,7 @@ declare( strict_types=1 );
 namespace WP_SAM\Admin;
 
 use WP_SAM\Activator;
+use WP_SAM\Security\Pinned_Dependency_Checker;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -52,10 +53,15 @@ class Data_Resetter {
 			delete_transient( $transient );
 		}
 
-		if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
-			wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
-		} elseif ( function_exists( 'wp_unschedule_hook' ) ) {
-			wp_unschedule_hook( 'wp_sam_daily_scan' );
+		// The pinned-hash check is cleared too: the inventory it reads was
+		// just emptied, and Pinned_Dependency_Checker::register()
+		// re-schedules it on the next request anyway.
+		foreach ( array( 'wp_sam_daily_scan', Pinned_Dependency_Checker::CHECK_HOOK ) as $hook ) {
+			if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
+				wp_clear_scheduled_hook( $hook );
+			} elseif ( function_exists( 'wp_unschedule_hook' ) ) {
+				wp_unschedule_hook( $hook );
+			}
 		}
 
 		Activator::activate();

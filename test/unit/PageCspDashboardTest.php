@@ -277,7 +277,159 @@ class PageCspDashboardTest extends TestCase {
 		$this->assertStringContainsString( 'csp_policy_profiles', $queried );
 	}
 
+	// ── CSP surfaces only (Csp_Surfaces) ────────────────────────────────────────
+	//
+	// The REST API isn't a CSP surface: WordPress answers a REST request
+	// before send_headers fires, so no CSP is ever sent there, and JSON
+	// loads no subresources. An older install's 'api' rows stay in CSP's
+	// tables, but no tab offers, lists, or counts them.
+
+	public function test_start_here_describes_three_surfaces_without_the_rest_api(): void {
+		$_GET['tab'] = 'start-here';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'three surfaces: the public frontend, wp-admin, and the login screen.', $output );
+		$this->assertStringNotContainsString( 'REST API', $output );
+	}
+
+	public function test_profiles_tab_never_renders_a_stale_api_profile_row(): void {
+		// A rendered row's automation dropdown needs the free modes registered
+		// (idempotent; other tests may already have done it).
+		\WP_SAM\CSP\Automation_Mode_Registry::register_defaults();
+		$_GET['tab'] = 'profiles';
+		// Profiles are loaded before the conflict-notices banner query.
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array( $this->profile_row( 'api' ), $this->profile_row( 'frontend' ) ),
+			array(),
+			array(),
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'data-surface="frontend"', $output );
+		$this->assertStringNotContainsString( 'data-surface="api"', $output );
+		$this->assertStringNotContainsString( 'wp-sam-automation-mode-api', $output );
+	}
+
+	public function test_policy_audit_tab_has_one_row_per_csp_surface_and_none_for_api(): void {
+		$_GET['tab'] = 'policy-audit';
+		$GLOBALS['_wpdb_get_results_queue'] = array( array( $this->profile_row( 'api' ) ), array() );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		foreach ( array( 'Frontend', 'Admin', 'Login' ) as $label ) {
+			$this->assertStringContainsString( "<strong>{$label}</strong>", $output );
+		}
+		$this->assertStringNotContainsString( '<strong>Api</strong>', $output );
+	}
+
+	public function test_sources_tab_offers_and_lists_only_csp_surfaces(): void {
+		$_GET['tab']              = 'sources';
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( '<option value="frontend"', $output );
+		$this->assertStringNotContainsString( '<option value="api"', $output );
+		$this->assertStringContainsString(
+			"csp_source_inventory WHERE 1=1 AND surface IN ('frontend','admin','login')",
+			implode( "
+", $GLOBALS['_wpdb_get_results_log'] )
+		);
+	}
+
+	public function test_violations_tab_offers_and_lists_only_csp_surfaces(): void {
+		$_GET['tab']              = 'violations';
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( '<option value="frontend"', $output );
+		$this->assertStringNotContainsString( '<option value="api"', $output );
+		$this->assertStringContainsString(
+			"csp_violation_reports WHERE 1=1 AND profile_surface IN ('frontend','admin','login')",
+			implode( "
+", $GLOBALS['_wpdb_get_results_log'] )
+		);
+	}
+
+	public function test_violations_tab_summarises_each_csp_surface_separately(): void {
+		$_GET['tab']              = 'violations';
+		$GLOBALS['_wpdb_get_var'] = 0;
+		$GLOBALS['_wp_options']['wp_sam_csp_delivery_admin'] = array(
+			'first_sent'     => time() - DAY_IN_SECONDS,
+			'last_sent'      => time() - 60,
+			'last_throttled' => time() - 120,
+		);
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( 'wp-sam-violations-by-surface', $output );
+		$this->assertStringContainsString( 'v_surface=admin', $output );
+		$this->assertStringContainsString( 'v_surface=login', $output );
+		$this->assertStringContainsString( 'refused by the endpoint', $output );
+		$this->assertStringContainsString( 'No policy has been sent on this surface yet', $output );
+		$this->assertStringContainsString(
+			"GROUP BY profile_surface",
+			implode( "\n", $GLOBALS['_wpdb_get_results_log'] )
+		);
+	}
+
+	public function test_policy_changes_tab_offers_and_lists_only_csp_surfaces(): void {
+		$_GET['tab'] = 'policy-changes';
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-csp-dashboard.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'] );
+
+		$this->assertStringContainsString( '<option value="frontend"', $output );
+		$this->assertStringNotContainsString( '<option value="api"', $output );
+		$this->assertStringContainsString(
+			"sam_policy_change_decisions WHERE 1=1 AND surface IN ('frontend','admin','login')",
+			implode( "
+", $GLOBALS['_wpdb_get_results_log'] )
+		);
+	}
+
 	// ── Fixtures ─────────────────────────────────────────────────────────────────
+
+	/** @return array<string, mixed> a csp_policy_profiles row */
+	private function profile_row( string $surface ): array {
+		return array(
+			'surface'       => $surface,
+			'mode'          => 'report-only',
+			'trusted_types' => 0,
+			'bypass_flags'  => '[]',
+			'updated_at'    => '2026-01-01 00:00:00',
+		);
+	}
 
 	/** @return array<int, array<int, mixed>> placeholder rows for the page's one unconditional top-of-file query (conflict notices). */
 	private function leading_top_level_queries(): array {

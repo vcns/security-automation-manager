@@ -21,10 +21,20 @@ class Provider_Joker extends Dns_Provider {
 
 	private const API = 'https://svc.joker.com/nic/replace';
 
+	/**
+	 * Returns the display name of the Joker.com provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Joker.com';
 	}
 
+	/**
+	 * Describes the credentials the Joker.com provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'zone'     => array(
@@ -41,15 +51,37 @@ class Provider_Joker extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Joker.com API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$this->replace( $fqdn, $value );
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Joker.com API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		// Joker's replace endpoint clears the label when given an empty value.
 		$this->replace( $fqdn, '' );
 	}
 
+	/**
+	 * Replaces the zone's TXT record for the challenge with a value.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function replace( string $fqdn, string $value ): void {
 		$zone  = rtrim( trim( $this->credential( 'zone' ) ), '.' );
 		$label = $fqdn === $zone ? '_acme-challenge' : $this->relative_name( $fqdn, $zone );

@@ -7,8 +7,8 @@
  *
  * Replaces the view-local $simple_pillars array that used to live in
  * page-overview.php -- that array had already drifted from reality once
- * (Activator::seed_default_pillar_profiles() and the Overview table
- * disagreed about which pillars exist). Content Security Policy and
+ * (Activator::seed_default_pillar_profiles() and the per-pillar table, now
+ * on the Settings page's All tab, disagreed about which pillars exist). Content Security Policy and
  * Certificates are deliberately NOT registered here: each has its own
  * storage shape (CSP: csp_policy_profiles plus an automation axis;
  * Certificates: site-wide, not per-surface, natural-language status) that

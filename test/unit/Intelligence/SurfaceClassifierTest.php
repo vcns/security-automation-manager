@@ -7,6 +7,7 @@ declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Intelligence\Surface_Classifier;
+use WP_SAM\Security\Conflict_Probe_Token;
 use WP_SAM\Security\Request_Surface;
 
 class SurfaceClassifierTest extends TestCase {
@@ -84,13 +85,28 @@ class SurfaceClassifierTest extends TestCase {
 
 	// ── is_conflict_probe_request() ─────────────────────────────────────────
 
-	public function test_is_conflict_probe_request_recognises_the_shared_header_name(): void {
+	public function test_is_conflict_probe_request_recognises_a_live_token_in_the_shared_header(): void {
 		$server_key = 'HTTP_' . strtoupper( str_replace( '-', '_', Request_Surface::CONFLICT_PROBE_HEADER ) );
+		$token      = Conflict_Probe_Token::issue();
 
-		$_SERVER[ $server_key ] = '1';
+		$_SERVER[ $server_key ] = $token;
 		$this->assertTrue( Surface_Classifier::is_conflict_probe_request() );
+
+		Conflict_Probe_Token::revoke( $token );
+		$this->assertFalse( Surface_Classifier::is_conflict_probe_request() );
 
 		unset( $_SERVER[ $server_key ] );
 		$this->assertFalse( Surface_Classifier::is_conflict_probe_request() );
+	}
+
+	public function test_the_header_alone_no_longer_exempts_a_request(): void {
+		// Regression: the header used to carry a fixed '1', so any client
+		// could send it to skip Traffic Guard and every detector.
+		$server_key = 'HTTP_' . strtoupper( str_replace( '-', '_', Request_Surface::CONFLICT_PROBE_HEADER ) );
+
+		$_SERVER[ $server_key ] = '1';
+		$this->assertFalse( Surface_Classifier::is_conflict_probe_request() );
+
+		unset( $_SERVER[ $server_key ] );
 	}
 }

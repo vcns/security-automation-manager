@@ -229,6 +229,12 @@ class Rollback_Guard {
 		);
 	}
 
+	/**
+	 * Deletes the oldest snapshots beyond MAX_SNAPSHOTS.
+	 *
+	 * @param string $snapshot_table Full name of the snapshot table.
+	 * @return void
+	 */
 	private static function prune_old_snapshots( string $snapshot_table ): void {
 		global $wpdb;
 
@@ -450,6 +456,12 @@ class Rollback_Guard {
 		);
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name, including the prefix.
+	 * @return bool True when the table exists.
+	 */
 	private static function table_exists( string $table ): bool {
 		global $wpdb;
 

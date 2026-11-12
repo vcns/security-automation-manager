@@ -50,6 +50,29 @@ class PolicyChangeManagerTest extends TestCase {
 		$this->assertNotEmpty( $insert['data']['decision_fingerprint'] );
 	}
 
+	public function test_api_surface_is_never_proposed_because_it_is_not_a_csp_surface(): void {
+		// The single choke point for both CSP learning paths (Discovery and
+		// Violation_Reporter) -- see Csp_Surfaces for why 'api' is excluded.
+		$this->audit->expects( $this->never() )->method( 'log' );
+
+		$result = $this->manager->propose_source(
+			'api',
+			array(
+				'directive' => 'form-action',
+				'uri'       => 'https://example.com/wp-json/',
+				'scheme'    => 'https',
+				'host'      => 'example.com',
+			),
+			'discovery',
+			'crawl'
+		);
+
+		$this->assertSame( 'invalid', $result['status'] );
+		$this->assertSame( 0, $result['id'] );
+		$this->assertSame( array(), $GLOBALS['_wpdb_inserted_rows'] );
+		$this->assertSame( array(), $GLOBALS['_wpdb_updated_rows'] );
+	}
+
 	public function test_latest_rejection_suppresses_matching_future_candidate(): void {
 		$GLOBALS['_wpdb_get_row'] = array(
 			'action'             => 'rejected',

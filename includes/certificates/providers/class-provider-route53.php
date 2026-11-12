@@ -22,10 +22,20 @@ class Provider_Route53 extends Dns_Provider {
 	private const SERVICE = 'route53';
 	private const REGION  = 'us-east-1'; // Route 53 is a global service signed against us-east-1.
 
+	/**
+	 * Returns the display name of the AWS Route 53 provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'AWS Route 53';
 	}
 
+	/**
+	 * Describes the credentials the AWS Route 53 provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'access_key_id'     => array(
@@ -38,14 +48,36 @@ class Provider_Route53 extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the AWS Route 53 API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$this->change( $fqdn, $value, 'UPSERT' );
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the AWS Route 53 API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$this->change( $fqdn, $value, 'DELETE' );
 	}
 
+	/**
+	 * Submits a Route 53 change to the zone that holds a record name.
+	 *
+	 * @param string $fqdn   Full record name.
+	 * @param string $value  TXT value.
+	 * @param string $action Change action, UPSERT or DELETE.
+	 * @return void
+	 */
 	private function change( string $fqdn, string $value, string $action ): void {
 		$zone_id = $this->zone_id( $fqdn );
 
@@ -62,6 +94,13 @@ class Provider_Route53 extends Dns_Provider {
 		$this->signed_request( 'POST', "/2013-04-01/hostedzone/{$zone_id}/rrset/", '', $xml );
 	}
 
+	/**
+	 * Finds the Route 53 hosted zone id that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Hosted zone id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone_id( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			$body = $this->signed_request( 'GET', '/2013-04-01/hostedzonesbyname', 'dnsname=' . rawurlencode( $candidate . '.' ) . '&maxitems=1' );

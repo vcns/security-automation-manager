@@ -72,6 +72,9 @@ $wp_sam_options = array(
 	'wp_sam_acme_http_tokens',
 	'wp_sam_cert_last_run',
 	'wp_sam_update_diagnostics',
+	'wp_sam_own_addresses',
+	'wp_sam_site_country',
+	'wp_sam_well_known_files',
 );
 
 // Extension-owned option names (e.g. a paid automation mode's own
@@ -90,3 +93,4 @@ delete_transient( 'wp_sam_conflict_probe_ran' );
 wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
 wp_clear_scheduled_hook( 'wp_sam_cert_issue' );
 wp_clear_scheduled_hook( 'wp_sam_cert_renewal_check' );
+wp_clear_scheduled_hook( 'wp_sam_dependency_hash_check' );

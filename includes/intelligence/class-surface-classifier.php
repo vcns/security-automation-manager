@@ -14,6 +14,7 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Intelligence;
 
+use WP_SAM\Security\Conflict_Probe_Token;
 use WP_SAM\Security\Request_Surface;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,12 +28,17 @@ final class Surface_Classifier {
 	 * Request_Surface::CONFLICT_PROBE_HEADER to see what security headers
 	 * other plugins/web-server config are already sending, without this
 	 * plugin's own header (or, here, its own request-observation) masking
-	 * the result.
+	 * the result. Only a live Conflict_Probe_Token counts: the header alone
+	 * proves nothing, since any client can send it.
 	 */
 	public static function is_conflict_probe_request(): bool {
 		$server_key = 'HTTP_' . strtoupper( str_replace( '-', '_', Request_Surface::CONFLICT_PROBE_HEADER ) );
 
-		return isset( $_SERVER[ $server_key ] ) && '1' === (string) $_SERVER[ $server_key ];
+		if ( ! isset( $_SERVER[ $server_key ] ) ) {
+			return false;
+		}
+
+		return Conflict_Probe_Token::is_valid( (string) $_SERVER[ $server_key ] );
 	}
 
 	// ── Surface detection ─────────────────────────────────────────────────────

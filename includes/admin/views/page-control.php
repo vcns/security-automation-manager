@@ -76,8 +76,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<p class="description"><?php esc_html_e( 'The full status table for every browser security policy and transport/certificate control this plugin manages, grouped by protection layer.', 'vcns-security-automation-manager' ); ?></p>
 				</td>
 				<td class="wp-sam-col-actions">
-					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager' ) ); ?>">
-						<?php esc_html_e( 'View Settings', 'vcns-security-automation-manager' ); ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=all' ) ); ?>">
+						<?php esc_html_e( 'View Settings → All', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>
@@ -89,6 +89,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<td class="wp-sam-col-actions">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-certificates&tab=renew' ) ); ?>">
 						<?php esc_html_e( 'Manage Certificates', 'vcns-security-automation-manager' ); ?>
+					</a>
+				</td>
+			</tr>
+			<tr>
+				<td class="wp-sam-col-primary">
+					<strong><?php esc_html_e( 'Honey Paths', 'vcns-security-automation-manager' ); ?></strong>
+					<p class="description"><?php esc_html_e( 'Decoy paths no legitimate visitor ever requests; any request to one is recorded as a probe. Off until you add one.', 'vcns-security-automation-manager' ); ?></p>
+				</td>
+				<td class="wp-sam-col-actions">
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-advanced&tab=honeypaths' ) ); ?>">
+						<?php esc_html_e( 'Manage Honey Paths', 'vcns-security-automation-manager' ); ?>
 					</a>
 				</td>
 			</tr>

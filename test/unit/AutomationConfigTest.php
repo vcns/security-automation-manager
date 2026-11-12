@@ -94,6 +94,36 @@ class AutomationConfigTest extends TestCase {
 		$this->assertSame( Automation_Config::MODE_MANUAL, $config['login']['mode'] );
 	}
 
+	/**
+	 * A config saved by an older release still carries an 'api' key. 'api'
+	 * isn't a CSP surface any more (Csp_Surfaces), so that key is never
+	 * surfaced, can't be written to, and doesn't disturb the real surfaces.
+	 */
+	public function test_a_stored_api_surface_config_is_ignored(): void {
+		update_option(
+			'wp_sam_automation_config',
+			array(
+				'frontend' => array( 'mode' => Automation_Config::MODE_MANUAL ),
+				'api'      => array( 'mode' => Automation_Config::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL ),
+			)
+		);
+		$automation = new Automation_Config();
+
+		$config = $automation->all();
+		$this->assertSame( array( 'frontend', 'admin', 'login' ), array_keys( $config ) );
+		$this->assertSame( Automation_Config::MODE_MANUAL, $config['frontend']['mode'] );
+
+		$this->assertSame( Automation_Config::DEFAULT_SURFACE_CONFIG, $automation->for_surface( 'api' ) );
+
+		$after_update = $automation->update_surface_mode( 'api', Automation_Config::MODE_MANUAL );
+		$this->assertArrayNotHasKey( 'api', $after_update );
+		$this->assertSame(
+			Automation_Config::MODE_AUTOMATIC_MEDIUM_HIGH_APPROVAL,
+			get_option( 'wp_sam_automation_config' )['api']['mode'],
+			'A rejected surface must not trigger a write that rewrites the stored option.'
+		);
+	}
+
 	// ── Paid-mode gating (generic -- not specific to any one paid mode) ──────
 
 	/**

@@ -1,7 +1,7 @@
 <?php
 /**
- * Renders the small coloured status badge used by the Settings/Overview
- * table's Layer 4/Layer 5 pillar rows -- modeled directly on Risk_Badge
+ * Renders the small coloured status badge used by the Settings → All
+ * tab's Layer 4/Layer 5 pillar rows -- modeled directly on Risk_Badge
  * (same forgiving-unrecognised-input contract, same .wp-sam-meta-popover
  * hover/focus tooltip mechanism).
  *

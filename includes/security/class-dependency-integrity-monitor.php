@@ -17,6 +17,11 @@
  * only ever come from the site owner's own markup -- so reading it back off
  * this site's own response introduces no third-party trust problem.
  *
+ * What this cannot see is a vendor changing a pinned file in place: the
+ * markup's integrity attribute and expected_sri still agree, so this check
+ * passes while browsers refuse the new content. Pinned_Dependency_Checker
+ * covers that case by re-hashing the file itself.
+ *
  * Scoped to the frontend surface only, matching Conflict_Detector's daily
  * probe: admin/login/api don't have a single representative URL that can be
  * fetched anonymously the way the homepage can.
@@ -26,6 +31,7 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Security;
 
+use WP_SAM\Intelligence\Same_Host_Fetcher;
 use WP_SAM\Modules\Audit_Log;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -73,6 +79,13 @@ class Dependency_Integrity_Monitor {
 	 * for this surface -- the common case for most installs, where this
 	 * pillar is disabled or every origin is mutable_provider/unclassified.
 	 *
+	 * Fetches through Same_Host_Fetcher: a plain wp_remote_get() follows a
+	 * redirect anywhere, so an IP allow-list sending this server's own
+	 * request elsewhere would have this compare some other site's markup
+	 * against this site's pinned hashes. A redirect away from this site is
+	 * logged instead (without saying where it pointed) and nothing is
+	 * compared.
+	 *
 	 * @return array<int,array{origin:string,resource_type:string}> Mismatches found.
 	 */
 	public function scan_surface( string $surface, string $url ): array {
@@ -81,19 +94,8 @@ class Dependency_Integrity_Monitor {
 			return array();
 		}
 
-		$response = wp_remote_get(
-			$url,
-			array(
-				'timeout'   => 10,
-				'sslverify' => true,
-			)
-		);
-		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
-			return array();
-		}
-
-		$body = wp_remote_retrieve_body( $response );
-		if ( '' === $body ) {
+		$body = $this->fetch_page( $url );
+		if ( null === $body ) {
 			return array();
 		}
 
@@ -136,7 +138,7 @@ class Dependency_Integrity_Monitor {
 					'dependency_integrity_monitor',
 					'sri_mismatch',
 					sprintf(
-						"Pinned SRI hash for '%s' (%s, %s surface) no longer matches what the live page serves -- %s Review and update the pinned hash on the External Scripts page, or the enforcing element will be removed on the next real page load with enforce mode active.",
+						"Pinned SRI hash for '%s' (%s, %s surface) no longer matches what the live page serves -- %s Review and update the pinned hash under Decide → Dependency Classification, or the enforcing element will be removed on the next real page load with enforce mode active.",
 						$origin,
 						$resource_type,
 						$surface,
@@ -155,6 +157,33 @@ class Dependency_Integrity_Monitor {
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
+
+	/** The page's HTML, or null when it can't be read -- logging a redirect away from this site. */
+	private function fetch_page( string $url ): ?string {
+		$response = ( new Same_Host_Fetcher() )->get(
+			$url,
+			array(
+				'timeout'   => 10,
+				'sslverify' => true,
+			)
+		);
+		if ( is_wp_error( $response ) && 'wp_sam_offsite_redirect' === $response->get_error_code() ) {
+			$code = (int) ( ( (array) $response->get_error_data() )['code'] ?? 0 );
+			$this->audit->log(
+				'dependency_integrity_monitor',
+				'scan_redirected_offsite',
+				"{$url} redirected away from this site (HTTP {$code}), so pinned script hashes were not checked.",
+				'warning'
+			);
+			return null;
+		}
+		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			return null;
+		}
+
+		$body = wp_remote_retrieve_body( $response );
+		return '' === $body ? null : $body;
+	}
 
 	/**
 	 * @return array<string,string> expected_sri keyed by "resource_type:origin", for

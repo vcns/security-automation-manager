@@ -159,6 +159,13 @@ class Certificate_Store {
 		);
 	}
 
+	/**
+	 * Stores the account URL (key id) for an environment's ACME account.
+	 *
+	 * @param string $environment Environment, staging or production.
+	 * @param string $kid         Account URL.
+	 * @return void
+	 */
 	public function save_account_kid( string $environment, string $kid ): void {
 		$accounts = get_option( self::ACCOUNT_KEY_OPTION, array() );
 		$accounts = is_array( $accounts ) ? $accounts : array();

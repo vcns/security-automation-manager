@@ -14,6 +14,8 @@ use WP_SAM\Admin\Table_Query;
 use WP_SAM\Admin\Policy_Events_Builder;
 use WP_SAM\Admin\Risk_Badge;
 use WP_SAM\Admin\Known_Source_Badge;
+use WP_SAM\CSP\Csp_Delivery_Log;
+use WP_SAM\CSP\Csp_Surfaces;
 
 global $wpdb;
 
@@ -68,9 +70,16 @@ $profiles = array();
 if ( in_array( $tab, array( 'profiles', 'policy-audit' ), true ) ) {
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	$profiles_raw = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface", ARRAY_A );
-	$profiles     = ! empty( $profiles_raw ) ? $profiles_raw : array();
+	// An older install still has an 'api' profile row; it's left in the
+	// table but never shown, since 'api' isn't a CSP surface (Csp_Surfaces).
+	$profiles = array_values(
+		array_filter(
+			! empty( $profiles_raw ) ? $profiles_raw : array(),
+			static fn( array $profile ): bool => in_array( (string) ( $profile['surface'] ?? '' ), Csp_Surfaces::ALL, true )
+		)
+	);
 }
-$surfaces          = array( 'frontend', 'admin', 'login', 'api' );
+$surfaces          = Csp_Surfaces::ALL;
 $automation_config = ( new \WP_SAM\CSP\Automation_Config() )->all();
 $automation_labels = \WP_SAM\CSP\Automation_Config::mode_labels();
 
@@ -188,7 +197,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 	<!-- ── Start Here tab ─────────────────────────────────────────────────── -->
 	<h2 class="title"><?php esc_html_e( 'What this plugin does', 'vcns-security-automation-manager' ); ?></h2>
 	<p class="description">
-		<?php esc_html_e( 'This plugin builds a Content-Security-Policy (CSP) for your site by watching what your site actually loads - scripts, styles, images, fonts, connections, and frames - and letting you decide which of those sources belong in the policy. It manages this separately for four surfaces: the public frontend, wp-admin, the login screen, and the REST API.', 'vcns-security-automation-manager' ); ?>
+		<?php esc_html_e( 'This plugin builds a Content-Security-Policy (CSP) for your site by watching what your site actually loads - scripts, styles, images, fonts, connections, and frames - and letting you decide which of those sources belong in the policy. It manages this separately for three surfaces: the public frontend, wp-admin, and the login screen.', 'vcns-security-automation-manager' ); ?>
 	</p>
 	<p class="description">
 		<?php esc_html_e( 'Nothing is blocked or enforced until you deliberately turn it on. The whole workflow below is designed so you can see exactly what a policy would do before it does it.', 'vcns-security-automation-manager' ); ?>
@@ -372,7 +381,8 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 					/>
 					<code><?php echo esc_html( $bypass_entry['directive'] . ': ' . $bypass_entry['token'] ); ?></code>
 					<?php
-					$bypass_note = $bypass_entry['label'] . ' ' . $bypass_entry['risk_note'];
+					$bypass_text = \WP_SAM\CSP\Policy_Builder::bypass_text( $bypass_flag );
+					$bypass_note = $bypass_text['label'] . ' ' . $bypass_text['risk_note'];
 					if ( $bypass_count > 0 ) {
 						$bypass_note .= ' ' . sprintf(
 							/* translators: %s: formatted violation occurrence count */
@@ -427,6 +437,9 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$src_args  = array();
 		foreach (
 			array(
+				// CSP's own surfaces only -- older 'api' rows stay in the table
+				// but are never listed (see Csp_Surfaces).
+				Table_Query::multi_select_where( 'surface', Csp_Surfaces::ALL ),
 				Table_Query::equals_where( 'surface', $src_surface ),
 				Table_Query::multi_select_where( 'approval_state', $src_state ),
 				Table_Query::multi_select_where( 'risk_level', $src_risk ),
@@ -1052,6 +1065,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$viol_args  = array();
 		foreach (
 			array(
+				Table_Query::multi_select_where( 'profile_surface', Csp_Surfaces::ALL ),
 				Table_Query::equals_where( 'profile_surface', $v_surface ),
 				Table_Query::like_where( $wpdb, 'violated_directive', $v_directive ),
 				Table_Query::like_where_any( $wpdb, array( 'blocked_host', 'blocked_uri' ), $v_blocked ),
@@ -1138,6 +1152,17 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		// upper bound open, matching current_time( 'mysql', true ) (UTC), the
 		// same basis reported_at is stored under -- so these line up with what's
 		// actually in the database regardless of the site's display timezone.
+		// Per-surface summary: admin and login reports are stored and
+		// counted separately from the frontend's, and a surface with no
+		// reports needs telling apart from one whose policy was never
+		// sent or whose reports the endpoint has been throttling.
+		$viol_by_surface = array();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Csp_Surfaces::sql_list() is a hard-coded constant list, not input.
+		$viol_surface_rows = $wpdb->get_results( "SELECT profile_surface, COUNT(*) AS distinct_count, MAX(last_reported_at) AS last_reported FROM {$wpdb->prefix}csp_violation_reports WHERE profile_surface IN (" . Csp_Surfaces::sql_list() . ') GROUP BY profile_surface', ARRAY_A );
+		foreach ( ! empty( $viol_surface_rows ) ? $viol_surface_rows : array() as $viol_surface_row ) {
+			$viol_by_surface[ (string) $viol_surface_row['profile_surface'] ] = $viol_surface_row;
+		}
+
 		$viol_quick_ranges = array(
 			'1h'  => array( 1, __( 'Last hour', 'vcns-security-automation-manager' ) ),
 			'6h'  => array( 6, __( 'Last 6 hours', 'vcns-security-automation-manager' ) ),
@@ -1148,6 +1173,85 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 	<p class="description">
 		<?php esc_html_e( "Each row is a distinct surface + directive + blocked-source combination a visitor's browser actually reported -- not a visitor count, and Occurrences never resets even when the date filters below narrow what's shown. A sudden spike on a surface you haven't touched usually means something on the page changed (a new script, a theme update), not that something is wrong with this plugin.", 'vcns-security-automation-manager' ); ?>
 	</p>
+	<div class="wp-sam-table-wrap">
+	<table class="widefat striped wp-sam-table wp-sam-violations-by-surface" style="margin:1em 0">
+		<thead>
+			<tr>
+				<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-count"><?php esc_html_e( 'Distinct violations', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last report', 'vcns-security-automation-manager' ); ?></th>
+				<th class="wp-sam-col-datetime"><?php esc_html_e( 'Policy last sent', 'vcns-security-automation-manager' ); ?></th>
+				<th><?php esc_html_e( 'Reporting', 'vcns-security-automation-manager' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( Csp_Surfaces::ALL as $viol_summary_surface ) : ?>
+				<?php
+				$viol_summary_row      = $viol_by_surface[ $viol_summary_surface ] ?? null;
+				$viol_summary_delivery = Csp_Delivery_Log::get( $viol_summary_surface );
+				$viol_summary_sent     = (int) ( $viol_summary_delivery['last_sent'] ?? 0 );
+				$viol_summary_thr      = (int) ( $viol_summary_delivery['last_throttled'] ?? 0 );
+				$viol_summary_url      = add_query_arg(
+					array_merge(
+						$viol_state_args,
+						array(
+							'v_surface' => $viol_summary_surface,
+							'v_paged'   => 1,
+						)
+					),
+					$base_url
+				);
+				if ( $viol_summary_thr > 0 && time() - $viol_summary_thr < DAY_IN_SECONDS ) {
+					$viol_summary_status = sprintf(
+						/* translators: %s: human-readable time difference, e.g. "5 mins". */
+						__( 'Some reports were refused by the endpoint\'s flood guard %s ago, so this list is incomplete for that period.', 'vcns-security-automation-manager' ),
+						human_time_diff( $viol_summary_thr )
+					);
+				} elseif ( 0 === $viol_summary_sent ) {
+					$viol_summary_status = __( 'No policy has been sent on this surface yet, so there is nothing to report. Check its mode under Control → CSP Profiles.', 'vcns-security-automation-manager' );
+				} elseif ( null === $viol_summary_row ) {
+					$viol_summary_status = __( 'Policy is being sent; no violations reported yet.', 'vcns-security-automation-manager' );
+				} else {
+					$viol_summary_status = __( 'Receiving reports.', 'vcns-security-automation-manager' );
+				}
+				?>
+			<tr>
+				<td class="wp-sam-col-surface">
+					<a href="<?php echo esc_url( $viol_summary_url ); ?>"<?php echo $v_surface === $viol_summary_surface ? ' aria-current="true"' : ''; ?>><?php echo esc_html( ucfirst( $viol_summary_surface ) ); ?></a>
+				</td>
+				<td class="wp-sam-col-count"><?php echo esc_html( (string) (int) ( $viol_summary_row['distinct_count'] ?? 0 ) ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( null !== $viol_summary_row ? (string) $viol_summary_row['last_reported'] : '—' ); ?></td>
+				<td class="wp-sam-col-datetime"><?php echo esc_html( $viol_summary_sent > 0 ? gmdate( 'Y-m-d H:i:s', $viol_summary_sent ) : '—' ); ?></td>
+				<td><?php echo esc_html( $viol_summary_status ); ?></td>
+			</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+	</div>
+		<?php
+		if ( '' !== $v_surface ) :
+			$viol_all_surfaces_url = add_query_arg(
+				array_merge(
+					$viol_state_args,
+					array(
+						'v_surface' => null,
+						'v_paged'   => 1,
+					)
+				),
+				$base_url
+			);
+			?>
+	<p>
+			<?php
+			printf(
+			/* translators: %s: surface name, e.g. "Admin". */
+				esc_html__( 'Showing the %s surface only.', 'vcns-security-automation-manager' ),
+				esc_html( ucfirst( $v_surface ) )
+			);
+			?>
+		<a href="<?php echo esc_url( $viol_all_surfaces_url ); ?>"><?php esc_html_e( 'Show all surfaces', 'vcns-security-automation-manager' ); ?></a>
+	</p>
+		<?php endif; ?>
 	<p class="wp-sam-quick-ranges">
 		<?php foreach ( $viol_quick_ranges as [ $viol_range_hours_ago, $viol_range_label ] ) : ?>
 			<?php
@@ -1273,7 +1377,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 				$has_meta = ! empty( $meta_fields );
 				?>
 				<?php if ( $has_meta ) : ?>
-				<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+				<span class="wp-sam-meta-icon" tabindex="0"><span class="dashicons dashicons-info-outline" aria-hidden="true"></span>
 					<span class="wp-sam-meta-popover" role="tooltip">
 						<?php foreach ( $meta_fields as $meta_label => $meta_value ) : ?>
 						<div class="wp-sam-meta-row">

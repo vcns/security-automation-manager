@@ -97,6 +97,59 @@ class SecurityTxtStoreTest extends TestCase {
 		$this->assertFalse( $store->is_expired() );
 	}
 
+	public function test_refresh_falls_back_to_the_legacy_location_when_the_canonical_one_is_refused(): void {
+		$store = new Security_Txt_Store(
+			fn( string $url ) => str_contains( $url, '.well-known' )
+				? $this->http_response( '', 403 )
+				: $this->http_response( "Contact: mailto:security@example.com\n" )
+		);
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'refreshed', $result['status'] );
+		$this->assertTrue( $store->is_present() );
+	}
+
+	public function test_refresh_is_absent_only_when_both_locations_return_404_or_410(): void {
+		update_option( 'wp_sam_security_txt_fields', array( 'Contact' => array( 'mailto:old@example.com' ) ) );
+		update_option( 'wp_sam_security_txt_last_fetch_status', 'success' );
+		$store = new Security_Txt_Store(
+			fn( string $url ) => $this->http_response( '', str_contains( $url, '.well-known' ) ? 404 : 410 )
+		);
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'absent', $result['status'] );
+		$this->assertSame( 'No security.txt on this site (/.well-known/security.txt returned HTTP 404; /security.txt returned HTTP 410).', $result['message'] );
+		$this->assertSame( array(), $store->fields() );
+		$this->assertSame( array(), ( new Security_Txt_Store() )->fields(), 'The cleared fields must be persisted, not just dropped from the per-request cache.' );
+		$this->assertFalse( $store->is_present() );
+	}
+
+	public function test_refresh_names_both_results_when_both_locations_are_refused(): void {
+		update_option( 'wp_sam_security_txt_fields', array( 'Contact' => array( 'mailto:old@example.com' ) ) );
+		$store = new Security_Txt_Store( fn( string $url ) => $this->http_response( '', 403 ) );
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'failed', $result['status'] );
+		$this->assertSame( '/.well-known/security.txt returned HTTP 403; /security.txt returned HTTP 403.', $result['message'] );
+		$this->assertSame( array( 'Contact' => array( 'mailto:old@example.com' ) ), $store->fields() );
+	}
+
+	public function test_refresh_is_failed_not_absent_when_only_one_location_returns_404(): void {
+		update_option( 'wp_sam_security_txt_fields', array( 'Contact' => array( 'mailto:old@example.com' ) ) );
+		$store = new Security_Txt_Store(
+			fn( string $url ) => $this->http_response( '', str_contains( $url, '.well-known' ) ? 404 : 500 )
+		);
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'failed', $result['status'] );
+		$this->assertSame( '/.well-known/security.txt returned HTTP 404; /security.txt returned HTTP 500.', $result['message'] );
+		$this->assertSame( array( 'Contact' => array( 'mailto:old@example.com' ) ), $store->fields() );
+	}
+
 	public function test_refresh_keeps_existing_fields_when_both_locations_fail(): void {
 		update_option( 'wp_sam_security_txt_fields', array( 'Contact' => array( 'mailto:old@example.com' ) ) );
 		$store = new Security_Txt_Store( static fn( string $url ) => new WP_Error( 'http_request_failed', 'timeout' ) );

@@ -9,7 +9,7 @@
  * enters their own IPinfo (https://ipinfo.io) API token; the token is
  * sealed with Certificates\Credential_Vault (the same encryption-at-rest
  * mechanism already used for DNS-01 provider tokens and certificate
- * material) and is never a shared VCNS credential -- the same "customer
+ * material) and is never a shared credential -- the same "customer
  * must never hold a shared credential" principle docs/checkout-proxy-
  * design.md establishes for Stripe, applied here to a lower-severity but
  * still real API credential.

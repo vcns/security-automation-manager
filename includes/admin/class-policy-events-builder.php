@@ -10,6 +10,8 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Admin;
 
+use WP_SAM\CSP\Csp_Surfaces;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -65,6 +67,16 @@ final class Policy_Events_Builder {
 		}
 		if ( 'active' === $suppression ) {
 			$run_versions = false; // policy-version rows have no suppression concept.
+		}
+
+		// Decision and policy-version rows are always scoped to CSP's own
+		// surfaces -- older 'api' rows stay in their tables but are never
+		// listed (see Csp_Surfaces). A surface filter naming only non-CSP
+		// surfaces can never match either source.
+		$surface = empty( $surface ) ? Csp_Surfaces::ALL : array_values( array_intersect( $surface, Csp_Surfaces::ALL ) );
+		if ( empty( $surface ) ) {
+			$run_decisions = false;
+			$run_versions  = false;
 		}
 
 		$decision_actions = array();

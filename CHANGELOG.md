@@ -4,6 +4,249 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.13.0] - 2026-10-31
+
+### Added
+
+- **Create and serve well-known files from guided templates** (#475). Control → Traffic Controls → Network Intelligence → Well-Known Files offers Create (when the file is absent) or Edit for robots.txt, agents.txt, security.txt, humans.txt, ads.txt and app-ads.txt.
+  - `Well_Known_File_Catalog` holds each file's paths, purpose, starter templates and checks. Templates are built from the site's own details:
+    - robots.txt: WordPress's default rules (from `admin_url()`), or those plus a block on AI-training crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended, meta-externalagent). Search crawlers are left alone;
+    - agents.txt: keep AI agents out of the admin area, or out of the whole site;
+    - security.txt: RFC 9116, with an Expires date under a year ahead;
+    - humans.txt: simple credits;
+    - ads.txt and app-ads.txt: Google's line, or the IAB "no authorised sellers" placeholder record.
+  - Saving refuses content that would be wrong for every reader, listing at most five problems. That covers a robots rule outside a User-agent group, a security.txt without Contact or with a past Expires, an ads.txt line that isn't a record or a variable, the placeholder publisher ID, anything over 64 KB, and text that isn't UTF-8.
+  - `Well_Known_File_Server` serves saved files through WordPress and never writes to disk. robots.txt goes through core's `robots_txt` filter at `PHP_INT_MAX`. The others are answered at `parse_request` priority 0 as `text/plain` with `nosniff`, and security.txt at both `/.well-known/` and the root.
+  - A real file on disk still wins. After each save, `Well_Known_File_Editor` fetches the address through `Same_Host_Fetcher` and records whether visitors get the saved version. The table says when they don't.
+  - When an SEO plugin also writes robots.txt (Yoast SEO, Rank Math, AIOSEO, SEOPress or The SEO Framework, plus filter `wp_sam_robots_txt_writer`), the editor names it, opens with its lines and warns that saving replaces them. Save is hidden for a site that isn't at the root of its domain.
+  - Stop serving, or deactivating the plugin, puts back whatever the site served before. Saves and removals are audit-logged. Option `wp_sam_well_known_files` is not autoloaded and is cleared on uninstall.
+- **ASN Lookup can block what it finds, and opens each AS's own view** (#476).
+  - A lookup is a one-row table: IP, routed network range, ASN, organisation, and Block IP, Block range and Block AS buttons. The range comes from the same Team Cymru origin query (`Asn_Lookup_Store::network_range()`).
+  - Each button pre-fills the IP Rules or Network Rules form, so the administrator still chooses surface and expiry. The row says when the IP or AS is already blocked, and labels the administrator's own current address.
+  - The AS number opens a drill-down showing:
+    - the registry record (`Asn_Lookup_Store::describe()`): name, country, registry and allocation date;
+    - which surfaces it is blocked on;
+    - the addresses recorded from it (`Scanner_Identity_Store::addresses_for_asn()`), each with Block IP;
+    - links to the Hurricane Electric BGP Toolkit and RIPEstat for its full list of ranges.
+  - The range and registry details are kept for a day in transients. Network Rules links each ASN rule to the same view.
+
+### Changed
+
+- **Geo-IP settings are behind a cog** (#476).
+  - The IPinfo token and "Where does this website operate?" moved into a dialog. It opens from a cog at the right of Control → Traffic Controls → Network Intelligence → Geo-IP. It replaces the provider table's Save Token and Clear and Disable buttons, and the separate site-country form.
+  - The tab opens with one line, then the Country Block List. That line is either a "Geo-IP is off" notice with Add token, or the lookup box.
+  - "Remove token and turn Geo-IP off" posts its own form, so pressing Enter in the token field can only press Save.
+  - The `wp_sam_geoip_save_token` and `wp_sam_site_country_save` admin-post actions are replaced by `wp_sam_geoip_settings_save`.
+- **Network Rules links country blocking back to Geo-IP** (#476).
+  - Links in its intro and under the Type field.
+  - A "Change on Geo-IP" button on the country rules the Country Block List manages.
+  - A warning when country rules exist while Geo-IP is off.
+- **Network Intelligence shows one row per item** (#472, #475). The Tor Exit List and Well-Known Files are each a single table with the buttons at the end of each row. Well-Known Files' About column gave way to Create/Edit and a note when the plugin serves the file.
+- **The hash-budget notice is shown only to Technical-depth users** (#474). `policy_builder/hash_budget_exceeded` is held in the notice queue while the administrator viewing chose Simple or Balanced. It appears to the next administrator on Technical.
+- **Settings' summary sits below the tab bar** (#470). The scorecard, Recent activity, Protection status and Needs your attention are now the Overview tab's body, like every other tab's content.
+- `readme.txt`'s External services section lists the Tor Project exit list, Team Cymru's IP-to-ASN lookup and IPinfo, with what each is sent and when (#477). `docs/data-protection-and-retention.md` no longer says that nothing leaves the site.
+
+### Fixed
+
+- **Blocking your own address is held for confirmation** (#476). An explicit IP block applies even to a logged-in administrator, and it wins over an allow rule. Blocking your own address from IP Rules, or from ASN Lookup's Block IP, therefore locked you out without warning. `Admin_UI::handle_ip_rule_add()` now holds such a rule behind an "add it anyway" checkbox (`Ip_Rule_Store::covers()`), as ASN and country rules already were.
+- **Identities follow this site's own addresses when the list changes** (#473). Saving Control → Traffic Controls → IP Rules → This site's own addresses calls `Scanner_Identity_Store::relabel_own_addresses()`:
+  - rows now covered become `loopback`;
+  - `loopback` rows no longer covered go back to `unknown` or their vendor's state;
+  - rows with an administrator decision are left alone.
+  
+  Rows are read and updated 1,000 at a time. The Saved notice and the audit entry give the count.
+
+Database schema is unchanged at 48.
+
+## [2.12.0] - 2026-10-29
+
+### Fixed
+
+- **Admin CSP violation reports are no longer turned away by the report endpoint's flood guard.** `Violation_Reporter::check_not_flooding()` (2.9.79) allowed 40 reports per IP per 10 seconds, shared across every surface. Staff in wp-admin share an office IP with their own frontend browsing, and an admin page still being learned sends dozens of reports per load, so admin reports were the ones refused with a 429, without any record. Admin reports had also never arrived before 2.11.4, because until then the admin policy was never sent on wp-admin pages at all.
+  - `Reporting_Endpoint::url_for_surface()` adds a `surface` hint to the admin and login `report-uri` and `Reporting-Endpoints` URL. The frontend URL and any administrator-configured override URL are unchanged.
+  - The flood budget is per (IP, surface): frontend 40, admin 120, login 40. The hint only selects a bucket. The surface a report is stored under still comes from its own document URI.
+  - Each refusal is recorded in `Csp_Delivery_Log` (`last_throttled`). `csp_enforce_ready` won't treat a window with throttled reports as quiet.
+  - Observe → CSP Violations gets a per-surface summary. For each surface it shows distinct violations, last report, policy last sent, and whether reports were refused. Each surface links to its own filtered list.
+  - `Policy_Builder` sends headers through `send_header()`. `PolicyBuilderTest` asserts exactly what a wp-admin response carries: the report-only policy, `report-uri …/sam/v1/report?surface=admin`, `report-to csp-endpoint`, and the matching `Reporting-Endpoints` header.
+- **The traffic block ladder is fair to steady traffic, administrators and sources that have gone quiet** (#459). All three were behind production's own server showing as "Aggressive / rate-escalated".
+  - `Rate_Limiter::hit()` called `set_transient()` on every hit, pushing the expiry out each time, so a counter only reset after a full window with no requests at all. A slow, steady source (WP-Cron loopbacks, an uptime monitor, an office behind one address) never got that gap and eventually "exceeded" a per-minute limit it never reached in any single minute. The transient now stores `{start, count}` and expires when its window ends. A bare count left by the old format starts a fresh window. The CSP report flood check uses the same limiter.
+  - `Traffic_Guard::decide()` returns before the rate limiter for a privileged session, so an administrator's page loads no longer use up their address's allowance. `Request_Observer` logs an administrator's enforce-mode detector match as an event without recording a violation.
+  - `Traffic_Block_Store::effective_stage()` moves a source down one stage for each full hour without a violation after its last block ended, so `extended_block` clears after four quiet hours. `persistent_block` never decays. `record_violation()` and `Bot_Classifier` both use it.
+- **Learned hashes of JSON-LD and other JSON data blocks are retired automatically** (#461). 2.11.3 stopped new ones being hashed, but rows learned before it still counted against the header's hash budget (behind `hash_budget_exceeded`) and could push out hashes real inline scripts need. `Hash_Manager::retire_json_data_hashes()` runs on every daily and manual scan, just before the age prune, and retires active rows whose `source_context` opens with a JSON object key (`{"…":` or `[{"…":`). No working script can start that way. Rows are updated in chunks of 200, with one audit-log entry per run. No migration.
+- **The Geo-IP Country Block List shows every country without a sideways scroll** (#465). `.wp-sam-country-grid` had `columns: 220px 4` and `max-height: 420px`. A multi-column box with a fixed height adds overflow columns instead of scrolling, so most countries sat behind a horizontal scrollbar, and each of the four columns was about twice as wide as its names. It now uses as many `14em` columns as fit and grows downwards. Long names wrap with a hanging indent.
+- `Discovery::get_crawl_urls()` passed `'/'` to `get_home_url()` as the blog ID. It now calls `home_url( '/' )` (#462).
+- The GitHub-channel `update.json` reads `requires`, `tested` and `requires_php` from the packaged `readme.txt` instead of hard-coding them. `tested` had fallen behind at 7.0 (#462).
+- **The pinned-script check no longer compares another site's page** (#467). `Dependency_Integrity_Monitor::scan_surface()` fetched the home page with `wp_remote_get()`, which follows a redirect anywhere. An IP allow-list sending the server's own request elsewhere had it compare that page's markup with this site's pinned hashes, and nothing said so. It now uses `Same_Host_Fetcher`, and logs `scan_redirected_offsite` instead of comparing.
+- **SAM never records where its own requests were redirected** (#467). It knows this site's own address and nothing else, and a redirect often points at another copy of the same site.
+  - `Same_Host_Fetcher`'s `wp_sam_offsite_redirect` error says "Redirected away from this site (HTTP n)" and carries only the status code.
+  - Discovery's `crawl_redirected_offsite` line and the robots.txt, ads.txt, app-ads.txt, humans.txt, agents and security.txt checks no longer name the destination.
+  - Both redirect events show a plain-English admin notice. It explains that something outside SAM, usually an IP allow-list in .htaccess or the server configuration, is redirecting the request. It says to allow the single address the server uses to reach itself (shown in the access log under the `WP-CSP-Discovery` user agent), not a whole private range.
+  - Configuration export no longer writes the exporting site's URL into the file. Import never read it.
+- **Help text on Control → Traffic Controls uses the page's full width** (#464). The Policy, IP Rules and Blocks tabs capped their description paragraphs at `max-width:700px`, leaving a wide empty band beside them.
+
+### Added
+
+- **Sanctions lists for every authority, narrowed to where the site operates** (#466).
+  - `Country_Groups` adds sanctions groups for the UN Security Council, the EU, every country with a US OFAC program, Switzerland, Liechtenstein, Norway, Iceland, Canada, Australia, New Zealand, Japan, South Korea, Singapore, Taiwan and Ukraine. They were researched from official sources on 2026-10-28.
+  - Each lists every country its authority publishes a country regime for. Ukraine is never ticked. One-country trade bans, boycott laws and "unfriendly countries" lists are deliberately not offered.
+  - Each sanctions group's `applies_in` lists where its measures bind, including dependent territories (for example Jersey for the UK, Gibraltar for both the UK and the EU, and Puerto Rico for the US).
+  - A "Where does this website operate?" dropdown on the Geo-IP sub-tab (`Site_Country`, option `wp_sam_site_country`) narrows the sanctions groups to the UN list plus those that bind there. Other groups are never narrowed. Left unchosen, it offers every list, because sanctions also follow people and companies. Reset Data and uninstall clear the option.
+
+- **Control → Traffic Controls → IP Rules → This site's own addresses** (#460). `Own_Address_Store` holds up to 64 public addresses or CIDR ranges that a site's own servers or containers use to reach it. Ranges broader than /16 (IPv4) or /48 (IPv6) are rejected, and private addresses are already covered. Listed addresses get the same treatment as private ones in `Traffic_Guard`, `Traffic_Block_Store::record_violation()`, `Identity_Resolver` and `Campaign_Detector`: never rate-limited or escalated, never counted into a campaign, and shown as this site on Identities. An explicit Block rule still applies.
+  - The section suggests public addresses seen calling `/wp-cron.php` in the last 30 days, for the administrator to check. Nothing is added automatically, because an external cron service calls it too.
+  - Each save is audit-logged. Reset Data and uninstall clear the option. Configuration export leaves it out, because server addresses are specific to each site.
+
+- **Pinned script hash drift detection.** A new daily cron job, `Pinned_Dependency_Checker`, re-fetches each `immutable_pinned` file and compares it with the approved hash using the same algorithm.
+  - Each fetch is https only, same origin as the row, 5 MB cap, at most 25 files per run.
+  - The fetch helper `Dependency_Sri_Fetcher` is shared with Suggest, which now also rejects unsafe (private or loopback) URLs.
+  - A changed file raises a high-priority "Pinned script hash has drifted" recommendation and Action Centre item, an admin notice linking to Decide → Dependency Classification, and a failing Security Health dependencies row.
+  - A file that can't be fetched is shown as "couldn't check", never as drift.
+  - Schema v48 adds `pinned_url`, `integrity_checked_at`, `integrity_attempted_at`, `integrity_check_error`, `drift_detected_at` and `drift_observed_sri` to `sam_dependency_inventory`.
+- **One-click "Re-approve new hash" or "Allow by host instead"** on a drifted row. The banner shows the pinned and now-served hashes with a Copy button, because the `integrity` attribute in the theme or plugin markup must be updated too.
+- **Known-vendor profiles** (`Known_Vendor_Profiles`, filter `wp_sam_known_vendor_profiles`) for Google Tag Manager, Google Analytics, HubSpot, Cloudflare Turnstile and reCAPTCHA (matched by host and `/recaptcha/` path). Each is shown as "allowed by host, not hash", with the reason. Nothing is reclassified automatically.
+- **Country groups on the Geo-IP Country Block List** (Control → Traffic Controls → Network Intelligence → Geo-IP). New `Country_Groups` is a bundled table of:
+  - UN M49 regions, sub-regions and intermediate regions;
+  - the EU (27) and EEA (30);
+  - sanctions snapshots: UK country-specific regimes, and US OFAC comprehensive sanctions (CU, IR, KP).
+
+  Each group has its source and as-of date. The two sanctions lists were re-checked on 2026-10-28: the UK list against GOV.UK's regimes listed by country, and the OFAC list against OFAC FAQ 10, which is now its cited source because the programs page doesn't say which programs are comprehensive. The other groups are as of 2026-10-27. Ticking a group expands into the individual country checkboxes, which stay editable, and nothing is saved until Save.
+
+### Changed
+
+- **Settings opens on a summary-only Overview** (scorecard, recent activity, Protection Status, Action Centre). The Layer 1–5 tables have moved, unchanged, to a new Settings → All tab. Getting Started, Control → "Every header & content policy", the docs and `CLAUDE.md`'s route table now point there.
+- **The Settings → All layer tables share one column layout** (`.wp-sam-layer-table`: fixed layout, Area 26% / Status 52% / Manage 22%). Before, each of the five tables sized its own columns from its content, so they never lined up, and Layer 2 and 4's per-surface badges were held on one line by `nowrap`. Badges now wrap with even spacing, and below 782px the tables fall back to auto layout.
+- The Dependency Classification notice no longer claims hashes are never computed by fetching the remote URL.
+- `readme.txt`'s External services section now discloses the daily pinned-file check.
+- `docs/security-controls-inventory.md` and `docs/operating-model.html` no longer describe api as a CSP surface, which it hasn't been since 2.11.4 (#462).
+- **wp-admin lists the plugin as "Security Automation Manager"** (#463). Only the main file's `Plugin Name` header changed. The WordPress.org directory title (`readme.txt`'s `=== … ===` line), the slug and the text domain stay as they were, and `VersionConsistencyTest` pins both names.
+- The Geo-IP help text and two code comments say "never a shared credential" rather than "never a shared VCNS credential" (#464).
+
+## [2.11.6] - 2026-10-27
+
+### Fixed
+
+- **Loopback and private-network addresses are never escalated or blocked automatically** (#455). Only `127.0.0.0/8` and `::1` had been treated as this server. A site whose own requests reach it through an internal address was rate-limited, escalated and counted into campaigns like any stranger. On staging, WP-Cron and SAM self-fetches arrive from `10.16.17.55`. So Traffic Guard could block the site's own cron, health checks or load balancer.
+  - New `Cidr_Matcher::LOCAL_CIDRS` / `is_local()` covers loopback, RFC 1918, RFC 6598 shared space, IPv4/IPv6 link-local and IPv6 unique local addresses.
+  - `Traffic_Guard::decide()` lets these addresses through after the explicit IP-rule check; an administrator's explicit block rule still applies.
+  - `Traffic_Block_Store::record_violation()`, which every automatic escalation goes through, never escalates them.
+  - `Identity_Resolver` records them in the auto-authorised `loopback` state, now labelled "This server or private network".
+  - `Campaign_Detector::external_ips()` leaves them out of campaign counts, the IP list and campaign blocks.
+  - Public addresses of a site's own servers still need an Allow rule.
+
+### Changed
+
+- **Identities tooltip groups repeated recent paths** (#454), in first-seen order with a count (e.g. `/wp-cron.php ×9, /robots.txt`). The line under the classification gives the request count and, where they differ, the number of distinct paths. Previously the tooltip listed every request, so a site's WP-Cron loopback repeated `/wp-cron.php` ten times.
+
+## [2.11.5] - 2026-10-23
+
+### Security
+
+- **The conflict-probe header now requires a one-time token** (#450). `Conflict_Detector`'s internal probe sends `X-WP-SAM-Probe` so SAM suppresses its own headers, request observation and Traffic Guard for that one request. The check accepted a fixed value, so any client sending it skipped Traffic Guard entirely, including explicit IP block rules, and went unseen by every detector.
+  - New `Conflict_Probe_Token` issues a random 32-byte token per probe. It is stored only as a SHA-256-keyed transient, valid for 60 seconds and revoked when the probe returns.
+  - `Surface_Classifier::is_conflict_probe_request()` accepts only a live token.
+  - The probe sets `redirection => 0`.
+
+### Fixed
+
+- **Advanced Intelligence loads `admin.css` and `admin.js`** (#452). The page was never in `Admin_UI::plugin_page_hooks()` (since 2.9.44).
+  - Without the CSS, every info popover stayed open, stacked down the Campaigns table.
+  - Without the JS, the shared Reason field never reached the Acknowledge, Dismiss and Block forms, so each submitted an empty note and did nothing.
+  - `AdminUITest` now checks that every registered page is in `plugin_page_hooks()`.
+- **Info popovers are no longer nested inside the `dashicons` glyph** (#452). This affected eight screens. The popover text inherited the icon font (serif fallback on stock WordPress) and the glyph's 20px box.
+- **Popovers are no longer clipped by `.wp-sam-table-wrap`'s horizontal scroll**, and they cap at 60vh (#452).
+- **The Campaigns IP list** puts one IP per line instead of comma-separated block `<code>`s (#452).
+- **`readme.txt`'s changelog is trimmed back to the 15 most recent releases** (#450). The 2.11.3/2.11.4 entries had pushed it past `VersionConsistencyTest`'s 4,000-word budget, failing PHPUnit on `main` and `development` since 2.11.4.
+
+### Changed
+
+- **Advanced Intelligence is hidden from the admin menu** (#452). Each tab is now linked from its lifecycle stage:
+  - Observe → Timeline
+  - Decide → Campaigns (with a count awaiting a decision)
+  - Control → Honey Paths
+  - Verify → Change Windows
+
+  `docs/user-guide.html` is aligned, and `PageLifecycleTest` covers the links.
+- **Queued admin notices link to where they can be acted on** (#451). `Admin_UI::admin_notice_action()` covers every component that logs at warning/error severity.
+- **Recommendations, Action Centre and Security Health items, notices and cross-page help text name the lifecycle route** (#451), e.g. "Decide → Dependency Classification", instead of pages hidden from the menu.
+- **New `CLAUDE.md`** (#451, #452) documents the admin navigation model and route table for agents. `CONTRIBUTING.md` gains a short routing rule. Both are excluded from the plugin ZIP.
+
+## [2.11.4] - 2026-10-22
+
+### Fixed
+
+- **The admin surface's CSP is now sent** (#446). `Header_Builder` emits from `send_headers`, `login_init` and `wp_redirect`. WordPress fires `send_headers` only from `WP::main()`, which wp-admin never runs, so ordinary wp-admin pages never received the admin policy. `Policy_Builder` now also hooks `admin_init` (priority 1), skipping admin-ajax. This covers CSP only: the other header pillars still skip wp-admin, since X-Frame-Options or COOP/COEP there can break admin features.
+- **Schema v47 holds an enforcing admin CSP profile at report-only, once** (#446). Those sites had been running with no admin policy at all, and would otherwise have started enforcing a never-tested one on the dashboard. The migration is guarded by `wp_sam_admin_csp_held_v47` and logs a warning notice.
+- **`csp_enforce_ready` now needs evidence the policy was delivered** (#446). The recommendation had fired on staging and production for the admin surface, reading 30 days without reports as a clean run of a policy that was never sent. New `Csp_Delivery_Log` keeps one autoloaded `wp_sam_csp_delivery_{surface}` option per surface, with writes throttled hourly. It records when a policy was first and last sent (a gap over 7 days restarts the clock) and when its hashes were last trimmed to fit the byte budget. The rule now also requires 30 days of continuous delivery, a send in the last 7 days, and no trimming in the window.
+- **`pillar_enforce_ready` skips the admin and api surfaces** (#446), where pillar headers are never delivered.
+
+### Changed
+
+- **The learned api CSP is retired in favour of a fixed REST header** (#446). REST requests are served during `parse_request`, before `send_headers`, so the api policy never applied, and a JSON response can't produce a violation. `Policy_Builder` no longer emits it. New `Rest_Csp_Header` adds `default-src 'none'; frame-ancestors 'none'` to JSON REST responses unless the endpoint set its own CSP or a non-JSON `Content-Type`. It's filterable via `wp_sam_rest_csp_header`.
+- **The api surface is removed from CSP learning and the CSP screens** (#447). New `Csp_Surfaces::ALL` (frontend, admin, login) is the single source of CSP's surfaces.
+  - Discovery no longer crawls `rest_url()`. That crawl is where a high-risk "Proposed api form-action alltimetech.co.uk" came from, after staging redirected it to production.
+  - `Policy_Change_Manager::propose_source()` rejects non-CSP surfaces.
+  - The CSP dashboard, its handlers and the CSP rows in the Readiness Checker, Action Centre, Overview, Protection Status and Security Health show only CSP surfaces.
+  - Non-CSP controls and stored data keep `api`.
+
+## [2.11.3] - 2026-10-21
+
+### Fixed
+
+- **SAM's requests to its own site no longer follow redirects to other hosts** (#443). The six well-known-file stores (robots, agents, security, humans, ads, app-ads) and `Discovery::crawl_url()` used `wp_remote_get` with WordPress's default of following up to 5 redirects, and never checked the final URL. On staging.alltimetech.co.uk, whose `.htaccess` 301s non-approved IPs to production, that meant SAM reported production's status codes as the site's own, and the discovery crawl filed production's sources against staging's surfaces (for example a high-risk `form-action alltimetech.co.uk` proposal on the api surface). The new `Same_Host_Fetcher` follows up to 5 redirects only while they stay on the same host (treated as equal if they differ only by `www.`). It returns `wp_sam_offsite_redirect` instead of following one off-site. Discovery logs that case as `crawl_redirected_offsite` (warning). `parse_stylesheet_sources()` is unchanged, since it fetches third-party stylesheets on purpose.
+- **A missing well-known file is now `absent`, not `failed`** (#443). A 404 or 410 records `absent`, clears the cached data and logs `*_absent` at info, so it no longer raises a daily admin notice. Security.txt is absent only when both `/.well-known/security.txt` and `/security.txt` return 404/410; otherwise the failure message names both results. Other non-200 responses and transport errors still log `*_refresh_failed` at warning.
+- **Discovery crawls refused with HTTP 401/403 log `crawl_blocked` at info** instead of `crawl_http_error` at warning (#443). These are typically a firewall or login protection rejecting an anonymous server-side GET to `wp-login.php`.
+- **`Admin_UI::display_admin_notices()` now requires `manage_options`** (#443). Without that check, any logged-in wp-admin user saw the queued technical notices, and seeing them emptied the queue before an administrator saw it.
+- **CSP hash learning no longer hashes JSON data blocks** (#442). Inline `<script type="application/ld+json">` and `type="application/json"` are skipped, because browsers never execute them and CSP doesn't govern them. On staging about 1,655 of 1,763 active frontend hashes were Yoast schema blocks, one per page. They triggered `hash_budget_exceeded` ("Dropped 1716 …") and could push out hashes for real inline scripts. Other non-JavaScript types (`litespeed/javascript`, `rocketlazyloadscript`, `text/plain`) and `importmap`/`speculationrules` are still hashed.
+- **The inline-script extraction pattern no longer mis-captures** when `src` isn't the first attribute (#442). Previously, `<script type="…" src="…"></script>` followed by an inline script produced one junk hash spanning both tags, and the real inline script never got a valid hash.
+- **`style-src-attr`/`script-src-attr` hashes are emitted, and counted against the hash byte budget, only when the directive carries `'unsafe-hashes'`** (#442). Without it they have no effect under CSP Level 3. The emitted directive is otherwise byte-identical, so enforcement doesn't loosen.
+- **`run_manual_scan()` now also calls `Hash_Manager::prune_stale_by_age()`** (#442), which the daily scan already did. It retires active hashes not seen for 30 days.
+- **Advanced Intelligence → Campaigns labels its two counts separately** (#445). The Participants column showed the `participant_count` stored at detection ("37 distinct IPs") over a popover of IPs re-queried live for the last 24 hours, which on staging held one IP. It now shows the live count (`1 active`), which matches the popover and the Block action, plus the stored count (`37 when detected`) when the two differ. The popover names its window and marks the viewer's own IP.
+- **Campaign blocks never include the acting admin's own IP or a loopback address** (#445). `Campaign_Detector::block_participants()` adds explicit all-surface `sam_ip_rules` blocks, which apply even to logged-in admins, so an admin whose own IP had tripped the same detector could lock themselves out of wp-admin. `Campaign_Detector::blockable_ips()` filters both the action and the view. The button states how many IPs it will block and is disabled when there are none.
+
+## [2.11.2] - 2026-10-21
+
+### Fixed
+
+- No functional change from 2.11.1. Public docs disagreed on how many security-header pillars the plugin has ("ten" in `docs/index.html`, "twelve" in `docs/user-guide.html`, "seven more" in `readme.txt`), because Information Masking and Cache-Control were added as pillars without updating every list that enumerated or counted them. `README.md`, `readme.txt`, `SPECIFICATION.md`, `docs/index.html`, `docs/user-guide.html`, `docs/architecture.md`, `docs/rollback-and-recovery.md`, `docs/images/README.md` and the `Config_Portability` docblock now consistently say twelve (CSP plus eleven), with both missing pillars listed. `docs/architecture.md` also no longer claims none of the eleven has a report-only mode: COOP and COEP do (#429).
+- CI only: the `Secret Scan` job in `ci.yml` checks out the pull request head by SHA instead of by branch name, so it no longer fails at checkout on pull requests opened from a fork. Pushes to `development`/`main` behave as before (#439).
+
+## [2.11.1] - 2026-09-17
+
+### Fixed
+
+- No functional change from 2.11.0. `wporg-deploy.yml`'s release-provenance check (a deliberate, no-bypass hard failure -- see the workflow's own comment) requires the merge commit it's deploying to have come from a pull request whose head branch is exactly `release/v<version>`. 2.11.0's release branch was named `release/2.11.0-table-layout-standard` (topic-suffixed, matching the ordinary feature-branch convention rather than the release-branch one), so `wporg-v2.11.0` failed that check outright and never reached WordPress.org -- the GitHub Release and update feed were unaffected, since `release-package.yml` has no equivalent check. Republished as 2.11.1 from a correctly-named `release/v2.11.1` branch so the WordPress.org SVN deploy can proceed.
+
+## [2.11.0] - 2026-09-17
+
+### Changed
+
+- **SAM admin table layout standard** -- a repository-wide admin-table consistency refactor, delivered as foundation + 7 migration phases (PRs #419-426). UI/UX only: no security behaviour, stored data, decision logic, filtering/sorting, forms, permissions, API behaviour, or evidence calculations are touched on any migrated page.
+- Replaces the plugin's three previously-incompatible column-width strategies (natural sizing, `table-layout:fixed` + `nth-child()` percentages, `table-layout:fixed` + `nth-child()` pixels) with one system: nine semantic column-role classes (`wp-sam-col-compact`/`count`/`status`/`surface`/`datetime`/`primary`/`description`/`technical`/`actions`) applied directly to `<th>`/`<td>` in each view, plus a `.wp-sam-table-wrap` horizontal-overflow container. Compact columns use intrinsic sizing (`width:1%; white-space:nowrap`); flexible columns use `min-width` alone, never paired with a `max-width` that would force overflow. Column classes are applied by what a column *contains*, not by position -- `:nth-child()` couldn't express that, and was the root cause of every prior width-drift bug (a column's width rule silently pointing at the wrong column after a table gained or lost one).
+- Migrated every admin table across CSP dashboard, Overview/Settings, Scripts, Certificates, Cross-Origin Policies, Information Masking, Traffic Controls, Baseline & Drift, and Continuous/Advanced Intelligence.
+- Final cutover (Phase 7) deletes every remaining `nth-child()` width block in `admin.css` and removes the `fixed` class from every admin table across the 10 view files that still carried it -- every SAM table now uses the browser's natural/auto layout governed purely by the per-cell semantic classes. Also retires the blanket `.wp-sam-wrap .widefat code { word-break: break-all }` rule in favour of `.wp-sam-col-technical`'s own `word-break: break-word` + `overflow-wrap: anywhere`.
+- Inner-control width rules unrelated to column layout are untouched (e.g. the Profiles tab's automation-mode dropdown, the dependency-inventory classification `<select>`), as is Information Masking's deliberate table-level `max-width:600px` and every inline `style="width:"` on a form control -- documented as out of scope in the new `docs/admin-table-ux-standard.md`.
+- New regression coverage locks in the two table-cell classes `assets/js/admin.js` depends on directly (`wp-sam-state-badge`, `wp-sam-source-actions`), which had no prior test coverage anywhere. Full PHPUnit suite (2398/2398), PHPCS, and `tools/lint-php.php` clean; repo-wide audit confirms zero remaining `nth-child()`/`table-layout:fixed`/`widefat-fixed` occurrences outside explanatory doc comments.
+
+## [2.10.1] - 2026-09-17
+
+### Fixed
+
+- `Admin_UI::maybe_redirect_to_welcome()` (2.10.0's Welcome-page first-run redirect) could exit the request during `admin_init` before the later `admin_notices` hook ever ran, on every SAM admin page a WordPress user with incomplete onboarding visited -- including whichever page would otherwise have shown a persistent, must-always-show notice (`Rollback_Guard`'s schema-downgrade warning, or a failed certificate-renewal run). Caught by Release Verification CI (run 35161656965) on the 2.10.0 release branch, after merge to `main`, via a scenario expecting the schema-downgrade notice on a fresh admin login.
+- New `Admin_UI::has_urgent_admin_notice()` checks the same two conditions `display_admin_notices()` itself never delays, and the Welcome redirect now skips itself whenever either is active. New regression coverage in `AdminUITest.php`; `test/bootstrap.php` gained a `wp_doing_ajax()` stub (`maybe_redirect_to_welcome()` calls it, and no prior test exercised that method).
+
+## [2.10.0] - 2026-09-16
+
+### Added
+
+- **Customer-Centred Administration Experience** -- a presentation layer over existing capability, delivered as six sequential phases (PRs #408-#413). Does not change how the site is protected: every new class here reads existing stores/engines read-only and translates their output into customer-facing presentation, never re-implements a security decision.
+- `Admin\Presentation_Preferences` -- per-WordPress-user presentation preferences (relationship to the site, security familiarity, Simple/Balanced/Technical depth, landing emphasis) stored as `wp_sam_*` user meta, validated against fixed allow-lists, always scoped to `get_current_user_id()`. New `page-welcome.php` view (Welcome on first SAM visit, "Personal Preferences" editor thereafter) and a first-run `admin_init` redirect (`Admin_UI::maybe_redirect_to_welcome()`) -- skippable, blocks nothing, changes no security configuration.
+- `Admin\Action_Centre` -- consolidates `Recommendation_Engine::get_recommendations()` (unchanged, reused as-is) with two additional read-only aggregate sources (pending CSP source review queue, unclassified third-party dependencies) into one What-found/Why-it-matters/Recommended-action/What-will-happen/Evidence-link shape. New "Action Centre" tab on Settings/Overview; the existing Recommendations tab is untouched.
+- `Admin\Protection_Status` -- classifies existing state (CSP mode, Traffic Controls mode, dependency-governance pillar state, baseline/drift, certificate config) into a fixed six-state outcome vocabulary: Protected, Learning, Monitoring, Needs attention, Not in use, Unavailable. `Admin\Security_Scorecard` aggregates it into factual Protected/Learning/Needs-attention counts (deliberately not a numeric score); Learning and Monitoring share one tile, Not in use/Unavailable count toward neither.
+- Settings/Overview's "overview" tab now leads with the scorecard, a Recent Activity strip, the Protection Status table, and an Action Centre preview, above the existing tab navigation -- section order follows the user's landing-emphasis preference, except a critical Action Centre item always takes priority. New `Admin\Recent_Activity`, `Event_Store::total_occurrences_since()` (labelled "Detections," not "requests" -- summing rows across detector families can exceed actual request count) and `Drift_Store::count_detected_since()` (based on `first_seen_at`). "Requests observed" (raw traffic volume) is deliberately omitted: no store in this plugin persists total request volume.
+- Progressive disclosure: Protection Status rows and Action Centre items each carry a `technical_name` (always shown, only de-emphasised via CSS for Simple/Balanced) and a `technical_detail` evidence string inside a native `<details>` element, open by default only for Technical-depth users. `security_familiarity = new` adds one bounded "New to this?" helper line; every other level is unchanged.
+- `Status_Badge::render_protection_state()` -- icon + text always paired for the six-state vocabulary, never colour alone.
+- New test coverage: `PresentationPreferencesTest`, `ActionCentreTest`, `ProtectionStatusTest`, `SecurityScorecardTest`, `ProgressiveDisclosureTest`, plus `PageOverviewTest` extended to cover the `overview` and `action-centre` tabs' own render paths for the first time (uncovered two pre-existing test-environment-only gaps along the way: `Plugin::$cert_manager` and `Automation_Mode_Registry` are normally primed by `Plugin::bootstrap()`, never run by a bare unit test).
+
 ## [2.9.107] - 2026-09-14
 
 ### Security
@@ -569,7 +812,7 @@ Part A of a 4-part remediation; loopback-scan concurrency/timeouts, scan diagnos
 
 ### Added
 
-- Phase 4A of `.roadmap/phase4_plan.md`, third and final increment (Geo-IP Controls, `.roadmap/phase3_early_plan.md` §13.4): `includes/intelligence/class-geo-ip-store.php` resolves a source IP's country/region/city via IPinfo's API, entirely opt-in and bring-your-own-credentials -- disabled until an administrator enters their own IPinfo token, sealed with `Certificates\Credential_Vault` (the existing encryption-at-rest mechanism already protecting certificate and DNS-provider secrets), never a shared VCNS credential. Results cached in the new `sam_geoip_cache` table (30-day TTL, including a cached negative result on failure).
+- Phase 4A of `.roadmap/phase4_plan.md`, third and final increment (Geo-IP Controls, `.roadmap/phase3_early_plan.md` §13.4): `includes/intelligence/class-geo-ip-store.php` resolves a source IP's country/region/city via IPinfo's API, entirely opt-in and bring-your-own-credentials -- disabled until an administrator enters their own IPinfo token, sealed with `Certificates\Credential_Vault` (the existing encryption-at-rest mechanism already protecting certificate and DNS-provider secrets), never a shared credential. Results cached in the new `sam_geoip_cache` table (30-day TTL, including a cached negative result on failure).
 - MaxMind support explicitly deferred: its free GeoLite2 tier is a downloaded binary database, not a live API, and reading it correctly needs either a hand-rolled MMDB parser or this plugin's first-ever production Composer dependency (`geoip2/geoip2`) -- a real architectural decision, confirmed deferred rather than built silently either way.
 - `includes/intelligence/class-network-intelligence-resolver.php`: extended with the new collaborator; `geo_country`/`geo_region`/`geo_city` now attached alongside `is_tor_exit`/`asn`/`asn_org` on any Finding's evidence, same lazy-resolution pattern. `Geo_Ip_Store::resolve()` is a complete no-op (no DB query, no network call) until Geo-IP is configured.
 - `includes/admin/views/page-traffic.php`: Network Intelligence tab gains a Geo-IP settings section (token entry/clear, decrypt-failure warning) and its own "Look Up" tool.

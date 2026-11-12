@@ -61,6 +61,12 @@ Update the relevant docs whenever you change:
 - Release or packaging steps.
 - Minimum supported WordPress or PHP versions.
 
+## Telling site owners where to go
+
+Only **Settings, Observe, Decide, Control and Verify** appear in the WordPress admin menu. Every other SAM page (CSP, Scripts, Traffic Controls, Certificates, Baseline & Drift, …) is hidden from it and reached through a link on one of those five. That applies to the page titles you'll see in `Admin_UI::add_menu_pages()` too.
+
+So any notice, recommendation or help text that points somewhere names the route as staff click it, for example "Decide → Dependency Classification" or "Control → Traffic Controls → Detectors". Don't write "the External Scripts page". The full route table is in [CLAUDE.md](CLAUDE.md#route-table).
+
 ## Security issues
 
 Do not file public issues for suspected vulnerabilities. Follow the process in `SECURITY.md`.

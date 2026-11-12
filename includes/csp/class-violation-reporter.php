@@ -12,6 +12,8 @@
  *     check_not_flooding() wired in as this route's own permission_callback
  *     (see its own docblock) -- the storage cap above only ever gated what
  *     got written to the database, not the cost of accepting the request.
+ *     That budget is per (IP, surface), so one surface's reports can't
+ *     starve another's.
  *   - Returns 204 No Content for valid reports (browser expects no body).
  *   - Stores rollup data for administrator review and future export surfaces.
  *   - Flags a likely competing CSP header when a report's disposition doesn't
@@ -26,6 +28,7 @@ use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Rate_Limiter;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Security\Pillar_Violation_Store;
+use WP_SAM\Security\Reporting_Endpoint;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -51,7 +54,15 @@ class Violation_Reporter {
 	 * tighter and checked earlier -- see check_not_flooding()'s own
 	 * docblock for where it's wired in.
 	 */
-	private const MAX_REPORTS_PER_IP_PER_WINDOW = 40;
+	private const MAX_REPORTS_PER_IP_PER_WINDOW = array(
+		'frontend' => 40,
+		// Only staff reach wp-admin, so its traffic can't be the visitor-
+		// driven storm this guard exists for, while one unlearned admin
+		// screen (the block editor, a page-builder settings page) can
+		// legitimately report many dozens of inline violations per load.
+		'admin'    => 120,
+		'login'    => 40,
+	);
 	private const FLOOD_CHECK_WINDOW            = 10; // seconds
 	private const LEARNABLE_DIRECTIVES          = array(
 		'script-src',
@@ -90,6 +101,15 @@ class Violation_Reporter {
 	 */
 	private array $profile_mode_cache = array();
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log                   $audit             Audit log.
+	 * @param Learning_Window|null        $learning_window   Learning window.
+	 * @param Policy_Change_Manager|null  $policy_changes    Policy change manager, a new one is created when omitted.
+	 * @param Pillar_Violation_Store|null $pillar_violations Pillar violation store, a new one is created when omitted.
+	 * @param Rate_Limiter|null           $rate_limiter      Rate limiter, a new one is created when omitted.
+	 */
 	public function __construct( Audit_Log $audit, ?Learning_Window $learning_window = null, ?Policy_Change_Manager $policy_changes = null, ?Pillar_Violation_Store $pillar_violations = null, ?Rate_Limiter $rate_limiter = null ) {
 		$this->audit             = $audit;
 		$this->learning_window   = $learning_window;
@@ -138,17 +158,35 @@ class Violation_Reporter {
 	 * REMOTE_ADDR-only resolution every other caller in this codebase
 	 * trusts) rather than a new ad-hoc mechanism.
 	 *
+	 * The budget is per (IP, surface), the surface taken from the
+	 * `surface` hint Reporting_Endpoint::url_for_surface() puts on the
+	 * admin and login report URLs. It used to be one budget per IP: staff
+	 * working in wp-admin from one office IP shared it with their own
+	 * frontend browsing, and an admin page still being learned sends
+	 * dozens of reports per load, so admin reports were the ones refused.
+	 * The hint is client-supplied and only selects a bucket, so a flooder
+	 * gains at most one extra bucket per hinted surface; the surface a
+	 * report is stored under still comes from its own document URI.
+	 *
+	 * Each refusal is recorded in Csp_Delivery_Log, so dropped reports are
+	 * visible per surface instead of silently missing.
+	 *
 	 * An empty resolved IP fails open (returns true): there's no identity
 	 * to flood-check against, and handle() itself still runs the existing
 	 * per-(surface, directive) storage cap regardless.
 	 */
-	public function check_not_flooding(): bool|WP_Error {
+	public function check_not_flooding( ?WP_REST_Request $request = null ): bool|WP_Error {
 		$ip = Ip_Resolver::resolve();
 		if ( '' === $ip ) {
 			return true;
 		}
 
-		if ( $this->rate_limiter->exceeded( $ip, 'csp_report', self::MAX_REPORTS_PER_IP_PER_WINDOW, self::FLOOD_CHECK_WINDOW ) ) {
+		$surface = Reporting_Endpoint::surface_hint( null !== $request ? $request->get_param( Reporting_Endpoint::SURFACE_PARAM ) : null );
+		$bucket  = 'frontend' === $surface ? 'csp_report' : 'csp_report_' . $surface;
+		$max     = self::MAX_REPORTS_PER_IP_PER_WINDOW[ $surface ];
+
+		if ( $this->rate_limiter->exceeded( $ip, $bucket, $max, self::FLOOD_CHECK_WINDOW ) ) {
+			Csp_Delivery_Log::record_throttled( $surface );
 			return new WP_Error(
 				'wp_sam_report_flood',
 				__( 'Too many reports from this address in a short window.', 'vcns-security-automation-manager' ),
@@ -262,6 +300,12 @@ class Violation_Reporter {
 		return array();
 	}
 
+	/**
+	 * Maps a legacy application/csp-report payload to the internal report shape.
+	 *
+	 * @param array $r The csp-report object.
+	 * @return array Report fields.
+	 */
 	private function map_csp_report( array $r ): array {
 		// Legacy field names use hyphens (application/csp-report format).
 		// script-sample is only present when 'report-sample' is in the policy (R7).
@@ -281,6 +325,12 @@ class Violation_Reporter {
 		);
 	}
 
+	/**
+	 * Maps a Reporting API (application/reports+json) body to the internal report shape.
+	 *
+	 * @param array $b The report body.
+	 * @return array Report fields.
+	 */
 	private function map_reporting_api( array $b ): array {
 		// Reporting API field names use camelCase (application/reports+json format).
 		// sample is only present when 'report-sample' is in the policy (R7).
@@ -302,6 +352,12 @@ class Violation_Reporter {
 
 	// ── Storage ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Stores a violation report, or increments the count of an identical one.
+	 *
+	 * @param array $r Report fields.
+	 * @return void
+	 */
 	private function store_report( array $r ): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_violation_reports';
@@ -549,6 +605,14 @@ class Violation_Reporter {
 		);
 	}
 
+	/**
+	 * Checks whether a source is already in the inventory.
+	 *
+	 * @param string $surface   Surface slug.
+	 * @param string $directive CSP directive.
+	 * @param string $host      Source host.
+	 * @return bool True when it exists.
+	 */
 	private function has_existing_source_proposal( string $surface, string $directive, string $host ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_source_inventory';
@@ -565,6 +629,13 @@ class Violation_Reporter {
 		return ! empty( $id );
 	}
 
+	/**
+	 * Builds a proposed policy source from a violation report.
+	 *
+	 * @param array  $r           Report fields.
+	 * @param string $blocked_uri The blocked URI.
+	 * @return array|null Candidate source, or null when the report does not describe a source.
+	 */
 	private function source_candidate_from_report( array $r, string $blocked_uri ): ?array {
 		$directive = $this->normalise_directive(
 			isset( $r['effective_directive'] ) && '' !== $r['effective_directive']
@@ -609,6 +680,12 @@ class Violation_Reporter {
 		);
 	}
 
+	/**
+	 * Reduces a directive string to its bare directive name.
+	 *
+	 * @param string $directive Raw directive.
+	 * @return string Directive name.
+	 */
 	private function normalise_directive( string $directive ): string {
 		$directive = strtolower( trim( $directive ) );
 		if ( str_contains( $directive, ' ' ) ) {
@@ -619,6 +696,12 @@ class Violation_Reporter {
 		return is_string( $normalised ) ? $normalised : '';
 	}
 
+	/**
+	 * Checks whether a blocked URI is a keyword such as inline or eval, or a data: or blob: URI, rather than a host.
+	 *
+	 * @param string $blocked_uri Blocked URI.
+	 * @return bool True when it is not a host.
+	 */
 	private static function is_non_host_blocked_uri( string $blocked_uri ): bool {
 		$value = strtolower( $blocked_uri );
 		if ( in_array( $value, array( 'inline', 'eval', 'wasm-eval', 'data', 'blob', 'about' ), true ) ) {
@@ -656,6 +739,11 @@ class Violation_Reporter {
 		return ! empty( $host ) ? strtolower( sanitize_text_field( substr( (string) $host, 0, 255 ) ) ) : null;
 	}
 
+	/**
+	 * Lists the hosts a report's document URI may belong to.
+	 *
+	 * @return array Lowercase host names.
+	 */
 	private function get_allowed_document_hosts(): array {
 		$urls = array(
 			home_url(),
@@ -687,6 +775,12 @@ class Violation_Reporter {
 		return array_values( array_unique( $hosts ) );
 	}
 
+	/**
+	 * Works out which surface a report came from.
+	 *
+	 * @param string $uri Document URI of the report.
+	 * @return string Surface slug.
+	 */
 	private function surface_from_document_uri( string $uri ): string {
 		if ( empty( $uri ) ) {
 			return 'frontend';

@@ -118,4 +118,14 @@ class IpRuleStoreTest extends TestCase {
 
 		$this->assertSame( 'block', $match['list_type'] );
 	}
+
+	public function test_covers_matches_a_bare_address_or_a_range_the_same_way_match_does(): void {
+		$this->assertTrue( $this->store->covers( '203.0.113.42', '203.0.113.42' ) );
+		$this->assertTrue( $this->store->covers( ' 203.0.113.0/24 ', '203.0.113.42' ) );
+		$this->assertTrue( $this->store->covers( '2001:db8::1', '2001:db8::1' ) );
+		$this->assertFalse( $this->store->covers( '203.0.113.43', '203.0.113.42' ) );
+		$this->assertFalse( $this->store->covers( '198.51.100.0/24', '203.0.113.42' ) );
+		$this->assertFalse( $this->store->covers( '', '203.0.113.42' ) );
+		$this->assertFalse( $this->store->covers( 'not an address', '203.0.113.42' ) );
+	}
 }
