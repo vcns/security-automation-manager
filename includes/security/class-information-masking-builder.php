@@ -41,6 +41,13 @@ class Information_Masking_Builder extends Pillar_Header_Builder {
 
 	public const PILLAR_KEY = 'information-masking';
 
+	/**
+	 * Removes the X-Powered-By, Server and X-Pingback response headers.
+	 *
+	 * @param array  $profile Pillar profile row, unused.
+	 * @param string $surface Surface slug, unused.
+	 * @return bool Always true.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		unset( $profile, $surface );
 		header_remove( 'X-Powered-By' );

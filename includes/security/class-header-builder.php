@@ -27,6 +27,11 @@ abstract class Header_Builder extends Request_Surface {
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the hooks that send the pillar's header on normal requests, redirects and the login page.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		// send_headers fires before any output, ideal for emitting headers.
 		add_action( 'send_headers', array( $this, 'emit_header' ) );
@@ -43,6 +48,11 @@ abstract class Header_Builder extends Request_Surface {
 
 	// ── Header emission ───────────────────────────────────────────────────────
 
+	/**
+	 * Sends the pillar's header for the current request, once, and only before output starts.
+	 *
+	 * @return void
+	 */
 	public function emit_header(): void {
 		// Skip if headers already sent (e.g. a plugin flushed output early).
 		if ( $this->header_emitted || headers_sent() ) {
@@ -65,6 +75,13 @@ abstract class Header_Builder extends Request_Surface {
 		}
 	}
 
+	/**
+	 * Sends the header before a redirect is issued.
+	 *
+	 * @param string $location Redirect location.
+	 * @param int    $status   Redirect status, unused.
+	 * @return string The unchanged location.
+	 */
 	public function emit_header_before_redirect( string $location, int $status = 302 ): string {
 		unset( $status );
 		$this->emit_header();
