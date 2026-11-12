@@ -21,7 +21,7 @@ final class Table_Query {
 	 */
 	public static function multi_param( string $key ): array {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only table filter, not a state-changing action.
-		$raw = isset( $_GET[ $key ] ) ? wp_unslash( $_GET[ $key ] ) : array();
+		$raw = isset( $_GET[ $key ] ) ? wp_unslash( $_GET[ $key ] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each element is sanitized in the loop below.
 		if ( ! is_array( $raw ) ) {
 			return array();
 		}
@@ -50,7 +50,7 @@ final class Table_Query {
 			return null;
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return (int) wp_unslash( $_GET[ $key ] );
+		return intval( wp_unslash( $_GET[ $key ] ) );
 	}
 
 	// ── Sorting ──────────────────────────────────────────────────────────────────

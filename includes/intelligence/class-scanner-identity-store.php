@@ -337,8 +337,8 @@ final class Scanner_Identity_Store {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT ip, SUM(occurrence_count) AS times_seen, MAX(last_seen_at) AS last_seen_at FROM {$table} WHERE asn = %d GROUP BY ip ORDER BY MAX(last_seen_at) DESC LIMIT %d",
+				'SELECT ip, SUM(occurrence_count) AS times_seen, MAX(last_seen_at) AS last_seen_at FROM %i WHERE asn = %d GROUP BY ip ORDER BY MAX(last_seen_at) DESC LIMIT %d',
+				$table,
 				$asn,
 				$limit
 			),
@@ -386,9 +386,9 @@ final class Scanner_Identity_Store {
 			$rows = $wpdb->get_results(
 				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- one %s per automatic state, built into $placeholders above.
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT id, ip, claimed_identity, user_agent, verification_state FROM {$table} WHERE id > %d AND verification_state IN ({$placeholders}) ORDER BY id LIMIT %d",
-					...array_merge( array( $last_id ), self::AUTOMATIC_STATES, array( self::RELABEL_BATCH ) )
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table name is a %i placeholder; only the count-dependent %s list ($placeholders) is interpolated.
+					"SELECT id, ip, claimed_identity, user_agent, verification_state FROM %i WHERE id > %d AND verification_state IN ({$placeholders}) ORDER BY id LIMIT %d",
+					...array_merge( array( $table, $last_id ), self::AUTOMATIC_STATES, array( self::RELABEL_BATCH ) )
 				),
 				ARRAY_A
 			);
@@ -426,8 +426,9 @@ final class Scanner_Identity_Store {
 				$result = $wpdb->query(
 					// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- one %d per id, built into $id_placeholders above.
 					$wpdb->prepare(
-						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-						"UPDATE {$table} SET verification_state = %s WHERE id IN ({$id_placeholders})",
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table name is a %i placeholder; only the count-dependent %d list ($id_placeholders) is interpolated.
+						"UPDATE %i SET verification_state = %s WHERE id IN ({$id_placeholders})",
+						$table,
 						(string) $new_state,
 						...$chunk
 					)

@@ -38,6 +38,7 @@ final class Surface_Classifier {
 			return false;
 		}
 
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the header is matched verbatim against a 64-char hex token by Conflict_Probe_Token::is_valid(); unslashing or sanitizing could alter it, and any non-token value is rejected by that method's strict preg_match.
 		return Conflict_Probe_Token::is_valid( (string) $_SERVER[ $server_key ] );
 	}
 
@@ -97,7 +98,7 @@ final class Surface_Classifier {
 			return '';
 		}
 
-		$value    = wp_unslash( (string) $_SERVER[ $key ] );
+		$value    = wp_unslash( (string) $_SERVER[ $key ] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- deliberately unsanitized; see the docblock above. Control characters are stripped below.
 		$filtered = preg_replace( '/[\x00-\x1F\x7F]/', '', $value );
 		return null !== $filtered ? $filtered : '';
 	}
