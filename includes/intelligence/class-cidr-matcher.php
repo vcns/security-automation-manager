@@ -29,6 +29,34 @@ final class Cidr_Matcher {
 	 */
 	public const LOOPBACK_CIDRS = array( '127.0.0.0/8', '::1/128' );
 
+	/**
+	 * Addresses that can only reach this site from inside its own hosting
+	 * network: loopback, the RFC 1918 private ranges, RFC 6598 shared
+	 * address space (carrier/cloud-internal), IPv4 and IPv6 link-local, and
+	 * IPv6 unique local addresses. A request from one of these is this
+	 * server (often reaching itself through an internal address), a sibling
+	 * container, a load balancer or a health check -- never a client on the
+	 * public internet -- so nothing in this plugin escalates or
+	 * automatically blocks it. An administrator's explicit IP rule still
+	 * applies. Superset of LOOPBACK_CIDRS; see is_local().
+	 */
+	public const LOCAL_CIDRS = array(
+		'127.0.0.0/8',
+		'::1/128',
+		'10.0.0.0/8',
+		'172.16.0.0/12',
+		'192.168.0.0/16',
+		'100.64.0.0/10',
+		'169.254.0.0/16',
+		'fc00::/7',
+		'fe80::/10',
+	);
+
+	/** True for any LOCAL_CIDRS address -- the one check every "never auto-block" path shares. */
+	public static function is_local( string $ip ): bool {
+		return self::ip_in_any_cidr( $ip, self::LOCAL_CIDRS );
+	}
+
 	public static function ip_in_cidr( string $ip, string $cidr ): bool {
 		$parts = explode( '/', $cidr, 2 );
 		if ( 2 !== count( $parts ) ) {

@@ -2,9 +2,9 @@
 Contributors: vcnstech
 Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
-Tested up to: 7.1
+Tested up to: 7.1.2
 Requires PHP: 8.1
-Stable tag: 2.9.107
+Stable tag: 2.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,9 +60,17 @@ Reports received by this plugin are validated and stored in this site's WordPres
 
 For Cloudflare, CDN, and reverse-proxy deployments, administrators can configure an origin-only policy header name such as X-Origin-CSP-Policy. The proxy can then copy that origin header into the browser-facing Content-Security-Policy-Report-Only or Content-Security-Policy header.
 
-The Scripts page's External tab has a "Suggest" button, only triggered by an administrator explicitly clicking it, that fetches a URL the administrator themselves supplies (restricted to a third-party origin already observed on this site) and computes a Subresource Integrity hash from it, saving that hash immediately as the pinned value with no separate confirmation step. No content from that fetch is stored or sent anywhere else; only the computed hash is written to this site's own database. Nothing is fetched automatically or in the background as part of this feature.
+The Scripts page's External tab has a "Suggest" button, only triggered by an administrator explicitly clicking it, that fetches a URL the administrator themselves supplies (restricted to a third-party origin already observed on this site) and computes a Subresource Integrity hash from it, saving that hash immediately as the pinned value with no separate confirmation step. No content from that fetch is stored or sent anywhere else; only the computed hash is written to this site's own database. Once an administrator has pinned a third-party file by hash, the plugin also fetches that same file once a day from the origin it was pinned on (https only, a plain GET with no site data sent, at most 25 files per day) to check that its content still matches the pinned hash. Only the computed hash is kept; nothing is fetched for origins that have not been pinned.
 
 The Scripts page's Internal tab, when enabled for a surface, reads this site's own theme/plugin/core files directly from local disk to compute their Subresource Integrity hash -- never a network fetch of any kind, since the file being hashed is the exact file this server is about to serve.
+
+Network Intelligence (Control → Traffic Controls → Network Intelligence) adds network facts to requests a detector has already flagged, and applies the ASN and country rules an administrator adds under Network Rules. It uses three third-party services:
+
+* Tor Project exit list -- The Tor Project, Inc. Once a day, and whenever an administrator clicks Refresh Now on the Tor Exit List tab, the plugin downloads the public list of Tor exit addresses from https://check.torproject.org/torbulkexitlist with a plain HTTPS GET. No visitor data is sent; the request's User-Agent header names WordPress, this plugin, their versions and this site's address. No terms of service are published for this list -- Privacy: https://www.torproject.org/about/privacy_policy/
+* Team Cymru IP-to-ASN mapping -- Team Cymru, Inc. To find which network (autonomous system) an IP address belongs to, the plugin sends DNS queries to Team Cymru's free IP-to-ASN service (origin.asn.cymru.com and asn.cymru.com) through this server's own DNS resolver. Each query contains a single IPv4 address, with its parts reversed, or a single AS number -- nothing else. An address is looked up when a detector flags one of its requests; on every visitor request while at least one ASN or country rule exists; when an administrator uses ASN Lookup or opens an AS's details; and to check that a new ASN rule won't block the administrator's own address. Each address's result is kept for 30 days (its network range and the AS's registry details for one day), so an address is normally queried once a month at most. No account is needed. No separate terms of service are published; the service's usage notes: https://www.team-cymru.com/ip-asn-mapping -- Privacy: https://www.team-cymru.com/privacy
+* IPinfo -- IPinfo Inc. Off until an administrator adds their own IPinfo API token in the Geo-IP tab's settings; nothing is sent to IPinfo without one, and removing the token stops it. With a token saved, the plugin asks https://ipinfo.io for an IP address's country, region and city, sending the IP address and the administrator's token; the request's User-Agent header names WordPress, this plugin, their versions and this site's address. An address is looked up when a detector flags one of its requests; on every visitor request while at least one ASN or country rule exists; when an administrator looks it up on the Geo-IP tab; and to check that a new country rule won't block the administrator's own address. Each result is kept for 30 days. Terms: https://ipinfo.io/terms-of-service -- Privacy: https://ipinfo.io/privacy-policy
+
+The IP addresses sent to Team Cymru and IPinfo belong to visitors to this site, or to the administrator. Nothing else about a visitor's request is sent to either service: not the page requested, the visitor's user agent, or cookies.
 
 The Certificates page, only when an administrator configures it, requests TLS certificates over the ACME v2 protocol. Nothing is contacted until certificates are explicitly configured. Credentials and private keys are encrypted at rest. Issuing a certificate happens inside WordPress; installing it into the web server depends on your hosting platform -- automatic installation uses cPanel's install_ssl API where available, and https://vcns.github.io/security-automation-manager/certificates.html explains the basic steps for other platforms.
 
@@ -119,6 +127,86 @@ When an administrator configures automatic cPanel deployment, once a certificate
 
 == Changelog ==
 
+= 2.13.0 =
+
+* Added: create and edit robots.txt, security.txt, ads.txt and the other well-known files from starter templates, on Control → Traffic Controls → Network Intelligence → Well-Known Files. The plugin serves your saved version without writing any files, checks that visitors actually get it, and warns when an SEO plugin also writes robots.txt.
+* Added: Control → Traffic Controls → Network Intelligence → ASN Lookup shows which network range an address belongs to, with buttons to block the address, its range or its whole network. Click the network's number to see its registration details, where it's blocked, and the addresses your site has seen from it.
+* Changed: the IPinfo token and "Where does this website operate?" are now behind a settings cog on Control → Traffic Controls → Network Intelligence → Geo-IP, and the tab opens straight onto the Country Block List. Network Rules links back to it for blocking countries.
+* Changed: the Tor Exit List and Well-Known Files tabs show one row per item, with their buttons alongside.
+* Changed: the notice that the Content Security Policy trimmed older, unused approvals is shown only to administrators who chose Technical detail.
+* Changed: Settings' summary now sits below the tab bar, like every other tab's content.
+* Changed: this readme's External services section now lists the Tor Project, Team Cymru and IPinfo.
+* Fixed: adding an IP block rule that covers your own address now asks you to confirm first, as ASN and country rules already did.
+* Fixed: changing Control → Traffic Controls → IP Rules → This site's own addresses now updates the labels on Observe → Continuous Intelligence → Identities straight away, instead of waiting for each address to visit again.
+
+= 2.12.0 =
+
+* Fixed: Content Security Policy violation reports from your WordPress dashboard (the admin surface) were being turned away. The report endpoint's flood guard gave each IP address one shared allowance for every part of the site, and dashboard pages still being learned send many reports per visit, so staff browsing from one office address used it up. Admin and login reports now have their own allowance, and the Violations tab shows each surface separately: how many violations, when it last reported, when its policy was last sent, and whether any reports were turned away.
+* Fixed: a slow, steady source of requests -- your own scheduled tasks, an uptime monitor, an office behind one address -- could be rate-limited for exceeding a per-minute limit it never reached in any single minute. Each limit's count now starts afresh when its time window ends. Logged-in administrators no longer use up their address's allowance, and a source that has gone quiet steps back down one block stage per quiet hour. A persistent block you set stays until you release it.
+* Fixed: hashes learned from JSON-LD and other JSON data blocks before 2.11.3 are retired automatically on the next scan, freeing room in the policy for the hashes your real inline scripts need.
+* Fixed: the Geo-IP Country Block List shows every country at once, instead of hiding most of them behind a sideways scrollbar.
+* Fixed: when something outside the plugin, such as an IP allow-list in .htaccess, sends your site's own requests to itself elsewhere, the daily pinned-script check no longer checks the wrong page. SAM now says it couldn't check, explains what to allow so these requests get through, and never records where they were sent.
+* Fixed: help text on Control → Traffic Controls uses the page's full width.
+* Added: SAM now notices when a vendor changes a script you pinned by hash. A daily check re-fetches each pinned file and compares it with the approved hash. A change raises an Action Centre item and a notice, and Decide → Dependency Classification offers "Re-approve new hash" or "Allow by host instead" in one click.
+* Added: Google Tag Manager, Google Analytics, HubSpot, Cloudflare Turnstile and reCAPTCHA are recognised as frequently-updated vendors, shown as "allowed by host, not hash" with the reason.
+* Added: Control → Traffic Controls → Network Intelligence → Geo-IP: the Country Block List can tick or untick countries by group -- UN M49 continents and regions, the EU and EEA, and UK and US (OFAC) sanctions snapshots, each with its source and date. Every country stays individually editable, and nothing changes until you save.
+* Added: Control → Traffic Controls → IP Rules → This site's own addresses. List the public addresses your own servers use to reach the site, and they're treated like your private network: never rate-limited, escalated or counted into campaigns. SAM suggests addresses it has seen calling wp-cron.php for you to check, and never adds them itself.
+* Added: the Geo-IP country groups now include sanctions lists from the UN, the EU, Switzerland, Liechtenstein, Norway, Iceland, Canada, Australia, New Zealand, Japan, South Korea, Singapore, Taiwan and Ukraine, plus every country with a US OFAC program. A new "Where does this website operate?" choice shows only the lists that apply there.
+* Changed: the Settings home page now shows only the summary (scorecard, recent activity, protection status and Action Centre). The per-layer status tables have moved, unchanged, to a new Settings → All tab.
+* Changed: the Plugins screen in wp-admin lists the plugin as "Security Automation Manager".
+
+= 2.11.6 =
+
+* Fixed: requests from your own hosting network -- this server reaching itself through an internal address, a sibling container, a load balancer or a health check (private addresses such as 10.x, 172.16-31.x and 192.168.x) -- are no longer rate-limited, escalated or blocked automatically, and no longer count toward campaigns. Previously the plugin could block your own site's scheduled tasks. An IP block rule you add yourself still applies.
+* Improved: on Observe → Continuous Intelligence → Identities, a source's recent requests now group repeated paths with a count (for example "/wp-cron.php ×9") instead of listing the same path again and again.
+
+= 2.11.5 =
+
+* Security: closed a way for a visitor to slip past Traffic Controls (rate limits and IP blocks) and go unrecorded by the attack detectors by sending a particular request header. Updating is recommended.
+* Fixed: the Advanced Intelligence page loaded without the plugin's styles and scripts. Its info pop-ups all showed at once, stacked down the page, and the Campaigns Acknowledge, Dismiss and Block buttons did nothing.
+* Fixed: info pop-ups across the plugin's screens could show their text in the wrong font or be cut off at the bottom of a table.
+* Changed: Advanced Intelligence is no longer a separate menu item. Each of its sections now sits with the step it belongs to: Timeline under Observe, Campaigns under Decide, Honey Paths under Control, and Change Windows under Verify.
+* Improved: plugin notices now include a link to the place where you can act on them, and messages that point you somewhere now name the menu route (for example "Decide → Dependency Classification").
+
+= 2.11.4 =
+
+* Fixed: the Content Security Policy for your WordPress dashboard (the admin surface) is now actually sent. Earlier versions never delivered it on ordinary dashboard pages, so "no violations reported" there meant nothing. If your admin policy was set to Enforce, it has been moved back to Report-only once, so you can review its real reports before promoting it again.
+* Fixed: "Promote this surface to Enforce" is now only suggested when the plugin has evidence that the policy was actually being sent for the whole 30 days, and wasn't having to drop learned approvals to stay within its size limit. Expect no such suggestions for the first 30 days after updating while that evidence builds up.
+* Changed: the REST API is no longer treated as a Content Security Policy surface you review and promote. API responses (JSON) never load scripts, styles or images, so there was nothing to learn there; they now get a fixed, locked-down policy instead, and the API surface no longer appears on the CSP screens.
+
+= 2.11.3 =
+
+* Fixed: the daily checks of this site's own robots.txt, agents.txt, security.txt, humans.txt, ads.txt and app-ads.txt, and the security-header discovery scan, no longer follow a redirect to a different website. Previously, on a site that redirects some visitors elsewhere (for example a staging site that sends unknown visitors to the live site), the plugin could read the other site's files and pages and report them as this site's own.
+* Fixed: a site that simply doesn't have one of those optional files is now recorded as "Absent" instead of raising a daily "refresh failed" warning.
+* Fixed: a discovery scan refused by a firewall or login protection is now logged quietly instead of raising an admin warning.
+* Fixed: plugin admin notices are now shown only to administrators. Previously any logged-in user who could reach the dashboard could see them, and seeing them cleared them before an administrator did.
+* Fixed: Content Security Policy hash learning no longer records JSON-LD structured data (such as SEO schema markup), which browsers never run and CSP doesn't control. On sites with many pages these filled the policy's size budget and could push out the approvals real inline scripts need.
+* Fixed: an inline script that directly follows an external script tag is now recognised and approved correctly.
+* Fixed: hashes for inline style attributes are no longer sent in the policy unless they can take effect, so they no longer use up the policy's size budget. A manual rescan now also retires approvals unused for 30 days.
+* Improved: Advanced Intelligence → Campaigns now shows how many IPs are active in the last 24 hours separately from the count recorded when the campaign was detected, and marks your own IP in the list.
+* Fixed: blocking a campaign's participants no longer includes your own IP or the site's own loopback address, so it can't lock you out of your dashboard. The button now says how many IPs it will block.
+
+= 2.11.2 =
+
+* Documentation only, no functional change from 2.11.1. Corrected the pillar count and pillar list on this page and in the bundled documentation: Information Masking and Cache-Control were missing from several lists, which made the counts disagree with each other and with the plugin itself.
+
+= 2.11.1 =
+
+* No functional change from 2.11.0 -- republished under the correct release-branch naming so this version could be published to WordPress.org (2.11.0's release branch was misnamed and didn't satisfy the deploy pipeline's release-provenance check, a deliberate safeguard against publishing from an untracked branch).
+
+= 2.11.0 =
+
+* Rolled out a consistent table layout standard across every admin screen -- CSP dashboard, Overview/Settings, Scripts, Certificates, Cross-Origin Policies, Information Masking, Traffic Controls, Baseline & Drift, and Continuous/Advanced Intelligence -- replacing per-page, hand-tuned column widths (which drifted out of sync whenever a table gained or lost a column) with one shared, self-adjusting layout.
+* Purely a presentation change: no security behaviour, stored data, or admin action was altered.
+
+= 2.10.1 =
+
+* Fixed: a first-time WordPress user could be redirected to the new Welcome page before ever seeing a persistent, must-see admin notice (the schema-downgrade warning, or a failed TLS certificate renewal) -- the redirect exited the request before those notices had a chance to render. The redirect now checks for either condition first and skips itself when one is present, so an urgent notice always reaches the administrator immediately.
+
+= 2.10.0 =
+
+* Added: Customer-Centred Administration Experience -- a presentation layer over existing capability, not a change to how the site is protected. A skippable Welcome page collects four personal presentation preferences (relationship to the site, security familiarity, Simple/Balanced/Technical depth, and what to see first) stored per WordPress user; edit them anytime from the new "Personal Preferences" link on Settings/Observe/Decide/Control/Verify. Settings/Overview now leads with a factual Protected/Learning/Needs-attention scorecard and a Recent Activity strip (detections, currently blocked/rate-limited sources, and newly-detected configuration changes in the last 24 hours -- raw request volume is deliberately not shown, since no store in this plugin reliably counts it), followed by an outcome-oriented Protection Status table (Protected/Learning/Monitoring/Needs attention/Not in use/Unavailable, never colour alone) and a new consolidated Action Centre tab gathering everything needing review -- from the existing Recommendations Engine, the CSP source review queue, and unclassified dependencies -- into one What-was-found/Why-it-matters/Recommended-action/What-will-happen list, without duplicating any existing decision logic. Every section keeps a "Technical details" disclosure open by default for Technical-depth users and available (never hidden) for everyone else. No existing tab, page, or security decision changed.
+
 = 2.9.107 =
 
 * Security: removed the direct-Stripe checkout path from the commercial-only Fully Automatic upgrade extension (Stripe secret/price/webhook key storage and the checkout AJAX handler). This path was never functional in either public release channel and has no evidence of real customer use, but its plaintext-secret storage was flagged as an unmitigated finding in this project's own threat model. Any values from a previous private/commercial build are actively removed on upgrade. Fully Automatic mode remains registered as a product concept but is unreachable until a replacement entitlement source is built.
@@ -134,141 +222,5 @@ When an administrator configures automatic cPanel deployment, once a certificate
 = 2.9.104 =
 
 * Added: Recommendations Engine (Phase 4F) gains a fourth rule -- a report-only Content Security Policy surface that's stayed quiet (no violations) for 30 days, with no deliberate exception recorded against it, now suggests promoting that surface to Enforce.
-
-= 2.9.103 =
-
-* Added: Recommendations Engine (Phase 4F) gains its first three rules -- certificate renewal due, unexplained high/critical-risk configuration drift, and exceptions expiring soon. Each reuses evidence this plugin already collects (no new data source), links straight to where to act on it, and explains why it matters and what to do instead if the suggestion doesn't fit.
-
-= 2.9.102 =
-
-* Added: Recommendations Engine (Phase 4F) -- foundation increment. A new "Recommendations" tab on Settings/Overview, right after Security Health, for prioritised, evidence-backed suggestions drawn from what this plugin already observes. Nothing is ever applied automatically; every suggestion links to where to act on it, and can be dismissed with a reason until the underlying evidence actually changes. This increment ships the engine and admin UI with no rules registered yet -- concrete rules (certificate renewal, unexplained drift, expiring exceptions, and more) land in the following increments.
-
-= 2.9.101 =
-
-* Added: Continuous Intelligence's bot/crawler classification gains a "repeated errors" signal (Phase 4C carried-forward item, the second and last of the two named alongside "timing") -- an unrecognised source whose recent requests were disproportionately HTTP errors (most often 404) is now classified as "Error probing (repeated 4xx/5xx)" on the Identities tab, the classic signature of a scanner probing for paths that don't exist or aren't allowed. Independent of enumeration and timing -- a source can be flagged for any of the three without the others.
-
-= 2.9.100 =
-
-* Added: Continuous Intelligence's bot/crawler classification gains a "timing" signal (Phase 4C carried-forward item) -- an unrecognised source whose last several requests arrived at a suspiciously uniform interval (a script sleeping a fixed duration between requests, rather than a person's naturally irregular browsing) is now classified as "Scripted timing (uniform request interval)" on the Identities tab. Independent of the existing sequential-path-enumeration signal -- a source can be flagged for one without needing the other.
-
-= 2.9.99 =
-
-* Added: Continuous Intelligence's Identities table now persists ASN and Geo-IP (country/region/city) directly on the identity record, not just as per-event evidence. This was a known gap: ASN/Geo-IP were already resolved and recorded against individual detector findings, but never merged onto the identity itself. Populated only when that resolution was already happening anyway (a detector already found something on that request), so this adds no extra cost to ordinary traffic -- a repeat source's identity fills in the network details over time as it keeps triggering findings.
-* Fixed: a real bug found in live testing, not shipped before release -- WordPress's own `wpdb::prepare()` doesn't preserve a blank value as a true database NULL for number/text placeholders, so the first version of this feature's "don't overwrite what we already know" logic could have reset a source's ASN back to blank on a later request with no new data. Fixed before release.
-
-= 2.9.98 =
-
-* Added: a new "Getting Started" tab on Settings/Overview -- a short, suggested-order checklist for a new install (Configure CSP, turn on the other header pillars, review Traffic Controls, capture a security baseline, issue a free TLS certificate). Each step shows a live status pulled straight from the actual configuration, not a static list, and nothing here is required or enforced -- skipping a step or doing them in a different order doesn't break anything. Completes the Phase 4G UI documentation retrofit.
-
-= 2.9.97 =
-
-* Added: the public GitHub Pages help site's user guide and FAQ now explain what Content Security Policy actually defends against -- cross-site scripting -- rather than only describing configuration mechanics. The FAQ's most-read general answers (what the plugin does, why enforce mode can break a site, whether wp-admin is safe to enforce, what "high risk" means, whether reports can be spoofed, caching-plugin compatibility, and more) each gained a concrete consequence, not just a restated fact. Completes the Phase 4G UI documentation retrofit's public-docs track.
-
-= 2.9.96 =
-
-* Added: the Phase 4G UI documentation retrofit now covers every remaining admin page -- all 14 pillar pages (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Information Masking, Cache-Control, Permissions-Policy, HSTS, Reverse Tabnabbing, External Scripts, Internal Script Integrity, Cross-Origin-Resource-Policy, X-Permitted-Cross-Domain-Policies, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy) plus Continuous Intelligence and Baseline & Drift. Certificates was reviewed and already met the bar, so it's unchanged.
-* Two real, previously-undocumented gaps were surfaced while researching this: (1) Reverse Tabnabbing Protection and External Script Integrity share an exclusion gate that means their Admin/Login/Api toggles can be switched on but never actually take effect -- only Frontend is live for either; both pages now say so plainly. (2) Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy ship pre-enabled in Enforce mode on every surface, but at the specification's no-op `unsafe-none` value -- enough to satisfy a scanner checking for the header's presence, but genuinely isolating anything requires deliberately choosing a stronger value; both pages now explain this rather than leaving an administrator to wonder why "enabled" seems to do nothing.
-* No behaviour change anywhere in this release -- explainer copy only.
-
-= 2.9.95 =
-
-* Fixed: `.roadmap/phase4_plan.md`'s note on the Traffic Controls retrofit (v2.9.94) described this page's other recent growth (Network Intelligence's new ASN/Geo-IP/Well-Known-Files/Network-Rules sub-tabs) as "unrelated work" -- user-corrected: that work was explicitly requested, not unrelated, just not something this document's own increment list happened to track. Reworded to attribute it correctly. Documentation only, no behaviour change.
-
-= 2.9.94 =
-
-* Added: Traffic Controls (Policy, IP Rules, and Blocks tabs) gained the same guided explainer text already shipped for Settings/Overview and the CSP Dashboard -- what a surface's rate limit and Observe/Enforce mode actually do, what the Warn/Throttle/Temporary-block/Extended-block ladder means, what a CIDR range is and when to use Allow vs. Block, and what Release and Make Permanent actually change. The Network Intelligence, Detectors, and Custom Rules tabs already had this level of detail from when those features were built. No behaviour change.
-
-= 2.9.93 =
-
-* Added: a "Development Build" GitHub Actions workflow that publishes a rolling pre-release (tag `development-latest`, always overwritten) containing the same self-updating GitHub-channel ZIP a real release ships, rebuilt automatically on every merge to the `development` branch -- a stable, bookmarkable download for testing what's currently on `development` without a numbered release.
-
-= 2.9.92 =
-
-* Fixed: Baseline & Drift's Drift table had unsuitable column widths for its content -- Item and Actions are now pinned (140px/200px) and the rest size dynamically, with long item keys now wrapping at natural word boundaries instead of overflowing.
-* Fixed: Advanced Intelligence's Campaigns tab asked for a reason twice (one box for Acknowledge/Dismiss, a second for Block Participants) -- now a single Reason field feeds whichever action you take. Added an info icon showing the actual currently-live participant IPs, and explanatory text stating the real detection criteria (10+ distinct IPs on the same detector/surface within 24 hours) so a block decision isn't made blind.
-* Fixed: Continuous Intelligence's Events table still wrapped text unnecessarily in narrow viewports; widened the Detector column and collapsed the Family column to an em-dash whenever it's identical to the Detector (the case for the large majority of built-in detectors), which is what was crowding the table in the first place.
-
-= 2.9.91 =
-
-* Fixed: Traffic Controls' Network Intelligence sub-tabs (Tor Exit List, ASN Lookup, Geo-IP, Well-Known Files) displayed each summary as a tall, narrow, single-fact-per-row table capped at 600px wide. These now render as a compact row of stat boxes using the page's actual width, and the two remaining 600px caps on the Geo-IP sub-tab were removed to match. The Policy and Blocks tables' column widths and the Network Intelligence sub-tab navigation itself were already correct in this branch; only the still-narrow stat displays needed fixing.
-
-= 2.9.90 =
-
-* Added: 10 more built-in crawlers to the Continuous Intelligence vendor catalogue -- YandexBot, Baiduspider, DuckDuckBot, Applebot, Sogou web spider, SeznamBot, OAI-SearchBot, Amazonbot, DuckAssistBot, and Meta-ExternalAgent -- each verified against the vendor's own current documentation (published IP range or reverse-DNS suffix; Meta-ExternalAgent recognition-only, since Meta publishes neither). New `docs/scanner-vendor-research.md`, linked from the Vendors tab, also catalogues researched commercial scanners (Qualys, Tenable, Detectify, and others) and monitoring/SEO bots (Ahrefs, UptimeRobot, and others) for administrators to add manually -- these are deliberately not seeded as built-ins, matching this catalogue's existing policy against hardcoding data that changes over time or vendors with no distinctive user agent.
-
-= 2.9.89 =
-
-* Fixed: the Continuous Intelligence Events, Identities, and Vendors tables (Settings/Overview) borrowed the CSP Violations table's column widths, which didn't match their own column layouts and caused severe text wrapping (detector/classification labels, dates, vendor names). Each table now has its own tuned column widths. The Identities "Reason" field is wider, the table now sorts by Occurrences descending by default, and a loopback identity (the server calling itself) is now auto-authorised rather than requiring a manual click -- an explicit Deny is still available if a site's reverse proxy makes that recognition wrong. The Vendors "Add a vendor" form is now a collapsible disclosure instead of always being shown in full.
-
-= 2.9.88 =
-
-* Added: the Security Health summary (Settings/Overview > Security Health, GitHub issue #175) now shows a per-surface CSP enforcement breakdown and distinguishes a surface not enforcing because of an active, administrator-recorded exception from one that simply hasn't been promoted yet, using the real Exceptions feature. The Exceptions row now also counts formal, time-bound exceptions alongside the existing signals it already tracked. The health model is now explicitly versioned (currently v2), shown on the Health tab.
-
-= 2.9.87 =
-
-* Added: a per-provider DNS-01 setup guide covering all 41 built-in DNS providers (GitHub issue #291) -- credential-creation links, minimum permission scopes, zone-scoping guidance, field-by-field mapping, rotation/revocation steps, and common errors for each, researched directly against each provider's own current documentation with any unconfirmed detail explicitly flagged rather than guessed. New "View setup instructions" link on the Certificates page next to the provider picker.
-
-= 2.9.86 =
-
-* Added: the Evidence Export (Settings/Overview, GitHub issue #178) now includes a SHA-256 checksum so later alteration can be detected, an optional reporting-period date range narrowing the recent-audit-history section, and a new "formal exceptions" section reading the Exceptions feature's own records. Framework mappings (Cyber Essentials, ISO/IEC 27001, PCI DSS, OWASP ASVS, CIS Controls) were already complete.
-
-= 2.9.85 =
-
-* Added: configuration snapshots (Settings/Overview > Recovery, GitHub issue #180) now also cover time-bound exceptions and the automation-posture setting, alongside the policy/source/pillar/dependency/certificate tables they already covered. Each restorable snapshot now has a "Preview what this would overwrite" disclosure showing row counts and included options before you confirm, and a restore that can't fully complete (a table in the snapshot missing from the live database) is now reported as a partial restore rather than an unqualified success.
-
-= 2.9.84 =
-
-* Added: promoting a CSP surface to enforce mode now requires a written reason (GitHub issue #179), and passes three more automated checks before it's allowed: no active exception covering that surface (see the new Exceptions tab), no source candidates still awaiting an approve/reject decision, and no competing Content-Security-Policy header detected in the last 48 hours. Existing checks (approved sources/hashes present, no recent violations) are unchanged.
-
-= 2.9.83 =
-
-* Added: Exceptions (Settings/Overview > Exceptions, GitHub issue #177) -- record a controlled, time-bound weakening of a control or surface (a legacy integration, a third-party embed) as an auditable exception instead of a silent override. Requires a business justification and an owner; requires an expiry date unless a privileged override is used. A daily check automatically returns an exception to review once it expires, and emails the configured admin address as one approaches expiry. Every creation, extension, and revocation is written to the audit log.
-
-= 2.9.82 =
-
-* Fixed: three release-verification test gaps closed (GitHub issue #159) -- a dedicated test now covers the update checker's HTTPS-only package URL rule (previously only exercised indirectly by a path-traversal test), a missing or expired manifest cache entry correctly falls through to a fresh check instead of being treated as a result, and a cached manifest is honoured without an unnecessary re-fetch.
-
-= 2.9.81 =
-
-* Fixed: `code-review-findings.json`'s 10 retained findings had no disposition metadata even though most had already been resolved by later issues (GitHub issue #164) -- each entry now records whether it's resolved (and by which issue) or was fixed directly in this release. Also closed the two findings that were still genuinely open: the test bootstrap's autoloader is now registered immediately before the stubs that need it, closing the window where a stub could be silently bypassed, and an unresolvable test class now throws immediately instead of only logging a notice PHPUnit doesn't fail on by default.
-
-= 2.9.80 =
-
-* Fixed: the CSP dashboard queried the policy-profiles, last-50-violations, and scan-log tables unconditionally on every page load regardless of which tab was open (GitHub issue #166) -- viewing e.g. Settings or Start Here still fired three unneeded queries. Profiles and violations queries are now scoped to only the tabs that actually use them; the scan-log query is scoped to the Scan Log tab.
-
-= 2.9.79 =
-
-* Fixed: a customer's WP Engine site suffered PHP-FPM worker pool exhaustion (two outages in one morning) because the CSP violation-report endpoint had no request-level throttle and the default reporting transport (report-uri) fires one immediate, unbatched HTTP request per browser-side violation. The default reporting transport is now "both" (report-uri retained as a fallback, report-to added so supporting browsers batch delivery instead); existing installs still on the untouched report-uri-only default are migrated automatically. The report endpoint also now rejects a flooding sender with a 429 before any request body is parsed or written to the database, separate from and tighter than the existing hourly per-surface storage cap.
-
-= 2.9.78 =
-
-* Fixed: WordPress.org's SVN import warned (author/committer-only banner) that this section was truncated past its 5,000-word budget -- readme.txt had accumulated 69 version entries back to 2.9.9 (~6,300 words). Trimmed to the most recent 15 releases; the "Full changelog history" link below them already covers everything older via CHANGELOG.md. Added an automated test so this section approaching the word budget again is caught in CI, not by another SVN warning.
-
-= 2.9.77 =
-
-* Added: Traffic Controls tracks five more well-known files alongside robots.txt -- agents.txt, security.txt, humans.txt, ads.txt, and app-ads.txt -- each with its own daily-refreshed cache and a "Refresh Now" action; agents.txt also gets a Disallow-rule compliance detector, the same as robots.txt already had.
-* Added: a Geo-IP country block/allow grid (Network Intelligence > Geo-IP) -- every country defaults to Allow, nothing changes until you click Save, and saving a change that would block the requesting administrator's own resolved country (with no covering IP-allow rule) is held behind an explicit "save anyway" confirmation instead of silently locking them out.
-* Added: a Description column on the Detectors tab, and a tooltip explaining what "(fixed)" means next to an observe-only control action.
-* Changed: the Policy tab is now a single compact table instead of four stacked forms; Network Intelligence is split into Tor/ASN/Geo-IP/Well-Known Files/Network Rules sub-tabs; several tabs no longer cap their own width unnecessarily.
-* Changed: the About tab's "What this plugin covers" now mentions Traffic Controls & Network Intelligence and Advanced Intelligence, both previously missing entirely, and its built-in-detector count is computed live instead of a hardcoded number.
-* Fixed: automatic rate-limit escalation could block a loopback address (127.0.0.1/::1) -- wp-cron's and Site Health's own loopback requests were landing in the Blocks list as if they were an attacker. An explicit administrator IP-block rule for a loopback address still applies.
-* Fixed: the Geo-IP self-lockout check silently proceeded (no warning) whenever the Geo-IP lookup for the administrator's own IP failed, and only checked for an admin-surface IP-allow rule rather than the actual surface a block would apply to.
-* Fixed: the short "tagline" description WordPress.org shows in plugin-directory search results and the "Add Plugins" install screen said nothing about file-integrity monitoring (Baseline & Drift) and described rate limiting as "traffic filtering". Updated to "Self-learning security headers, built-in attack detection and rate limiting, file-integrity monitoring, and free TLS certificates. No paywall." (142 characters).
-
-= 2.9.76 =
-
-* Fixed: the short "tagline" description WordPress.org shows in plugin-directory search results and the "Add Plugins" install screen (user-flagged from a live install) still said "Ten security headers that learn your site before enforcing" with no mention of Continuous Intelligence, traffic filtering, or Baseline & Drift -- all shipped since that line was written. Updated to "Security headers that learn before enforcing so nothing breaks, plus attack detection, traffic filtering, and free TLS certs. No paywall." (137 characters, within WordPress.org's ~150-character directory-tagline budget). Added an automated test so this line and the plugin header's own Description: field can't silently drift apart again.
-
-= 2.9.75 =
-
-* Fixed: `.github/workflows/wporg-deploy.yml`'s 24-hour "one submission per day" gate was documented as a WordPress.org platform requirement -- it isn't. An already-approved plugin's SVN commits go live immediately with no human review queue (that queue is specific to the initial plugin submission). Corrected the misleading comments and added an explicit `bypass_cadence_convention` manual-dispatch option so this team's own cadence convention can be skipped for one run when needed, without weakening the standing default. No plugin behaviour change.
-
-= 2.9.74 =
-
-* Added: real traffic-control filtering by Tor exit-node status, ASN, and country -- the missing half of Geo-IP/ASN/Tor awareness (previously evidence-only). Tor exit-node filtering is a new detector (works alongside the existing 19, enable/observe/enforce from the Detectors tab). ASN and country blocking are a new "Network Rules" list on Traffic Controls > Network Intelligence -- enter an ASN (e.g. AS15169) or a two-letter country code to block, and it's checked on every request alongside IP Rules. ASN/Geo-IP lookups stay off (zero added cost) until you add at least one rule; only Tor's exit-node check runs unconditionally, since it's a cheap local table lookup rather than a live query.
-
-= 2.9.73 =
-
-* Fixed: the Settings/Overview page's About tab had drifted badly behind the actual feature set -- it still described "nine further HTTP security headers" (now eleven -- Information Masking and Cache-Control shipped since that text was written) and never mentioned Continuous Intelligence (request observation, nineteen built-in attack detectors, bot/crawler recognition, custom fail2ban-style rules, traffic controls) or Baseline & Drift (file/theme/plugin change detection) at all, despite both being fully shipped features with their own admin pages. Rewrote the "What this plugin covers" and "The gap this fills" sections to reflect the current product.
 
 Full changelog history: https://github.com/vcns/security-automation-manager/blob/main/CHANGELOG.md

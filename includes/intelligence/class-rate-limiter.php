@@ -7,6 +7,14 @@
  * counter pattern Event_Store and Hash_Manager already use for their own
  * per-hour rate limits -- not a true sliding window, but simple, and
  * consistent with the rest of this codebase.
+ *
+ * The window is anchored to its first hit and stored alongside the count.
+ * Previously only the count was stored, and set_transient() pushed the
+ * expiry out again on every hit, so the counter only reset after a full
+ * window with no requests at all. A slow, steady source -- WordPress's own
+ * wp-cron loopback calls, a monitoring check, an office of staff behind one
+ * address -- therefore kept counting up for hours and eventually "exceeded"
+ * a per-minute limit it had never come close to in any single minute.
  */
 
 declare( strict_types=1 );
@@ -19,36 +27,44 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Rate_Limiter {
 
+	/** @var callable():int Real time() by default; injectable so tests can move between windows. */
+	private $clock;
+
+	public function __construct( ?callable $clock = null ) {
+		$this->clock = $clock ?? 'time';
+	}
+
 	/**
 	 * Records one hit for this key and returns the count so far in the
-	 * current window. set_transient() resets the expiry to $window_seconds
-	 * from now on every call, so a source sending a continuous stream of
-	 * requests never lets the counter lapse -- it keeps climbing for as
-	 * long as traffic keeps arriving, and only resets after a genuine gap
-	 * longer than $window_seconds. That's the intended behaviour here: a
-	 * sustained flood should escalate quickly rather than getting a fresh
-	 * allowance every time the window nominally "rolls over" while still
-	 * under active abuse.
+	 * current window. The window starts at the first hit and lasts
+	 * $window_seconds; the first hit after it ends starts a new window at 1.
+	 * A sustained flood still exceeds the limit in every window it spans.
 	 */
 	public function hit( string $ip, string $surface, int $window_seconds ): int {
 		if ( '' === $ip ) {
 			return 0;
 		}
 
-		$key   = $this->transient_key( $ip, $surface );
-		$count = (int) get_transient( $key );
+		$window = max( 1, $window_seconds );
+		$key    = $this->transient_key( $ip, $surface );
+		$now    = (int) ( $this->clock )();
+		$state  = get_transient( $key );
 
-		if ( 0 === $count ) {
-			set_transient( $key, 1, max( 1, $window_seconds ) );
-			return 1;
+		// A non-array value is a bare count from the old format, with no start time:
+		// treat it as expired rather than guess where its window began.
+		if ( ! is_array( $state ) || ! isset( $state['start'], $state['count'] ) || $now - (int) $state['start'] >= $window ) {
+			$state = array(
+				'start' => $now,
+				'count' => 0,
+			);
 		}
 
-		// set_transient() with the same key refreshes the value without
-		// resetting the expiry it was first set with in most transient
-		// backends (object cache or options table), so the window's end
-		// stays anchored to the first hit.
-		set_transient( $key, $count + 1, max( 1, $window_seconds ) );
-		return $count + 1;
+		++$state['count'];
+
+		// Expires when this window ends, not $window seconds after the latest hit.
+		set_transient( $key, $state, max( 1, (int) $state['start'] + $window - $now ) );
+
+		return (int) $state['count'];
 	}
 
 	public function exceeded( string $ip, string $surface, int $max_requests, int $window_seconds ): bool {

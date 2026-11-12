@@ -211,7 +211,7 @@ class TrafficGuardTest extends TestCase {
 	}
 
 	public function test_rate_limit_exceeded_escalates_a_fresh_source_to_warn_and_still_allows(): void {
-		$GLOBALS['_wp_transients']['wp_sam_rate_frontend_' . md5( '203.0.113.42' )] = 500; // Already way over.
+		$GLOBALS['_wp_transients']['wp_sam_rate_frontend_' . md5( '203.0.113.42' )] = array( 'start' => time(), 'count' => 500 ); // Already way over.
 		$GLOBALS['_wpdb_get_row_queue'] = array(
 			$this->policy_row( array( 'mode' => 'observe' ) ), // is_enforcing()
 			null, // Traffic_Block_Store::get() -- no existing block.
@@ -228,7 +228,7 @@ class TrafficGuardTest extends TestCase {
 	}
 
 	public function test_privileged_user_over_the_rate_limit_is_allowed_and_never_escalated(): void {
-		$GLOBALS['_wp_transients']['wp_sam_rate_frontend_' . md5( '203.0.113.42' )] = 500;
+		$GLOBALS['_wp_transients']['wp_sam_rate_frontend_' . md5( '203.0.113.42' )] = array( 'start' => time(), 'count' => 500 );
 		$GLOBALS['_wpdb_get_row_queue'] = array(
 			$this->policy_row( array( 'mode' => 'enforce' ) ),
 			null,
@@ -239,6 +239,21 @@ class TrafficGuardTest extends TestCase {
 
 		$this->assertSame( 'allow', $verdict['action'] );
 		$this->assertSame( array(), $GLOBALS['_wpdb_inserted_rows'] ); // No escalation for a privileged session.
+	}
+
+	public function test_privileged_users_requests_never_count_towards_their_addresss_rate_limit(): void {
+		$key                              = 'wp_sam_rate_frontend_' . md5( '203.0.113.42' );
+		$GLOBALS['_wp_transients'][ $key ] = array( 'start' => time(), 'count' => 299 );
+		$GLOBALS['_wpdb_get_row_queue']   = array(
+			$this->policy_row( array( 'mode' => 'enforce' ) ),
+			null,
+			$this->policy_row( array( 'mode' => 'enforce' ) ),
+		);
+
+		$this->guard->decide( '203.0.113.42', 'frontend', true );
+
+		// Still one under the 300 limit, so a colleague on the same address isn't pushed over it.
+		$this->assertSame( 299, $GLOBALS['_wp_transients'][ $key ]['count'] );
 	}
 
 	public function test_missing_policy_row_defaults_to_allow(): void {
@@ -267,7 +282,7 @@ class TrafficGuardTest extends TestCase {
 
 	public function test_login_failure_escalates_once_past_the_threshold(): void {
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
-		$GLOBALS['_wp_transients']['wp_sam_rate_login_failed_' . md5( '203.0.113.42' )] = 10; // Already at the limit.
+		$GLOBALS['_wp_transients']['wp_sam_rate_login_failed_' . md5( '203.0.113.42' )] = array( 'start' => time(), 'count' => 10 ); // Already at the limit.
 		$GLOBALS['_wpdb_get_row_queue'] = array(
 			$this->policy_row( array( 'surface' => 'login', 'login_max_failed_attempts' => 10, 'login_lockout_seconds' => 900 ) ),
 			null, // Traffic_Block_Store::record_violation()'s existing check.
@@ -278,5 +293,54 @@ class TrafficGuardTest extends TestCase {
 
 		$this->assertCount( 1, $GLOBALS['_wpdb_inserted_rows'] );
 		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+
+	// ── Private-network exemption ─────────────────────────────────────────────
+
+	public function test_private_network_source_is_never_blocked_by_automatic_escalation(): void {
+		// e.g. staging's own requests to itself, which arrive from 10.16.17.55.
+		$GLOBALS['_wpdb_get_results'] = array(); // No IP rules.
+
+		foreach ( array( '10.16.17.55', '172.20.0.5', '192.168.1.10', 'fd12:3456::1' ) as $ip ) {
+			$verdict = $this->guard->decide( $ip, 'frontend', false );
+
+			$this->assertSame( 'allow', $verdict['action'], $ip );
+			$this->assertFalse( $verdict['would_block'], $ip );
+		}
+	}
+
+	public function test_explicit_block_rule_still_applies_to_a_private_network_source(): void {
+		$GLOBALS['_wpdb_get_results'] = array(
+			array( 'id' => 1, 'list_type' => 'block', 'cidr' => '10.16.17.55', 'surface' => '', 'expires_at' => null ),
+		);
+
+		$verdict = $this->guard->decide( '10.16.17.55', 'frontend', false );
+
+		$this->assertSame( 'block', $verdict['action'] );
+		$this->assertSame( 'ip_rule_block', $verdict['reason'] );
+	}
+
+	// ── This site's own addresses ─────────────────────────────────────────────
+
+	public function test_a_declared_own_public_address_is_never_blocked_by_automatic_escalation(): void {
+		\WP_SAM\Intelligence\Own_Address_Store::save( '185.199.223.7' );
+		$GLOBALS['_wpdb_get_results'] = array(); // No IP rules.
+		$GLOBALS['_wpdb_get_row']     = $this->block_row( array( 'ip' => '185.199.223.7' ) ); // Even an existing block row is ignored.
+
+		$verdict = $this->guard->decide( '185.199.223.7', 'frontend', false );
+
+		$this->assertSame( 'allow', $verdict['action'] );
+		$this->assertFalse( $verdict['would_block'] );
+	}
+
+	public function test_explicit_block_rule_still_applies_to_a_declared_own_address(): void {
+		\WP_SAM\Intelligence\Own_Address_Store::save( '185.199.223.7' );
+		$GLOBALS['_wpdb_get_results'] = array(
+			array( 'id' => 1, 'list_type' => 'block', 'cidr' => '185.199.223.7', 'surface' => '', 'expires_at' => null ),
+		);
+
+		$verdict = $this->guard->decide( '185.199.223.7', 'frontend', false );
+
+		$this->assertSame( 'block', $verdict['action'] );
 	}
 }

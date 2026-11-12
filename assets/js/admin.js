@@ -60,7 +60,7 @@
 				location.reload();
 			} else {
 				// eslint-disable-next-line no-alert
-				alert( res.data.message || 'Failed to switch mode.' );
+				alert( res.data.message || wpSamAdmin.i18n.failedSwitchMode );
 				$btn.prop( 'disabled', false );
 			}
 		} )
@@ -88,7 +88,7 @@
 			if ( ! res || true !== res.success ) {
 				$checkbox.prop( 'checked', ! enabled );
 				// eslint-disable-next-line no-alert
-				alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+				alert( ( res && res.data && res.data.message ) || wpSamAdmin.i18n.failedSave );
 			}
 		} )
 		.fail( function () {
@@ -116,7 +116,7 @@
 			if ( ! res || true !== res.success ) {
 				$checkbox.prop( 'checked', ! enabled );
 				// eslint-disable-next-line no-alert
-				alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+				alert( ( res && res.data && res.data.message ) || wpSamAdmin.i18n.failedSave );
 			}
 		} )
 		.fail( function () {
@@ -151,14 +151,14 @@
 				$select.val( previous );
 			}
 			// eslint-disable-next-line no-alert
-			alert( res.data.message || 'Failed to switch automation mode.' );
+			alert( res.data.message || wpSamAdmin.i18n.failedSwitchAutomation );
 		} )
 		.fail( function () {
 			if ( previous !== '' ) {
 				$select.val( previous );
 			}
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to switch automation mode.' );
+			alert( wpSamAdmin.i18n.failedSwitchAutomation );
 		} )
 		.always( function () {
 			$select.prop( 'disabled', false );
@@ -180,7 +180,7 @@
 			return;
 		}
 		// eslint-disable-next-line no-alert
-		alert( ( res && res.data && res.data.message ) || 'Failed to save.' );
+		alert( ( res && res.data && res.data.message ) || wpSamAdmin.i18n.failedSave );
 	}
 
 	function requiredReason( promptText ) {
@@ -199,16 +199,16 @@
 	function sourceActionsHtml( id, state, lastDecision ) {
 		const buttons = [];
 		if ( state === 'pending' || state === 'denied' ) {
-			buttons.push( '<button type="button" class="button button-small wp-sam-approve-source" data-id="' + id + '">Approve</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-approve-source" data-id="' + id + '">' + wpSamAdmin.i18n.approve + '</button>' );
 		}
 		if ( state === 'pending' || state === 'approved' ) {
-			buttons.push( '<button type="button" class="button button-small wp-sam-deny-source" data-id="' + id + '">Reject</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-deny-source" data-id="' + id + '">' + wpSamAdmin.i18n.reject + '</button>' );
 		}
 		if ( state === 'approved' ) {
-			buttons.push( '<button type="button" class="button button-small wp-sam-revert-source" data-id="' + id + '">Revert</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-revert-source" data-id="' + id + '">' + wpSamAdmin.i18n.revert + '</button>' );
 		}
 		if ( lastDecision === 'approved' || lastDecision === 'rejected' ) {
-			buttons.push( '<button type="button" class="button button-small wp-sam-undo-source-decision" data-id="' + id + '">Undo</button>' );
+			buttons.push( '<button type="button" class="button button-small wp-sam-undo-source-decision" data-id="' + id + '">' + wpSamAdmin.i18n.undo + '</button>' );
 		}
 		return buttons.join( ' ' );
 	}
@@ -241,30 +241,30 @@
 				setSourceRowState( $btn.closest( 'tr' ), id, nextState, nextLabel, lastDecision );
 			} else {
 				// eslint-disable-next-line no-alert
-				alert( res.data.message || 'Could not record policy decision.' );
+				alert( res.data.message || wpSamAdmin.i18n.couldNotRecord );
 			}
 		} )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Could not record policy decision.' );
+			alert( wpSamAdmin.i18n.couldNotRecord );
 		} )
 		.always( function () { $btn.prop( 'disabled', false ); } );
 	}
 
 	$( document ).on( 'click', '.wp-sam-approve-source', function () {
-		postSourceDecision( $( this ), 'wp_sam_approve_source', 'Why should this source be approved?', 'approved', 'Approved', 'approved' );
+		postSourceDecision( $( this ), 'wp_sam_approve_source', wpSamAdmin.i18n.approvePrompt, 'approved', wpSamAdmin.i18n.stateApproved, 'approved' );
 	} );
 
 	$( document ).on( 'click', '.wp-sam-deny-source', function () {
-		postSourceDecision( $( this ), 'wp_sam_deny_source', 'Why should this source be rejected and suppressed?', 'denied', 'Denied', 'rejected' );
+		postSourceDecision( $( this ), 'wp_sam_deny_source', wpSamAdmin.i18n.rejectPrompt, 'denied', wpSamAdmin.i18n.stateDenied, 'rejected' );
 	} );
 
 	$( document ).on( 'click', '.wp-sam-revert-source', function () {
-		postSourceDecision( $( this ), 'wp_sam_revert_source', 'Why should this approved source be reverted and suppressed?', 'denied', 'Denied', 'reverted' );
+		postSourceDecision( $( this ), 'wp_sam_revert_source', wpSamAdmin.i18n.revertPrompt, 'denied', wpSamAdmin.i18n.stateDenied, 'reverted' );
 	} );
 
 	$( document ).on( 'click', '.wp-sam-undo-source-decision', function () {
-		postSourceDecision( $( this ), 'wp_sam_undo_source_decision', 'Why should this decision be undone?', 'pending', 'Pending', 'undone' );
+		postSourceDecision( $( this ), 'wp_sam_undo_source_decision', wpSamAdmin.i18n.undoPrompt, 'pending', wpSamAdmin.i18n.statePending, 'undone' );
 	} );
 
 	$( document ).on( 'click', '.wp-sam-use-current-report-endpoint', function () {
@@ -301,7 +301,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$fields.prop( 'disabled', false );
@@ -333,7 +333,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$row.find( '.wp-sam-permissions-policy-enabled, .wp-sam-permissions-policy-directive' ).prop( 'disabled', false );
@@ -383,7 +383,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$row.find( 'input, select' ).prop( 'disabled', false );
@@ -413,7 +413,7 @@
 		.done( reportAjaxFailure )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} )
 		.always( function () {
 			$row.find( 'input, select' ).prop( 'disabled', false );
@@ -431,7 +431,10 @@
 		$row.find( '.wp-sam-dependency-suggest-url, .wp-sam-dependency-suggest-button' ).prop( 'disabled', disabled );
 	}
 
-	function postDependencyClassification( $row ) {
+	// pinnedUrl: the exact URL Suggest just hashed, so the daily drift
+	// check re-fetches that file. Omitted for a typed hash -- the server
+	// then records the row's last-seen URL.
+	function postDependencyClassification( $row, pinnedUrl, onSaved ) {
 		const id             = $row.find( '.wp-sam-dependency-classification' ).data( 'id' );
 		const classification = $row.find( '.wp-sam-dependency-classification' ).val();
 		const expectedSri    = $row.find( '.wp-sam-dependency-sri' ).val();
@@ -442,11 +445,17 @@
 			id:              id,
 			classification:  classification,
 			expected_sri:    expectedSri,
+			pinned_url:      pinnedUrl || '',
 		} )
-		.done( reportAjaxFailure )
+		.done( function ( res ) {
+			reportAjaxFailure( res );
+			if ( res && true === res.success && onSaved ) {
+				onSaved();
+			}
+		} )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to save.' );
+			alert( wpSamAdmin.i18n.failedSave );
 		} );
 	}
 
@@ -468,7 +477,7 @@
 
 		if ( ! url ) {
 			// eslint-disable-next-line no-alert
-			alert( 'Enter the exact URL to fetch and hash first.' );
+			alert( wpSamAdmin.i18n.enterUrl );
 			return;
 		}
 
@@ -484,19 +493,80 @@
 		.done( function ( res ) {
 			if ( res.success && res.data && res.data.hash ) {
 				$row.find( '.wp-sam-dependency-sri' ).val( res.data.hash );
-				postDependencyClassification( $row );
+				postDependencyClassification( $row, res.data.url || url );
 			} else {
 				// eslint-disable-next-line no-alert
-				alert( ( res.data && res.data.message ) || 'Could not compute a hash for that URL.' );
+				alert( ( res.data && res.data.message ) || wpSamAdmin.i18n.couldNotHash );
 			}
 		} )
 		.fail( function () {
 			// eslint-disable-next-line no-alert
-			alert( 'Failed to compute hash.' );
+			alert( wpSamAdmin.i18n.failedHash );
 		} )
 		.always( function () {
 			$button.prop( 'disabled', false ).text( originalLabel );
 		} );
+	} );
+
+	// Dependency Classification: a pinned file changed at its source.
+	// "Re-approve new hash" updates SAM's pinned value only; the page keeps
+	// showing the new hash (with Copy) because the integrity attribute in
+	// the theme/plugin markup still has to be changed by hand.
+	$( document ).on( 'click', '.wp-sam-dependency-reapprove', function () {
+		const $button = $( this );
+		const $row    = $button.closest( 'tr' );
+		const $banner = $button.closest( '.wp-sam-dependency-drift' );
+
+		$button.prop( 'disabled', true );
+
+		$.post( wpSamAdmin.ajaxUrl, {
+			action: 'wp_sam_reapprove_dependency_sri',
+			nonce:  wpSamAdmin.nonce,
+			id:     $button.data( 'id' ),
+		} )
+		.done( function ( res ) {
+			if ( res && res.success && res.data && res.data.hash ) {
+				$row.find( '.wp-sam-dependency-sri' ).val( res.data.hash );
+				$banner.find( '.wp-sam-dependency-drift-actions' ).remove();
+				$banner.find( '.wp-sam-dependency-drift-done' ).prop( 'hidden', false );
+			} else {
+				reportAjaxFailure( res );
+				$button.prop( 'disabled', false );
+			}
+		} )
+		.fail( function () {
+			// eslint-disable-next-line no-alert
+			alert( 'Failed to save.' );
+			$button.prop( 'disabled', false );
+		} );
+	} );
+
+	$( document ).on( 'click', '.wp-sam-dependency-allow-host', function () {
+		const $row = $( this ).closest( 'tr' );
+		$row.find( '.wp-sam-dependency-classification' ).val( 'mutable_provider' );
+		refreshSriInputState( $row );
+		postDependencyClassification( $row, '', function () {
+			$row.find( '.wp-sam-dependency-drift' ).remove();
+		} );
+	} );
+
+	$( document ).on( 'click', '.wp-sam-copy-value', function () {
+		const $button = $( this );
+		const value   = String( $button.data( 'value' ) || '' );
+		const done    = function () {
+			const original = $button.text();
+			$button.text( $button.data( 'copied-label' ) || 'Copied' );
+			setTimeout( function () { $button.text( original ); }, 1500 );
+		};
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( value ).then( done, function () {
+				// eslint-disable-next-line no-alert
+				window.prompt( 'Copy this value:', value );
+			} );
+		} else {
+			// eslint-disable-next-line no-alert
+			window.prompt( 'Copy this value:', value );
+		}
 	} );
 
 	// Custom Rules tab: "Test a pattern" tool -- Traffic Controls -> Custom Rules.
@@ -517,20 +587,20 @@
 		} )
 		.done( function ( res ) {
 			if ( ! res.success ) {
-				$result.text( 'Request failed.' ).css( 'color', '#cc1818' );
+				$result.text( wpSamAdmin.i18n.requestFailed ).css( 'color', '#cc1818' );
 				return;
 			}
 			const matched = res.data.matched;
 			if ( null === matched ) {
-				$result.text( 'Invalid pattern.' ).css( 'color', '#cc1818' );
+				$result.text( wpSamAdmin.i18n.invalidPattern ).css( 'color', '#cc1818' );
 			} else if ( matched ) {
-				$result.text( 'Matches.' ).css( 'color', '#1a7f37' );
+				$result.text( wpSamAdmin.i18n.patternMatches ).css( 'color', '#1a7f37' );
 			} else {
-				$result.text( 'Does not match.' ).css( 'color', '#646970' );
+				$result.text( wpSamAdmin.i18n.patternNoMatch ).css( 'color', '#646970' );
 			}
 		} )
 		.fail( function () {
-			$result.text( 'Request failed.' ).css( 'color', '#cc1818' );
+			$result.text( wpSamAdmin.i18n.requestFailed ).css( 'color', '#cc1818' );
 		} )
 		.always( function () {
 			$btn.prop( 'disabled', false );
@@ -557,7 +627,7 @@
 					e.preventDefault();
 					const el = $reason.get( 0 );
 					if ( el && el.setCustomValidity ) {
-						el.setCustomValidity( 'Reason is required.' );
+						el.setCustomValidity( wpSamAdmin.i18n.reasonIsRequired );
 						el.reportValidity();
 						el.setCustomValidity( '' );
 					}
@@ -567,5 +637,76 @@
 				$( this ).find( '.wp-sam-campaign-note-target' ).val( value );
 			} );
 		} );
+	} );
+
+	// Control → Traffic Controls → Network Intelligence → Geo-IP: "Select
+	// by group" on the Country Block List. A selection aid only -- it ticks
+	// or unticks the grid's own blocked_countries[] checkboxes and never
+	// submits anything; the existing Save button (and its server-side
+	// self-lockout check) is still the only way a change is applied.
+	( function () {
+		const $groups = $( '#wp-sam-country-groups' );
+		const $grid   = $( '#wp-sam-country-grid' );
+		if ( ! $groups.length || ! $grid.length ) {
+			return;
+		}
+
+		const $select  = $( '#wp-sam-country-group-select' );
+		const $buttons = $groups.find( '[data-wp-sam-country-group-action]' );
+		const $count   = $( '#wp-sam-country-count' );
+		const $boxes   = $grid.find( 'input[type="checkbox"][name="blocked_countries[]"]' );
+
+		function updateCount() {
+			$count.text( $boxes.filter( ':checked' ).length );
+		}
+
+		function showSelectedGroup() {
+			const key = $select.val();
+			$groups.find( '[data-wp-sam-country-group-details]' ).prop( 'hidden', true );
+			$buttons.prop( 'disabled', ! key );
+			if ( key ) {
+				$groups.find( '[data-wp-sam-country-group-details]' ).filter( function () {
+					return $( this ).attr( 'data-wp-sam-country-group-details' ) === key;
+				} ).prop( 'hidden', false );
+			}
+		}
+
+		$select.on( 'change', showSelectedGroup );
+
+		$buttons.on( 'click', function () {
+			const codes = String( $select.find( 'option:selected' ).attr( 'data-codes' ) || '' ).split( ' ' ).filter( Boolean );
+			if ( ! codes.length ) {
+				return;
+			}
+			const tick = 'tick' === $( this ).attr( 'data-wp-sam-country-group-action' );
+			$boxes.each( function () {
+				if ( -1 !== codes.indexOf( this.value ) ) {
+					this.checked = tick;
+				}
+			} );
+			updateCount();
+		} );
+
+		$boxes.on( 'change', updateCount );
+		showSelectedGroup();
+		updateCount();
+	}() );
+
+	// Settings dialogs opened by a button elsewhere on the page, such as the
+	// Geo-IP settings cog on Control → Traffic Controls → Network
+	// Intelligence → Geo-IP. A modal <dialog> moves focus into itself,
+	// closes on Escape, and hands focus back to the button that opened it.
+	$( document ).on( 'click', '[data-wp-sam-dialog-open]', function () {
+		const dialog = document.getElementById( $( this ).attr( 'data-wp-sam-dialog-open' ) );
+		if ( dialog && 'function' === typeof dialog.showModal && ! dialog.open ) {
+			dialog.showModal();
+		}
+	} );
+
+	$( document ).on( 'click', '[data-wp-sam-dialog-close]', function () {
+		const dialog = $( this ).closest( 'dialog' ).get( 0 );
+		if ( dialog && dialog.open ) {
+			dialog.close();
+		}
 	} );
 } )( jQuery );

@@ -17,7 +17,9 @@
  *   detection -- this plugin must never be the reason a site owner is
  *   locked out of their own site. An explicit admin-entered IP block rule
  *   still applies even to a privileged session; only automatic
- *   rate-limit/brute-force escalation is exempted.
+ *   rate-limit/brute-force escalation is exempted. Such a request is not
+ *   counted towards its address's rate limit either, and never records a
+ *   violation (Request_Observer applies the same rule to detector matches).
  * - Escalation through Traffic_Block_Store's progressive stages is
  *   automatic only up to 'extended_block'; 'persistent_block' requires an
  *   explicit administrator action (Traffic_Block_Store::set_persistent()).
@@ -188,10 +190,12 @@ final class Traffic_Guard {
 			);
 		}
 
-		// A loopback source (Cidr_Matcher::LOOPBACK_CIDRS) is the server
-		// calling itself -- wp-cron's own loopback requests, Site Health's
-		// "Loopback request" check, or an administrator testing from the
-		// same machine -- never a remote attacker (see Identity_Resolver's
+		// A loopback or private-network source (Cidr_Matcher::is_local())
+		// is the server calling itself -- wp-cron's own loopback requests,
+		// Site Health's "Loopback request" check, often arriving through an
+		// internal address rather than 127.0.0.1 -- or a sibling container,
+		// load balancer or health check inside the same hosting network,
+		// never a remote attacker (see Identity_Resolver's
 		// own docblock for the same recognition applied to identity/
 		// classification; both classes share one CIDR definition so they
 		// can never disagree on it). Automatic rate-limit escalation must
@@ -221,7 +225,10 @@ final class Traffic_Guard {
 		// automatic traffic protection at all. That is a deployment-
 		// topology caveat inherent to Ip_Resolver's trust model, not
 		// something this exemption introduces or can detect from here.
-		if ( Cidr_Matcher::ip_in_any_cidr( $ip, Cidr_Matcher::LOOPBACK_CIDRS ) ) {
+		// The same applies to a public address the administrator has listed
+		// as this site's own (Own_Address_Store), such as a container that
+		// reaches the site through its host's public IP.
+		if ( Own_Address_Store::includes( $ip ) ) {
 			return $allow;
 		}
 
@@ -276,6 +283,16 @@ final class Traffic_Guard {
 			);
 		}
 
+		// Checked before the rate limiter, not after it. The counter is per
+		// address, so an administrator's own page loads used to count
+		// towards it, and the next request from that address without an
+		// admin session -- a colleague in the same office, or the
+		// administrator after logging out -- was the one that "exceeded" the
+		// limit, climbed the ladder and could be blocked at the login page.
+		if ( $is_privileged_user ) {
+			return $allow;
+		}
+
 		$policy = $this->policies->get( $surface );
 		if ( null === $policy ) {
 			return $allow;
@@ -289,10 +306,6 @@ final class Traffic_Guard {
 		);
 
 		if ( ! $exceeded ) {
-			return $allow;
-		}
-
-		if ( $is_privileged_user ) {
 			return $allow;
 		}
 

@@ -34,7 +34,7 @@ final class Security_Txt_Store {
 	private const WELL_KNOWN_PATH = '/.well-known/security.txt';
 	private const LEGACY_PATH     = '/security.txt';
 
-	/** @var callable(string):(array|\WP_Error) Real wp_remote_get() by default; injectable so tests never make a real HTTP call. */
+	/** @var callable(string):(array|\WP_Error) Same_Host_Fetcher (wp_remote_get() that never follows a redirect off this site) by default; injectable so tests never make a real HTTP call. */
 	private $http_get;
 
 	/**
@@ -50,7 +50,7 @@ final class Security_Txt_Store {
 	private ?array $fields_cache = null;
 
 	public function __construct( ?callable $http_get = null ) {
-		$this->http_get = $http_get ?? static fn ( string $url ) => wp_remote_get(
+		$this->http_get = $http_get ?? static fn ( string $url ) => ( new Same_Host_Fetcher() )->get(
 			$url,
 			array(
 				'timeout'    => 10,
@@ -102,24 +102,32 @@ final class Security_Txt_Store {
 	/**
 	 * Fetches this site's own security.txt (canonical location first, then
 	 * the legacy root fallback) and replaces the cached fields on success.
-	 * Never touches cached fields on failure.
+	 * Clears them only when BOTH locations say the site has no such file
+	 * (HTTP 404/410 -- an answer, not a failure). Never touches cached
+	 * fields on failure.
 	 *
 	 * @return array{status:string, count:int, message:string}
 	 */
 	public function refresh(): array {
-		$response = ( $this->http_get )( home_url( self::WELL_KNOWN_PATH ) );
-
-		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
-			$response = ( $this->http_get )( home_url( self::LEGACY_PATH ) );
+		$codes    = array();
+		$outcomes = array();
+		foreach ( array( self::WELL_KNOWN_PATH, self::LEGACY_PATH ) as $path ) {
+			$response = ( $this->http_get )( home_url( $path ) );
+			$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+			if ( 200 === $code ) {
+				break;
+			}
+			$codes[]    = $code;
+			$outcomes[] = is_wp_error( $response )
+				? "{$path} failed: " . rtrim( $response->get_error_message(), '.' )
+				: "{$path} returned HTTP {$code}";
 		}
 
-		if ( is_wp_error( $response ) ) {
-			return $this->record_failure( 'Fetch failed: ' . $response->get_error_message() );
-		}
-
-		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $code ) {
-			return $this->record_failure( "Fetch returned HTTP {$code}." );
+			if ( array() === array_diff( $codes, array( 404, 410 ) ) ) {
+				return $this->record_absent( 'No security.txt on this site (' . implode( '; ', $outcomes ) . ').' );
+			}
+			return $this->record_failure( implode( '; ', $outcomes ) . '.' );
 		}
 
 		$fields = $this->parse( (string) wp_remote_retrieve_body( $response ) );
@@ -132,7 +140,11 @@ final class Security_Txt_Store {
 		return array(
 			'status'  => 'refreshed',
 			'count'   => count( $fields ),
-			'message' => sprintf( 'Refreshed %d field(s).', count( $fields ) ),
+			'message' => sprintf(
+				/* translators: %d: number of records/rules/fields/nodes parsed */
+				__( 'Refreshed %d field(s).', 'vcns-security-automation-manager' ),
+				count( $fields )
+			),
 		);
 	}
 
@@ -157,6 +169,20 @@ final class Security_Txt_Store {
 		}
 
 		return $fields;
+	}
+
+	/** @return array{status:string, count:int, message:string} */
+	private function record_absent( string $message ): array {
+		delete_option( 'wp_sam_security_txt_fields' );
+		update_option( 'wp_sam_security_txt_refreshed_at', current_time( 'mysql', true ) );
+		update_option( 'wp_sam_security_txt_last_fetch_status', 'absent' );
+		$this->fields_cache = array();
+
+		return array(
+			'status'  => 'absent',
+			'count'   => 0,
+			'message' => $message,
+		);
 	}
 
 	/** @return array{status:string, count:int, message:string} */

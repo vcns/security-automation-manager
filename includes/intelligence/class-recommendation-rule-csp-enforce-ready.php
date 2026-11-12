@@ -3,15 +3,24 @@
  * Recommendation rule: a report-only CSP surface has run quiet long enough
  * to suggest promoting it to enforce (Phase 4F, rule batch 2).
  *
- * Fires per surface, only when all three hold: the surface's own
+ * Fires per surface, only when all of these hold: the surface's own
  * `csp_policy_profiles.mode` is `report-only` (a `disabled` surface has no
  * policy running at all, a different situation this rule doesn't address);
  * no active `csp_enforce` exception exists for that surface -- an
  * administrator who has already recorded a deliberate reason to stay
- * report-only shouldn't be nudged to override their own decision; and zero
+ * report-only shouldn't be nudged to override their own decision; zero
  * CSP violations have been reported on that surface in the quiet window
  * (`Violation_Reporter::count_since()`, the one new read method this batch
- * adds to a table that was previously write-only).
+ * adds to a table that was previously write-only); and Csp_Delivery_Log
+ * shows the policy was actually sent, continuously, for that whole window
+ * and recently, with no learned hashes trimmed to fit the byte budget.
+ *
+ * The delivery check exists because silence is only evidence when a
+ * policy was there to violate. The admin surface's policy was never sent
+ * at all before Policy_Builder hooked admin_init, and this rule read that
+ * as a clean 30-day run. A surface whose hashes are being trimmed is
+ * already running a policy that omits learned inline code, so enforcing it
+ * would block that code.
  *
  * Dismissible: a "quiet live condition" with no natural underlying per-item
  * record of its own (see Recommendation_Dismissal_Store's docblock) --
@@ -24,6 +33,7 @@ declare( strict_types=1 );
 
 namespace WP_SAM\Intelligence;
 
+use WP_SAM\CSP\Csp_Delivery_Log;
 use WP_SAM\CSP\Violation_Reporter;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -62,6 +72,11 @@ final class Recommendation_Rule_Csp_Enforce_Ready implements Recommendation_Rule
 				continue;
 			}
 
+			$delivery = Csp_Delivery_Log::get( $surface );
+			if ( ! self::was_delivered_throughout( $delivery ) ) {
+				continue;
+			}
+
 			$recommendations[] = array(
 				'key'                 => 'csp_enforce_ready_' . $surface,
 				'layer'               => __( 'Layer 4: Browser Security Policies', 'vcns-security-automation-manager' ),
@@ -80,11 +95,13 @@ final class Recommendation_Rule_Csp_Enforce_Ready implements Recommendation_Rule
 					'surface'              => $surface,
 					'quiet_window_days'    => self::QUIET_WINDOW_DAYS,
 					'violations_in_window' => 0,
+					'policy_sent_since'    => gmdate( 'Y-m-d', (int) $delivery['first_sent'] ),
+					'policy_last_sent'     => gmdate( 'Y-m-d H:i', (int) $delivery['last_sent'] ) . ' UTC',
 				),
-				'recommended_action'  => __( 'Promote this surface to Enforce from the CSP Dashboard.', 'vcns-security-automation-manager' ),
+				'recommended_action'  => __( 'Promote this surface to Enforce from Control → CSP Profiles.', 'vcns-security-automation-manager' ),
 				'alternative_action'  => __( "If you'd like more observation time first, no action is needed -- report-only mode keeps learning on its own.", 'vcns-security-automation-manager' ),
 				'automation_eligible' => false,
-				'rollback_position'   => __( 'A surface can be reverted to report-only at any time from the CSP Dashboard.', 'vcns-security-automation-manager' ),
+				'rollback_position'   => __( 'A surface can be reverted to report-only at any time from Control → CSP Profiles.', 'vcns-security-automation-manager' ),
 				'evidence_changed_at' => (string) $row['updated_at'],
 				'cta_url'             => admin_url( 'admin.php?page=security-automation-manager-dashboard' ),
 				'dismissible'         => true,
@@ -92,5 +109,38 @@ final class Recommendation_Rule_Csp_Enforce_Ready implements Recommendation_Rule
 		}
 
 		return $recommendations;
+	}
+
+	/**
+	 * True when the policy has been sent without a gap longer than
+	 * Csp_Delivery_Log::MAX_GAP_SECONDS since before the quiet window began,
+	 * was last sent within that gap, and hasn't had hashes trimmed or
+	 * reports throttled during the window.
+	 *
+	 * @param array{first_sent?: int, last_sent?: int, last_trimmed?: int, last_throttled?: int} $delivery
+	 */
+	private static function was_delivered_throughout( array $delivery ): bool {
+		$now    = time();
+		$window = self::QUIET_WINDOW_DAYS * DAY_IN_SECONDS;
+
+		if ( empty( $delivery['first_sent'] ) || empty( $delivery['last_sent'] ) ) {
+			return false;
+		}
+		if ( $now - (int) $delivery['first_sent'] < $window ) {
+			return false;
+		}
+		if ( $now - (int) $delivery['last_sent'] > Csp_Delivery_Log::MAX_GAP_SECONDS ) {
+			return false;
+		}
+		if ( ! empty( $delivery['last_trimmed'] ) && $now - (int) $delivery['last_trimmed'] < $window ) {
+			return false;
+		}
+		// Reports the endpoint throttled were never stored, so a quiet
+		// count during that window proves nothing.
+		if ( ! empty( $delivery['last_throttled'] ) && $now - (int) $delivery['last_throttled'] < $window ) {
+			return false;
+		}
+
+		return true;
 	}
 }

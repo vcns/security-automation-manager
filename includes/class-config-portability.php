@@ -36,6 +36,9 @@
  *     (Certificate_Store::SECRET_FIELDS) in the same option -- those three
  *     fields are stripped before export and never written by import,
  *     mirrored here rather than imported from that private constant.
+ *   - Never the exporting site's own URL. A file is usually imported into
+ *     another copy of the same site, and SAM must never be told about one
+ *     (see Same_Host_Fetcher); import never read it anyway.
  */
 
 declare( strict_types=1 );
@@ -84,6 +87,11 @@ class Config_Portability {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log that records export and import events.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
@@ -125,7 +133,6 @@ class Config_Portability {
 			'exported_at'    => current_time( 'mysql', true ),
 			'plugin_version' => defined( 'WP_SAM_VERSION' ) ? WP_SAM_VERSION : '',
 			'schema_version' => defined( 'WP_SAM_DB_VERSION' ) ? (int) WP_SAM_DB_VERSION : 0,
-			'site_url'       => home_url(),
 			'options'        => $options,
 			'cert_config'    => $this->export_cert_config(),
 			'tables'         => $tables,
@@ -286,6 +293,12 @@ class Config_Portability {
 		$store->save_config( array_merge( $current, $imported ) );
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name, including the prefix.
+	 * @return bool True when the table exists.
+	 */
 	private function table_exists( string $table ): bool {
 		global $wpdb;
 

@@ -158,9 +158,16 @@ final class Identity_Resolver {
 		return $result;
 	}
 
-	/** See Cidr_Matcher::LOOPBACK_CIDRS -- the single source of truth for "is this IP loopback". */
+	/**
+	 * Loopback or private network (Cidr_Matcher::is_local()): this server,
+	 * often reaching itself through an internal address, or another machine
+	 * inside the same hosting network -- or a public address the
+	 * administrator has declared as this site's own (Own_Address_Store).
+	 * Recorded under the 'loopback' state (auto-authorised) rather than a
+	 * new one, so existing rows and fingerprints keep working.
+	 */
 	private static function is_loopback( string $ip ): bool {
-		return Cidr_Matcher::ip_in_any_cidr( $ip, Cidr_Matcher::LOOPBACK_CIDRS );
+		return Own_Address_Store::includes( $ip );
 	}
 
 	private function state_for_category( string $category ): string {

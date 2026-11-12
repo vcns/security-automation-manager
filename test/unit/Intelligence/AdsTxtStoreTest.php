@@ -80,9 +80,22 @@ class AdsTxtStoreTest extends TestCase {
 		$this->assertSame( array(), $store->records() );
 	}
 
-	public function test_refresh_keeps_existing_records_on_a_non_200_response(): void {
+	public function test_refresh_treats_a_404_as_absent_and_clears_cached_records(): void {
 		update_option( 'wp_sam_ads_txt_records', array( array( 'domain' => 'example.com', 'publisher_id' => 'pub-1', 'relationship' => 'DIRECT', 'certification_id' => null ) ) );
+		update_option( 'wp_sam_ads_txt_last_fetch_status', 'success' );
 		$store = new Ads_Txt_Store( fn( string $url ) => $this->http_response( '', 404 ) );
+
+		$result = $store->refresh();
+
+		$this->assertSame( 'absent', $result['status'] );
+		$this->assertSame( 'No /ads.txt on this site (HTTP 404).', $result['message'] );
+		$this->assertSame( array(), $store->records() );
+		$this->assertFalse( $store->is_present() );
+	}
+
+	public function test_refresh_keeps_existing_records_on_a_500_response(): void {
+		update_option( 'wp_sam_ads_txt_records', array( array( 'domain' => 'example.com', 'publisher_id' => 'pub-1', 'relationship' => 'DIRECT', 'certification_id' => null ) ) );
+		$store = new Ads_Txt_Store( fn( string $url ) => $this->http_response( '', 500 ) );
 
 		$result = $store->refresh();
 

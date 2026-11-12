@@ -65,6 +65,10 @@ final class Recommendation_Registry {
 		// occurrences_since() is now in place.
 		self::register( new Recommendation_Rule_Detector_Disabled_But_Firing() );
 
+		// A pinned third-party file whose content no longer matches its
+		// approved SRI hash (Security\Pinned_Dependency_Checker).
+		self::register( new Recommendation_Rule_Dependency_Hash_Drift() );
+
 		do_action( 'wp_sam_register_recommendation_rules' );
 	}
 

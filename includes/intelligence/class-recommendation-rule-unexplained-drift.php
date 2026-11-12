@@ -69,7 +69,7 @@ final class Recommendation_Rule_Unexplained_Drift implements Recommendation_Rule
 				'confidence'          => 'high',
 				'risk'                => $has_critical ? 'critical' : 'high',
 				'evidence'            => array( 'items' => $summary ),
-				'recommended_action'  => __( 'Review each item on the Baseline & Drift page and record a disposition (expected, approved, or resolved).', 'vcns-security-automation-manager' ),
+				'recommended_action'  => __( 'Review each item under Verify → Baseline & Drift and record a disposition (expected, approved, or resolved).', 'vcns-security-automation-manager' ),
 				'alternative_action'  => null,
 				'automation_eligible' => false,
 				'rollback_position'   => __( 'Reviewing an item only records a disposition -- it never changes any live configuration.', 'vcns-security-automation-manager' ),

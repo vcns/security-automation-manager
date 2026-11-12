@@ -86,6 +86,33 @@ class SchemaMigrationTest extends TestCase {
 		}
 	}
 
+	public function test_schema_v48_dependency_drift_columns_are_declared(): void {
+		Activator::activate();
+
+		$table     = $GLOBALS['wpdb']->prefix . 'sam_dependency_inventory';
+		$statement = null;
+		foreach ( $GLOBALS['_dbdelta_queries'] as $query ) {
+			if ( str_contains( $query, "CREATE TABLE {$table} " ) ) {
+				$statement = $query;
+				break;
+			}
+		}
+		$this->assertNotNull( $statement, "CREATE TABLE statement for {$table} not found." );
+
+		// All nullable with no default, so dbDelta() adds them to existing
+		// rows as NULL -- "never checked, no drift" -- with no data migration.
+		foreach ( array(
+			'pinned_url varchar(2048) DEFAULT NULL',
+			'integrity_checked_at datetime DEFAULT NULL',
+			'integrity_attempted_at datetime DEFAULT NULL',
+			'integrity_check_error varchar(64) DEFAULT NULL',
+			'drift_detected_at datetime DEFAULT NULL',
+			'drift_observed_sri varchar(128) DEFAULT NULL',
+		) as $column ) {
+			$this->assertStringContainsString( $column, $statement );
+		}
+	}
+
 	public function test_policy_decision_ledger_columns_are_declared(): void {
 		Activator::activate();
 

@@ -95,6 +95,12 @@ class Hash_Manager {
 	/** Which surface's buffer is currently open, or null. Used by the shutdown fallback -- see maybe_end_buffer_on_shutdown(). */
 	private ?string $buffer_surface = null;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log    $audit Audit log.
+	 * @param Feature_Gate $gate  Feature gate.
+	 */
 	public function __construct( Audit_Log $audit, Feature_Gate $gate ) {
 		$this->audit = $audit;
 		$this->gate  = $gate;
@@ -156,14 +162,30 @@ class Hash_Manager {
 		$this->start_buffer( 'frontend' );
 	}
 
+	/**
+	 * Starts output buffering on admin pages.
+	 *
+	 * @return void
+	 */
 	public function start_buffer_admin(): void {
 		$this->start_buffer( 'admin' );
 	}
 
+	/**
+	 * Starts output buffering on the login page.
+	 *
+	 * @return void
+	 */
 	public function start_buffer_login(): void {
 		$this->start_buffer( 'login' );
 	}
 
+	/**
+	 * Starts output buffering for a surface, unless a buffer is already open.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return void
+	 */
 	private function start_buffer( string $surface ): void {
 		// Guards against opening a second buffer on top of one already
 		// open (e.g. a hook firing twice in one request) -- without this,
@@ -179,14 +201,29 @@ class Hash_Manager {
 		}
 	}
 
+	/**
+	 * Ends buffering on the front end and records the inline blocks found.
+	 *
+	 * @return void
+	 */
 	public function end_buffer_frontend(): void {
 		$this->flush_buffer( 'frontend' );
 	}
 
+	/**
+	 * Ends buffering on admin pages and records the inline blocks found.
+	 *
+	 * @return void
+	 */
 	public function end_buffer_admin(): void {
 		$this->flush_buffer( 'admin' );
 	}
 
+	/**
+	 * Ends buffering on the login page and records the inline blocks found.
+	 *
+	 * @return void
+	 */
 	public function end_buffer_login(): void {
 		$this->flush_buffer( 'login' );
 	}
@@ -325,8 +362,9 @@ class Hash_Manager {
 	 * automatically -- it's an explicit, labelled, per-surface opt-in
 	 * (BYPASS_CATALOG's style_src_attr_unsafe_hashes entry, Profiles tab), a
 	 * scanner-flaggable keyword that must be a conscious admin decision.
-	 * Hashes captured here sit inert in the header until an admin enables
-	 * that toggle for the surface.
+	 * Hashes captured here stay in the inventory, but Policy_Builder leaves
+	 * them out of the header (and its hash byte budget) until an admin
+	 * enables that toggle for the surface -- without it they match nothing.
 	 *
 	 * Regex-based extraction over raw HTML (matching this class's existing
 	 * approach for <script>/<style> elements), not a real DOM parse -- a
@@ -373,11 +411,18 @@ class Hash_Manager {
 		string $directive,
 		string $surface
 	): void {
-		// Match inline blocks only (no src= or href= attribute on the opening tag).
-		// Uses a non-greedy match and the s (DOTALL) flag to handle multi-line content.
+		// Match every element of this tag, capturing its opening-tag attributes
+		// (group 1) and content (group 2) separately. The tag name must be
+		// followed by whitespace or ">" (never <scripts>/<script-x>), a quoted
+		// attribute value may contain ">", and the content is non-greedy up to
+		// the first closing tag and may be empty -- so an external
+		// <script src=...></script> ends at its own closing tag instead of
+		// swallowing "</script><script ...>" from the next element as content.
+		// Which elements to skip is decided below rather than in the pattern:
+		// a lookahead here could only ever see the first attribute.
+		// Uses the s (DOTALL) flag to handle multi-line content.
 		$pattern = sprintf(
-			'/<(?:%s)(?:\s+(?!src=)[^>]*)?>(.+?)<\/%s>/is',
-			preg_quote( $tag, '/' ),
+			'/<%1$s(\s(?:[^>"\']|"[^"]*"|\'[^\']*\')*)?>(.*?)<\/%1$s>/is',
 			preg_quote( $tag, '/' )
 		);
 
@@ -386,11 +431,37 @@ class Hash_Manager {
 		}
 
 		foreach ( $matches as $match ) {
-			$content = $match[1];
+			$attributes = $match[1];
+			$content    = $match[2];
 
 			// Skip empty or whitespace-only blocks.
 			if ( '' === trim( $content ) ) {
 				continue;
+			}
+
+			// A <script> carrying a src attribute (anywhere in the opening tag,
+			// not just first) runs the external file and never its inline
+			// content, so there is nothing for a hash to allow.
+			if ( 'script' === $tag && null !== self::find_tag_attribute( $attributes, 'src' ) ) {
+				continue;
+			}
+
+			// JSON data blocks (application/ld+json schema graphs such as
+			// Yoast's, one unique block per page; application/json payloads)
+			// are never executed, so CSP never checks them -- their hashes
+			// only crowd real inline-script hashes out of Policy_Builder's
+			// byte budget. Deliberately only these two exact types, not every
+			// non-JavaScript type: optimisation and consent plugins park real
+			// scripts under placeholder types (LiteSpeed's litespeed/javascript,
+			// WP Rocket's rocketlazyloadscript, consent managers' text/plain)
+			// and later re-insert them as executable inline scripts, which only
+			// the learned hash lets through under an enforced policy. importmap
+			// and speculationrules blocks are CSP-checked too, so stay hashed.
+			if ( 'script' === $tag ) {
+				$type = strtolower( trim( (string) self::find_tag_attribute( $attributes, 'type' ) ) );
+				if ( in_array( $type, array( 'application/ld+json', 'application/json' ), true ) ) {
+					continue;
+				}
 			}
 
 			// Skip nonce-carrying script/style tags -- these are already covered
@@ -412,6 +483,31 @@ class Hash_Manager {
 		}
 	}
 
+	/**
+	 * Returns the value of the first $name attribute in an opening tag's
+	 * attribute string -- quoted, unquoted, or '' for a bare attribute -- or
+	 * null when the tag doesn't carry one. Names match case-insensitively,
+	 * whitespace around "=" is allowed, and each quoted value is consumed
+	 * whole, so a "src=" inside another attribute's value is never mistaken
+	 * for the attribute itself.
+	 *
+	 * @param string $attributes Opening-tag attribute string (may be empty).
+	 * @param string $name       Attribute name to look for.
+	 */
+	private static function find_tag_attribute( string $attributes, string $name ): ?string {
+		if ( ! preg_match_all( '/([^\s"\'>\/=]+)(?:\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+)))?/', $attributes, $matches, PREG_SET_ORDER ) ) {
+			return null;
+		}
+
+		foreach ( $matches as $match ) {
+			if ( 0 === strcasecmp( $match[1], $name ) ) {
+				return ( $match[2] ?? '' ) . ( $match[3] ?? '' ) . ( $match[4] ?? '' );
+			}
+		}
+
+		return null;
+	}
+
 	// ── Public API ────────────────────────────────────────────────────────────
 
 	/**
@@ -420,7 +516,7 @@ class Hash_Manager {
 	 * @param string $content     Raw inline script/style content, or a style
 	 *                            attribute's value for 'style-src-attr'.
 	 * @param string $directive   'script-src', 'style-src', or 'style-src-attr'.
-	 * @param string $surface     'frontend' | 'admin' | 'login' | 'api'.
+	 * @param string $surface     'frontend' | 'admin' | 'login' (Csp_Surfaces::ALL).
 	 * @param string $source_file Optional: file where the inline block originates.
 	 * @return string             'sha256-{base64}' value for direct use in CSP header.
 	 */
@@ -588,6 +684,87 @@ class Hash_Manager {
 	}
 
 	/**
+	 * Retires active hashes whose captured content is JSON data rather than
+	 * script or style: JSON-LD schema markup (Yoast and similar) and other
+	 * application/json blocks, learned before extract_and_record() started
+	 * skipping those types. CSP never applies to such a block, so its hash
+	 * only uses up the header's byte budget, and can push out hashes that
+	 * real inline scripts need. On one site, 1,655 of 1,763 active frontend
+	 * hashes were JSON-LD, one per page.
+	 *
+	 * Recognised from source_context, the start of the content: text that
+	 * opens with an object key ({"...": or [{"...":) can never begin a
+	 * working script or stylesheet, so nothing that runs is retired. Rows
+	 * with no context (recorded before that column was written) are left to
+	 * prune_stale_by_age(). Reactivation works as for any retired hash: if
+	 * the same content is ever hashed again, upsert() makes it active.
+	 *
+	 * Runs on every daily and manual scan; after the first run there is
+	 * normally nothing left to match, so it costs one indexed query.
+	 *
+	 * @return int Number of rows retired.
+	 */
+	public function retire_json_data_hashes(): int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'csp_hash_inventory';
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id, source_context FROM {$table} WHERE status = 'active' AND ( source_context LIKE %s OR source_context LIKE %s )",
+				'{%',
+				'[%'
+			),
+			ARRAY_A
+		);
+
+		$ids = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			if ( self::is_json_data( (string) ( $row['source_context'] ?? '' ) ) ) {
+				$ids[] = (int) $row['id'];
+			}
+		}
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+
+		$now     = current_time( 'mysql', true );
+		$retired = 0;
+		foreach ( array_chunk( $ids, 200 ) as $chunk ) {
+			$placeholders = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
+			$result       = $wpdb->query(
+				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- one %d per id, built into $placeholders above.
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"UPDATE {$table} SET status = 'retired', retired_at = %s WHERE status = 'active' AND id IN ({$placeholders})",
+					$now,
+					...$chunk
+				)
+			);
+			$retired += false === $result ? 0 : (int) $result;
+		}
+
+		if ( $retired > 0 ) {
+			$this->audit->log(
+				'hash_manager',
+				'hashes_retired_json_data',
+				sprintf(
+					'Retired %d hash(es) of JSON data blocks, such as JSON-LD schema markup. CSP does not apply to those blocks, so their hashes only used up the policy header\'s size budget.',
+					$retired
+				),
+				'info'
+			);
+		}
+
+		return $retired;
+	}
+
+	/** True when $context opens with a JSON object key -- see retire_json_data_hashes(). */
+	private static function is_json_data( string $context ): bool {
+		return 1 === preg_match( '/^\[?\s*\{\s*"(?:[^"\\\\]|\\\\.)*"\s*:/', $context );
+	}
+
+	/**
 	 * Returns all active hashes for a surface as 'sha256-{b64}' strings.
 	 */
 	public function get_active_hashes( string $surface, string $directive ): array {
@@ -614,6 +791,17 @@ class Hash_Manager {
 
 	// ── Internal ──────────────────────────────────────────────────────────────
 
+	/**
+	 * Records a hash in the inventory, refreshing an existing one or inserting a new one within the insert limit.
+	 *
+	 * @param string $hash_b64       Base64 hash value.
+	 * @param string $fingerprint    Fingerprint of the inline content.
+	 * @param string $directive      CSP directive the hash applies to.
+	 * @param string $surface        Surface slug.
+	 * @param string $source_file    File the block came from.
+	 * @param string $source_context Extra context about where the block was found.
+	 * @return void
+	 */
 	private function upsert(
 		string $hash_b64,
 		string $fingerprint,

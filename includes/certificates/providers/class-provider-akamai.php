@@ -15,10 +15,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Provider_Akamai extends Dns_Provider {
 
+	/**
+	 * Returns the display name of the Akamai Edge DNS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Akamai Edge DNS';
 	}
 
+	/**
+	 * Describes the credentials the Akamai Edge DNS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'host'          => array(
@@ -38,6 +48,13 @@ class Provider_Akamai extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Akamai Edge DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -56,12 +73,26 @@ class Provider_Akamai extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Akamai Edge DNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
 		$this->signed( 'DELETE', "/config-dns/v2/zones/{$zone}/names/{$fqdn}/types/TXT" );
 	}
 
+	/**
+	 * Finds the Akamai zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			try {
@@ -75,6 +106,14 @@ class Provider_Akamai extends Dns_Provider {
 		throw new \RuntimeException( "Akamai Edge DNS: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Sends an EdgeGrid-signed request to the Akamai API.
+	 *
+	 * @param string $method HTTP method.
+	 * @param string $path   API path.
+	 * @param string $body   Request body.
+	 * @return string Response body.
+	 */
 	private function signed( string $method, string $path, string $body = '' ): string {
 		$host      = trim( $this->credential( 'host' ) );
 		$timestamp = gmdate( 'Ymd\TH:i:sO' ); // EdgeGrid format: 20260817T12:00:00+0000.

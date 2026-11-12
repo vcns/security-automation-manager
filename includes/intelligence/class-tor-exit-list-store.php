@@ -94,12 +94,24 @@ final class Tor_Exit_List_Store {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			return $this->record_failure( 'Fetch failed: ' . $response->get_error_message() );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %s: error message returned by the HTTP request */
+					__( 'Fetch failed: %s', 'vcns-security-automation-manager' ),
+					$response->get_error_message()
+				)
+			);
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $code ) {
-			return $this->record_failure( "Fetch returned HTTP {$code}." );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Fetch returned HTTP %d.', 'vcns-security-automation-manager' ),
+					$code
+				)
+			);
 		}
 
 		$body = wp_remote_retrieve_body( $response );
@@ -107,7 +119,11 @@ final class Tor_Exit_List_Store {
 
 		if ( count( $ips ) < self::MIN_PLAUSIBLE_COUNT ) {
 			return $this->record_failure(
-				sprintf( 'Fetch returned only %d plausible entries -- rejected as likely truncated or malformed.', count( $ips ) )
+				sprintf(
+					/* translators: %d: number of plausible Tor exit-node entries found */
+					__( 'Fetch returned only %d plausible entries -- rejected as likely truncated or malformed.', 'vcns-security-automation-manager' ),
+					count( $ips )
+				)
 			);
 		}
 
@@ -120,7 +136,11 @@ final class Tor_Exit_List_Store {
 		return array(
 			'status'  => 'refreshed',
 			'count'   => count( $ips ),
-			'message' => sprintf( 'Refreshed %d exit node(s).', count( $ips ) ),
+			'message' => sprintf(
+				/* translators: %d: number of records/rules/fields/nodes parsed */
+				__( 'Refreshed %d exit node(s).', 'vcns-security-automation-manager' ),
+				count( $ips )
+			),
 		);
 	}
 

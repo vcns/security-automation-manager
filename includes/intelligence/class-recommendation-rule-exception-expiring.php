@@ -78,7 +78,7 @@ final class Recommendation_Rule_Exception_Expiring implements Recommendation_Rul
 				'confidence'          => 'high',
 				'risk'                => $max_risk,
 				'evidence'            => array( 'exceptions' => $summary ),
-				'recommended_action'  => __( 'Review each expiring exception on the Exceptions tab: extend, revoke, or let it lapse.', 'vcns-security-automation-manager' ),
+				'recommended_action'  => __( 'Review each expiring exception under Settings → Exceptions: extend, revoke, or let it lapse.', 'vcns-security-automation-manager' ),
 				'alternative_action'  => null,
 				'automation_eligible' => false,
 				'rollback_position'   => __( 'Reviewing an exception does not change it until you explicitly extend or revoke it.', 'vcns-security-automation-manager' ),

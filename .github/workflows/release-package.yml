@@ -415,6 +415,18 @@ jobs:
           cp "dist/${GITHUB_ZIP_FILENAME}" "${FEED_DIR}/${LATEST_ZIP_FILENAME}"
           SHA256="$(sha256sum "${FEED_DIR}/${LATEST_ZIP_FILENAME}" | awk '{print $1}')"
 
+          # Compatibility fields come from the packaged readme.txt, the same
+          # values WordPress.org shows, so the GitHub channel can't drift from
+          # them (it once said "tested": "7.0" while the readme said 7.1).
+          README="$(unzip -p "dist/${GITHUB_ZIP_FILENAME}" security-automation-manager/readme.txt | tr -d '\r')"
+          README_REQUIRES="$(printf '%s\n' "${README}" | sed -n 's/^Requires at least: *//p' | sed -n '1p')"
+          README_TESTED="$(printf '%s\n' "${README}" | sed -n 's/^Tested up to: *//p' | sed -n '1p')"
+          README_REQUIRES_PHP="$(printf '%s\n' "${README}" | sed -n 's/^Requires PHP: *//p' | sed -n '1p')"
+          if [ -z "${README_REQUIRES}" ] || [ -z "${README_TESTED}" ] || [ -z "${README_REQUIRES_PHP}" ]; then
+            echo "::error::readme.txt is missing Requires at least, Tested up to or Requires PHP."
+            exit 1
+          fi
+
           python3 - <<PY
           import json
           version = "${VERSION}"
@@ -428,9 +440,9 @@ jobs:
               "version": version,
               "author": "VCNS Tech Ltd",
               "author_homepage": "https://vcns.tech",
-              "requires": "6.4",
-              "tested": "7.0",
-              "requires_php": "8.1",
+              "requires": "${README_REQUIRES}",
+              "tested": "${README_TESTED}",
+              "requires_php": "${README_REQUIRES_PHP}",
               "download_url": update_url,
               "sha256": sha256,
               "last_updated": last_updated,

@@ -78,6 +78,80 @@ final class Asn_Lookup_Store {
 		return $result;
 	}
 
+	/**
+	 * The routed network range (BGP prefix) $ip sits in, e.g. "8.8.8.0/24",
+	 * from the same origin query resolve() makes -- or null when it can't
+	 * be found. Only ever asked for by an administrator on the ASN Lookup
+	 * page, never for a visitor's request, so it's kept for a day in a
+	 * transient rather than in sam_asn_cache, which has no column for it.
+	 */
+	public function network_range( string $ip ): ?string {
+		if ( false === filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+			return null;
+		}
+
+		$key    = 'wp_sam_asn_range_' . md5( $ip );
+		$cached = get_transient( $key );
+		if ( is_string( $cached ) ) {
+			return '' !== $cached ? $cached : null;
+		}
+
+		$origin = ( $this->txt_lookup )( $this->origin_hostname( $ip ) );
+		$range  = trim( explode( '|', (string) ( $origin[0] ?? '' ) )[1] ?? '' );
+		if ( 1 !== preg_match( '#^\d{1,3}(\.\d{1,3}){3}/\d{1,2}$#', $range ) ) {
+			$range = '';
+		}
+
+		set_transient( $key, $range, DAY_IN_SECONDS );
+		return '' !== $range ? $range : null;
+	}
+
+	/**
+	 * What the regional registries record for an AS, via Team Cymru's
+	 * `AS{asn}.asn.cymru.com` query (the one resolve() uses for the
+	 * organisation name): its name, the country it's registered in, the
+	 * registry, and the date it was allocated. For the ASN drill-down on
+	 * the ASN Lookup page only; kept for a day in a transient.
+	 *
+	 * @return array{asn:int, name:?string, country:?string, registry:?string, allocated:?string}
+	 */
+	public function describe( int $asn ): array {
+		$result = array(
+			'asn'       => $asn,
+			'name'      => null,
+			'country'   => null,
+			'registry'  => null,
+			'allocated' => null,
+		);
+		if ( $asn <= 0 ) {
+			return $result;
+		}
+
+		$key    = 'wp_sam_asn_details_' . $asn;
+		$cached = get_transient( $key );
+		if ( is_array( $cached ) ) {
+			return array_merge( $result, $cached );
+		}
+
+		$record = ( $this->txt_lookup )( "AS{$asn}.asn.cymru.com" );
+		$fields = array_map( 'trim', explode( '|', (string) ( $record[0] ?? '' ) ) );
+		if ( ( $fields[0] ?? '' ) === (string) $asn ) {
+			$country             = strtoupper( $fields[1] ?? '' );
+			$result['country']   = 1 === preg_match( '/^[A-Z]{2}$/', $country ) ? $country : null;
+			$result['registry']  = 1 === preg_match( '/^[a-z]+$/', $fields[2] ?? '' ) ? $fields[2] : null;
+			$result['allocated'] = 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $fields[3] ?? '' ) ? $fields[3] : null;
+			$result['name']      = '' !== sanitize_text_field( $fields[4] ?? '' ) ? sanitize_text_field( $fields[4] ) : null;
+		}
+
+		set_transient( $key, $result, DAY_IN_SECONDS );
+		return $result;
+	}
+
+	/** Team Cymru's origin query hostname for an IPv4 address: its octets reversed. */
+	private function origin_hostname( string $ip ): string {
+		return implode( '.', array_reverse( explode( '.', $ip ) ) ) . '.origin.asn.cymru.com';
+	}
+
 	/** @return array{asn: ?int, asn_org: ?string}|null */
 	private function cached( string $ip ): ?array {
 		global $wpdb;
@@ -138,8 +212,7 @@ final class Asn_Lookup_Store {
 
 	/** @return array{asn: ?int, asn_org: ?string} */
 	private function live_lookup( string $ip ): array {
-		$reversed = implode( '.', array_reverse( explode( '.', $ip ) ) );
-		$origin   = ( $this->txt_lookup )( "{$reversed}.origin.asn.cymru.com" );
+		$origin = ( $this->txt_lookup )( $this->origin_hostname( $ip ) );
 
 		if ( empty( $origin ) ) {
 			return array(

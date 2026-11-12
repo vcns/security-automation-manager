@@ -17,6 +17,11 @@ class Learning_Window {
 	public const OPTION_WINDOW_HOURS  = 'wp_sam_learning_window_hours';
 	public const DEFAULT_WINDOW_HOURS = 48;
 
+	/**
+	 * Registers the hooks that restart the learning window when the site changes.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'save_post_post', array( $this, 'mark_post_change' ), 10, 3 );
 		add_action( 'save_post_page', array( $this, 'mark_post_change' ), 10, 3 );
@@ -55,15 +60,30 @@ class Learning_Window {
 		$this->mark_material_change();
 	}
 
+	/**
+	 * Records that a material site change has just happened.
+	 *
+	 * @return void
+	 */
 	public function mark_material_change(): void {
 		update_option( self::OPTION_LAST_CHANGE, current_time( 'mysql', true ), false );
 	}
 
+	/**
+	 * Checks whether the learning window is still open.
+	 *
+	 * @return bool True while the window has not locked.
+	 */
 	public function is_open(): bool {
 		$locks_at = $this->locks_at_timestamp();
 		return null === $locks_at || time() < $locks_at;
 	}
 
+	/**
+	 * Returns the time of the last material change, recording the current time if none exists.
+	 *
+	 * @return string Time in UTC, as Y-m-d H:i:s.
+	 */
 	public function last_material_change_at(): string {
 		$last_change = get_option( self::OPTION_LAST_CHANGE, '' );
 		if ( is_string( $last_change ) && '' !== $last_change ) {
@@ -76,15 +96,30 @@ class Learning_Window {
 		return $last_change;
 	}
 
+	/**
+	 * Returns when the learning window locks.
+	 *
+	 * @return string Time in UTC, as Y-m-d H:i:s, or an empty string when unknown.
+	 */
 	public function locks_at(): string {
 		$locks_at = $this->locks_at_timestamp();
 		return null !== $locks_at ? gmdate( 'Y-m-d H:i:s', $locks_at ) : '';
 	}
 
+	/**
+	 * Returns the configured length of the learning window.
+	 *
+	 * @return int Hours, at least 1.
+	 */
 	public function window_hours(): int {
 		return max( 1, (int) get_option( self::OPTION_WINDOW_HOURS, self::DEFAULT_WINDOW_HOURS ) );
 	}
 
+	/**
+	 * Returns when the learning window locks, as a Unix timestamp.
+	 *
+	 * @return int|null Timestamp, or null when the last change time cannot be read.
+	 */
 	private function locks_at_timestamp(): ?int {
 		$last_change = $this->last_material_change_at();
 		$last_ts     = strtotime( $last_change . ' UTC' );

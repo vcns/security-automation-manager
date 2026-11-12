@@ -35,6 +35,15 @@ final class Recommendation_Rule_Pillar_Enforce_Ready implements Recommendation_R
 
 	private const QUIET_WINDOW_DAYS = 30;
 
+	/**
+	 * Surfaces where Header_Builder never delivers a pillar header, so a
+	 * quiet report-only profile there is silence, not evidence: wp-admin
+	 * pages never fire send_headers (only WP::main(), the frontend
+	 * pipeline, does), and REST requests are served during parse_request,
+	 * before it.
+	 */
+	private const UNDELIVERED_SURFACES = array( 'admin', 'api' );
+
 	public function id(): string {
 		return 'pillar_enforce_ready';
 	}
@@ -65,7 +74,10 @@ final class Recommendation_Rule_Pillar_Enforce_Ready implements Recommendation_R
 
 			foreach ( $rows as $row ) {
 				$surface = (string) $row['surface'];
-				$mode    = call_user_func( $meta['mode_extractor'], array( 'payload' => $row['payload'] ) );
+				if ( in_array( $surface, self::UNDELIVERED_SURFACES, true ) ) {
+					continue;
+				}
+				$mode = call_user_func( $meta['mode_extractor'], array( 'payload' => $row['payload'] ) );
 
 				if ( 'report-only' !== $mode ) {
 					continue;

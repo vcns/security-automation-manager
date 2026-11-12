@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       VCNS Security Automation Manager
+ * Plugin Name:       Security Automation Manager
  * Plugin URI:        https://github.com/vcns/security-automation-manager
  * Description:       Self-learning security headers, built-in attack detection and rate limiting, file-integrity monitoring, and free TLS certificates. No paywall.
- * Version:           2.9.107
+ * Version:           2.13.0
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            VCNS Tech Ltd
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Core constants ────────────────────────────────────────────────────────────
-define( 'WP_SAM_VERSION', '2.9.107' );
+define( 'WP_SAM_VERSION', '2.13.0' );
 
 /**
  * Schema version. Increment whenever a database schema change is made.
@@ -195,7 +195,7 @@ define( 'WP_SAM_VERSION', '2.9.107' );
  *        Controls, .roadmap/phase3_early_plan.md §13.4). Entirely opt-in
  *        and bring-your-own-credentials -- disabled until an
  *        administrator enters their own IPinfo API token, sealed via
- *        Credential_Vault, never a shared VCNS credential. MaxMind
+ *        Credential_Vault, never a shared credential. MaxMind
  *        support deliberately deferred (its free tier is a downloaded
  *        binary database, not a live API -- see Intelligence\Geo_Ip_
  *        Store's own docblock). Observation only, and Geo-IP blocking is
@@ -334,8 +334,15 @@ define( 'WP_SAM_VERSION', '2.9.107' );
  *        verify-wporg-package.sh's whole purpose. Only ever mattered on a
  *        private/commercial build -- neither public release channel has
  *        ever shipped a working checkout path.
+ *   v48: adds pinned_url, integrity_checked_at, integrity_attempted_at,
+ *        integrity_check_error, drift_detected_at and drift_observed_sri
+ *        to sam_dependency_inventory, for Security\Pinned_Dependency_
+ *        Checker's daily re-fetch of each pinned third-party file. A
+ *        changed file is recorded as drift for an administrator to
+ *        re-approve or reclassify; a fetch failure is recorded separately
+ *        and never as drift. Nothing is approved automatically.
  */
-define( 'WP_SAM_DB_VERSION', '46' );
+define( 'WP_SAM_DB_VERSION', '48' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

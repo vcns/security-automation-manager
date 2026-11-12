@@ -160,7 +160,11 @@ class ConflictDetectorTest extends TestCase {
 
 		$this->assertCount( 1, $GLOBALS['_wp_remote_head_requests'] );
 		$this->assertSame( 'https://example.com', $GLOBALS['_wp_remote_head_requests'][0]['url'] );
-		$this->assertSame( '1', $GLOBALS['_wp_remote_head_requests'][0]['args']['headers']['X-WP-SAM-Probe'] );
+		$sent_token = $GLOBALS['_wp_remote_head_requests'][0]['args']['headers']['X-WP-SAM-Probe'];
+		$this->assertMatchesRegularExpression( '/^[0-9a-f]{64}$/', $sent_token );
+		// Revoked as soon as the probe returned.
+		$this->assertFalse( \WP_SAM\Security\Conflict_Probe_Token::is_valid( $sent_token ) );
+		$this->assertSame( 0, $GLOBALS['_wp_remote_head_requests'][0]['args']['redirection'] );
 		$this->assertSame( 1, $GLOBALS['_wp_transients']['wp_sam_conflict_probe_ran'] );
 	}
 
@@ -192,9 +196,12 @@ class ConflictDetectorTest extends TestCase {
 		};
 
 		$server_key                 = 'HTTP_' . strtoupper( str_replace( '-', '_', \WP_SAM\Security\Request_Surface::CONFLICT_PROBE_HEADER ) );
-		$_SERVER[ $server_key ]     = '1';
+		$_SERVER[ $server_key ]     = \WP_SAM\Security\Conflict_Probe_Token::issue();
 
 		$this->assertTrue( $stub->is_probe() );
+
+		$_SERVER[ $server_key ] = '1';
+		$this->assertFalse( $stub->is_probe() );
 
 		unset( $_SERVER[ $server_key ] );
 	}

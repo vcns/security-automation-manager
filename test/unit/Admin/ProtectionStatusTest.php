@@ -110,6 +110,25 @@ class ProtectionStatusTest extends TestCase {
 		$this->assertSame( Protection_Status::STATE_PROTECTED, $areas['Scripts and dependencies']['state'] );
 	}
 
+	public function test_dependency_governance_still_counts_the_api_surface(): void {
+		// Only CSP drops the REST API as a surface (Csp_Surfaces); dependency
+		// governance still applies there, so an api-only row still counts.
+		$this->reset_to_fresh_install();
+		$GLOBALS['_wpdb_get_results_queue'][1] = array(
+			array(
+				'pillar'  => 'dependency-governance',
+				'surface' => 'api',
+				'enabled' => 1,
+				'payload' => wp_json_encode( array( 'mode' => 'enforce' ) ),
+			),
+		);
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		$areas = $this->areas_by_name( ( new Protection_Status() )->areas() );
+
+		$this->assertSame( Protection_Status::STATE_PROTECTED, $areas['Scripts and dependencies']['state'] );
+	}
+
 	public function test_no_baseline_is_not_in_use_for_configuration_integrity(): void {
 		$this->reset_to_fresh_install();
 

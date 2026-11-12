@@ -438,7 +438,7 @@ foreach ( ! empty( $profiles_raw ) ? $profiles_raw : array() as $row ) {
 				$has_meta    = ! empty( $meta_fields );
 				?>
 				<?php if ( $has_meta ) : ?>
-				<span class="dashicons dashicons-info-outline wp-sam-meta-icon" tabindex="0">
+				<span class="wp-sam-meta-icon" tabindex="0"><span class="dashicons dashicons-info-outline" aria-hidden="true"></span>
 					<span class="wp-sam-meta-popover" role="tooltip">
 						<?php foreach ( $meta_fields as $meta_label => $meta_value ) : ?>
 						<div class="wp-sam-meta-row">

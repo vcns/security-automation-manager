@@ -89,7 +89,7 @@ final class Recommendation_Rule_Detector_Disabled_But_Firing implements Recommen
 					'occurrences'     => $occurrences,
 					'lookback_days'   => (int) ( self::LOOKBACK_HOURS / 24 ),
 				),
-				'recommended_action'  => __( 'Review this detector on the Detectors tab (Traffic Controls) and re-enable it if disabling it was not deliberate.', 'vcns-security-automation-manager' ),
+				'recommended_action'  => __( 'Review this detector under Control → Traffic Controls → Detectors and re-enable it if disabling it was not deliberate.', 'vcns-security-automation-manager' ),
 				'alternative_action'  => __( 'If it was disabled because it produced false positives, leave it disabled -- this recommendation will stop appearing once the matching activity ages out of the lookback window.', 'vcns-security-automation-manager' ),
 				'automation_eligible' => false,
 				'rollback_position'   => __( 'Re-enabling a detector only resumes observation -- it does not itself start blocking anything unless its control action is separately set to enforce.', 'vcns-security-automation-manager' ),

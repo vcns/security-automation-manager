@@ -56,7 +56,8 @@ class ViolationReporterTest extends TestCase {
 	// so these use a real instance with the transient store pre-seeded
 	// directly -- the same convention TrafficGuardTest already uses for
 	// Rate_Limiter-backed checks. Key format matches Rate_Limiter::
-	// transient_key(): 'wp_sam_rate_' . $surface . '_' . md5( $ip ).
+	// transient_key(): 'wp_sam_rate_' . $surface . '_' . md5( $ip ), and the
+	// value is array( 'start' => window start, 'count' => hits so far ).
 
 	public function test_check_not_flooding_allows_under_the_threshold(): void {
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
@@ -70,7 +71,7 @@ class ViolationReporterTest extends TestCase {
 
 	public function test_check_not_flooding_rejects_over_the_threshold_with_a_429(): void {
 		$_SERVER['REMOTE_ADDR']                                              = '203.0.113.42';
-		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_' . md5( '203.0.113.42' ) ] = 40; // Already at the cap.
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 40 ); // Already at the cap.
 		$reporter = new Violation_Reporter( $this->audit, null, null, null, new Rate_Limiter() );
 
 		$result = $reporter->check_not_flooding();
@@ -81,12 +82,64 @@ class ViolationReporterTest extends TestCase {
 	}
 
 	public function test_check_not_flooding_is_scoped_per_ip(): void {
-		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_' . md5( '203.0.113.42' ) ] = 40; // A different IP is already at the cap...
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 40 ); // A different IP is already at the cap...
 
 		$_SERVER['REMOTE_ADDR'] = '198.51.100.7'; // ...this one is not.
 		$reporter               = new Violation_Reporter( $this->audit, null, null, null, new Rate_Limiter() );
 
 		$this->assertTrue( $reporter->check_not_flooding() );
+		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+
+	public function test_admin_reports_have_their_own_flood_budget(): void {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 40 ); // Frontend budget spent...
+		$reporter = new Violation_Reporter( $this->audit, null, null, null, new Rate_Limiter() );
+
+		$request = new WP_REST_Request();
+		$request->set_param( 'surface', 'admin' );
+
+		$this->assertTrue( $reporter->check_not_flooding( $request ), '...but this IP\'s admin reports are counted separately.' );
+		$this->assertSame( 1, $GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_admin_' . md5( '203.0.113.42' ) ]['count'] );
+		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+
+	public function test_admin_flood_budget_is_larger_than_the_frontend_one(): void {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_admin_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 100 );
+		$reporter = new Violation_Reporter( $this->audit, null, null, null, new Rate_Limiter() );
+		$request  = new WP_REST_Request();
+		$request->set_param( 'surface', 'admin' );
+
+		$this->assertTrue( $reporter->check_not_flooding( $request ) );
+
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_admin_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 120 );
+		$this->assertInstanceOf( WP_Error::class, $reporter->check_not_flooding( $request ) );
+		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+
+	public function test_an_unrecognised_surface_hint_uses_the_frontend_budget(): void {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 40 );
+		$reporter = new Violation_Reporter( $this->audit, null, null, null, new Rate_Limiter() );
+		$request  = new WP_REST_Request();
+		$request->set_param( 'surface', 'api' );
+
+		$this->assertInstanceOf( WP_Error::class, $reporter->check_not_flooding( $request ) );
+		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+
+	public function test_a_refused_report_is_recorded_against_its_surface(): void {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.42';
+		$GLOBALS['_wp_transients'][ 'wp_sam_rate_csp_report_login_' . md5( '203.0.113.42' ) ] = array( 'start' => time(), 'count' => 40 );
+		$reporter = new Violation_Reporter( $this->audit, null, null, null, new Rate_Limiter() );
+		$request  = new WP_REST_Request();
+		$request->set_param( 'surface', 'login' );
+
+		$reporter->check_not_flooding( $request );
+
+		$this->assertArrayHasKey( 'last_throttled', \WP_SAM\CSP\Csp_Delivery_Log::get( 'login' ) );
+		$this->assertArrayNotHasKey( 'last_throttled', \WP_SAM\CSP\Csp_Delivery_Log::get( 'frontend' ) );
 		unset( $_SERVER['REMOTE_ADDR'] );
 	}
 
@@ -346,6 +399,24 @@ class ViolationReporterTest extends TestCase {
 		$this->assertSame( 'api.vendor.example', $source_insert['source_host'] );
 		$this->assertSame( 'pending', $source_insert['approval_state'] );
 		$this->assertSame( 'report-endpoint', $source_insert['owner_component'] );
+	}
+
+	public function test_report_endpoint_learning_never_proposes_a_source_for_a_rest_api_document(): void {
+		// The REST API isn't a CSP surface (Csp_Surfaces), so a report whose
+		// document-uri is under /wp-json -- which maps to 'api' -- never feeds
+		// the For Review queue, even with the learning window open.
+		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
+		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		$reporter = new Violation_Reporter( $this->audit, new Learning_Window() );
+		$request  = $this->make_request(
+			'{"csp-report":{"effective-directive":"form-action","violated-directive":"form-action","document-uri":"https://example.com/wp-json/","blocked-uri":"https://forms.vendor.example/submit"}}'
+		);
+
+		$reporter->handle( $request );
+
+		$this->assertCount( 0, $GLOBALS['_wpdb_inserted_rows'] );
 	}
 
 	public function test_report_endpoint_learning_is_locked_after_window_expires(): void {

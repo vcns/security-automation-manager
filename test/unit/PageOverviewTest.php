@@ -110,7 +110,7 @@ class PageOverviewTest extends TestCase {
 		$_GET['tab'] = $tab;
 
 		$plugin = \WP_SAM\Plugin::instance();
-		// The overview tab's own cert-status logic (page-overview.php,
+		// The All tab's own cert-status logic (page-overview.php,
 		// pre-existing, not part of this change) reads $plugin->cert_manager
 		// ->last_run() -- Plugin::instance() alone never runs bootstrap(), so
 		// this typed property is otherwise uninitialized here. last_run()
@@ -121,7 +121,7 @@ class PageOverviewTest extends TestCase {
 		if ( ! isset( $plugin->cert_manager ) ) {
 			$plugin->cert_manager = ( new \ReflectionClass( \WP_SAM\Certificates\Certificate_Manager::class ) )->newInstanceWithoutConstructor();
 		}
-		// Same reasoning: the overview tab's Layer 1 automation-mode badges
+		// Same reasoning: the All tab's Layer 2 automation-mode badges
 		// read Automation_Mode_Registry, normally primed once by
 		// Plugin::bootstrap() (never run here). Idempotent -- safe alongside
 		// whatever state other test files' own reset()/register_defaults()
@@ -154,6 +154,149 @@ class PageOverviewTest extends TestCase {
 		$this->assertStringContainsString( 'Protection status', $output );
 		// A quiet fresh install has nothing open -- no artificial task invented.
 		$this->assertStringContainsString( 'Nothing currently needs your attention.', $output );
+	}
+
+	public function test_overview_tab_shows_only_the_summary_not_the_layer_tables(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output = $this->render_tab( 'overview' );
+
+		$this->assertStringContainsString( 'wp-sam-scorecard', $output );
+		foreach ( $this->layer_headings() as $heading ) {
+			$this->assertStringNotContainsString( $heading, $output );
+		}
+		// The layer tables' own CSP-mode query belongs to the All tab only.
+		$this->assertNotContains( $this->all_tab_csp_mode_query(), $GLOBALS['_wpdb_get_results_log'] );
+	}
+
+	public function test_overview_tab_summary_sits_below_the_tab_bar_like_every_other_tab(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output   = $this->render_tab( 'overview' );
+		$tab_help = strpos( $output, 'class="wp-sam-tab-help"' );
+
+		$this->assertNotFalse( $tab_help );
+		$this->assertLessThan( $tab_help, (int) strpos( $output, 'wp-sam-tab-wrapper' ) );
+		foreach ( array( 'wp-sam-scorecard', 'wp-sam-recent-activity', 'wp-sam-protection-status', 'wp-sam-action-centre-preview' ) as $section ) {
+			$this->assertGreaterThan( $tab_help, (int) strpos( $output, $section ), "{$section} renders above the tab bar" );
+		}
+	}
+
+	public function test_all_tab_renders_every_layer_table_without_the_home_summary(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output = $this->render_tab( 'all' );
+
+		foreach ( $this->layer_headings() as $heading ) {
+			$this->assertStringContainsString( $heading, $output );
+		}
+		$this->assertStringContainsString( 'Everything below is organised into five layers', $output );
+		$this->assertStringContainsString( 'Manage Certificates', $output );
+		$this->assertStringNotContainsString( 'wp-sam-scorecard', $output );
+		$this->assertStringNotContainsString( 'Recent activity', $output );
+		$this->assertContains( $this->all_tab_csp_mode_query(), $GLOBALS['_wpdb_get_results_log'] );
+		// The All tab must not fall through to the About tab's content.
+		$this->assertStringNotContainsString( 'wp-sam-about', $output );
+	}
+
+	/**
+	 * The five layer tables share one fixed column layout (admin.css,
+	 * .wp-sam-layer-table) so their Area/Status/Manage columns line up
+	 * down the page instead of each sizing itself from its own content.
+	 */
+	public function test_all_tab_layer_tables_share_the_fixed_layer_layout(): void {
+		$output = $this->render_tab( 'all' );
+
+		$this->assertSame( 5, substr_count( $output, 'wp-sam-layer-table' ) );
+	}
+
+	public function test_tab_bar_lists_all_right_after_overview(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output = $this->render_tab( 'overview' );
+
+		$this->assertMatchesRegularExpression( '/tab=overview[^>]*>\s*Overview\s*<span/', $output );
+		$this->assertMatchesRegularExpression( '/tab=all[^>]*>\s*All\s*<span/', $output );
+		$this->assertLessThan(
+			(int) strpos( $output, 'tab=getting-started' ),
+			(int) strpos( $output, 'tab=all' )
+		);
+		$this->assertGreaterThan(
+			(int) strpos( $output, 'tab=overview' ),
+			(int) strpos( $output, 'tab=all' )
+		);
+		// The Overview tab renders no About-tab content.
+		$this->assertStringNotContainsString( 'wp-sam-about', $output );
+	}
+
+	public function test_getting_started_points_header_pillars_step_at_the_all_tab(): void {
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+
+		$output = $this->render_getting_started();
+
+		$this->assertStringContainsString( 'the Layer 4 table on the All tab', $output );
+		$this->assertStringContainsString( 'All -- Layer 4', $output );
+		$this->assertStringNotContainsString( 'Overview -- Layer 4', $output );
+	}
+
+	/** @return array<int, string> */
+	private function layer_headings(): array {
+		return array(
+			'Layer 1: Governance and Operations',
+			'Layer 2: Controlled Automation',
+			'Layer 3: Continuous Intelligence',
+			'Layer 4: Browser Security Policies',
+			'Layer 5: Transport &amp; Certificate Trust',
+		);
+	}
+
+	private function all_tab_csp_mode_query(): string {
+		global $wpdb;
+		return "SELECT surface, mode FROM {$wpdb->prefix}csp_policy_profiles ORDER BY surface";
+	}
+
+	public function test_all_tab_csp_rows_omit_the_api_surface_but_other_pillar_rows_keep_it(): void {
+		// Only CSP drops the REST API as a surface (Csp_Surfaces); every other
+		// pillar's per-surface badges still include it.
+		$GLOBALS['_wpdb_get_var']     = 0;
+		$GLOBALS['_wpdb_get_results'] = array();
+		$GLOBALS['_wpdb_get_row']     = null;
+		$GLOBALS['_wpdb_get_col']     = array();
+
+		$output = $this->render_tab( 'all' );
+
+		foreach ( array( 'CSP Deterministic Automation', '<strong>Content Security Policy</strong>' ) as $csp_row_marker ) {
+			$csp_row = $this->table_row_starting_at( $output, $csp_row_marker );
+			$this->assertStringContainsString( 'Frontend:', $csp_row );
+			$this->assertStringContainsString( 'Login:', $csp_row );
+			$this->assertStringNotContainsString( 'Api:', $csp_row );
+		}
+
+		$csp_policy_at     = (int) strpos( $output, '<strong>Content Security Policy</strong>' );
+		$other_pillar_rows = substr( $output, (int) strpos( $output, '</tr>', $csp_policy_at ) );
+		$this->assertStringContainsString( 'Api:', $other_pillar_rows );
+	}
+
+	private function table_row_starting_at( string $html, string $marker ): string {
+		$start = strpos( $html, $marker );
+		$this->assertNotFalse( $start, "Marker not found: {$marker}" );
+		$end = strpos( $html, '</tr>', $start );
+		$this->assertNotFalse( $end );
+		return substr( $html, $start, $end - $start );
 	}
 
 	public function test_action_centre_tab_appears_in_nav_and_shows_empty_state_when_quiet(): void {
