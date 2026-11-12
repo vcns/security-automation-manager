@@ -439,6 +439,14 @@ final class Scanner_Identity_Store {
 		return $changed;
 	}
 
+	/**
+	 * Marks a scanner identity as authorised by the customer; a note is required.
+	 *
+	 * @param int    $id      Identity id.
+	 * @param int    $user_id Administrator user id.
+	 * @param string $note    Reason note.
+	 * @return bool True when the decision was stored.
+	 */
 	public function authorise( int $id, int $user_id, string $note ): bool {
 		return $this->set_decision( $id, 'customer_authorised', $user_id, $note );
 	}
