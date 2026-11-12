@@ -2835,7 +2835,7 @@ class Admin_UI {
 	}
 
 	/**
-	 * Handles the certificate issue form post: checks the nonce and the manage_options capability, queues a certificate issue, then redirects to the Certificates page.
+	 * Handles the certificate issue form post: checks the nonce and the manage_options capability, queues a certificate issue, then redirects to `security-automation-manager-certificates&queued=1`.
 	 *
 	 * @return void
 	 */
