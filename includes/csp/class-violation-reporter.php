@@ -422,7 +422,7 @@ class Violation_Reporter {
 		$disposition_sanitized         = in_array( isset( $r['disposition'] ) ? $r['disposition'] : '', array( 'enforce', 'report' ), true ) ? $r['disposition'] : 'report';
 		$referrer_sanitized            = sanitize_text_field( substr( isset( $r['referrer'] ) ? $r['referrer'] : '', 0, 2048 ) );
 		$user_agent_raw                = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
-		$user_agent_sanitized          = substr( $user_agent_raw, 0, 512 );
+		$user_agent_sanitized          = mb_substr( $user_agent_raw, 0, 512 ); // Cut by characters, not bytes: a byte cut can split a multibyte character and leave invalid UTF-8, which wpdb::query() then refuses, dropping the report. user_agent is varchar(512), so 512 characters fit.
 		$sample_sanitized              = sanitize_text_field( substr( isset( $r['sample'] ) ? $r['sample'] : '', 0, 256 ) );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared

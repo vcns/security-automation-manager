@@ -38,6 +38,7 @@ final class Surface_Classifier {
 			return false;
 		}
 
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the header is matched verbatim against a 64-char hex token by Conflict_Probe_Token::is_valid(); unslashing or sanitizing could alter it, and any non-token value is rejected by that method's strict preg_match.
 		return Conflict_Probe_Token::is_valid( (string) $_SERVER[ $server_key ] );
 	}
 

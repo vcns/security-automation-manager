@@ -2114,7 +2114,7 @@ class Admin_UI {
 		}
 
 		$geo_store = new Geo_Ip_Store();
-		$token     = isset( $_POST['ipinfo_token'] ) ? (string) wp_unslash( $_POST['ipinfo_token'] ) : '';
+		$token     = isset( $_POST['ipinfo_token'] ) ? (string) wp_unslash( $_POST['ipinfo_token'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- an API token is an opaque secret; sanitizing could alter it. Geo_Ip_Store::save_token() seals it with Credential_Vault and it is never echoed.
 		if ( isset( $_POST['remove_token'] ) ) {
 			$geo_store->save_token( '' );
 		} elseif ( '' !== trim( $token ) ) {
@@ -3552,7 +3552,7 @@ class Admin_UI {
 		$id             = intval( wp_unslash( $_POST['id'] ?? 0 ) );
 		$classification = sanitize_text_field( wp_unslash( $_POST['classification'] ?? '' ) );
 		$expected_sri   = sanitize_text_field( wp_unslash( $_POST['expected_sri'] ?? '' ) );
-		$posted_pin_url = esc_url_raw( trim( (string) wp_unslash( $_POST['pinned_url'] ?? '' ) ) );
+		$posted_pin_url = esc_url_raw( trim( (string) wp_unslash( $_POST['pinned_url'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- cast to string first so an array-shaped pinned_url[] cannot raise a TypeError; sanitized by esc_url_raw().
 
 		if ( $id <= 0 ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'vcns-security-automation-manager' ) ) );
@@ -3702,7 +3702,7 @@ class Admin_UI {
 			wp_send_json_error( null, 403 );
 		}
 
-		$id = (int) ( $_POST['id'] ?? 0 );
+		$id = intval( wp_unslash( $_POST['id'] ?? 0 ) );
 		if ( $id <= 0 ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'vcns-security-automation-manager' ) ) );
 		}
