@@ -548,7 +548,95 @@ details.wp-sam-filter-form form {
 }
 
 .wp-sam-country-count {
-	margin-bottom: 0;
+	margin-left: auto;
+}
+
+/*
+ * A short form laid out on one line -- a lookup box and its button, or the
+ * country-group picker -- wrapping onto further lines when it runs out of
+ * room.
+ */
+.wp-sam-inline-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 8px;
+}
+
+.wp-sam-inline-form label,
+.wp-sam-inline-form select,
+.wp-sam-inline-form .button {
+	margin: 0;
+}
+
+/* Geo-IP sub-tab: status or lookup on the left, settings cog on the right. */
+.wp-sam-geoip-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	margin-top: 1em;
+}
+
+.wp-sam-geoip-header-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.wp-sam-geoip-header .notice {
+	margin: 0;
+}
+
+.wp-sam-geoip-header .notice p .button {
+	margin-left: 4px;
+	vertical-align: baseline;
+}
+
+.wp-sam-geoip-status {
+	margin-right: 8px;
+	color: #646970;
+}
+
+.wp-sam-settings-cog.button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 6px;
+}
+
+/* A modal settings dialog opened by a cog (see assets/js/admin.js). */
+.wp-sam-dialog {
+	width: min(560px, calc(100vw - 32px));
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 16px 24px;
+	box-shadow: 0 3px 30px rgba(0, 0, 0, 0.2);
+}
+
+.wp-sam-dialog::backdrop {
+	background: rgba(0, 0, 0, 0.35);
+}
+
+.wp-sam-dialog h2 {
+	margin-top: 0;
+}
+
+.wp-sam-dialog .regular-text,
+.wp-sam-dialog select {
+	width: 100%;
+	max-width: 100%;
+}
+
+.wp-sam-dialog-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 1.5em;
+}
+
+/* "Remove token" sits on the far left, away from Save. */
+.wp-sam-dialog-actions .button-link-delete {
+	margin-right: auto;
 }
 
 /*
@@ -876,4 +964,37 @@ details.wp-sam-filter-form form {
 	.wp-sam-layer-table .wp-sam-col-actions {
 		width: auto;
 	}
+}
+
+/* Well-known file editor: Control → Traffic Controls → Network Intelligence
+ * → Well-Known Files → Create/Edit. One template per line, button first. */
+.wp-sam-well-known-templates {
+	margin: 0 0 1.5em;
+}
+
+.wp-sam-well-known-templates li {
+	margin-bottom: 6px;
+}
+
+.wp-sam-well-known-templates .button {
+	min-width: 14em;
+	margin-right: 8px;
+	text-align: center;
+}
+
+label[for="wp-sam-well-known-content"] {
+	font-weight: 600;
+	margin-right: 8px;
+}
+
+#wp-sam-well-known-content {
+	margin: 6px 0 10px;
+}
+
+.wp-sam-well-known-remove {
+	margin-top: 1.5em;
+}
+
+.wp-sam-well-known-table .wp-sam-col-actions .button {
+	margin-right: 4px;
 }

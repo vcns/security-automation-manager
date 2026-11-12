@@ -33,6 +33,11 @@ class Deployer {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
@@ -112,6 +117,15 @@ class Deployer {
 
 	// ── Export directory ──────────────────────────────────────────────────────
 
+	/**
+	 * Writes the key and full chain files to the configured export directory.
+	 *
+	 * @param array  $config        Certificate settings.
+	 * @param string $key_pem       Private key PEM.
+	 * @param string $fullchain_pem Full chain PEM.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function deploy_export( array $config, string $key_pem, string $fullchain_pem ): void {
 		$dir = rtrim( (string) $config['export_path'], '/\\' );
 		if ( '' === $dir ) {

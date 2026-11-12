@@ -18,10 +18,20 @@ class Provider_Dnspod extends Dns_Provider {
 
 	private const API = 'https://dnsapi.cn';
 
+	/**
+	 * Returns the display name of the DNSPod provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'DNSPod';
 	}
 
+	/**
+	 * Describes the credentials the DNSPod provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'token_id' => array(
@@ -34,6 +44,14 @@ class Provider_Dnspod extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the DNSPod API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -54,6 +72,13 @@ class Provider_Dnspod extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the DNSPod API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -79,6 +104,13 @@ class Provider_Dnspod extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the DNSPod zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			$body = $this->call( 'Domain.Info', array( 'domain' => $candidate ) );
@@ -90,6 +122,13 @@ class Provider_Dnspod extends Dns_Provider {
 		throw new \RuntimeException( "DNSPod: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Sends a request to the DNSPod API.
+	 *
+	 * @param string $action API action name.
+	 * @param array  $params Request parameters.
+	 * @return array Decoded response.
+	 */
 	private function call( string $action, array $params ): array {
 		$body = $this->request_raw(
 			'POST',

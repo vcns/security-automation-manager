@@ -285,26 +285,6 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 
 	<?php require WP_SAM_DIR . 'includes/admin/views/partials/personal-preferences-link.php'; ?>
 
-	<?php if ( 'overview' === $tab ) : ?>
-	<!-- ── Customer-Centred Administration Experience: scorecard + home sections ── -->
-		<?php require WP_SAM_DIR . 'includes/admin/views/partials/security-scorecard.php'; ?>
-		<?php
-		foreach ( $wp_sam_home_section_order as $wp_sam_section ) {
-			switch ( $wp_sam_section ) {
-				case 'activity':
-					require WP_SAM_DIR . 'includes/admin/views/partials/recent-activity.php';
-					break;
-				case 'protection':
-					require WP_SAM_DIR . 'includes/admin/views/partials/protection-status.php';
-					break;
-				case 'action':
-					require WP_SAM_DIR . 'includes/admin/views/partials/action-centre-preview.php';
-					break;
-			}
-		}
-		?>
-	<?php endif; ?>
-
 	<!-- ── Tabs ──────────────────────────────────────────────────────────── -->
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Overview sections', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tab_help as $tab_key => $tab_data ) : ?>
@@ -326,7 +306,26 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 		<?php echo esc_html( $tab_help[ $tab ]['description'] ); ?>
 	</div>
 
-	<?php if ( 'all' === $tab ) : ?>
+	<?php if ( 'overview' === $tab ) : ?>
+	<!-- ── Customer-Centred Administration Experience: scorecard + home sections ── -->
+		<?php require WP_SAM_DIR . 'includes/admin/views/partials/security-scorecard.php'; ?>
+		<?php
+		foreach ( $wp_sam_home_section_order as $wp_sam_section ) {
+			switch ( $wp_sam_section ) {
+				case 'activity':
+					require WP_SAM_DIR . 'includes/admin/views/partials/recent-activity.php';
+					break;
+				case 'protection':
+					require WP_SAM_DIR . 'includes/admin/views/partials/protection-status.php';
+					break;
+				case 'action':
+					require WP_SAM_DIR . 'includes/admin/views/partials/action-centre-preview.php';
+					break;
+			}
+		}
+		?>
+
+	<?php elseif ( 'all' === $tab ) : ?>
 
 	<p>
 		<?php esc_html_e( "Everything below is organised into five layers, roughly ordered from foundational to visible: whether the plugin itself is healthy, how much it's trusted to act on your behalf, what it's watching for right now, what it tells visitors' browsers to do, and whether the connection to your site can be trusted in the first place. A problem in an earlier layer can undermine every layer listed after it -- if something here looks wrong, it's usually worth checking the layers above it first.", 'vcns-security-automation-manager' ); ?>

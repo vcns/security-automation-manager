@@ -234,6 +234,68 @@ class Policy_Builder extends Header_Builder {
 	);
 
 	/**
+	 * Translated label and risk note for one BYPASS_CATALOG entry.
+	 *
+	 * The catalog is a class constant, which cannot call __(), so the
+	 * user-facing English text lives here where the translation functions
+	 * can be extracted. The constant's own 'label' and 'risk_note' values
+	 * remain as the untranslated fallback for an unknown flag.
+	 *
+	 * @param string $flag A BYPASS_CATALOG key.
+	 * @return array{label: string, risk_note: string} Translated text, or the catalog's English text.
+	 */
+	public static function bypass_text( string $flag ): array {
+		$text = array(
+			'img_src_data'                  => array(
+				'label'     => __( 'Allow data: URIs for images', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline image data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'img_src_blob'                  => array(
+				'label'     => __( 'Allow blob: URIs for images', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: like data:, a blob: image source cannot execute as script -- common with canvas exports and client-side file/image previews.', 'vcns-security-automation-manager' ),
+			),
+			'font_src_data'                 => array(
+				'label'     => __( 'Allow data: URIs for fonts', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline font data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'media_src_data'                => array(
+				'label'     => __( 'Allow data: URIs for audio/video', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: inline audio/video data cannot execute as script.', 'vcns-security-automation-manager' ),
+			),
+			'media_src_blob'                => array(
+				'label'     => __( 'Allow blob: URIs for audio/video', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Low risk: a blob: media source cannot execute as script -- common with streaming/adaptive-bitrate players built on the Media Source Extensions API.', 'vcns-security-automation-manager' ),
+			),
+			'style_src_attr_unsafe_hashes'  => array(
+				'label'     => __( 'Allow inline style attributes via hash approval (adds \'unsafe-hashes\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2); does not affect script-src-attr or script execution of any kind. See docs/threat-model.md.', 'vcns-security-automation-manager' ),
+			),
+			'script_src_attr_unsafe_hashes' => array(
+				'label'     => __( 'Allow inline event handler attributes via hash approval (adds \'unsafe-hashes\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: only takes effect together with an approved content hash (CSP3 §6.1.2), and only for that exact hashed value -- does not enable \'unsafe-inline\' or affect script-src/script-src-elem. Covers inline event handler attributes such as onclick=""; script-src-attr is otherwise \'none\' everywhere in this codebase.', 'vcns-security-automation-manager' ),
+			),
+			'script_src_wasm_unsafe_eval'   => array(
+				'label'     => __( 'Allow WebAssembly compilation (adds \'wasm-unsafe-eval\')', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Medium risk: CSP3\'s \'wasm-unsafe-eval\' keyword permits only WebAssembly instantiation/compilation -- unlike \'unsafe-eval\', it does not permit eval(), new Function(), or any other string-to-JS execution path. Needed by some image/video-processing, PDF-rendering, or cryptography libraries compiled to WebAssembly.', 'vcns-security-automation-manager' ),
+			),
+			'worker_src_blob'               => array(
+				'label'     => __( 'Allow blob: URIs for workers', 'vcns-security-automation-manager' ),
+				'risk_note' => __( 'Higher risk than the other entries here: unlike an image, font, or media source, a Worker constructed from a blob: URL does execute as JavaScript. Only enable this if a specific, identified library on this site genuinely constructs its worker from a blob (common with PDF.js and some video encoders, or bundler-generated workers) -- if nothing on the site does this, leave it off.', 'vcns-security-automation-manager' ),
+			),
+		);
+
+		if ( isset( $text[ $flag ] ) ) {
+			return $text[ $flag ];
+		}
+
+		$entry = self::BYPASS_CATALOG[ $flag ] ?? array();
+		return array(
+			'label'     => (string) ( $entry['label'] ?? '' ),
+			'risk_note' => (string) ( $entry['risk_note'] ?? '' ),
+		);
+	}
+
+	/**
 	 * Hard byte budget for the cumulative worst-case cost of approved
 	 * hashes appended to the header. script-src/style-src hashes count
 	 * twice (once for the base directive, once for its -elem counterpart
@@ -328,6 +390,13 @@ class Policy_Builder extends Header_Builder {
 		return 'disabled' !== $profile['mode'];
 	}
 
+	/**
+	 * Builds a profile's policy and sends it as a response header.
+	 *
+	 * @param array  $profile Policy profile row.
+	 * @param string $surface Surface slug.
+	 * @return bool True when a header was sent.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		// REST responses are JSON: they load nothing a policy could govern,
 		// and WordPress serves them during parse_request, before
@@ -376,6 +445,12 @@ class Policy_Builder extends Header_Builder {
 		return $is_report_only ? self::DEFAULT_REPORT_ONLY_HEADER : self::DEFAULT_ENFORCE_HEADER;
 	}
 
+	/**
+	 * Validates a reporting transport value.
+	 *
+	 * @param mixed $transport Stored or submitted value.
+	 * @return string A known transport, falling back to both.
+	 */
 	public static function sanitize_reporting_transport( mixed $transport ): string {
 		$transport = (string) $transport;
 		if ( in_array( $transport, self::get_reporting_transport_options(), true ) ) {
@@ -390,6 +465,11 @@ class Policy_Builder extends Header_Builder {
 		return self::REPORTING_TRANSPORT_BOTH;
 	}
 
+	/**
+	 * Lists the allowed reporting transports.
+	 *
+	 * @return array Transport keys.
+	 */
 	public static function get_reporting_transport_options(): array {
 		return array(
 			self::REPORTING_TRANSPORT_DIRECT,
@@ -398,6 +478,11 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
+	/**
+	 * Checks whether the configured transport includes the Reporting API.
+	 *
+	 * @return bool True for the api and both transports.
+	 */
 	private function uses_reporting_api(): bool {
 		return in_array(
 			$this->get_reporting_transport(),
@@ -406,12 +491,24 @@ class Policy_Builder extends Header_Builder {
 		);
 	}
 
+	/**
+	 * Returns the configured reporting transport.
+	 *
+	 * @return string Transport key.
+	 */
 	private function get_reporting_transport(): string {
 		return self::sanitize_reporting_transport( get_option( 'wp_sam_reporting_transport', self::REPORTING_TRANSPORT_BOTH ) );
 	}
 
 	// ── Policy assembly ───────────────────────────────────────────────────────
 
+	/**
+	 * Builds the CSP header value for a profile.
+	 *
+	 * @param array  $profile Policy profile row.
+	 * @param string $surface Surface slug.
+	 * @return string Header value, or an empty string when the profile cannot be built.
+	 */
 	public function build_policy_string( array $profile, string $surface ): string {
 		$nonce      = Plugin_Nonce_Manager::get_instance_nonce();
 		$directives = json_decode( $profile['directives'], true );
@@ -732,6 +829,12 @@ class Policy_Builder extends Header_Builder {
 		$this->audit->log( $component, $event, $detail, $severity );
 	}
 
+	/**
+	 * Removes 'none' from any directive that also lists other sources.
+	 *
+	 * @param array $directives Directives keyed by name.
+	 * @return array Cleaned directives.
+	 */
 	private function normalize_none_sources( array $directives ): array {
 		foreach ( $directives as $directive => $sources_list ) {
 			if ( ! is_array( $sources_list ) || count( array_filter( $sources_list ) ) < 2 ) {
@@ -793,10 +896,22 @@ class Policy_Builder extends Header_Builder {
 		return $this->data_loader->load_profile( $surface );
 	}
 
+	/**
+	 * Loads the approved hashes for a surface from the data loader.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Approved hashes.
+	 */
 	private function load_approved_hashes( string $surface ): array {
 		return $this->data_loader->load_approved_hashes( $surface );
 	}
 
+	/**
+	 * Loads the approved sources for a surface from the data loader.
+	 *
+	 * @param string $surface Surface slug.
+	 * @return array Approved sources.
+	 */
 	private function load_approved_sources( string $surface ): array {
 		return $this->data_loader->load_approved_sources( $surface );
 	}

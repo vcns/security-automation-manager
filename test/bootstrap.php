@@ -243,7 +243,9 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 
 if ( ! function_exists( '__' ) ) {
 	function __( string $text, string $domain = 'default' ): string {
-		return $text;
+		// Tests may set $GLOBALS['wp_test_translations'][ $text ] to prove a
+		// string actually passes through the translation layer.
+		return $GLOBALS['wp_test_translations'][ $text ] ?? $text;
 	}
 }
 
@@ -275,6 +277,12 @@ if ( ! function_exists( 'esc_html_e' ) ) {
 if ( ! function_exists( 'esc_attr_e' ) ) {
 	function esc_attr_e( string $text, string $domain = 'default' ): void {
 		echo esc_attr( __( $text, $domain ) );
+	}
+}
+
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( string $text, string $domain = 'default' ): string {
+		return esc_attr( __( $text, $domain ) );
 	}
 }
 

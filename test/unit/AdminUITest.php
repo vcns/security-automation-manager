@@ -8,6 +8,7 @@ declare( strict_types=1 );
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Admin\Admin_UI;
 use WP_SAM\Admin\Pillar_Registry;
+use WP_SAM\Admin\Presentation_Preferences;
 use WP_SAM\Plugin;
 use WP_SAM\Rollback_Guard;
 
@@ -930,6 +931,8 @@ class AdminUITest extends TestCase {
 	 */
 	public function test_display_admin_notices_links_each_notice_to_where_it_can_be_acted_on( string $component, string $event, string $expected_path ): void {
 		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		// Technical, so the hash-budget notice (Technical-only) renders too.
+		Presentation_Preferences::save_for_user( get_current_user_id(), array( 'presentation_depth' => 'technical' ) );
 		update_option(
 			'wp_sam_admin_notices',
 			array(
@@ -973,6 +976,79 @@ class AdminUITest extends TestCase {
 
 		$this->assertStringContainsString( 'something_new/happened', $output );
 		$this->assertStringNotContainsString( '<a ', $output );
+	}
+
+	/**
+	 * Routine hash trimming has nothing for a site owner to act on, and on
+	 * wp-admin it recurs every hour, so only a Technical user is shown it.
+	 *
+	 * @dataProvider non_technical_depths
+	 */
+	public function test_hash_budget_notice_is_held_back_for_a_non_technical_user( ?string $depth ): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		if ( null !== $depth ) {
+			Presentation_Preferences::save_for_user( get_current_user_id(), array( 'presentation_depth' => $depth ) );
+		}
+		$hash_budget = array(
+			'component' => 'policy_builder',
+			'event'     => 'hash_budget_exceeded',
+			'detail'    => 'Dropped 57 least-recently-seen approved hash(es) for surface "admin".',
+			'severity'  => 'warning',
+		);
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				$hash_budget,
+				array(
+					'component' => 'discovery',
+					'event'     => 'crawl_failed',
+					'detail'    => 'Failed to fetch https://example.com/: some error',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringNotContainsString( 'trimmed', $output );
+		$this->assertStringNotContainsString( 'Dropped 57', $output );
+		$this->assertStringContainsString( 'Failed to fetch', $output, 'Other notices still show.' );
+		$this->assertSame( array( $hash_budget ), get_option( 'wp_sam_admin_notices' ), 'Kept for a Technical administrator; everything shown is cleared.' );
+	}
+
+	/** @return array<string, array{0: ?string}> */
+	public static function non_technical_depths(): array {
+		return array(
+			'simple'               => array( 'simple' ),
+			'balanced'             => array( 'balanced' ),
+			'no preference chosen' => array( null ),
+		);
+	}
+
+	public function test_hash_budget_notice_is_shown_to_a_technical_user_and_cleared(): void {
+		$GLOBALS['_wp_current_user_can']['manage_options'] = true;
+		Presentation_Preferences::save_for_user( get_current_user_id(), array( 'presentation_depth' => 'technical' ) );
+		update_option(
+			'wp_sam_admin_notices',
+			array(
+				array(
+					'component' => 'policy_builder',
+					'event'     => 'hash_budget_exceeded',
+					'detail'    => 'Dropped 57 least-recently-seen approved hash(es) for surface "admin".',
+					'severity'  => 'warning',
+				),
+			)
+		);
+
+		ob_start();
+		$this->make_admin_ui()->display_admin_notices();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'trimmed', $output );
+		$this->assertStringContainsString( 'Dropped 57', $output );
+		$this->assertFalse( get_option( 'wp_sam_admin_notices' ) );
 	}
 
 	public function test_display_admin_notices_neither_shows_nor_clears_the_queue_for_a_user_without_manage_options(): void {

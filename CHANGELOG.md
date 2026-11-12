@@ -4,7 +4,61 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
-## [2.12.0] - 2026-10-28
+## [2.13.0] - 2026-10-31
+
+### Added
+
+- **Create and serve well-known files from guided templates** (#475). Control → Traffic Controls → Network Intelligence → Well-Known Files offers Create (when the file is absent) or Edit for robots.txt, agents.txt, security.txt, humans.txt, ads.txt and app-ads.txt.
+  - `Well_Known_File_Catalog` holds each file's paths, purpose, starter templates and checks. Templates are built from the site's own details:
+    - robots.txt: WordPress's default rules (from `admin_url()`), or those plus a block on AI-training crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended, meta-externalagent). Search crawlers are left alone;
+    - agents.txt: keep AI agents out of the admin area, or out of the whole site;
+    - security.txt: RFC 9116, with an Expires date under a year ahead;
+    - humans.txt: simple credits;
+    - ads.txt and app-ads.txt: Google's line, or the IAB "no authorised sellers" placeholder record.
+  - Saving refuses content that would be wrong for every reader, listing at most five problems. That covers a robots rule outside a User-agent group, a security.txt without Contact or with a past Expires, an ads.txt line that isn't a record or a variable, the placeholder publisher ID, anything over 64 KB, and text that isn't UTF-8.
+  - `Well_Known_File_Server` serves saved files through WordPress and never writes to disk. robots.txt goes through core's `robots_txt` filter at `PHP_INT_MAX`. The others are answered at `parse_request` priority 0 as `text/plain` with `nosniff`, and security.txt at both `/.well-known/` and the root.
+  - A real file on disk still wins. After each save, `Well_Known_File_Editor` fetches the address through `Same_Host_Fetcher` and records whether visitors get the saved version. The table says when they don't.
+  - When an SEO plugin also writes robots.txt (Yoast SEO, Rank Math, AIOSEO, SEOPress or The SEO Framework, plus filter `wp_sam_robots_txt_writer`), the editor names it, opens with its lines and warns that saving replaces them. Save is hidden for a site that isn't at the root of its domain.
+  - Stop serving, or deactivating the plugin, puts back whatever the site served before. Saves and removals are audit-logged. Option `wp_sam_well_known_files` is not autoloaded and is cleared on uninstall.
+- **ASN Lookup can block what it finds, and opens each AS's own view** (#476).
+  - A lookup is a one-row table: IP, routed network range, ASN, organisation, and Block IP, Block range and Block AS buttons. The range comes from the same Team Cymru origin query (`Asn_Lookup_Store::network_range()`).
+  - Each button pre-fills the IP Rules or Network Rules form, so the administrator still chooses surface and expiry. The row says when the IP or AS is already blocked, and labels the administrator's own current address.
+  - The AS number opens a drill-down showing:
+    - the registry record (`Asn_Lookup_Store::describe()`): name, country, registry and allocation date;
+    - which surfaces it is blocked on;
+    - the addresses recorded from it (`Scanner_Identity_Store::addresses_for_asn()`), each with Block IP;
+    - links to the Hurricane Electric BGP Toolkit and RIPEstat for its full list of ranges.
+  - The range and registry details are kept for a day in transients. Network Rules links each ASN rule to the same view.
+
+### Changed
+
+- **Geo-IP settings are behind a cog** (#476).
+  - The IPinfo token and "Where does this website operate?" moved into a dialog. It opens from a cog at the right of Control → Traffic Controls → Network Intelligence → Geo-IP. It replaces the provider table's Save Token and Clear and Disable buttons, and the separate site-country form.
+  - The tab opens with one line, then the Country Block List. That line is either a "Geo-IP is off" notice with Add token, or the lookup box.
+  - "Remove token and turn Geo-IP off" posts its own form, so pressing Enter in the token field can only press Save.
+  - The `wp_sam_geoip_save_token` and `wp_sam_site_country_save` admin-post actions are replaced by `wp_sam_geoip_settings_save`.
+- **Network Rules links country blocking back to Geo-IP** (#476).
+  - Links in its intro and under the Type field.
+  - A "Change on Geo-IP" button on the country rules the Country Block List manages.
+  - A warning when country rules exist while Geo-IP is off.
+- **Network Intelligence shows one row per item** (#472, #475). The Tor Exit List and Well-Known Files are each a single table with the buttons at the end of each row. Well-Known Files' About column gave way to Create/Edit and a note when the plugin serves the file.
+- **The hash-budget notice is shown only to Technical-depth users** (#474). `policy_builder/hash_budget_exceeded` is held in the notice queue while the administrator viewing chose Simple or Balanced. It appears to the next administrator on Technical.
+- **Settings' summary sits below the tab bar** (#470). The scorecard, Recent activity, Protection status and Needs your attention are now the Overview tab's body, like every other tab's content.
+- `readme.txt`'s External services section lists the Tor Project exit list, Team Cymru's IP-to-ASN lookup and IPinfo, with what each is sent and when (#477). `docs/data-protection-and-retention.md` no longer says that nothing leaves the site.
+
+### Fixed
+
+- **Blocking your own address is held for confirmation** (#476). An explicit IP block applies even to a logged-in administrator, and it wins over an allow rule. Blocking your own address from IP Rules, or from ASN Lookup's Block IP, therefore locked you out without warning. `Admin_UI::handle_ip_rule_add()` now holds such a rule behind an "add it anyway" checkbox (`Ip_Rule_Store::covers()`), as ASN and country rules already were.
+- **Identities follow this site's own addresses when the list changes** (#473). Saving Control → Traffic Controls → IP Rules → This site's own addresses calls `Scanner_Identity_Store::relabel_own_addresses()`:
+  - rows now covered become `loopback`;
+  - `loopback` rows no longer covered go back to `unknown` or their vendor's state;
+  - rows with an administrator decision are left alone.
+  
+  Rows are read and updated 1,000 at a time. The Saved notice and the audit entry give the count.
+
+Database schema is unchanged at 48.
+
+## [2.12.0] - 2026-10-29
 
 ### Fixed
 
@@ -22,8 +76,21 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 - **The Geo-IP Country Block List shows every country without a sideways scroll** (#465). `.wp-sam-country-grid` had `columns: 220px 4` and `max-height: 420px`. A multi-column box with a fixed height adds overflow columns instead of scrolling, so most countries sat behind a horizontal scrollbar, and each of the four columns was about twice as wide as its names. It now uses as many `14em` columns as fit and grows downwards. Long names wrap with a hanging indent.
 - `Discovery::get_crawl_urls()` passed `'/'` to `get_home_url()` as the blog ID. It now calls `home_url( '/' )` (#462).
 - The GitHub-channel `update.json` reads `requires`, `tested` and `requires_php` from the packaged `readme.txt` instead of hard-coding them. `tested` had fallen behind at 7.0 (#462).
+- **The pinned-script check no longer compares another site's page** (#467). `Dependency_Integrity_Monitor::scan_surface()` fetched the home page with `wp_remote_get()`, which follows a redirect anywhere. An IP allow-list sending the server's own request elsewhere had it compare that page's markup with this site's pinned hashes, and nothing said so. It now uses `Same_Host_Fetcher`, and logs `scan_redirected_offsite` instead of comparing.
+- **SAM never records where its own requests were redirected** (#467). It knows this site's own address and nothing else, and a redirect often points at another copy of the same site.
+  - `Same_Host_Fetcher`'s `wp_sam_offsite_redirect` error says "Redirected away from this site (HTTP n)" and carries only the status code.
+  - Discovery's `crawl_redirected_offsite` line and the robots.txt, ads.txt, app-ads.txt, humans.txt, agents and security.txt checks no longer name the destination.
+  - Both redirect events show a plain-English admin notice. It explains that something outside SAM, usually an IP allow-list in .htaccess or the server configuration, is redirecting the request. It says to allow the single address the server uses to reach itself (shown in the access log under the `WP-CSP-Discovery` user agent), not a whole private range.
+  - Configuration export no longer writes the exporting site's URL into the file. Import never read it.
+- **Help text on Control → Traffic Controls uses the page's full width** (#464). The Policy, IP Rules and Blocks tabs capped their description paragraphs at `max-width:700px`, leaving a wide empty band beside them.
 
 ### Added
+
+- **Sanctions lists for every authority, narrowed to where the site operates** (#466).
+  - `Country_Groups` adds sanctions groups for the UN Security Council, the EU, every country with a US OFAC program, Switzerland, Liechtenstein, Norway, Iceland, Canada, Australia, New Zealand, Japan, South Korea, Singapore, Taiwan and Ukraine. They were researched from official sources on 2026-10-28.
+  - Each lists every country its authority publishes a country regime for. Ukraine is never ticked. One-country trade bans, boycott laws and "unfriendly countries" lists are deliberately not offered.
+  - Each sanctions group's `applies_in` lists where its measures bind, including dependent territories (for example Jersey for the UK, Gibraltar for both the UK and the EU, and Puerto Rico for the US).
+  - A "Where does this website operate?" dropdown on the Geo-IP sub-tab (`Site_Country`, option `wp_sam_site_country`) narrows the sanctions groups to the UN list plus those that bind there. Other groups are never narrowed. Left unchosen, it offers every list, because sanctions also follow people and companies. Reset Data and uninstall clear the option.
 
 - **Control → Traffic Controls → IP Rules → This site's own addresses** (#460). `Own_Address_Store` holds up to 64 public addresses or CIDR ranges that a site's own servers or containers use to reach it. Ranges broader than /16 (IPv4) or /48 (IPv6) are rejected, and private addresses are already covered. Listed addresses get the same treatment as private ones in `Traffic_Guard`, `Traffic_Block_Store::record_violation()`, `Identity_Resolver` and `Campaign_Detector`: never rate-limited or escalated, never counted into a campaign, and shown as this site on Identities. An explicit Block rule still applies.
   - The section suggests public addresses seen calling `/wp-cron.php` in the last 30 days, for the administrator to check. Nothing is added automatically, because an external cron service calls it too.
@@ -51,6 +118,8 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 - The Dependency Classification notice no longer claims hashes are never computed by fetching the remote URL.
 - `readme.txt`'s External services section now discloses the daily pinned-file check.
 - `docs/security-controls-inventory.md` and `docs/operating-model.html` no longer describe api as a CSP surface, which it hasn't been since 2.11.4 (#462).
+- **wp-admin lists the plugin as "Security Automation Manager"** (#463). Only the main file's `Plugin Name` header changed. The WordPress.org directory title (`readme.txt`'s `=== … ===` line), the slug and the text domain stay as they were, and `VersionConsistencyTest` pins both names.
+- The Geo-IP help text and two code comments say "never a shared credential" rather than "never a shared VCNS credential" (#464).
 
 ## [2.11.6] - 2026-10-27
 

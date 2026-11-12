@@ -60,6 +60,7 @@ use WP_SAM\Intelligence\Tor_Exit_List_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Guard;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
+use WP_SAM\Intelligence\Well_Known_File_Server;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 use WP_SAM\Rest\Admin_Controller;
@@ -121,8 +122,16 @@ final class Plugin {
 	 */
 	public Hash_Manager $hash_manager;
 
+	/**
+	 * Private so the plugin can only be booted through instance().
+	 */
 	private function __construct() {}
 
+	/**
+	 * Returns the single plugin instance, creating it on first use.
+	 *
+	 * @return self The plugin singleton.
+	 */
 	public static function instance(): self {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -130,6 +139,11 @@ final class Plugin {
 		return self::$instance;
 	}
 
+	/**
+	 * Loads translations, upgrades the database schema when needed, and boots the plugin services.
+	 *
+	 * @return void
+	 */
 	public function init(): void {
 		$this->load_textdomain();
 		$this->maybe_upgrade_db();
@@ -138,6 +152,13 @@ final class Plugin {
 
 	// ── Text domain ───────────────────────────────────────────────────────────
 
+	/**
+	 * Loads the bundled translations on the GitHub distribution channel.
+	 *
+	 * WordPress.org loads translations for hosted plugins itself, so nothing is done there.
+	 *
+	 * @return void
+	 */
 	private function load_textdomain(): void {
 		// WordPress core auto-loads translations for WordPress.org-hosted plugins
 		// (matched by slug against the wp.org translation API) since 4.6 -- calling
@@ -157,6 +178,17 @@ final class Plugin {
 
 	// ── DB migration gate ─────────────────────────────────────────────────────
 
+	/**
+	 * Runs the activator when the schema needs bringing up to date.
+	 *
+	 * That is when the stored schema version is older than the code, when
+	 * wp_sam_schema_verified_version does not match the current version, or,
+	 * on admin requests only, when any plugin table is missing.
+	 *
+	 * A downgrade is detected first and never runs the activator (see Rollback_Guard).
+	 *
+	 * @return void
+	 */
 	private function maybe_upgrade_db(): void {
 		$installed = (int) get_option( 'wp_sam_db_version', 0 );
 
@@ -187,6 +219,11 @@ final class Plugin {
 
 	// ── Module bootstrap ──────────────────────────────────────────────────────
 
+	/**
+	 * Builds the core services and registers their WordPress hooks.
+	 *
+	 * @return void
+	 */
 	private function bootstrap(): void {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
@@ -362,6 +399,12 @@ final class Plugin {
 		$this->cert_http->register();
 		$this->cert_schedule->register();
 
+		// Well-known files an administrator saved on Control → Traffic
+		// Controls → Network Intelligence → Well-Known Files. Answered on
+		// every request, like the http-01 responder above; nothing is read
+		// unless the request's path is one of those files.
+		( new Well_Known_File_Server() )->register();
+
 		// Conflict detection runs once per admin pageload.
 		if ( is_admin() ) {
 			( new Conflict_Detector( $this->audit ) )->register();
@@ -464,6 +507,11 @@ final class Plugin {
 
 	// ── REST routes ───────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the public CSP report route and the admin REST controller routes.
+	 *
+	 * @return void
+	 */
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers. permission_callback
 		// is Violation_Reporter's own early flood check (see its docblock),
