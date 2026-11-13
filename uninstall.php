@@ -75,6 +75,11 @@ $wp_sam_options = array(
 	'wp_sam_own_addresses',
 	'wp_sam_site_country',
 	'wp_sam_well_known_files',
+	'wp_sam_purge_page_cache_on_csp_change',
+	'wp_sam_frontend_policy_fingerprint',
+	'wp_sam_page_cache_last_purge',
+	'wp_sam_page_cache_purge_notice',
+	'wp_sam_delivered_policy_check',
 );
 
 // Extension-owned option names (e.g. a paid automation mode's own
@@ -94,3 +99,5 @@ wp_clear_scheduled_hook( 'wp_sam_daily_scan' );
 wp_clear_scheduled_hook( 'wp_sam_cert_issue' );
 wp_clear_scheduled_hook( 'wp_sam_cert_renewal_check' );
 wp_clear_scheduled_hook( 'wp_sam_dependency_hash_check' );
+wp_clear_scheduled_hook( 'wp_sam_page_cache_purge_check' );
+wp_clear_scheduled_hook( 'wp_sam_delivered_policy_check' );

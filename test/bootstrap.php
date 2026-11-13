@@ -798,6 +798,12 @@ if ( ! function_exists( 'add_submenu_page' ) ) {
 	}
 }
 
+if ( ! function_exists( 'has_action' ) ) {
+	function has_action( string $hook, callable|false $callback = false ): bool {
+		return ! empty( $GLOBALS['_wp_actions'][ $hook ] );
+	}
+}
+
 if ( ! function_exists( 'did_action' ) ) {
 	function did_action( string $hook ): int {
 		return (int) ( $GLOBALS['_wp_did_actions'][ $hook ] ?? 0 );

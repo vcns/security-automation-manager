@@ -110,6 +110,7 @@ class Scheduler {
 			$this->refresh_humans_txt();
 			$this->refresh_ads_txt();
 			$this->refresh_app_ads_txt();
+			( new Delivered_Policy_Check( null, null, $this->audit ) )->run();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );

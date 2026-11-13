@@ -13,9 +13,11 @@ namespace WP_SAM;
 
 use WP_SAM\Admin\Admin_UI;
 use WP_SAM\CSP\Conflict_Detector;
+use WP_SAM\CSP\Delivered_Policy_Check;
 use WP_SAM\CSP\Hash_Manager;
 use WP_SAM\CSP\Learning_Window;
 use WP_SAM\CSP\Nonce_Manager;
+use WP_SAM\CSP\Page_Cache_Purger;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Rest_Csp_Header;
 use WP_SAM\CSP\Scheduler;
@@ -375,6 +377,13 @@ final class Plugin {
 
 		// WP Cron: daily policy rescan.
 		( new Scheduler( $this->audit ) )->register();
+
+		// Page caches keep the header a page was stored with. Clear them
+		// when the frontend policy changes, then check what visitors
+		// actually receive. Registered on every request: an automatic
+		// decision can change the policy from a violation report.
+		( new Page_Cache_Purger( null, null, $this->audit ) )->register();
+		( new Delivered_Policy_Check( null, null, $this->audit ) )->register();
 
 		// WP Cron: daily exception expiry check + upcoming-expiry
 		// notification (GitHub issue #177).
