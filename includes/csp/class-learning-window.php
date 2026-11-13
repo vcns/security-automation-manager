@@ -18,20 +18,46 @@ class Learning_Window {
 	public const DEFAULT_WINDOW_HOURS = 48;
 
 	/**
+	 * Post types that never appear at their own URL but still change what
+	 * visitors' pages load: block-theme templates and template parts,
+	 * Global Styles (which become an inline stylesheet), navigation menus
+	 * and synced patterns. is_post_type_viewable() is false for all of
+	 * them, so mark_post_change() names them explicitly.
+	 */
+	public const SITE_EDITOR_POST_TYPES = array(
+		'wp_template',
+		'wp_template_part',
+		'wp_global_styles',
+		'wp_navigation',
+		'wp_block',
+	);
+
+	/**
 	 * Registers the hooks that restart the learning window when the site changes.
 	 *
 	 * @return void
 	 */
 	public function register(): void {
-		add_action( 'save_post_post', array( $this, 'mark_post_change' ), 10, 3 );
-		add_action( 'save_post_page', array( $this, 'mark_post_change' ), 10, 3 );
+		// Every post type, not just posts and pages: a product, event or
+		// other custom content type can embed a script or iframe from a
+		// host the policy hasn't seen, exactly as a page can.
+		// mark_post_change() decides which saves count.
+		add_action( 'save_post', array( $this, 'mark_post_change' ), 10, 3 );
+		add_action( 'customize_save_after', array( $this, 'mark_material_change' ) );
 		add_action( 'activated_plugin', array( $this, 'mark_material_change' ) );
 		add_action( 'deactivated_plugin', array( $this, 'mark_material_change' ) );
 		add_action( 'upgrader_process_complete', array( $this, 'mark_upgrader_change' ), 10, 2 );
 	}
 
 	/**
-	 * Marks page/post changes, excluding autosaves and revisions.
+	 * Marks a save of content visitors can see: a published post of any
+	 * public post type (posts, pages, products, events, ...), or any
+	 * Site Editor post type (see SITE_EDITOR_POST_TYPES).
+	 *
+	 * Revisions, autosaves, attachments and anything not yet published
+	 * are skipped. A draft, or the auto-draft WordPress creates as soon
+	 * as the editor opens, changes nothing visitors load. The save that
+	 * publishes it does, and that one counts.
 	 */
 	public function mark_post_change( int $post_id, object $post, bool $update ): void {
 		if ( function_exists( 'wp_is_post_revision' ) && wp_is_post_revision( $post_id ) ) {
@@ -41,7 +67,16 @@ class Learning_Window {
 			return;
 		}
 
-		$this->mark_material_change();
+		if ( 'publish' !== (string) ( $post->post_status ?? '' ) ) {
+			return;
+		}
+
+		$post_type = (string) ( $post->post_type ?? '' );
+		$counts    = in_array( $post_type, self::SITE_EDITOR_POST_TYPES, true )
+			|| ( '' !== $post_type && 'attachment' !== $post_type && is_post_type_viewable( $post_type ) );
+		if ( $counts ) {
+			$this->mark_material_change();
+		}
 	}
 
 	/**
