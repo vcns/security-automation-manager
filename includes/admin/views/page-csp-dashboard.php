@@ -1475,6 +1475,9 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$automation_mode_labels     = \WP_SAM\CSP\Automation_Config::mode_labels();
 		$automation_directives      = array( 'default-src', 'img-src', 'font-src', 'media-src', 'manifest-src' );
 		$automation_schemes         = array( 'https', 'wss' );
+		$page_cache_purger          = new \WP_SAM\CSP\Page_Cache_Purger();
+		$detected_page_caches       = $page_cache_purger->detected_caches();
+		$last_page_cache_purge      = get_option( \WP_SAM\CSP\Page_Cache_Purger::OPTION_LAST_PURGE, array() );
 		?>
 	<p class="description">
 		<?php esc_html_e( "Everything below is grouped by what it governs: when a surface is allowed to promote itself to enforce mode, how much decision-making the deterministic engine can do without you, how this plugin's CSP header reaches visitors when a proxy or CDN sits in front of the site, how it learns from browser reports, and when it re-scans the site automatically.", 'vcns-security-automation-manager' ); ?>
@@ -1602,6 +1605,50 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 					</p>
 					<p class="description">
 						<?php esc_html_e( 'Only valid HTTP header field names are accepted. Hop-by-hop and cookie headers are rejected.', 'vcns-security-automation-manager' ); ?>
+					</p>
+				</td>
+			</tr>
+		</table>
+
+		<h2 class="title"><?php esc_html_e( 'Page Caches', 'vcns-security-automation-manager' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'A page cache keeps each page together with the headers it was first sent with. Until the cached copy is cleared or expires, visitors keep getting the policy it was stored with, whatever you have approved or changed since.', 'vcns-security-automation-manager' ); ?>
+		</p>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Clear page caches', 'vcns-security-automation-manager' ); ?></th>
+				<td>
+					<label for="<?php echo esc_attr( \WP_SAM\CSP\Page_Cache_Purger::OPTION_ENABLED ); ?>">
+						<input type="checkbox" id="<?php echo esc_attr( \WP_SAM\CSP\Page_Cache_Purger::OPTION_ENABLED ); ?>" name="<?php echo esc_attr( \WP_SAM\CSP\Page_Cache_Purger::OPTION_ENABLED ); ?>" value="1" <?php checked( $page_cache_purger->is_enabled() ); ?> />
+						<?php esc_html_e( 'Clear page caches when the frontend policy changes', 'vcns-security-automation-manager' ); ?>
+					</label>
+					<p class="description">
+						<?php
+						if ( empty( $detected_page_caches ) ) {
+							esc_html_e( 'No page cache this plugin knows how to clear was found on this site.', 'vcns-security-automation-manager' );
+						} else {
+							printf(
+								/* translators: %s: comma-separated names of page cache plugins, e.g. "LiteSpeed Cache" */
+								esc_html__( 'Found on this site: %s.', 'vcns-security-automation-manager' ),
+								esc_html( implode( ', ', $detected_page_caches ) )
+							);
+						}
+						?>
+					</p>
+					<?php if ( is_array( $last_page_cache_purge ) && ! empty( $last_page_cache_purge['at'] ) ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: 1: UTC date and time, 2: comma-separated names of page cache plugins */
+							esc_html__( 'Last cleared %1$s UTC: %2$s.', 'vcns-security-automation-manager' ),
+							esc_html( gmdate( 'Y-m-d H:i:s', (int) $last_page_cache_purge['at'] ) ),
+							esc_html( implode( ', ', array_map( 'strval', (array) ( $last_page_cache_purge['caches'] ?? array() ) ) ) )
+						);
+						?>
+					</p>
+					<?php endif; ?>
+					<p class="description">
+						<?php esc_html_e( 'This plugin can only clear caches that run inside WordPress. A CDN in front of the site, such as Cloudflare, keeps its own copies: clear it from the CDN\'s dashboard after changing the policy. Settings → Security Health shows what visitors actually receive.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
 			</tr>
