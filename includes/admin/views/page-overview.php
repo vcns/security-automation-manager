@@ -784,7 +784,7 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			</tr>
 		</thead>
 		<tbody>
-			<?php foreach ( $security_health as $item ) : ?>
+			<?php foreach ( $security_health as $health_key => $item ) : ?>
 				<tr>
 					<th scope="row" class="wp-sam-col-primary">
 						<?php echo esc_html( $item['label'] ); ?>
@@ -794,7 +794,16 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 						</span>
 						<?php endif; ?>
 					</th>
-					<td class="wp-sam-col-technical"><?php echo esc_html( (string) $item['value'] ); ?></td>
+					<td class="wp-sam-col-technical">
+						<?php echo esc_html( (string) $item['value'] ); ?>
+						<?php if ( 'delivered_policy' === $health_key ) : ?>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wp-sam-inline-form">
+							<?php wp_nonce_field( 'wp_sam_delivered_policy_check' ); ?>
+							<input type="hidden" name="action" value="wp_sam_delivered_policy_check" />
+							<?php submit_button( __( 'Check now', 'vcns-security-automation-manager' ), 'secondary small', 'submit', false ); ?>
+						</form>
+						<?php endif; ?>
+					</td>
 					<td class="wp-sam-col-status"><?php echo Status_Badge::render_outcome( $item['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Status_Badge::render_outcome() returns pre-escaped HTML. ?></td>
 				</tr>
 			<?php endforeach; ?>

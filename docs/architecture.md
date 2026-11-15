@@ -72,6 +72,7 @@ Responsibilities:
 - record deterministic rule findings for policy decisions
 - run scheduled and manual scans (including post-scan violation purge)
 - detect conflicting CSP headers from WordPress filters, `.htaccess`, server configuration, or other security-header plugins
+- clear page caches when the frontend policy changes (`Page_Cache_Purger`), and check the policy visitors actually receive on the home page (`Delivered_Policy_Check`)
 
 ### Shared header envelope and simple pillars
 
@@ -224,6 +225,8 @@ Conflicts are warning-level audit events. The detector never removes or rewrites
 8. Every decision is appended to `sam_policy_change_decisions`, mirrored to `sam_audit_log`, and linked to deterministic rule findings in `sam_decision_rule_evaluations`.
 9. Approved, automatically approved, and reverted decisions capture a `sam_policy_versions` snapshot for the affected surface.
 10. Rejected and reverted decisions set suppression on that fingerprint; future automation skips the same source until a later approval or undo becomes the newest decision.
+11. `Page_Cache_Purger` watches for writes to `csp_policy_profiles` and `csp_source_inventory`, and for changes to the header-name, report-endpoint and reporting-transport options. At the end of such a request it compares `Policy_Fingerprint::digest()` of the frontend policy (mode, header name, and policy with nonces and inline hashes removed) with the digest stored after the last clear. If they differ, it clears the page caches it recognises (at most once a minute; a later change within the minute is deferred to a single cron event), and fires `wp_sam_frontend_policy_changed`. Learned inline hashes deliberately don't count: clearing on each would keep a busy cache cold. CDNs in front of WordPress are out of reach and are named as such in the admin notice.
+12. `wp_sam_frontend_policy_changed` schedules `Delivered_Policy_Check` two minutes later. It fetches the home page through `Same_Host_Fetcher` with no cookies, compares the CSP that comes back with the current policy the same way, and stores the outcome (current, stale, missing, unexpected or unreachable) with the cache-status headers it saw, reduced to their first word. Settings → Security Health shows it as **What visitors receive**. A newly found stale, missing or unexpected result is logged once as a warning, which queues an admin notice. It also runs with the daily scan and from the row's **Check now** button.
 
 ### 6. Policy audit flow
 

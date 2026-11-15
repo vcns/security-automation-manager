@@ -74,6 +74,7 @@ class Config_Portability {
 		'wp_sam_report_endpoint_url',
 		'wp_sam_reporting_transport',
 		'wp_sam_automation_config',
+		'wp_sam_purge_page_cache_on_csp_change',
 	);
 
 	/**

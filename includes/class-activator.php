@@ -457,6 +457,11 @@ class Activator {
 			'wp_sam_geoip_ipinfo_token',
 			'wp_sam_own_addresses',
 			'wp_sam_site_country',
+			'wp_sam_purge_page_cache_on_csp_change',
+			'wp_sam_frontend_policy_fingerprint',
+			'wp_sam_page_cache_last_purge',
+			'wp_sam_page_cache_purge_notice',
+			'wp_sam_delivered_policy_check',
 		);
 	}
 

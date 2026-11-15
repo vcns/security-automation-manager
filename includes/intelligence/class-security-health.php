@@ -25,6 +25,7 @@ namespace WP_SAM\Intelligence;
 
 use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Csp_Surfaces;
+use WP_SAM\CSP\Delivered_Policy_Check;
 use WP_SAM\Security\Pinned_Dependency_Checker;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -41,9 +42,11 @@ final class Security_Health {
 	 * per-surface enforcement breakdown and exception-awareness in
 	 * enforcement_row(), and the formal-exceptions count in
 	 * exceptions_row(), both wiring in real signals GitHub issue #177
-	 * (time-bound exceptions) makes possible for the first time.
+	 * (time-bound exceptions) makes possible for the first time. v3 adds
+	 * delivered_policy_row(): the policy visitors actually receive, which
+	 * a page cache or CDN can hold back for days after a change.
 	 */
-	public const MODEL_VERSION = 2;
+	public const MODEL_VERSION = 3;
 
 	private const CERT_EXPIRY_WARNING_DAYS = 14;
 
@@ -53,6 +56,7 @@ final class Security_Health {
 	public function get_report(): array {
 		return array(
 			'enforcement'           => $this->enforcement_row(),
+			'delivered_policy'      => $this->delivered_policy_row(),
 			'drift'                 => $this->drift_row(),
 			'certificates'          => $this->certificates_row(),
 			'dependencies'          => $this->dependencies_row(),
@@ -141,6 +145,50 @@ final class Security_Health {
 	 *
 	 * @return array Row with a label, value, status and detail.
 	 */
+	/**
+	 * What visitors receive, from Delivered_Policy_Check's latest result.
+	 * Never fetches anything itself: that check runs from cron and from
+	 * this tab's "Check now" button, so the page loads at normal speed.
+	 */
+	private function delivered_policy_row(): array {
+		$label  = __( 'What visitors receive', 'vcns-security-automation-manager' );
+		$detail = __( "This site's own server fetches the home page without logging in and compares the Content Security Policy that comes back with the current frontend policy, ignoring nonces and inline hashes. A page cache or CDN can keep serving an older copy for days after a change. SAM clears the page caches it recognises when the policy changes (Control → Automation Settings), but it can't clear a CDN such as Cloudflare: clear that from the CDN's own dashboard. If this server reaches itself without going through the CDN, a stale CDN copy won't show up here. The check runs daily, two minutes after each policy change, and when you select Check now.", 'vcns-security-automation-manager' );
+		$result = ( new Delivered_Policy_Check() )->result();
+
+		if ( empty( $result['outcome'] ) ) {
+			return array(
+				'label'  => $label,
+				'value'  => __( 'Not checked yet', 'vcns-security-automation-manager' ),
+				'status' => 'info',
+				'detail' => $detail,
+			);
+		}
+
+		$statuses = array(
+			Delivered_Policy_Check::OUTCOME_CURRENT    => 'pass',
+			Delivered_Policy_Check::OUTCOME_STALE      => 'warning',
+			Delivered_Policy_Check::OUTCOME_MISSING    => 'warning',
+			Delivered_Policy_Check::OUTCOME_UNEXPECTED => 'warning',
+		);
+
+		$value      = Delivered_Policy_Check::describe( $result );
+		$checked_at = (int) ( $result['checked_at'] ?? 0 );
+		if ( $checked_at > 0 ) {
+			$value .= ' ' . sprintf(
+				/* translators: %s: how long ago, e.g. "5 mins" */
+				__( 'Checked %s ago.', 'vcns-security-automation-manager' ),
+				human_time_diff( $checked_at, time() )
+			);
+		}
+
+		return array(
+			'label'  => $label,
+			'value'  => $value,
+			'status' => $statuses[ $result['outcome'] ] ?? 'info',
+			'detail' => $detail,
+		);
+	}
+
 	private function drift_row(): array {
 		$baseline = ( new Baseline_Store() )->get_current();
 		if ( null === $baseline ) {

@@ -66,6 +66,8 @@ use WP_SAM\CSP\Automation_Config;
 use WP_SAM\CSP\Automation_Mode_Registry;
 use WP_SAM\CSP\Conflict_Detector;
 use WP_SAM\CSP\Csp_Surfaces;
+use WP_SAM\CSP\Delivered_Policy_Check;
+use WP_SAM\CSP\Page_Cache_Purger;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Policy_Change_Manager;
 use WP_SAM\CSP\Policy_Version_Manager;
@@ -147,6 +149,9 @@ class Admin_UI {
 		'hash_manager/hash_learning_rate_limited' => 'Content Security Policy setup paused itself for part of your site for the rest of this hour, as a safety measure against a technical issue. This does not affect how your site works for visitors. If you keep seeing this message, ask a developer to look into it.',
 		'policy_builder/hash_budget_exceeded'     => 'Content Security Policy automatically trimmed some older, unused approvals to keep your site running safely. No action is needed unless this keeps happening.',
 		'policy_builder/policy_too_large'         => 'Content Security Policy protection was skipped for one page load, as a safety measure to stop the page failing to load. This does not affect how your site works for visitors. If you keep seeing this message, ask a developer to look into it.',
+		'delivered_policy/stale'                  => 'Visitors are getting an older copy of your Content Security Policy, usually from a page cache or CDN that has kept a copy of your pages since before the policy last changed. Clear your page cache, and your CDN if you use one (Cloudflare, for example), then select Check now on Settings → Security Health.',
+		'delivered_policy/missing'                => 'Visitors are getting your pages without a Content Security Policy, usually from a page cache or CDN that kept a copy from before the policy was switched on. Clear your page cache, and your CDN if you use one (Cloudflare, for example), then select Check now on Settings → Security Health.',
+		'delivered_policy/unexpected'             => 'Your frontend Content Security Policy is switched off, but visitors still get one, either from a cached copy of your pages or from something other than this plugin. Clear your page cache and CDN, then select Check now on Settings → Security Health.',
 		// Never name where a redirect pointed: see Same_Host_Fetcher.
 		'discovery/crawl_redirected_offsite'      => 'This site\'s own request to one of its pages was sent away from this site before WordPress saw it, so Content Security Policy discovery could not scan that page. Something outside this plugin is doing this, usually an IP allow-list in .htaccess or the web server\'s configuration, and the plugin cannot override it. To let these requests in, allow the one address this server uses to reach itself: your server\'s access log shows them with the user agent WP-CSP-Discovery. Allow that single address rather than a whole private range, which other servers on your host\'s network may share.',
 		'dependency_integrity_monitor/scan_redirected_offsite' => 'This site\'s own request to its home page was sent away from this site before WordPress saw it, so pinned third-party script hashes could not be checked. Something outside this plugin is doing this, usually an IP allow-list in .htaccess or the web server\'s configuration, and the plugin cannot override it. To let these requests in, allow the one address this server uses to reach itself: your server\'s access log shows this plugin\'s requests with the user agent WP-CSP-Discovery, from the same address. Allow that single address rather than a whole private range, which other servers on your host\'s network may share.',
@@ -232,6 +237,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_tor_list_refresh', array( $this, 'handle_tor_list_refresh' ) );
 		add_action( 'admin_post_wp_sam_robots_rules_refresh', array( $this, 'handle_robots_rules_refresh' ) );
 		add_action( 'admin_post_wp_sam_information_masking_check', array( $this, 'handle_information_masking_check' ) );
+		add_action( 'admin_post_wp_sam_delivered_policy_check', array( $this, 'handle_delivered_policy_check' ) );
 		add_action( 'admin_post_wp_sam_cache_control_cdn_acknowledge', array( $this, 'handle_cache_control_cdn_acknowledge' ) );
 		add_action( 'admin_post_wp_sam_geoip_settings_save', array( $this, 'handle_geoip_settings_save' ) );
 		add_action( 'admin_post_wp_sam_geoip_country_block_save', array( $this, 'handle_geoip_country_block_save' ) );
@@ -589,6 +595,7 @@ class Admin_UI {
 			'wp_sam_reporting_transport'           => array( $this, 'sanitize_reporting_transport' ),
 			'wp_sam_policy_header_name'            => array( $this, 'sanitize_policy_header_name' ),
 			'wp_sam_automation_config'             => array( $this, 'sanitize_automation_config' ),
+			Page_Cache_Purger::OPTION_ENABLED      => array( Page_Cache_Purger::class, 'sanitize_enabled' ),
 			// Data retention: days to keep violation reports (0 = keep forever).
 			'wp_sam_violation_retention_days'      => 'absint',
 		);
@@ -2376,6 +2383,23 @@ class Admin_UI {
 	}
 
 	/**
+	 * Settings → Security Health's "Check now" on the What visitors
+	 * receive row: fetches this site's home page and compares its policy
+	 * with the current one (see Delivered_Policy_Check).
+	 */
+	public function handle_delivered_policy_check(): void {
+		check_admin_referer( 'wp_sam_delivered_policy_check' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this check.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Delivered_Policy_Check( null, null, $this->plugin->audit ) )->run();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager&tab=health' ) );
+		exit;
+	}
+
+	/**
 	 * Saves the admin's manual "I use a CDN/edge cache" acknowledgement --
 	 * GitHub issue #221's own explicit escape hatch for a caching mechanism
 	 * this plugin cannot detect automatically from a single PHP request
@@ -3058,6 +3082,11 @@ class Admin_UI {
 		// an admin to visit the Certificates page.
 		$this->maybe_show_cert_failure_warning();
 
+		// One-shot, like the queue below, but a success notice rather than
+		// a warning, so it isn't routed through Audit_Log's queue (which
+		// only carries warnings and errors).
+		$this->maybe_show_page_cache_purged_notice();
+
 		$notices = get_option( 'wp_sam_admin_notices', array() );
 		if ( ! is_array( $notices ) || empty( $notices ) ) {
 			return;
@@ -3174,6 +3203,18 @@ class Admin_UI {
 					'label' => __( 'Open Control → Certificates', 'vcns-security-automation-manager' ),
 				);
 
+			case 'delivered_policy':
+				return array(
+					'url'   => admin_url( 'admin.php?page=security-automation-manager&tab=health' ),
+					'label' => __( 'Open Settings → Security Health', 'vcns-security-automation-manager' ),
+				);
+
+			case 'page_cache':
+				return array(
+					'url'   => $csp( 'settings' ),
+					'label' => __( 'Open Control → Automation Settings', 'vcns-security-automation-manager' ),
+				);
+
 			case 'config_portability':
 				return array(
 					'url'   => admin_url( 'admin.php?page=security-automation-manager&tab=recovery#wp-sam-portability' ),
@@ -3271,6 +3312,32 @@ class Admin_UI {
 			),
 			esc_url( admin_url( 'admin.php?page=security-automation-manager-certificates&tab=renew' ) ),
 			esc_html__( 'View details and retry', 'vcns-security-automation-manager' )
+		);
+	}
+
+	/**
+	 * Says once, after Page_Cache_Purger cleared page caches, which ones
+	 * it cleared, and that a CDN in front of the site is not among them.
+	 */
+	private function maybe_show_page_cache_purged_notice(): void {
+		$record = get_option( Page_Cache_Purger::OPTION_NOTICE, array() );
+		if ( ! is_array( $record ) || empty( $record['caches'] ) ) {
+			return;
+		}
+		delete_option( Page_Cache_Purger::OPTION_NOTICE );
+
+		printf(
+			'<div class="notice notice-success is-dismissible"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a></p></div>',
+			esc_html__( 'Security Automation Manager:', 'vcns-security-automation-manager' ),
+			esc_html(
+				sprintf(
+					/* translators: %s: comma-separated names of page cache plugins, e.g. "LiteSpeed Cache" */
+					__( 'The frontend Content Security Policy changed, so these page caches were cleared and visitors get the new policy from their next page load: %s. If a CDN such as Cloudflare also caches your pages, clear it there too.', 'vcns-security-automation-manager' ),
+					implode( ', ', array_map( 'strval', (array) $record['caches'] ) )
+				)
+			),
+			esc_url( admin_url( 'admin.php?page=security-automation-manager&tab=health' ) ),
+			esc_html__( 'Open Settings → Security Health', 'vcns-security-automation-manager' )
 		);
 	}
 
