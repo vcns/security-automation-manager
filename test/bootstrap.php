@@ -759,6 +759,13 @@ if ( ! function_exists( 'is_ssl' ) ) {
 	}
 }
 
+if ( ! function_exists( 'is_post_type_viewable' ) ) {
+	function is_post_type_viewable( string|object $post_type ): bool {
+		$name = is_object( $post_type ) ? (string) ( $post_type->name ?? '' ) : $post_type;
+		return in_array( $name, $GLOBALS['_wp_viewable_post_types'] ?? [ 'post', 'page', 'attachment' ], true );
+	}
+}
+
 if ( ! function_exists( 'wp_doing_cron' ) ) {
 	function wp_doing_cron(): bool {
 		return $GLOBALS['_wp_doing_cron'] ?? false;
@@ -1221,6 +1228,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_is_admin']             = false;
 	$GLOBALS['_wp_is_ssl']               = false;
 	$GLOBALS['_wp_doing_cron']           = false;
+	$GLOBALS['_wp_viewable_post_types']  = [ 'post', 'page', 'attachment' ];
 	$GLOBALS['_wp_doing_ajax']           = false;
 	$GLOBALS['_wp_cron']                 = [];
 	$GLOBALS['_wp_current_user_can']     = [];

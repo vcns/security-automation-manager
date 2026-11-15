@@ -211,7 +211,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'The learning window.', 'vcns-security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'While the learning window is open (48 hours after the last material change to the site by default - a page, post, plugin, or theme edit - adjustable on the Settings tab), validated violation reports and scan discoveries add candidate sources to the For Review queue instead of just being logged. Once the window locks, new discoveries stop being added automatically until another material change reopens it.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'While the learning window is open (48 hours after the last material change to the site by default - publishing content of any public type, a Site Editor or Customizer change, or a plugin, theme or WordPress update - adjustable on the Settings tab), validated violation reports and scan discoveries add candidate sources to the For Review queue instead of just being logged. Once the window locks, new discoveries stop being added automatically until another material change reopens it.', 'vcns-security-automation-manager' ); ?>
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Review.', 'vcns-security-automation-manager' ); ?></strong>
@@ -1657,7 +1657,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 						value="<?php echo esc_attr( get_option( 'wp_sam_learning_window_hours', 48 ) ); ?>"
 						min="1" max="720" class="small-text" />
 					<p class="description">
-						<?php esc_html_e( 'Default: 48. The report endpoint stops creating or updating source candidates after this many hours from the latest page, post, or plugin change.', 'vcns-security-automation-manager' ); ?>
+						<?php esc_html_e( 'Default: 48. The report endpoint stops creating or updating source candidates after this many hours from the latest material change: publishing content of any public type (posts, pages, products and other custom types), a Site Editor or Customizer change, or installing, activating or updating a plugin, theme or WordPress.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
 			</tr>

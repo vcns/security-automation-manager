@@ -1788,7 +1788,7 @@ class Activator {
 			// by the daily cron scan. 0 = keep forever (not recommended for busy sites).
 			'wp_sam_violation_retention_days'      => 90,
 			// Report-endpoint learning closes after this many hours from the latest
-			// post, page, or plugin material change.
+			// material change (see Learning_Window::register()).
 			'wp_sam_learning_window_hours'         => 48,
 			// Blank uses rest_url( 'sam/v1/report' ); set only when a
 			// public proxy/CDN hostname must be advertised to browsers.
