@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1.2
 Requires PHP: 8.1
-Stable tag: 2.13.0
+Stable tag: 2.14.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,15 @@ When an administrator configures automatic cPanel deployment, once a certificate
 
 == Changelog ==
 
+= 2.14.0 =
+
+* Added: when your frontend Content Security Policy changes, the plugin now clears the page caches it recognises, so visitors get the new policy straight away instead of when the cached copy expires. A change means an approval, a rejection or a promotion to enforce. The caches it can clear are LiteSpeed Cache, WP Rocket, W3 Total Cache, WP Super Cache, WP Fastest Cache, WP-Optimize, SiteGround Speed Optimizer, Hummingbird, Breeze, Cache Enabler, Nginx Helper, and the WP Engine and Pantheon caches. It can't clear a CDN such as Cloudflare, and the notice reminds you to. You can turn this off under Control → Automation Settings → Page Caches.
+* Added: Settings → Security Health has a new "What visitors receive" row. It fetches your home page the way a visitor would and says whether the policy that comes back is the current one, an older copy (with what it's missing), or none at all. It also says whether the page came from a cache. It runs daily, shortly after each policy change, and when you select Check now. A newly found problem also shows as a notice.
+* Changed: publishing content of any public type now reopens the Content Security Policy learning window. That includes products, events and other custom content types, not just posts and pages. So does saving Site Editor templates, styles, navigation or synced patterns, or saving the Customizer. Saving a draft no longer does.
+* Changed: the last untranslated text on the plugin's screens can now be translated.
+* Changed: tested up to WordPress 7.1.2.
+* Security: the plugin now checks and cleans form and address input where it's read, and builds database queries with WordPress's table-name placeholder. Nothing changes in how it behaves.
+
 = 2.13.0 =
 
 * Added: create and edit robots.txt, security.txt, ads.txt and the other well-known files from starter templates, on Control → Traffic Controls → Network Intelligence → Well-Known Files. The plugin serves your saved version without writing any files, checks that visitors actually get it, and warns when an SEO plugin also writes robots.txt.
@@ -218,9 +227,5 @@ When an administrator configures automatic cPanel deployment, once a certificate
 = 2.9.105 =
 
 * Added: Recommendations Engine (Phase 4F) gains the same enforce-readiness suggestion for Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy -- the two other header pillars with their own report-only learning mode -- as CSP already had: report-only, no violations for 30 days, and no deliberate exception recorded, now suggests promoting that surface to Enforce.
-
-= 2.9.104 =
-
-* Added: Recommendations Engine (Phase 4F) gains a fourth rule -- a report-only Content Security Policy surface that's stayed quiet (no violations) for 30 days, with no deliberate exception recorded against it, now suggests promoting that surface to Enforce.
 
 Full changelog history: https://github.com/vcns/security-automation-manager/blob/main/CHANGELOG.md

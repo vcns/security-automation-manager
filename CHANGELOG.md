@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.14.0] - 2026-11-15
+
+### Added
+
+- **Page caches are cleared when the frontend Content Security Policy changes** (#484). A page cache keeps each page with the headers it was first sent with. An approval, a rejection or a promotion to enforce therefore reached visitors only when the cached copy expired, which is ten days on some hosts.
+  - **Detecting a change.** `Page_Cache_Purger` uses the `query` filter to watch for writes to `csp_policy_profiles` and `csp_source_inventory`. It also watches the header-name, report-endpoint and reporting-transport options.
+  - **Comparing.** At `shutdown` priority −10, before LiteSpeed Cache sends its headers, it compares `Policy_Fingerprint::digest()` of the frontend policy with the digest stored after the last clear (`wp_sam_frontend_policy_fingerprint`). Nonces and learned inline hashes don't count as a change.
+  - **Clearing.** On a change it clears every cache whose documented clear-all call exists: LiteSpeed Cache, WP Rocket, W3 Total Cache, WP Super Cache, WP Fastest Cache, WP-Optimize, SiteGround Speed Optimizer, Hummingbird, Breeze, Cache Enabler, Nginx Helper, WP Engine and Pantheon. Other caches can join in through the `wp_sam_purge_page_caches` action.
+  - **Rate limit.** It clears at most once a minute. A later change in that minute waits for one `wp_sam_page_cache_purge_check` cron event.
+  - **Notice and setting.** A one-off notice names the caches cleared, and says a CDN such as Cloudflare isn't one of them. Control → Automation Settings → Page Caches lists the caches found and the last clear. It also has an on/off switch, `wp_sam_purge_page_cache_on_csp_change`, which is on by default and included in configuration export.
+- **Settings → Security Health → What visitors receive** (#484). `Delivered_Policy_Check` fetches the home page through `Same_Host_Fetcher` with no cookies, and compares the policy that comes back with the current one.
+  - **Outcomes.**
+    - current;
+    - stale, listing up to 20 missing entries and 20 no longer current;
+    - missing;
+    - unexpected: a policy arrives while the frontend is disabled;
+    - unreachable;
+    - not configured.
+  - **Cache headers.** The cache-status headers it saw (`cf-cache-status`, `age`, `x-litespeed-cache`, `x-lsadc-cache`, `x-cache` and others) are kept, cut to their first word.
+  - **When it runs.** Two minutes after each policy change (`wp_sam_frontend_policy_changed`), with the daily scan, and from the row's Check now button.
+  - **Notices.** A newly found stale, missing or unexpected result is logged once as a `delivered_policy` warning. That queues a notice linking to Settings → Security Health.
+  - **Health model.** The Security Health model version is now 3.
+
+### Changed
+
+- **The learning window reopens for any public content type** (#483). `Learning_Window` now hooks `save_post` instead of `save_post_post` and `save_post_page`.
+  - **What counts.** A save counts when the post is published and either its type is viewable (attachments excepted), or it is a Site Editor type: `wp_template`, `wp_template_part`, `wp_global_styles`, `wp_navigation` or `wp_block`. Saving the Customizer counts too.
+  - **What no longer counts.** Drafts, auto-drafts and private posts no longer reopen the window. Before, merely opening the post editor did, because WordPress saves an auto-draft as soon as the editor loads.
+- **The remaining untranslated strings can now be translated** (#432):
+  - the CSP bypass labels and risk notes (`Policy_Builder::bypass_text()`);
+  - admin.js alerts and status text, through `wpSamAdmin.i18n`;
+  - the surface and mode AJAX errors;
+  - the update checker's errors;
+  - the well-known file refresh messages.
+
+  `Tested up to` is now 7.1.2.
+- **Developer tooling:**
+  - Docblocks for the bootstrap, REST, module, CSP, admin, certificate, DNS provider, security-header, rewriting, intelligence and detector classes (#433–#438).
+  - `handle_issue_certificate()`'s docblock names its redirect by URL slug (#482).
+  - `phpcs.xml.dist`'s top-level exclude patterns are now relative. A local run from a path containing `docs/` or `test/` used to lint nothing; it now lints the plugin (#469).
+  - The PR branch-policy check re-runs when a PR's target branch changes, and exempts Dependabot by PR author (#481).
+
+### Security
+
+- **Input reading and query building hardened** (#430). Every `$_GET`, `$_POST` and `$_SERVER` value is now unslashed and sanitized where it is read. Table names now go through `$wpdb->prepare()`'s `%i` placeholder. Together these clear the 120 `ValidatedSanitizedInput` and `PreparedSQL` findings that Plugin Check reported. Behaviour is unchanged, and none of the findings was exploitable.
+
+Database schema is unchanged at 48.
+
 ## [2.13.0] - 2026-10-31
 
 ### Added
