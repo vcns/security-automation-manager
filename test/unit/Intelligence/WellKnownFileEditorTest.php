@@ -101,6 +101,51 @@ class WellKnownFileEditorTest extends TestCase {
 		$this->assertSame( array( 'humans' ), $this->refreshed );
 	}
 
+	public function test_the_mta_sts_policy_is_checked_at_its_policy_address_with_the_strict_fetch(): void {
+		$policy   = "version: STSv1\nmode: testing\nmx: mx1.example.com\nmax_age: 86400\n";
+		$response = array(
+			'response' => array( 'code' => 200 ),
+			'headers'  => array( 'content-type' => 'text/plain; charset=utf-8' ),
+			'body'     => $policy,
+		);
+		$policy_fetches = array();
+		$editor         = new Well_Known_File_Editor(
+			new Well_Known_File_Store(),
+			function ( string $url ) {
+				$this->fetched[] = $url;
+				return $this->http_response( '' );
+			},
+			function ( string $key ): void {
+				$this->refreshed[] = $key;
+			},
+			function ( string $url ) use ( &$policy_fetches, $response ) {
+				$policy_fetches[] = $url;
+				return $response;
+			}
+		);
+
+		$result = $editor->save( 'mta-sts', $policy, 1 );
+
+		$this->assertSame( Well_Known_File_Store::CHECK_SERVED, $result['check'] );
+		$this->assertSame( array( 'https://mta-sts.example.com/.well-known/mta-sts.txt' ), $policy_fetches );
+		$this->assertSame( array(), $this->fetched, 'The same-host fetcher, which follows redirects, is never used for it.' );
+		$this->assertSame( array( 'mta-sts' ), $this->refreshed );
+	}
+
+	public function test_an_mta_sts_policy_not_sent_as_plain_text_is_not_served(): void {
+		$policy = "version: STSv1\nmode: testing\nmx: mx1.example.com\nmax_age: 86400\n";
+		$html   = array(
+			'response' => array( 'code' => 200 ),
+			'headers'  => array( 'content-type' => 'text/html' ),
+			'body'     => $policy,
+		);
+
+		$result = $this->editor( $html )->save( 'mta-sts', $policy, 1 );
+
+		$this->assertTrue( $result['saved'] );
+		$this->assertSame( Well_Known_File_Store::CHECK_NOT_SERVED, $result['check'] );
+	}
+
 	public function test_live_content_is_what_the_site_serves_or_null(): void {
 		$this->assertSame( "User-agent: *\nDisallow:\n", $this->editor( $this->http_response( "User-agent: *\r\nDisallow:\r\n" ) )->live_content( 'robots' ) );
 		$this->assertNull( $this->editor( $this->http_response( 'Not found', 404 ) )->live_content( 'robots' ) );

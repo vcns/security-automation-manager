@@ -1269,6 +1269,21 @@ function wp_test_reset_globals(): void {
 	unset( $_SERVER['HTTP_HOST'] );
 	unset( $_SERVER['HTTP_X_FORWARDED_HOST'] );
 	unset( $_SERVER['HTTP_X_WP_SAM_PROBE'] );
+
+	// No test asks real DNS: Mail_Dns lookups are answered from
+	// $GLOBALS['_wp_dns_records'] (see wp_test_dns_lookup()).
+	$GLOBALS['_wp_dns_records'] = [];
+	add_filter( 'wp_sam_pre_dns_lookup', 'wp_test_dns_lookup', 10, 3 );
+}
+
+/**
+ * Answers WP_SAM\Intelligence\Mail_Dns lookups from
+ * $GLOBALS['_wp_dns_records'][ "{$type}:{$name}" ] (DNS_MX, DNS_TXT, ...),
+ * in dns_get_record()'s record shape. A name with no entry has no records;
+ * an entry of false is a failed lookup.
+ */
+function wp_test_dns_lookup( mixed $pre, string $name, int $type ): array|false {
+	return $GLOBALS['_wp_dns_records'][ $type . ':' . $name ] ?? [];
 }
 
 // Initialise globals so classes loaded at parse time do not hit undefined array errors.

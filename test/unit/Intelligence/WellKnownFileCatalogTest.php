@@ -6,6 +6,7 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
+use WP_SAM\Intelligence\Mta_Sts_Policy;
 use WP_SAM\Intelligence\Well_Known_File_Catalog;
 
 class WellKnownFileCatalogTest extends TestCase {
@@ -17,7 +18,7 @@ class WellKnownFileCatalogTest extends TestCase {
 	public function test_every_file_has_a_label_a_root_path_a_purpose_and_a_template(): void {
 		$files = Well_Known_File_Catalog::files();
 
-		$this->assertSame( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads' ), array_keys( $files ) );
+		$this->assertSame( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts' ), array_keys( $files ) );
 		foreach ( $files as $key => $file ) {
 			$this->assertNotSame( '', $file['label'], $key );
 			$this->assertNotSame( '', $file['purpose'], $key );
@@ -29,15 +30,20 @@ class WellKnownFileCatalogTest extends TestCase {
 	/**
 	 * A template is only a starting point, but one that couldn't be saved
 	 * as it stands would be a bad one -- except the Google ads.txt line,
-	 * whose stand-in publisher ID must be replaced before it can be.
+	 * whose stand-in publisher ID must be replaced before it can be, and an
+	 * MTA-STS policy for a domain whose MX records (none, here) name no
+	 * mail server to fill in.
 	 */
-	public function test_every_template_passes_its_own_checks_except_the_publisher_id_placeholder(): void {
+	public function test_every_template_passes_its_own_checks_except_the_placeholders(): void {
 		foreach ( array_keys( Well_Known_File_Catalog::files() ) as $key ) {
 			foreach ( Well_Known_File_Catalog::templates( $key ) as $template_id => $template ) {
 				$problems = Well_Known_File_Catalog::problems( $key, Well_Known_File_Catalog::sanitize( $template['content'] ) );
 				if ( str_contains( $template['content'], Well_Known_File_Catalog::PLACEHOLDER_PUBLISHER_ID ) ) {
 					$this->assertCount( 1, $problems, "{$key}/{$template_id}" );
 					$this->assertStringContainsString( 'replace ' . Well_Known_File_Catalog::PLACEHOLDER_PUBLISHER_ID, $problems[0] );
+				} elseif ( str_contains( $template['content'], Mta_Sts_Policy::PLACEHOLDER_MX ) ) {
+					$this->assertCount( 1, $problems, "{$key}/{$template_id}" );
+					$this->assertStringContainsString( 'Replace ' . Mta_Sts_Policy::PLACEHOLDER_MX, $problems[0] );
 				} else {
 					$this->assertSame( array(), $problems, "{$key}/{$template_id}" );
 				}
@@ -77,6 +83,33 @@ class WellKnownFileCatalogTest extends TestCase {
 
 	public function test_url_is_this_sites_own_address_for_the_file(): void {
 		$this->assertSame( 'https://example.com/.well-known/security.txt', Well_Known_File_Catalog::url( 'security' ) );
+	}
+
+	public function test_the_mta_sts_policy_is_read_from_the_domains_mta_sts_host(): void {
+		$this->assertSame( 'mta-sts', Well_Known_File_Catalog::key_for_path( '/.well-known/mta-sts.txt' ) );
+		$this->assertSame( 'https://mta-sts.example.com/.well-known/mta-sts.txt', Well_Known_File_Catalog::url( 'mta-sts' ) );
+		$this->assertTrue( Well_Known_File_Catalog::can_serve( 'mta-sts' ) );
+	}
+
+	public function test_mta_sts_templates_and_checks_use_the_domains_own_mx_records(): void {
+		$GLOBALS['_wp_dns_records'][ DNS_MX . ':example.com' ] = array(
+			array(
+				'target' => 'mx1.example.com',
+				'pri'    => 10,
+			),
+			array(
+				'target' => 'mx2.example.com',
+				'pri'    => 20,
+			),
+		);
+
+		$enforce = Well_Known_File_Catalog::templates( 'mta-sts' )['enforce']['content'];
+
+		$this->assertStringContainsString( "mx: mx1.example.com\nmx: mx2.example.com\n", $enforce );
+		$this->assertSame( array(), Well_Known_File_Catalog::problems( 'mta-sts', $enforce ) );
+		$problems = Well_Known_File_Catalog::problems( 'mta-sts', str_replace( "mx: mx2.example.com\n", '', $enforce ) );
+		$this->assertCount( 1, $problems );
+		$this->assertStringContainsString( 'mx2.example.com', $problems[0] );
 	}
 
 	public function test_sanitize_normalises_line_endings_bom_control_characters_and_the_final_newline(): void {
