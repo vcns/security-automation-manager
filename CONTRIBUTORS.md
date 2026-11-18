@@ -6,6 +6,10 @@ Security Automation Manager is created and maintained by [VCNS Tech Ltd](https:/
 
 - Simon Jackson ([@sjackson0109](https://github.com/sjackson0109)) - VCNS Tech Ltd
 
+## Contributors
+
+- Alkesh Miyani ([@miyanialkesh7](https://github.com/miyanialkesh7)) - input hardening, translations and docblocks (#430, #432-#438, #469)
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose a change. Contributors are added to this file by name (and GitHub handle, if you'd like one linked) the first time a pull request of theirs is merged -- add yourself in that same PR.
