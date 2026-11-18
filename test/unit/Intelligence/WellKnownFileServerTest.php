@@ -107,6 +107,21 @@ class WellKnownFileServerTest extends TestCase {
 		$this->assertTrue( $server->terminated );
 	}
 
+	public function test_maybe_serve_sends_the_mta_sts_policy_uncached(): void {
+		$store = new Well_Known_File_Store();
+		$store->save( 'mta-sts', "version: STSv1\nmode: testing\nmx: mx1.example.com\nmax_age: 86400\n", 1 );
+		$server                    = new Recording_Well_Known_File_Server( $store );
+		$_SERVER['REQUEST_URI']    = '/.well-known/mta-sts.txt';
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$server->maybe_serve();
+
+		$this->assertSame( 200, $server->status );
+		$this->assertContains( 'Content-Type: text/plain; charset=utf-8', $server->headers );
+		$this->assertContains( 'Cache-Control: no-store', $server->headers );
+		$this->assertStringStartsWith( "version: STSv1\n", (string) $server->body );
+	}
+
 	public function test_maybe_serve_sends_no_body_for_head(): void {
 		$store = new Well_Known_File_Store();
 		$store->save( 'humans', "Site: Example\n", 1 );

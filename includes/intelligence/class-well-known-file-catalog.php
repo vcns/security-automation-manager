@@ -1,9 +1,13 @@
 <?php
 /**
- * The six well-known files listed on Control → Traffic Controls → Network
- * Intelligence → Well-Known Files: where each is served, what it is for,
- * the starter templates its editor offers, and the checks a version must
- * pass before this plugin will serve it.
+ * The seven well-known files listed on Control → Traffic Controls →
+ * Network Intelligence → Well-Known Files: where each is served, what it
+ * is for, the starter templates its editor offers, and the checks a
+ * version must pass before this plugin will serve it.
+ *
+ * MTA-STS.txt is the odd one out: mail servers read it from
+ * mta-sts.<domain>, not from the site's own address (see Mta_Sts_Policy),
+ * so url() points there.
  *
  * A template only fills the editor's text box. Nothing reaches visitors
  * until an administrator saves (Well_Known_File_Editor), and then only
@@ -84,6 +88,11 @@ final class Well_Known_File_Catalog {
 				'paths'   => array( '/app-ads.txt' ),
 				'purpose' => __( 'The ads.txt list for mobile apps whose app store listing names this site as the developer website. Only needed if you publish apps with ads.', 'vcns-security-automation-manager' ),
 			),
+			'mta-sts'  => array(
+				'label'   => __( 'MTA-STS.txt', 'vcns-security-automation-manager' ),
+				'paths'   => array( Mta_Sts_Policy::PATH ),
+				'purpose' => __( 'Tells other mail servers that email for this domain must arrive over an encrypted connection, to a mail server the policy names, with a valid certificate (MTA-STS, RFC 8461). Mail servers read it from this domain\'s mta-sts address, not from the site itself, and only once a DNS record says it exists.', 'vcns-security-automation-manager' ),
+			),
 		);
 	}
 
@@ -91,8 +100,15 @@ final class Well_Known_File_Catalog {
 		return isset( self::files()[ $key ] );
 	}
 
-	/** The address visitors use for this file -- its first path, on this site. */
+	/**
+	 * The address readers use for this file: its first path on this site,
+	 * or for MTA-STS.txt the policy address on mta-sts.<domain> (empty when
+	 * the site's address isn't a domain name).
+	 */
 	public static function url( string $key ): string {
+		if ( 'mta-sts' === $key ) {
+			return Mta_Sts_Policy::url();
+		}
 		return home_url( self::files()[ $key ]['paths'][0] ?? '/' );
 	}
 
@@ -114,6 +130,15 @@ final class Well_Known_File_Catalog {
 	public static function serves_from_root(): bool {
 		$path = (string) wp_parse_url( home_url(), PHP_URL_PATH );
 		return '' === trim( $path, '/' );
+	}
+
+	/**
+	 * Whether this plugin can serve this file for this site at all: from
+	 * the root of its domain, and for MTA-STS.txt only when the address
+	 * is a domain name mail can be sent to.
+	 */
+	public static function can_serve( string $key ): bool {
+		return self::serves_from_root() && ( 'mta-sts' !== $key || '' !== Mta_Sts_Policy::domain() );
 	}
 
 	/** Name of an active SEO plugin that also writes robots.txt, or null. */
@@ -167,6 +192,8 @@ final class Well_Known_File_Catalog {
 				return self::ads_templates( __( 'Google AdSense', 'vcns-security-automation-manager' ), __( 'The line Google asks AdSense publishers to add. Replace the publisher ID with yours (AdSense → Account → Account information) before saving.', 'vcns-security-automation-manager' ) );
 			case 'app-ads':
 				return self::ads_templates( __( 'Google AdMob', 'vcns-security-automation-manager' ), __( 'The line Google asks AdMob publishers to add. Replace the publisher ID with yours (AdMob → Settings → Account information) before saving.', 'vcns-security-automation-manager' ) );
+			case 'mta-sts':
+				return Mta_Sts_Policy::templates( self::mail_servers() );
 		}
 		return array();
 	}
@@ -191,7 +218,8 @@ final class Well_Known_File_Catalog {
 	 * array when it can. Covers what would make the file wrong for every
 	 * reader, not style: a robots.txt line that isn't a rule, a
 	 * security.txt without the two fields RFC 9116 requires, an ads.txt
-	 * line that isn't a seller record.
+	 * line that isn't a seller record, an MTA-STS policy in enforce mode
+	 * that leaves out one of the domain's own mail servers.
 	 *
 	 * @return array<int, string>
 	 */
@@ -217,6 +245,9 @@ final class Well_Known_File_Catalog {
 			case 'ads':
 			case 'app-ads':
 				$problems = self::ads_problems( $content );
+				break;
+			case 'mta-sts':
+				$problems = Mta_Sts_Policy::problems( $content, self::mail_servers() );
 				break;
 			default:
 				$problems = array();
@@ -326,6 +357,12 @@ final class Well_Known_File_Catalog {
 				'content'     => "# Nobody is authorised to sell ad space on this site.\nplaceholder.example.com, placeholder, DIRECT, placeholder\n",
 			),
 		);
+	}
+
+	/** This domain's mail servers from its MX records, or null when unknown. */
+	private static function mail_servers(): ?array {
+		$domain = Mta_Sts_Policy::domain();
+		return '' === $domain ? null : Mail_Dns::mx_hosts( $domain );
 	}
 
 	/** The rules WordPress core's do_robots() writes, built the same way. */

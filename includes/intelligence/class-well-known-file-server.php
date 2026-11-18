@@ -20,6 +20,13 @@
  * Either way, a real file at the same path wins: the web server sends it
  * without running WordPress. Well_Known_File_Editor checks what visitors
  * actually get after each save.
+ *
+ * The MTA-STS policy is answered on whichever host name reaches this
+ * site; mail servers only ever ask mta-sts.<domain>. It is sent with
+ * Cache-Control: no-store, because a cache in front of the site handing
+ * out the previous version under the new DNS id would leave mail servers
+ * holding the old policy until its max_age runs out (RFC 8461 §3.3 already
+ * forbids them caching it over HTTP themselves).
  */
 
 declare( strict_types=1 );
@@ -56,7 +63,8 @@ class Well_Known_File_Server {
 		}
 
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-		$body        = $this->resolve( (string) wp_parse_url( $request_uri, PHP_URL_PATH ) );
+		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
+		$body        = $this->resolve( $path );
 		if ( null === $body ) {
 			return;
 		}
@@ -64,6 +72,9 @@ class Well_Known_File_Server {
 		$this->emit_status( 200 );
 		$this->emit_header( 'Content-Type: text/plain; charset=utf-8' );
 		$this->emit_header( 'X-Content-Type-Options: nosniff' );
+		if ( 'mta-sts' === Well_Known_File_Catalog::key_for_path( $path ) ) {
+			$this->emit_header( 'Cache-Control: no-store' );
+		}
 		if ( 'HEAD' !== $method ) {
 			$this->emit_body( $body );
 		}

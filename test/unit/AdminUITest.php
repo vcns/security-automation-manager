@@ -923,6 +923,7 @@ class AdminUITest extends TestCase {
 			'rollback -> Recovery'               => array( 'rollback', 'snapshot_restored', 'admin.php?page=security-automation-manager&tab=recovery' ),
 			'security.txt -> Well-Known Files'   => array( 'scheduler', 'security_txt_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ),
 			'app-ads.txt -> Well-Known Files'    => array( 'scheduler', 'app_ads_txt_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ),
+			'MTA-STS -> Well-Known Files'        => array( 'scheduler', 'mta_sts_txt_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ),
 			'Tor list -> Tor Exit List'          => array( 'scheduler', 'tor_exit_list_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=tor' ),
 			'scan exception -> Scan Log'         => array( 'scheduler', 'scan_exception', 'admin.php?page=security-automation-manager-dashboard&tab=scan-log' ),
 		);

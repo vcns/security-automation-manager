@@ -28,7 +28,7 @@ $wk_file      = Well_Known_File_Catalog::files()[ $well_known_key ];
 $wk_url       = Well_Known_File_Catalog::url( $well_known_key );
 $wk_templates = Well_Known_File_Catalog::templates( $well_known_key );
 $wk_saved     = ( new Well_Known_File_Store() )->get( $well_known_key );
-$wk_can_serve = Well_Known_File_Catalog::serves_from_root();
+$wk_can_serve = Well_Known_File_Catalog::can_serve( $well_known_key );
 $wk_on_disk   = Well_Known_File_Catalog::files_on_disk( $well_known_key );
 $wk_writer    = 'robots' === $well_known_key ? Well_Known_File_Catalog::robots_txt_writer() : null;
 
@@ -71,6 +71,13 @@ $wk_check_notices = array(
 	Well_Known_File_Store::CHECK_NOT_SERVED  => array( 'warning', __( 'Saved, but the site still returns something else at this address. A real file in the site\'s folder, a page cache or the web server is answering before WordPress. Clear whichever it is, then save again to check.', 'vcns-security-automation-manager' ) ),
 	Well_Known_File_Store::CHECK_UNREACHABLE => array( 'warning', __( 'Saved, but this plugin couldn\'t fetch the address to confirm what visitors get.', 'vcns-security-automation-manager' ) ),
 );
+if ( 'mta-sts' === $well_known_key ) {
+	$wk_check_notices = array(
+		Well_Known_File_Store::CHECK_SERVED      => array( 'success', __( 'Saved. Mail servers that fetch the policy address now get this version. Set the _mta-sts DNS record\'s id to this version\'s id (below) so they fetch it.', 'vcns-security-automation-manager' ) ),
+		Well_Known_File_Store::CHECK_NOT_SERVED  => array( 'warning', __( 'Saved, but the policy address returns something else: a redirect (mail servers don\'t follow them), another server\'s copy, or a file not sent as text/plain. Check where the mta-sts address points.', 'vcns-security-automation-manager' ) ),
+		Well_Known_File_Store::CHECK_UNREACHABLE => array( 'warning', __( 'Saved, but this plugin couldn\'t fetch the policy address, so mail servers can\'t either. Check the setup steps below.', 'vcns-security-automation-manager' ) ),
+	);
+}
 ?>
 
 <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) ); ?>">&larr; <?php esc_html_e( 'All well-known files', 'vcns-security-automation-manager' ); ?></a></p>
@@ -101,11 +108,18 @@ $wk_check_notices = array(
 </div>
 <?php endif; ?>
 
-<?php if ( ! $wk_can_serve ) : ?>
+<?php if ( ! Well_Known_File_Catalog::serves_from_root() ) : ?>
 <div class="notice notice-error inline"><p>
 	<?php
 	/* translators: %s: this site's home address, e.g. https://example.com/blog */
 	echo esc_html( sprintf( __( 'This site\'s address (%s) isn\'t the root of its domain. Well-known files are only read at the root, so this plugin can\'t serve them from here.', 'vcns-security-automation-manager' ), home_url() ) );
+	?>
+</p></div>
+<?php elseif ( ! $wk_can_serve ) : ?>
+<div class="notice notice-error inline"><p>
+	<?php
+	/* translators: %s: this site's home address, e.g. https://192.0.2.10 */
+	echo esc_html( sprintf( __( 'This site\'s address (%s) isn\'t a domain name, so there is no mail domain to publish an MTA-STS policy for.', 'vcns-security-automation-manager' ), home_url() ) );
 	?>
 </p></div>
 <?php endif; ?>
@@ -167,6 +181,16 @@ $wk_check_notices = array(
 	<input type="hidden" name="action" value="wp_sam_well_known_remove" />
 	<input type="hidden" name="file" value="<?php echo esc_attr( $well_known_key ); ?>" />
 	<?php submit_button( __( 'Stop serving', 'vcns-security-automation-manager' ), 'delete small', '', false ); ?>
+	<?php if ( 'mta-sts' === $well_known_key ) : ?>
+	<span class="description"><?php esc_html_e( 'Mail servers that already fetched the policy keep using their copy until its max_age runs out. To turn MTA-STS off, save the Turn off template and update the DNS id first, and stop serving only once the old policy\'s max_age has passed.', 'vcns-security-automation-manager' ); ?></span>
+	<?php else : ?>
 	<span class="description"><?php esc_html_e( 'Visitors then get whatever the site served before this plugin took over.', 'vcns-security-automation-manager' ); ?></span>
+	<?php endif; ?>
 </form>
 <?php endif; ?>
+
+<?php
+if ( 'mta-sts' === $well_known_key && $wk_can_serve ) {
+	require __DIR__ . '/mta-sts-setup.php';
+}
+?>
