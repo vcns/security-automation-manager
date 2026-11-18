@@ -4,7 +4,7 @@ Tags: security, csp, content security policy, hsts, ssl certificates
 Requires at least: 6.4
 Tested up to: 7.1.2
 Requires PHP: 8.1
-Stable tag: 2.14.0
+Stable tag: 2.15.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,12 @@ When an administrator configures automatic cPanel deployment, once a certificate
 
 == Changelog ==
 
+= 2.15.0 =
+
+* Added: MTA-STS.txt on Control → Traffic Controls → Network Intelligence → Well-Known Files. MTA-STS tells other mail servers that email for your domain must arrive over an encrypted connection, to a mail server you name, with a valid certificate. The editor starts from a policy in testing mode that lists the mail servers your domain's MX records name. In enforce mode it refuses a policy that leaves one of them out, because mail servers that follow the policy would stop delivering to it. After you save, the plugin fetches the policy the way mail servers do.
+* Added: under the MTA-STS editor, a setup table shows what else mail servers need: the mta-sts address with a certificate that covers it, the exact _mta-sts DNS record (its id changes whenever the policy does), which of your mail servers the policy covers, and an optional TLS reporting record. The plugin looks these up but doesn't change DNS records for you.
+* Added: a detector notes when a mail server fetches your MTA-STS policy. It is recorded for correlation only.
+
 = 2.14.0 =
 
 * Added: when your frontend Content Security Policy changes, the plugin now clears the page caches it recognises, so visitors get the new policy straight away instead of when the cached copy expires. A change means an approval, a rejection or a promotion to enforce. The caches it can clear are LiteSpeed Cache, WP Rocket, W3 Total Cache, WP Super Cache, WP Fastest Cache, WP-Optimize, SiteGround Speed Optimizer, Hummingbird, Breeze, Cache Enabler, Nginx Helper, and the WP Engine and Pantheon caches. It can't clear a CDN such as Cloudflare, and the notice reminds you to. You can turn this off under Control → Automation Settings → Page Caches.
@@ -223,9 +229,5 @@ When an administrator configures automatic cPanel deployment, once a certificate
 = 2.9.106 =
 
 * Added: Recommendations Engine (Phase 4F) gains a fifth and final rule for this phase -- a detector an administrator has disabled that had real matches recorded in the week before (or up to) being switched off now surfaces a suggestion to confirm that was deliberate, since a disabled detector is never evaluated at all going forward.
-
-= 2.9.105 =
-
-* Added: Recommendations Engine (Phase 4F) gains the same enforce-readiness suggestion for Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy -- the two other header pillars with their own report-only learning mode -- as CSP already had: report-only, no violations for 30 days, and no deliberate exception recorded, now suggests promoting that surface to Enforce.
 
 Full changelog history: https://github.com/vcns/security-automation-manager/blob/main/CHANGELOG.md

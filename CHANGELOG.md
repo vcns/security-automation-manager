@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows semantic versioning for plugin releases.
 
+## [2.15.0] - 2026-11-18
+
+### Added
+
+- **MTA-STS.txt on Control → Traffic Controls → Network Intelligence → Well-Known Files** (#487). MTA-STS (RFC 8461) tells other mail servers that email for the domain must arrive over TLS, to a mail server the policy names, with a valid certificate. It is the seventh well-known file, with the same Create/Edit, templates, checks, serving and Stop serving as the others. Mail servers read the policy from `https://mta-sts.<domain>/.well-known/mta-sts.txt`, and only once a `_mta-sts` TXT record exists. That address and record drive the differences from the other six:
+  - **Domain.** `Mta_Sts_Policy::domain()` is the site's own host without a leading `www.`. It is empty for an IP address or a single-label host, and then the editor can't save.
+  - **Templates.** Testing (one day), Enforce (one week) and Turn off (`mode: none`, RFC 8461 §8.3) list the domain's MX hosts. With none found, they use `mail.example.invalid`, which can't be saved.
+  - **Checks.** `version: STSv1`, a valid `mode`, `max_age` up to 31557600, at least one `mx` unless the mode is `none`, valid mx patterns, lower-case field names, and no blank or comment lines. In enforce mode a policy is refused when an MX host matches no `mx` line (`Mta_Sts_Policy::uncovered()`, with RFC 8461 §4.1 wildcards).
+  - **Post-save check.** It fetches the policy address with `Mta_Sts_Policy::fetch()`: no redirect followed, certificate verified, and `text/plain` required. `Same_Host_Fetcher` is not used, since it follows same-host redirects that mail servers don't.
+  - **Serving.** The policy is answered at `/.well-known/mta-sts.txt` with `Cache-Control: no-store`.
+  - **Setup table** (`partials/mta-sts-setup.php`). It covers:
+    - the policy address, and whether the domains configured on Control → Certificates include `mta-sts.<domain>`;
+    - the exact `_mta-sts` record, whose id is the first 20 hex characters of the policy's SHA-256 (`Mta_Sts_Policy::id()`), with the record's state in DNS: missing, multiple, invalid id, or old id;
+    - MX coverage;
+    - an optional `_smtp._tls` TLS-RPT record.
+  - **Daily reading.** `Mta_Sts_Txt_Store` records `wp_sam_mta_sts_txt_fields`, `_refreshed_at` and `_last_fetch_status`, with a Refresh Now handler (`wp_sam_mta_sts_txt_refresh`). An unfetchable policy counts as a failure only when the `_mta-sts` record exists. Otherwise it is absent, so domains without MTA-STS get no daily warning.
+  - **Detector.** `Mta_Sts_Txt_Detector` (`MTASTS-001`) notes policy fetches, recorded for correlation only.
+  - **DNS.** `Mail_Dns` reads MX, `_mta-sts` and `_smtp._tls` records through `dns_get_record()`. The `wp_sam_pre_dns_lookup` filter can answer a lookup first, and the test bootstrap uses it so no test makes a real DNS query.
+
+Database schema is unchanged at 48.
+
 ## [2.14.0] - 2026-11-15
 
 ### Added
