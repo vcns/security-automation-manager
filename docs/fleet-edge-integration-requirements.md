@@ -22,13 +22,13 @@ SAM continues to function locally without Fleet or Portal. Loss of hosted servic
 3. Policy resources are agency-scoped (for example, `/api/v1/agencies/{agencyGUID}/...`). SAM must reject a policy if its signed agency scope, API path scope or enrolled agency identity differ. This is an authentication/authorisation failure, not a best-effort warning.
 4. A SHA-384 content digest supports integrity comparisons and policy diffs, **not authorisation on its own**. Agency policy authorisation requires a separately verified digital signature. ECDSA P-384 with SHA-384 is the proposed profile, subject to an interoperability/security review and fixtures.
 5. A routine key rotation can be authorised by the existing trusted key and is auditable. A compromised trust root requires unlinking and fresh enrolment with new identities and keys. Do not add an undocumented recovery or master signing key.
-6. During enrolment the site's local administrator chooses **trusted Fleet policy application** or **local manual approval**. This existing choice is sufficient. Do not introduce another mandatory customer approval workflow for ordinary agency changes. Re-enrolment requires a fresh choice.
+6. During enrolment the site's local administrator chooses **trusted Fleet policy application** or **local manual approval**. That one enrolment-time choice is sufficient (SAM has no Fleet enrolment today, so this is part of the new design). Do not introduce another mandatory customer approval workflow for ordinary agency changes. Re-enrolment requires a fresh choice.
 
 ## Clones, migrations and reset
 
 A cloned WordPress database may inherit the installation GUID and private keys. An unexpected canonical-origin change must therefore invalidate the prior Fleet identity and stop policy acceptance. SAM must distinguish a verified, authorised site migration from a newly cloned installation.
 
-For a confirmed clone, provide a safe **full-product reinitialisation**, clearing inherited Fleet identity, policy and SAM-owned state before issuing new keys and enrolment. Use the existing Recovery / Reset Plugin Data semantics, including the fact that a fresh setup reseeds its own security defaults; do not interpret a reset as permission to weaken an unrelated website or manipulate third-party plugin data. Do not irreversibly reset on a transient URL or reverse-proxy anomaly alone. The source installation is unaffected.
+For a confirmed clone, provide a safe **full-product reinitialisation**, clearing inherited Fleet identity, policy and SAM-owned state before issuing new keys and enrolment. Use the existing reset semantics (Settings → Recovery → Reset Plugin Data, `Data_Resetter`), which clear every SAM custom-table row and plugin-owned option and then reseed the default policy profiles; do not interpret a reset as permission to weaken an unrelated website or manipulate third-party plugin data. Do not irreversibly reset on a transient URL or reverse-proxy anomaly alone. The source installation is unaffected.
 
 A clone of production into development becomes a **new** Fleet installation with a new environment and policy inheritance chain.
 
@@ -50,16 +50,16 @@ Fleet should be able to distinguish intended configuration, reported applied sta
 
 Approval automation and CSP report-only/enforce mode are **separate dimensions**. The target approval postures (configured per surface) are:
 
-| Level | Name | Decision behaviour | Entitlement |
-| --- | --- | --- | --- |
-| 3 | Administrator-controlled | Manual approval for low, medium and high risk proposals | Free |
-| 2 | Restricted autonomy | Auto-approve eligible low-risk proposals only | Free |
-| 1 | Supervised automation | Auto-approve eligible low/medium-risk proposals; high-risk manual | Free |
-| 0 | Fully autonomous | Auto-approve otherwise eligible proposals within non-negotiable safety restrictions | Paid |
+| Level | Name | Decision behaviour | Entitlement | Today's mode (`Automation_Config`) |
+| --- | --- | --- | --- | --- |
+| 3 | Administrator-controlled | Manual approval for low, medium and high risk proposals | Free | `manual` (Manual) |
+| 2 | Restricted autonomy | Auto-approve eligible low-risk proposals only | Free | `automatic_medium_high_approval` (Automatic, with medium+high approvals) |
+| 1 | Supervised automation | Auto-approve eligible low/medium-risk proposals; high-risk manual | Free | `automatic_high_approval` (Automatic, with high approvals only); the fresh-install default |
+| 0 | Fully autonomous | Auto-approve otherwise eligible proposals within non-negotiable safety restrictions | Paid | `fully_automatic` (Fully Automatic), registered only by `includes/extensions/fully-automatic-mode.php`, which is removed from the WordPress.org build; no build can select it today because nothing grants the entitlement |
 
 When a Level 0 entitlement expires or is revoked after applicable grace handling, **effective approval posture becomes Level 3**. Preserve the configured Level 0 selection for display and possible reactivation. Re-evaluate pending proposals against the effective posture. Never remove previously enforced protections or silently revert CSP configuration as a licensing consequence.
 
-This is a **target change** to the plugin's existing documented fallback, which currently describes a weaker downgrade. The entitlement service establishes entitlement truth; SAM alone determines effective approval behaviour.
+This is a **target change** to the plugin's existing fallback. Today an unavailable `fully_automatic` mode downgrades to Level 1 (`automatic_high_approval`), not Level 3 (SPECIFICATION.md §11; `Automation_Config::normalise_mode()`). Because every read and write of the setting goes through that method, the Level 0 selection isn't kept separately either. Implementing the target therefore changes both the fallback level and what is stored. The entitlement service establishes entitlement truth; SAM alone determines effective approval behaviour.
 
 ## Evidence, policy alignment and diagnostics
 
