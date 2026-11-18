@@ -462,6 +462,9 @@ class Activator {
 			'wp_sam_page_cache_last_purge',
 			'wp_sam_page_cache_purge_notice',
 			'wp_sam_delivered_policy_check',
+			'wp_sam_mta_sts_txt_fields',
+			'wp_sam_mta_sts_txt_refreshed_at',
+			'wp_sam_mta_sts_txt_last_fetch_status',
 		);
 	}
 

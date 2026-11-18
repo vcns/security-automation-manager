@@ -96,6 +96,7 @@ use WP_SAM\Intelligence\Identity_Resolver;
 use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Iso_Countries;
+use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
 use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Own_Address_Store;
 use WP_SAM\Intelligence\Recommendation_Dismissal_Store;
@@ -248,6 +249,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_humans_txt_refresh', array( $this, 'handle_humans_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_ads_txt_refresh', array( $this, 'handle_ads_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_app_ads_txt_refresh', array( $this, 'handle_app_ads_txt_refresh' ) );
+		add_action( 'admin_post_wp_sam_mta_sts_txt_refresh', array( $this, 'handle_mta_sts_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_well_known_save', array( $this, 'handle_well_known_save' ) );
 		add_action( 'admin_post_wp_sam_well_known_remove', array( $this, 'handle_well_known_remove' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
@@ -2284,6 +2286,23 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the MTA-STS policy refresh form post: checks the nonce and the manage_options capability, refreshes the policy reading, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
+	public function handle_mta_sts_txt_refresh(): void {
+		check_admin_referer( 'wp_sam_mta_sts_txt_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh the MTA-STS policy.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Mta_Sts_Txt_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
 	/** The editor for one file on Control → Traffic Controls → Network Intelligence → Well-Known Files. */
 	public static function well_known_editor_url( string $key, array $args = array() ): string {
 		return add_query_arg(
@@ -2314,7 +2333,7 @@ class Admin_UI {
 		}
 
 		$key = sanitize_key( wp_unslash( $_POST['file'] ?? '' ) );
-		if ( ! Well_Known_File_Catalog::has( $key ) || ! Well_Known_File_Catalog::serves_from_root() ) {
+		if ( ! Well_Known_File_Catalog::has( $key ) || ! Well_Known_File_Catalog::can_serve( $key ) ) {
 			wp_die( esc_html__( 'This file can\'t be served from this site.', 'vcns-security-automation-manager' ) );
 		}
 
@@ -3234,9 +3253,9 @@ class Admin_UI {
 						'label' => __( 'Open Control → Traffic Controls → Tor Exit List', 'vcns-security-automation-manager' ),
 					);
 				}
-				// The six well-known-file refreshes (robots_rules_, agents_rules_,
-				// security_txt_, humans_txt_, ads_txt_, app_ads_txt_).
-				if ( 1 === preg_match( '/^(robots_rules|agents_rules|security_txt|humans_txt|ads_txt|app_ads_txt)_/', $event ) ) {
+				// The seven well-known-file refreshes (robots_rules_, agents_rules_,
+				// security_txt_, humans_txt_, ads_txt_, app_ads_txt_, mta_sts_txt_).
+				if ( 1 === preg_match( '/^(robots_rules|agents_rules|security_txt|humans_txt|ads_txt|app_ads_txt|mta_sts_txt)_/', $event ) ) {
 					return array(
 						'url'   => $network( 'well-known' ),
 						'label' => __( 'Open Control → Traffic Controls → Well-Known Files', 'vcns-security-automation-manager' ),

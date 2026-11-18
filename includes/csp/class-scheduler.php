@@ -25,6 +25,7 @@ use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Humans_Txt_Store;
+use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -110,6 +111,7 @@ class Scheduler {
 			$this->refresh_humans_txt();
 			$this->refresh_ads_txt();
 			$this->refresh_app_ads_txt();
+			$this->refresh_mta_sts_txt();
 			( new Delivered_Policy_Check( null, null, $this->audit ) )->run();
 
 		} catch ( \Throwable $e ) {
@@ -442,6 +444,15 @@ class Scheduler {
 	 */
 	private function refresh_app_ads_txt(): void {
 		$this->log_well_known_refresh( 'app_ads_txt', ( new App_Ads_Txt_Store() )->refresh() );
+	}
+
+	/**
+	 * Refreshes the MTA-STS policy and logs the outcome. Mta_Sts_Txt_Store
+	 * only reports a failure when the domain's DNS says it has a policy,
+	 * so a domain without MTA-STS logs absent at info, not a warning.
+	 */
+	private function refresh_mta_sts_txt(): void {
+		$this->log_well_known_refresh( 'mta_sts_txt', ( new Mta_Sts_Txt_Store() )->refresh() );
 	}
 
 	/**

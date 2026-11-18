@@ -34,6 +34,7 @@ use WP_SAM\Intelligence\Humans_Txt_Store;
 use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Iso_Countries;
+use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
 use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Own_Address_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
@@ -919,6 +920,8 @@ $tab_help = array(
 				$humans_txt_store     = new Humans_Txt_Store();
 				$ads_txt_store        = new Ads_Txt_Store();
 				$app_ads_txt_store    = new App_Ads_Txt_Store();
+				$mta_sts_txt_store    = new Mta_Sts_Txt_Store();
+				$mta_sts_txt_fields   = $mta_sts_txt_store->fields();
 				$security_txt_expires = $security_txt_store->fields()['Expires'][0] ?? null;
 				$robots_rule_count    = count( $robots_rules_store->rules() );
 				$agents_rule_count    = count( $agents_rules_store->rules() );
@@ -932,6 +935,19 @@ $tab_help = array(
 				} else {
 					/* translators: %s: the date in the file's Expires field */
 					$security_txt_contents = sprintf( __( 'Present, expires %s', 'vcns-security-automation-manager' ), $security_txt_expires );
+				}
+
+				$mta_sts_txt_note = null;
+				if ( ! $mta_sts_txt_store->is_present() ) {
+					$mta_sts_txt_contents = __( 'Not present', 'vcns-security-automation-manager' );
+				} elseif ( in_array( $mta_sts_txt_fields['mode'] ?? null, array( 'testing', 'enforce', 'none' ), true ) ) {
+					/* translators: %s: the policy's mode as written in it: testing, enforce or none */
+					$mta_sts_txt_contents = sprintf( __( 'Present, mode: %s', 'vcns-security-automation-manager' ), $mta_sts_txt_fields['mode'] );
+					if ( 'missing' === ( $mta_sts_txt_fields['dns_status'] ?? '' ) ) {
+						$mta_sts_txt_note = __( 'No _mta-sts DNS record, so mail servers don\'t look for it', 'vcns-security-automation-manager' );
+					}
+				} else {
+					$mta_sts_txt_contents = __( 'Present, but not a valid policy', 'vcns-security-automation-manager' );
 				}
 
 				// One row per file, in Well_Known_File_Catalog's order.
@@ -982,6 +998,14 @@ $tab_help = array(
 						'status'    => $app_ads_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_app_ads_txt_refresh',
 					),
+					'mta-sts'  => array(
+						'contents'  => $mta_sts_txt_contents,
+						'expired'   => false,
+						'note'      => $mta_sts_txt_note,
+						'refreshed' => $mta_sts_txt_store->last_refreshed_at(),
+						'status'    => $mta_sts_txt_store->last_fetch_status(),
+						'action'    => 'wp_sam_mta_sts_txt_refresh',
+					),
 				);
 
 				$well_known_catalog       = Well_Known_File_Catalog::files();
@@ -1028,6 +1052,9 @@ $tab_help = array(
 								<?php echo esc_html( $well_known_file['contents'] ); ?>
 								<?php if ( $well_known_file['expired'] ) : ?>
 								<strong style="color:#a94442"><?php esc_html_e( '(expired)', 'vcns-security-automation-manager' ); ?></strong>
+								<?php endif; ?>
+								<?php if ( ! empty( $well_known_file['note'] ) ) : ?>
+								<br /><span class="description"><?php echo esc_html( $well_known_file['note'] ); ?></span>
 								<?php endif; ?>
 								<?php if ( null !== $well_known_saved ) : ?>
 								<br /><span class="description"><?php echo esc_html( $well_known_served_labels[ $well_known_saved['check'] ] ?? __( 'Saved here', 'vcns-security-automation-manager' ) ); ?></span>

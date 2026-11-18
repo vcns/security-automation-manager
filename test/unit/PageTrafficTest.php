@@ -201,11 +201,11 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertSame( 1, substr_count( $output, 'wp-sam-well-known-table' ) );
 		$table = $this->table_with_class( $output, 'wp-sam-well-known-table' );
-		$this->assertSame( 6, substr_count( $table, '<tr>' ) - 1 );
-		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt' ) as $well_known_label ) {
+		$this->assertSame( 7, substr_count( $table, '<tr>' ) - 1 );
+		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt', 'MTA-STS.txt' ) as $well_known_label ) {
 			$this->assertStringContainsString( '>' . $well_known_label . '<', $table );
 		}
-		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt' ) as $refresh ) {
+		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt', 'mta_sts_txt' ) as $refresh ) {
 			$this->assertStringContainsString( 'value="wp_sam_' . $refresh . '_refresh"', $table );
 		}
 		$this->assertStringNotContainsString( 'wp-sam-stat-row', $output );
@@ -275,7 +275,7 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertStringNotContainsString( '>About<', $table );
 		$this->assertStringNotContainsString( 'Refreshed automatically once a day', $table );
-		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads' ) as $key ) {
+		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts' ) as $key ) {
 			$this->assertMatchesRegularExpression( '#subtab=well-known&(amp;)?file=' . preg_quote( $key, '#' ) . '"#', $table );
 		}
 		$this->assertMatchesRegularExpression( '#file=ads"[^>]*>Create</a>#', $table, 'An absent file is created, not edited.' );
@@ -376,6 +376,53 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertStringContainsString( 'Yoast SEO also writes robots.txt.', $robots );
 		$this->assertStringNotContainsString( 'Yoast SEO', $ads );
+	}
+
+	public function test_well_known_table_shows_an_mta_sts_policy_mail_servers_are_not_told_about(): void {
+		update_option( 'wp_sam_mta_sts_txt_last_fetch_status', 'success' );
+		update_option(
+			'wp_sam_mta_sts_txt_fields',
+			array(
+				'mode'       => 'testing',
+				'mx'         => array( 'mx1.example.com' ),
+				'dns_status' => 'missing',
+			)
+		);
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertStringContainsString( 'Present, mode: testing', $table );
+		$this->assertStringContainsString( 'No _mta-sts DNS record', $table );
+	}
+
+	public function test_mta_sts_editor_shows_the_dns_record_and_which_mail_servers_the_policy_covers(): void {
+		$GLOBALS['_wp_dns_records'][ DNS_MX . ':example.com' ]           = array(
+			array(
+				'target' => 'mx1.example.com',
+				'pri'    => 10,
+			),
+			array(
+				'target' => 'backup.example.com',
+				'pri'    => 20,
+			),
+		);
+		$GLOBALS['_wp_dns_records'][ DNS_TXT . ':_mta-sts.example.com' ] = array( array( 'txt' => 'v=STSv1; id=old1' ) );
+		$policy = "version: STSv1\nmode: testing\nmx: mx1.example.com\nmax_age: 86400\n";
+		( new \WP_SAM\Intelligence\Well_Known_File_Store() )->save( 'mta-sts', $policy, 1 );
+
+		$output = $this->render_well_known( array( 'file' => 'mta-sts' ) );
+
+		$this->assertStringContainsString( '>MTA-STS.txt</h3>', $output );
+		$this->assertStringContainsString( 'https://mta-sts.example.com/.well-known/mta-sts.txt', $output );
+		$this->assertStringContainsString( 'wp-sam-mta-sts-setup', $output );
+		$this->assertStringContainsString( '_mta-sts.example.com', $output );
+		$this->assertStringContainsString( 'v=STSv1; id=' . \WP_SAM\Intelligence\Mta_Sts_Policy::id( $policy ), $output );
+		$this->assertStringContainsString( 'Found with id old1', $output );
+		$this->assertMatchesRegularExpression( '#backup\.example\.com</code>\s*<strong>not matched by the saved policy</strong>#', $output );
+		$this->assertStringContainsString( 'enforce mode would stop delivery', $output );
+		$this->assertStringContainsString( '>Testing</a>', $output );
+		$this->assertStringContainsString( '>Turn off</a>', $output );
+		$this->assertStringContainsString( 'save the Turn off template', $output );
 	}
 
 	public function test_an_unknown_file_shows_the_table_instead_of_an_editor(): void {
