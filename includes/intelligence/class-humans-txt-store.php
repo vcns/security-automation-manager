@@ -25,6 +25,11 @@ final class Humans_Txt_Store {
 	/** @var callable(string):(array|\WP_Error) Same_Host_Fetcher (wp_remote_get() that never follows a redirect off this site) by default; injectable so tests never make a real HTTP call. */
 	private $http_get;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param callable|null $http_get HTTP GET function, defaults to wp_remote_get().
+	 */
 	public function __construct( ?callable $http_get = null ) {
 		$this->http_get = $http_get ?? static fn ( string $url ) => ( new Same_Host_Fetcher() )->get(
 			$url,
@@ -46,15 +51,30 @@ final class Humans_Txt_Store {
 		return 'success' === $this->last_fetch_status();
 	}
 
+	/**
+	 * Returns the cached humans.txt content.
+	 *
+	 * @return string Content, or an empty string.
+	 */
 	public function content(): string {
 		return (string) get_option( 'wp_sam_humans_txt_content', '' );
 	}
 
+	/**
+	 * Returns when humans.txt was last refreshed successfully.
+	 *
+	 * @return string|null Time of the last refresh, or null when it has not been refreshed.
+	 */
 	public function last_refreshed_at(): ?string {
 		$value = get_option( 'wp_sam_humans_txt_refreshed_at', '' );
 		return '' !== $value ? (string) $value : null;
 	}
 
+	/**
+	 * Returns the outcome of the last humans.txt fetch.
+	 *
+	 * @return string Status code, or an empty string when none has run.
+	 */
 	public function last_fetch_status(): string {
 		return (string) get_option( 'wp_sam_humans_txt_last_fetch_status', '' );
 	}
@@ -71,7 +91,13 @@ final class Humans_Txt_Store {
 		$response = ( $this->http_get )( home_url( '/humans.txt' ) );
 
 		if ( is_wp_error( $response ) ) {
-			return $this->record_failure( 'Fetch failed: ' . $response->get_error_message() );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %s: error message returned by the HTTP request */
+					__( 'Fetch failed: %s', 'vcns-security-automation-manager' ),
+					$response->get_error_message()
+				)
+			);
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
@@ -79,7 +105,13 @@ final class Humans_Txt_Store {
 			return $this->record_absent( $code );
 		}
 		if ( 200 !== $code ) {
-			return $this->record_failure( "Fetch returned HTTP {$code}." );
+			return $this->record_failure(
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Fetch returned HTTP %d.', 'vcns-security-automation-manager' ),
+					$code
+				)
+			);
 		}
 
 		$content = (string) wp_remote_retrieve_body( $response );
@@ -91,7 +123,7 @@ final class Humans_Txt_Store {
 		return array(
 			'status'  => 'refreshed',
 			'count'   => strlen( $content ),
-			'message' => 'Refreshed humans.txt.',
+			'message' => __( 'Refreshed humans.txt.', 'vcns-security-automation-manager' ),
 		);
 	}
 

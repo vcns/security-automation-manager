@@ -30,6 +30,11 @@ final class Detector_Engine {
 
 	private Detector_Policy_Store $policies;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Detector_Policy_Store|null $policies Detector policy store, a new one is created when omitted.
+	 */
 	public function __construct( ?Detector_Policy_Store $policies = null ) {
 		$this->policies = $policies ?? new Detector_Policy_Store();
 	}

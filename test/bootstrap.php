@@ -243,7 +243,9 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 
 if ( ! function_exists( '__' ) ) {
 	function __( string $text, string $domain = 'default' ): string {
-		return $text;
+		// Tests may set $GLOBALS['wp_test_translations'][ $text ] to prove a
+		// string actually passes through the translation layer.
+		return $GLOBALS['wp_test_translations'][ $text ] ?? $text;
 	}
 }
 
@@ -757,6 +759,13 @@ if ( ! function_exists( 'is_ssl' ) ) {
 	}
 }
 
+if ( ! function_exists( 'is_post_type_viewable' ) ) {
+	function is_post_type_viewable( string|object $post_type ): bool {
+		$name = is_object( $post_type ) ? (string) ( $post_type->name ?? '' ) : $post_type;
+		return in_array( $name, $GLOBALS['_wp_viewable_post_types'] ?? [ 'post', 'page', 'attachment' ], true );
+	}
+}
+
 if ( ! function_exists( 'wp_doing_cron' ) ) {
 	function wp_doing_cron(): bool {
 		return $GLOBALS['_wp_doing_cron'] ?? false;
@@ -793,6 +802,12 @@ if ( ! function_exists( 'add_submenu_page' ) ) {
 	function add_submenu_page( string $parent_slug, string $page_title, string $menu_title, string $capability, string $menu_slug, callable|string $callback = '', ?int $position = null ): string|false {
 		$GLOBALS['_wp_submenu_pages'][ $parent_slug ][] = compact( 'page_title', 'menu_title', 'capability', 'menu_slug', 'callback' );
 		return $parent_slug . '_page_' . $menu_slug;
+	}
+}
+
+if ( ! function_exists( 'has_action' ) ) {
+	function has_action( string $hook, callable|false $callback = false ): bool {
+		return ! empty( $GLOBALS['_wp_actions'][ $hook ] );
 	}
 }
 
@@ -1219,6 +1234,7 @@ function wp_test_reset_globals(): void {
 	$GLOBALS['_wp_is_admin']             = false;
 	$GLOBALS['_wp_is_ssl']               = false;
 	$GLOBALS['_wp_doing_cron']           = false;
+	$GLOBALS['_wp_viewable_post_types']  = [ 'post', 'page', 'attachment' ];
 	$GLOBALS['_wp_doing_ajax']           = false;
 	$GLOBALS['_wp_cron']                 = [];
 	$GLOBALS['_wp_current_user_can']     = [];
@@ -1253,6 +1269,21 @@ function wp_test_reset_globals(): void {
 	unset( $_SERVER['HTTP_HOST'] );
 	unset( $_SERVER['HTTP_X_FORWARDED_HOST'] );
 	unset( $_SERVER['HTTP_X_WP_SAM_PROBE'] );
+
+	// No test asks real DNS: Mail_Dns lookups are answered from
+	// $GLOBALS['_wp_dns_records'] (see wp_test_dns_lookup()).
+	$GLOBALS['_wp_dns_records'] = [];
+	add_filter( 'wp_sam_pre_dns_lookup', 'wp_test_dns_lookup', 10, 3 );
+}
+
+/**
+ * Answers WP_SAM\Intelligence\Mail_Dns lookups from
+ * $GLOBALS['_wp_dns_records'][ "{$type}:{$name}" ] (DNS_MX, DNS_TXT, ...),
+ * in dns_get_record()'s record shape. A name with no entry has no records;
+ * an entry of false is a failed lookup.
+ */
+function wp_test_dns_lookup( mixed $pre, string $name, int $type ): array|false {
+	return $GLOBALS['_wp_dns_records'][ $type . ':' . $name ] ?? [];
 }
 
 // Initialise globals so classes loaded at parse time do not hit undefined array errors.

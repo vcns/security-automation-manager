@@ -57,6 +57,13 @@ final class Cidr_Matcher {
 		return self::ip_in_any_cidr( $ip, self::LOCAL_CIDRS );
 	}
 
+	/**
+	 * Checks whether an IP address falls inside a CIDR range.
+	 *
+	 * @param string $ip   IP address.
+	 * @param string $cidr Range in CIDR notation.
+	 * @return bool True when the address is inside the range.
+	 */
 	public static function ip_in_cidr( string $ip, string $cidr ): bool {
 		$parts = explode( '/', $cidr, 2 );
 		if ( 2 !== count( $parts ) ) {

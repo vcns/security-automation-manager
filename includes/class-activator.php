@@ -33,6 +33,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Activator {
 
+	/**
+	 * Plugin activation entry point: creates or upgrades tables, runs data migrations, seeds defaults and schedules cron.
+	 *
+	 * @return void
+	 */
 	public static function activate(): void {
 		self::create_tables();
 		self::migrate_v9_option_renames();
@@ -299,9 +304,12 @@ class Activator {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_policy_profiles';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			"SELECT id, bypass_img_src_data, bypass_font_src_data, bypass_style_attr_unsafe_hashes, bypass_flags FROM {$table}",
+			$wpdb->prepare(
+				'SELECT id, bypass_img_src_data, bypass_font_src_data, bypass_style_attr_unsafe_hashes, bypass_flags FROM %i',
+				$table
+			),
 			ARRAY_A
 		);
 
@@ -355,6 +363,14 @@ class Activator {
 		return $missing;
 	}
 
+	/**
+	 * Returns the core table suffixes only.
+	 *
+	 * Suffixes an extension registers through the wp_sam_table_suffixes filter
+	 * are not included; use get_all_table_suffixes() for those.
+	 *
+	 * @return string[] Table names without the WordPress prefix.
+	 */
 	public static function get_table_suffixes(): array {
 		return array(
 			'csp_policy_profiles',
@@ -407,6 +423,14 @@ class Activator {
 		return apply_filters( 'wp_sam_table_suffixes', self::get_table_suffixes() );
 	}
 
+	/**
+	 * Returns the core option names only.
+	 *
+	 * Options an extension registers through the wp_sam_option_names filter
+	 * are not included; use get_all_option_names() for the full list.
+	 *
+	 * @return string[] Option names.
+	 */
 	public static function get_option_names(): array {
 		return array(
 			'wp_sam_db_version',
@@ -433,6 +457,14 @@ class Activator {
 			'wp_sam_geoip_ipinfo_token',
 			'wp_sam_own_addresses',
 			'wp_sam_site_country',
+			'wp_sam_purge_page_cache_on_csp_change',
+			'wp_sam_frontend_policy_fingerprint',
+			'wp_sam_page_cache_last_purge',
+			'wp_sam_page_cache_purge_notice',
+			'wp_sam_delivered_policy_check',
+			'wp_sam_mta_sts_txt_fields',
+			'wp_sam_mta_sts_txt_refreshed_at',
+			'wp_sam_mta_sts_txt_last_fetch_status',
 		);
 	}
 
@@ -448,6 +480,11 @@ class Activator {
 		return apply_filters( 'wp_sam_option_names', self::get_option_names() );
 	}
 
+	/**
+	 * Returns every transient name the plugin owns.
+	 *
+	 * @return string[] Transient names.
+	 */
 	public static function get_transient_names(): array {
 		return array(
 			'wp_sam_conflict_probe_ran',
@@ -456,6 +493,11 @@ class Activator {
 
 	// ── Database tables ───────────────────────────────────────────────────────
 
+	/**
+	 * Creates or updates every plugin table with dbDelta().
+	 *
+	 * @return void
+	 */
 	private static function create_tables(): void {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -1573,9 +1615,12 @@ class Activator {
 			return;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			"SELECT id, profile_surface, blocked_uri, violated_directive, occurrence_count, first_reported_at, last_reported_at FROM {$table}",
+			$wpdb->prepare(
+				'SELECT id, profile_surface, blocked_uri, violated_directive, occurrence_count, first_reported_at, last_reported_at FROM %i',
+				$table
+			),
 			ARRAY_A
 		);
 		if ( empty( $rows ) ) {
@@ -1653,6 +1698,16 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Rolls violation reports up to one row per fingerprint.
+	 *
+	 * Backfills first_reported_at and last_reported_at from reported_at, merges
+	 * historic duplicate fingerprints into a single row with summed counts, then
+	 * makes the fingerprint index unique.
+	 * Does nothing when the table does not exist.
+	 *
+	 * @return void
+	 */
 	private static function migrate_violation_report_rollups(): void {
 		global $wpdb;
 
@@ -1672,12 +1727,15 @@ class Activator {
 
 		// Collapse any historic duplicate fingerprints before enforcing uniqueness.
 		// The current reporter has deduped for some time, but this keeps upgrades safe.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$duplicates = $wpdb->get_results(
-			"SELECT fingerprint, MIN(id) AS keep_id, SUM(occurrence_count) AS total_count, MIN(first_reported_at) AS first_seen, MAX(last_reported_at) AS last_seen
-			 FROM {$table}
-			 GROUP BY fingerprint
-			 HAVING COUNT(*) > 1",
+			$wpdb->prepare(
+				'SELECT fingerprint, MIN(id) AS keep_id, SUM(occurrence_count) AS total_count, MIN(first_reported_at) AS first_seen, MAX(last_reported_at) AS last_seen
+				 FROM %i
+				 GROUP BY fingerprint
+				 HAVING COUNT(*) > 1',
+				$table
+			),
 			ARRAY_A
 		);
 
@@ -1722,6 +1780,11 @@ class Activator {
 
 	// ── Default options ───────────────────────────────────────────────────────
 
+	/**
+	 * Adds the default value of each option that is not already stored.
+	 *
+	 * @return void
+	 */
 	private static function set_default_options(): void {
 		$defaults = array(
 			'wp_sam_cron_hour'                     => 2,
@@ -1733,7 +1796,7 @@ class Activator {
 			// by the daily cron scan. 0 = keep forever (not recommended for busy sites).
 			'wp_sam_violation_retention_days'      => 90,
 			// Report-endpoint learning closes after this many hours from the latest
-			// post, page, or plugin material change.
+			// material change (see Learning_Window::register()).
 			'wp_sam_learning_window_hours'         => 48,
 			// Blank uses rest_url( 'sam/v1/report' ); set only when a
 			// public proxy/CDN hostname must be advertised to browsers.
@@ -1763,6 +1826,11 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Returns the default CSP automation configuration for a fresh install.
+	 *
+	 * @return array<string,mixed> Automation settings keyed by name.
+	 */
 	private static function default_automation_config(): array {
 		// Automatic (high approvals only): every proposal below the high-risk
 		// threshold is auto-approved into the report-only policy on its own
@@ -1809,6 +1877,11 @@ class Activator {
 
 	// ── Seed default CSP profiles ─────────────────────────────────────────────
 
+	/**
+	 * Creates a report-only policy profile for each surface that does not have one.
+	 *
+	 * @return void
+	 */
 	private static function seed_default_profiles(): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_policy_profiles';
@@ -2294,6 +2367,13 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Captures an initial policy version for each surface that has none.
+	 *
+	 * Does nothing when the policy versions table does not exist.
+	 *
+	 * @return void
+	 */
 	private static function seed_initial_policy_versions(): void {
 		if ( ! class_exists( 'WP_SAM\CSP\Policy_Version_Manager' ) ) {
 			return;
@@ -2322,6 +2402,12 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Checks whether a database table exists.
+	 *
+	 * @param string $table Full table name, including the prefix.
+	 * @return bool True when the table exists.
+	 */
 	private static function table_exists( string $table ): bool {
 		global $wpdb;
 
@@ -2329,6 +2415,12 @@ class Activator {
 		return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 	}
 
+	/**
+	 * Returns the default CSP directives for a surface.
+	 *
+	 * @param string $surface Surface slug: frontend, admin, login or api.
+	 * @return array<string,string[]|null> Source list for each directive; sandbox is null when disabled.
+	 */
 	private static function default_directives( string $surface ): array {
 		// 'report-sample' added to script/style-src so browsers include the offending
 		// inline code snippet in violation reports (R7). Harmless when no violation occurs.
@@ -2405,6 +2497,11 @@ class Activator {
 
 	// ── WP Cron ───────────────────────────────────────────────────────────────
 
+	/**
+	 * Schedules the daily scan at the configured hour unless it is already scheduled.
+	 *
+	 * @return void
+	 */
 	private static function schedule_events(): void {
 		$hook = 'wp_sam_daily_scan';
 		if ( wp_next_scheduled( $hook ) ) {
@@ -2417,6 +2514,11 @@ class Activator {
 		wp_schedule_event( $first_run, 'daily', $hook );
 	}
 
+	/**
+	 * Stores the current database version as the last verified schema version.
+	 *
+	 * @return void
+	 */
 	public static function mark_schema_verified(): void {
 		update_option( 'wp_sam_schema_verified_version', WP_SAM_DB_VERSION );
 	}

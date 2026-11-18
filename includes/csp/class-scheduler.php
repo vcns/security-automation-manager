@@ -25,6 +25,7 @@ use WP_SAM\Intelligence\Drift_Scanner;
 use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Humans_Txt_Store;
+use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -39,12 +40,22 @@ class Scheduler {
 
 	private Audit_Log $audit;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Audit_Log $audit Audit log.
+	 */
 	public function __construct( Audit_Log $audit ) {
 		$this->audit = $audit;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the daily scan callback.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'wp_sam_daily_scan', array( $this, 'run_daily_scan' ) );
 	}
@@ -100,6 +111,8 @@ class Scheduler {
 			$this->refresh_humans_txt();
 			$this->refresh_ads_txt();
 			$this->refresh_app_ads_txt();
+			$this->refresh_mta_sts_txt();
+			( new Delivered_Policy_Check( null, null, $this->audit ) )->run();
 
 		} catch ( \Throwable $e ) {
 			$this->audit->finish_scan( $scan_id, array(), 'failed' );
@@ -397,20 +410,49 @@ class Scheduler {
 		$this->log_well_known_refresh( 'agents_rules', ( new Agents_Rules_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes security.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_security_txt(): void {
 		$this->log_well_known_refresh( 'security_txt', ( new Security_Txt_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes humans.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_humans_txt(): void {
 		$this->log_well_known_refresh( 'humans_txt', ( new Humans_Txt_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes ads.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_ads_txt(): void {
 		$this->log_well_known_refresh( 'ads_txt', ( new Ads_Txt_Store() )->refresh() );
 	}
 
+	/**
+	 * Refreshes app-ads.txt and logs the outcome.
+	 *
+	 * @return void
+	 */
 	private function refresh_app_ads_txt(): void {
 		$this->log_well_known_refresh( 'app_ads_txt', ( new App_Ads_Txt_Store() )->refresh() );
+	}
+
+	/**
+	 * Refreshes the MTA-STS policy and logs the outcome. Mta_Sts_Txt_Store
+	 * only reports a failure when the domain's DNS says it has a policy,
+	 * so a domain without MTA-STS logs absent at info, not a warning.
+	 */
+	private function refresh_mta_sts_txt(): void {
+		$this->log_well_known_refresh( 'mta_sts_txt', ( new Mta_Sts_Txt_Store() )->refresh() );
 	}
 
 	/**
@@ -436,6 +478,12 @@ class Scheduler {
 
 	// ── Notification ──────────────────────────────────────────────────────────
 
+	/**
+	 * Emails the notification address when a scheduled scan changed the policy.
+	 *
+	 * @param array $results Scan results.
+	 * @return void
+	 */
 	private function maybe_notify( array $results ): void {
 		if ( empty( $results['policy_changed'] ) ) {
 			return;

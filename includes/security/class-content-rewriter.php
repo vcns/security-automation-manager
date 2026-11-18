@@ -66,6 +66,11 @@ abstract class Content_Rewriter extends Request_Surface {
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the hooks that buffer front-end output and rewrite it before it is sent.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( 'template_redirect', array( $this, 'maybe_start_buffer' ) );
 		// shutdown is the ONLY closure point -- not a fallback alongside an
@@ -102,6 +107,11 @@ abstract class Content_Rewriter extends Request_Surface {
 
 	// ── Buffer lifecycle ──────────────────────────────────────────────────────
 
+	/**
+	 * Starts output buffering when the request is an eligible public page request.
+	 *
+	 * @return void
+	 */
 	public function maybe_start_buffer(): void {
 		if ( $this->buffer_started ) {
 			return;
@@ -213,7 +223,7 @@ abstract class Content_Rewriter extends Request_Surface {
 	 * when it is a public front-end page request eligible for rewriting.
 	 */
 	protected function request_exclusion_reason(): ?string {
-		$method = $_SERVER['REQUEST_METHOD'] ?? null;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? wp_unslash( $_SERVER['REQUEST_METHOD'] ) : null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared against an exact GET/HEAD allowlist; sanitizing would strip percent-encoded bytes and let e.g. GET%00 pass as GET.
 		if ( is_string( $method ) && ! in_array( strtoupper( $method ), array( 'GET', 'HEAD' ), true ) ) {
 			return 'method';
 		}
@@ -361,6 +371,11 @@ abstract class Content_Rewriter extends Request_Surface {
 		return $this->looks_like_html( $buffer );
 	}
 
+	/**
+	 * Returns the Content-Type header queued for the response.
+	 *
+	 * @return string|null The header value, or null when none is set.
+	 */
 	private function response_content_type(): ?string {
 		$content_type = null;
 
@@ -373,6 +388,12 @@ abstract class Content_Rewriter extends Request_Surface {
 		return $content_type;
 	}
 
+	/**
+	 * Checks whether a buffer starts like an HTML document.
+	 *
+	 * @param string $buffer Output buffer contents.
+	 * @return bool True when it looks like HTML.
+	 */
 	protected function looks_like_html( string $buffer ): bool {
 		$head = substr( $buffer, 0, 1024 );
 

@@ -11,6 +11,7 @@
 declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
+use WP_SAM\CSP\Delivered_Policy_Check;
 use WP_SAM\Intelligence\Security_Health;
 
 class SecurityHealthTest extends TestCase {
@@ -37,7 +38,7 @@ class SecurityHealthTest extends TestCase {
 
 		$report = $this->health->get_report();
 
-		foreach ( array( 'enforcement', 'drift', 'certificates', 'dependencies', 'exceptions', 'automation', 'evidence_freshness', 'external_verification' ) as $key ) {
+		foreach ( array( 'enforcement', 'delivered_policy', 'drift', 'certificates', 'dependencies', 'exceptions', 'automation', 'evidence_freshness', 'external_verification' ) as $key ) {
 			$this->assertArrayHasKey( $key, $report );
 			$this->assertArrayHasKey( 'status', $report[ $key ] );
 		}
@@ -261,7 +262,50 @@ class SecurityHealthTest extends TestCase {
 
 	// ── Scoring model versioning (GitHub issue #175) ────────────────────────
 
-	public function test_model_version_is_2(): void {
-		$this->assertSame( 2, Security_Health::MODEL_VERSION );
+	public function test_model_version_is_3(): void {
+		$this->assertSame( 3, Security_Health::MODEL_VERSION );
+	}
+
+	// ── delivered_policy_row() ──────────────────────────────────────────────
+
+	public function test_delivered_policy_is_info_before_the_first_check(): void {
+		$row = $this->invoke( 'delivered_policy_row' );
+
+		$this->assertSame( 'info', $row['status'] );
+		$this->assertSame( 'Not checked yet', $row['value'] );
+	}
+
+	public function test_delivered_policy_warns_when_visitors_get_an_older_policy(): void {
+		update_option(
+			Delivered_Policy_Check::OPTION_RESULT,
+			array(
+				'checked_at' => time() - 300,
+				'outcome'    => Delivered_Policy_Check::OUTCOME_STALE,
+				'mode'       => 'report-only',
+				'header'     => 'content-security-policy-report-only',
+				'cache'      => array( 'cf-cache-status' => 'HIT' ),
+				'missing'    => array( 'script-src https://www.example.com' ),
+				'unexpected' => array(),
+			)
+		);
+
+		$row = $this->invoke( 'delivered_policy_row' );
+
+		$this->assertSame( 'warning', $row['status'] );
+		$this->assertStringContainsString( 'script-src https://www.example.com', $row['value'] );
+		$this->assertStringContainsString( 'Checked', $row['value'] );
+	}
+
+	public function test_delivered_policy_passes_when_visitors_get_the_current_policy(): void {
+		update_option(
+			Delivered_Policy_Check::OPTION_RESULT,
+			array(
+				'checked_at' => time(),
+				'outcome'    => Delivered_Policy_Check::OUTCOME_CURRENT,
+				'mode'       => 'report-only',
+			)
+		);
+
+		$this->assertSame( 'pass', $this->invoke( 'delivered_policy_row' )['status'] );
 	}
 }

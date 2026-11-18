@@ -39,16 +39,35 @@ class Cross_Origin_Opener_Policy_Builder extends Pillar_Header_Builder {
 	 */
 	public const VALID_MODES = array( 'disabled', 'report-only', 'enforce' );
 
+	/**
+	 * Restricts a value to the Cross-Origin-Opener-Policy values this pillar allows.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string A permitted value, or an empty string.
+	 */
 	public static function sanitize_value( mixed $value ): string {
 		$value = strtolower( trim( (string) $value ) );
 		return in_array( $value, self::VALID_VALUES, true ) ? $value : '';
 	}
 
+	/**
+	 * Restricts a mode to the allowed modes.
+	 *
+	 * @param mixed $mode Submitted mode.
+	 * @return string A permitted mode, or an empty string.
+	 */
 	public static function sanitize_mode( mixed $mode ): string {
 		$mode = strtolower( trim( (string) $mode ) );
 		return in_array( $mode, self::VALID_MODES, true ) ? $mode : '';
 	}
 
+	/**
+	 * Sends the Cross-Origin-Opener-Policy header for a profile, using the report-only variant or skipping it according to the profile's mode.
+	 *
+	 * @param array  $profile Pillar profile row.
+	 * @param string $surface Surface slug, unused.
+	 * @return bool True when a header was sent.
+	 */
 	protected function emit_profile_header( array $profile, string $surface ): bool {
 		unset( $surface );
 		$value = self::extract_value( $profile );
@@ -74,6 +93,12 @@ class Cross_Origin_Opener_Policy_Builder extends Pillar_Header_Builder {
 		return true;
 	}
 
+	/**
+	 * Reads the Cross-Origin-Opener-Policy value from a profile's stored payload.
+	 *
+	 * @param array $profile Pillar profile row.
+	 * @return string A permitted value, or an empty string.
+	 */
 	public static function extract_value( array $profile ): string {
 		$payload = json_decode( (string) ( $profile['payload'] ?? '' ), true );
 		$value   = is_array( $payload ) ? (string) ( $payload['value'] ?? '' ) : '';

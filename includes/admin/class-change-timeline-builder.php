@@ -92,6 +92,12 @@ final class Change_Timeline_Builder {
 		return $events;
 	}
 
+	/**
+	 * Returns the translated label of a change type.
+	 *
+	 * @param string $change_type Change type key.
+	 * @return string Label.
+	 */
 	private static function change_type_label( string $change_type ): string {
 		$labels = array(
 			'plugin_updated'        => __( 'Plugin updated', 'vcns-security-automation-manager' ),

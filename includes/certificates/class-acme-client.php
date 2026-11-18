@@ -34,6 +34,12 @@ class Acme_Client {
 	/** Account URL ("kid") once registered/looked-up. */
 	private ?string $kid = null;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param string $directory_url   ACME directory URL.
+	 * @param string $account_key_pem PEM of the ACME account private key.
+	 */
 	public function __construct( string $directory_url, string $account_key_pem ) {
 		$this->directory_url   = $directory_url;
 		$this->account_key_pem = $account_key_pem;
@@ -67,10 +73,21 @@ class Acme_Client {
 		return $this->kid;
 	}
 
+	/**
+	 * Sets the account URL (key id) used to sign later requests.
+	 *
+	 * @param string $kid Account URL returned when the account was registered.
+	 * @return void
+	 */
 	public function set_kid( string $kid ): void {
 		$this->kid = $kid;
 	}
 
+	/**
+	 * Returns the JWK thumbprint of the account key, used to build key authorizations.
+	 *
+	 * @return string Base64url thumbprint.
+	 */
 	public function thumbprint(): string {
 		return Acme_Crypto::thumbprint( Acme_Crypto::jwk( $this->account_key_pem ) );
 	}
@@ -220,6 +237,13 @@ class Acme_Client {
 
 	// ── Internals ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Returns one URL from the ACME directory, fetching the directory on first use.
+	 *
+	 * @param string $key Directory key, for example newNonce or newOrder.
+	 * @return string The URL.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function dir( string $key ): string {
 		if ( null === $this->directory ) {
 			$response = wp_remote_get( $this->directory_url, array( 'timeout' => 30 ) );
@@ -236,6 +260,12 @@ class Acme_Client {
 		return (string) $this->directory[ $key ];
 	}
 
+	/**
+	 * Returns a replay nonce, using the one from the last response or fetching a new one.
+	 *
+	 * @return string The nonce.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function take_nonce(): string {
 		if ( null !== $this->nonce ) {
 			$nonce       = $this->nonce;
@@ -256,6 +286,12 @@ class Acme_Client {
 		return $nonce;
 	}
 
+	/**
+	 * Keeps the replay nonce from a response for the next request.
+	 *
+	 * @param array $response HTTP response from the ACME server.
+	 * @return void
+	 */
 	private function store_nonce( array $response ): void {
 		$nonce = (string) wp_remote_retrieve_header( $response, 'replay-nonce' );
 		if ( '' !== $nonce ) {
@@ -263,11 +299,23 @@ class Acme_Client {
 		}
 	}
 
+	/**
+	 * Decodes the JSON body of a response.
+	 *
+	 * @param array $response HTTP response.
+	 * @return array Decoded body, or an empty array when it is not valid JSON.
+	 */
 	private function json( array $response ): array {
 		$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		return is_array( $decoded ) ? $decoded : array();
 	}
 
+	/**
+	 * Builds a short error message from a failed response.
+	 *
+	 * @param array $response HTTP response.
+	 * @return string The HTTP status and the error detail.
+	 */
 	private function error_detail( array $response ): string {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$body   = $this->json( $response );

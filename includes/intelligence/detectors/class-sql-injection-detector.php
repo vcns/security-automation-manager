@@ -22,22 +22,48 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Sql_Injection_Detector extends Pattern_Detector {
 
+	/**
+	 * Returns the stable id of the SQL injection detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'sql-injection';
 	}
 
+	/**
+	 * Returns the family the SQL injection detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'sql-injection';
 	}
 
+	/**
+	 * Returns the plain-language description of the SQL injection detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags SQL tautologies, stacked queries, and time-based blind-injection syntax (SLEEP/BENCHMARK) in a request.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the SQL injection detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the request data (path, query string) that the SQL injection rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		$path         = (string) ( $context['path'] ?? '' );
 		$query_string = (string) ( $context['query_string'] ?? '' );
@@ -45,6 +71,11 @@ final class Sql_Injection_Detector extends Pattern_Detector {
 		return '' !== $query_string ? $path . '?' . $query_string : $path;
 	}
 
+	/**
+	 * Returns the SQL injection detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		return array(
 			array(

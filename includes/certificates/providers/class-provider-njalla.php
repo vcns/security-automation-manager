@@ -17,10 +17,20 @@ class Provider_Njalla extends Dns_Provider {
 
 	private const API = 'https://njal.la/api/1/';
 
+	/**
+	 * Returns the display name of the Njalla provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'Njalla';
 	}
 
+	/**
+	 * Describes the credentials the Njalla provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'api_token' => array(
@@ -29,6 +39,13 @@ class Provider_Njalla extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the Njalla API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -44,6 +61,13 @@ class Provider_Njalla extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the Njalla API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -62,6 +86,13 @@ class Provider_Njalla extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the Njalla domain that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Domain name.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		$list  = $this->call( 'list-domains', array() );
 		$names = array_column( (array) ( $list['domains'] ?? array() ), 'name' );
@@ -75,6 +106,14 @@ class Provider_Njalla extends Dns_Provider {
 		throw new \RuntimeException( "Njalla: no domain found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Calls the Njalla API.
+	 *
+	 * @param string $method API method name.
+	 * @param array  $params Method parameters.
+	 * @return array Decoded response.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function call( string $method, array $params ): array {
 		$body = $this->request_raw(
 			'POST',

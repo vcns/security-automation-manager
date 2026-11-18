@@ -13,9 +13,11 @@ namespace WP_SAM;
 
 use WP_SAM\Admin\Admin_UI;
 use WP_SAM\CSP\Conflict_Detector;
+use WP_SAM\CSP\Delivered_Policy_Check;
 use WP_SAM\CSP\Hash_Manager;
 use WP_SAM\CSP\Learning_Window;
 use WP_SAM\CSP\Nonce_Manager;
+use WP_SAM\CSP\Page_Cache_Purger;
 use WP_SAM\CSP\Policy_Builder;
 use WP_SAM\CSP\Rest_Csp_Header;
 use WP_SAM\CSP\Scheduler;
@@ -37,6 +39,7 @@ use WP_SAM\Intelligence\Detectors\Honeypath_Detector;
 use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
 use WP_SAM\Intelligence\Detectors\Humans_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Login_Cookie_Consistency_Detector;
+use WP_SAM\Intelligence\Detectors\Mta_Sts_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Compliance_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Security_Txt_Detector;
@@ -122,8 +125,16 @@ final class Plugin {
 	 */
 	public Hash_Manager $hash_manager;
 
+	/**
+	 * Private so the plugin can only be booted through instance().
+	 */
 	private function __construct() {}
 
+	/**
+	 * Returns the single plugin instance, creating it on first use.
+	 *
+	 * @return self The plugin singleton.
+	 */
 	public static function instance(): self {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -131,6 +142,11 @@ final class Plugin {
 		return self::$instance;
 	}
 
+	/**
+	 * Loads translations, upgrades the database schema when needed, and boots the plugin services.
+	 *
+	 * @return void
+	 */
 	public function init(): void {
 		$this->load_textdomain();
 		$this->maybe_upgrade_db();
@@ -139,6 +155,13 @@ final class Plugin {
 
 	// ── Text domain ───────────────────────────────────────────────────────────
 
+	/**
+	 * Loads the bundled translations on the GitHub distribution channel.
+	 *
+	 * WordPress.org loads translations for hosted plugins itself, so nothing is done there.
+	 *
+	 * @return void
+	 */
 	private function load_textdomain(): void {
 		// WordPress core auto-loads translations for WordPress.org-hosted plugins
 		// (matched by slug against the wp.org translation API) since 4.6 -- calling
@@ -148,6 +171,7 @@ final class Plugin {
 		if ( 'github' !== WP_SAM_DISTRIBUTION_CHANNEL ) {
 			return;
 		}
+		// phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- only reached on the GitHub channel, which is not served by wordpress.org language packs.
 		load_plugin_textdomain(
 			'vcns-security-automation-manager',
 			false,
@@ -157,6 +181,17 @@ final class Plugin {
 
 	// ── DB migration gate ─────────────────────────────────────────────────────
 
+	/**
+	 * Runs the activator when the schema needs bringing up to date.
+	 *
+	 * That is when the stored schema version is older than the code, when
+	 * wp_sam_schema_verified_version does not match the current version, or,
+	 * on admin requests only, when any plugin table is missing.
+	 *
+	 * A downgrade is detected first and never runs the activator (see Rollback_Guard).
+	 *
+	 * @return void
+	 */
 	private function maybe_upgrade_db(): void {
 		$installed = (int) get_option( 'wp_sam_db_version', 0 );
 
@@ -187,6 +222,11 @@ final class Plugin {
 
 	// ── Module bootstrap ──────────────────────────────────────────────────────
 
+	/**
+	 * Builds the core services and registers their WordPress hooks.
+	 *
+	 * @return void
+	 */
 	private function bootstrap(): void {
 		// Always-available core services.
 		$this->audit = new Audit_Log();
@@ -339,6 +379,13 @@ final class Plugin {
 		// WP Cron: daily policy rescan.
 		( new Scheduler( $this->audit ) )->register();
 
+		// Page caches keep the header a page was stored with. Clear them
+		// when the frontend policy changes, then check what visitors
+		// actually receive. Registered on every request: an automatic
+		// decision can change the policy from a violation report.
+		( new Page_Cache_Purger( null, null, $this->audit ) )->register();
+		( new Delivered_Policy_Check( null, null, $this->audit ) )->register();
+
 		// WP Cron: daily exception expiry check + upcoming-expiry
 		// notification (GitHub issue #177).
 		( new Exception_Scheduler() )->register();
@@ -445,6 +492,7 @@ final class Plugin {
 		Detector_Registry::register( new Humans_Txt_Detector() );
 		Detector_Registry::register( new Ads_Txt_Detector() );
 		Detector_Registry::register( new App_Ads_Txt_Detector() );
+		Detector_Registry::register( new Mta_Sts_Txt_Detector() );
 
 		// Custom, admin-authored regex detection rules (Phase 4C extension --
 		// fail2ban-style custom filters): one Custom_Rule_Detector per stored
@@ -470,6 +518,11 @@ final class Plugin {
 
 	// ── REST routes ───────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the public CSP report route and the admin REST controller routes.
+	 *
+	 * @return void
+	 */
 	public function register_rest_routes(): void {
 		// CSP violation report – public, from browsers. permission_callback
 		// is Violation_Reporter's own early flood check (see its docblock),

@@ -43,6 +43,14 @@ final class Honeypath_Store {
 		);
 	}
 
+	/**
+	 * Adds a honey path, up to the maximum number.
+	 *
+	 * @param string $path        Path to watch.
+	 * @param string $description Description.
+	 * @param int    $admin_id    Administrator user id.
+	 * @return bool True when the path was added.
+	 */
 	public function add( string $path, string $description, int $admin_id ): bool {
 		$path = '/' . ltrim( sanitize_text_field( $path ), '/' );
 		if ( '/' === $path || '' === trim( $path, '/' ) ) {
@@ -68,6 +76,12 @@ final class Honeypath_Store {
 		return false !== $result;
 	}
 
+	/**
+	 * Deletes a honey path.
+	 *
+	 * @param int $id Honey path id.
+	 * @return bool True when a path was deleted.
+	 */
 	public function delete( int $id ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_honeypaths';
