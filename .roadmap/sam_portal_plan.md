@@ -1,3 +1,5 @@
+> **Historical roadmap notice (4 November 2026):** The combined `vcns/sam-portal` product/repository and `sam.vcns.tech` endpoint described below have been superseded by separate VCNS Portal (`portal.vcns.tech`), Platform (`platform.vcns.tech`) and SAM Fleet Management (`fleet.vcns.tech`). Preserve the delivery history, but scope new implementation and architecture requirements to the owning repositories. This WordPress repository owns only SAM-side changes; see [`docs/fleet-edge-integration-requirements.md`](../docs/fleet-edge-integration-requirements.md).
+
 # SAM Portal (`vcns/sam-portal`)
 ## Delivery Status, Capability Ideation, and Open Questions
 

@@ -27,6 +27,7 @@ These documents are written for maintainers, release managers, security reviewer
 - `security-controls-inventory.md` - per-control inventory (purpose, surfaces, default state, report-only/enforcement/discovery capability, approval requirements, breakage risk, rollback, audit events, limitations, relevant standards) for every implemented HTTP security and content-protection control
 - `wordpress-org-assets.md` - listing artwork, screenshot requirements, and WordPress.org asset handling
 - `dns-provider-test-matrix.md` - per-provider request-level test evidence for all 41 DNS-01 drivers: what is mocked-contract tested vs. live-verified, and every confirmed defect, contrast finding, and `[Unverified]` research gap discovered while building that coverage
+- `fleet-edge-integration-requirements.md` - agreed requirements (4 November 2026, **not implemented**) for SAM's side of VCNS Fleet Management: enrolment and agency policy signing, clone/reinitialisation, effective policy application, ownership-limited drift remediation, evidence, and the target Level 0 expiry fallback
 - `ci-openai-review.md` - the advisory, repository-owned OpenAI PR code-review pipeline: architecture, trust model, authentication setup (workload identity federation), cost controls, data handling, and rollback
 
 ## Source Of Truth
