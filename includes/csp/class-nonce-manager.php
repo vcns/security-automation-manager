@@ -28,12 +28,22 @@ class Nonce_Manager {
 	private string $nonce = '';
 	private Feature_Gate $gate;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Feature_Gate $gate Feature gate.
+	 */
 	public function __construct( Feature_Gate $gate ) {
 		$this->gate = $gate;
 	}
 
 	// ── Bootstrap ─────────────────────────────────────────────────────────────
 
+	/**
+	 * Registers the hooks that generate the per-request nonce and add it to scripts.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		// Generate nonce once, very early, before any output.
 		add_action( 'init', array( $this, 'generate' ), 1 );
@@ -53,11 +63,21 @@ class Nonce_Manager {
 
 	// ── Nonce lifecycle ───────────────────────────────────────────────────────
 
+	/**
+	 * Generates a fresh random nonce for this request.
+	 *
+	 * @return void
+	 */
 	public function generate(): void {
 		$bytes       = random_bytes( 16 );
 		$this->nonce = rtrim( base64_encode( $bytes ), '=' );
 	}
 
+	/**
+	 * Returns this request's nonce.
+	 *
+	 * @return string The nonce, or an empty string before it is generated.
+	 */
 	public function get_nonce(): string {
 		return $this->nonce;
 	}

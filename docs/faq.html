@@ -369,6 +369,7 @@
           <article class='faq-item'>
             <h3>Is it compatible with caching plugins?</h3>
             <p>Usually, but nonce-based pages should not be served from a full-page cache unless the cache is nonce-aware or appropriate exclusions are configured. A cached page freezes the nonce that was valid the moment it was cached; every later visitor is served that same stale value, and the browser correctly refuses to run any script whose nonce doesn't match the current header -- breaking the page for everyone until the cache entry is cleared or excluded.</p>
+            <p>A page cache also keeps the policy header a page was stored with, so an approval or a promotion to enforce doesn't reach visitors until the cached copy is cleared. When the frontend policy changes, the plugin clears the page caches it recognises (LiteSpeed Cache, WP Rocket, W3 Total Cache, WP Super Cache, WP Fastest Cache, WP-Optimize, SiteGround Speed Optimizer, Hummingbird, Breeze, Cache Enabler, Nginx Helper, and the WP Engine and Pantheon caches). You can turn this off under <strong>Control → Automation Settings → Page Caches</strong>. It can't clear a CDN such as Cloudflare: clear that from the CDN's own dashboard. The <strong>What visitors receive</strong> row on <strong>Settings → Security Health</strong> fetches your home page the way a visitor would and says whether the policy that comes back is the current one.</p>
           </article>
           <article class='faq-item'>
             <h3>Can it work with tag managers?</h3>

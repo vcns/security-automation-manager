@@ -87,6 +87,15 @@ final class Change_Window_Store {
 		return (int) $wpdb->insert_id;
 	}
 
+	/**
+	 * Closes a change window and records who closed it.
+	 *
+	 * @param int      $id                Change window id.
+	 * @param int      $admin_id          Administrator user id.
+	 * @param string   $note              Closing note.
+	 * @param int|null $baseline_id_after Baseline id captured after the window, or null.
+	 * @return bool True when a window was closed.
+	 */
 	public function close( int $id, int $admin_id, string $note, ?int $baseline_id_after ): bool {
 		global $wpdb;
 		$table = $wpdb->prefix . 'sam_change_windows';

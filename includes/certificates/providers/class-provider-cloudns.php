@@ -17,10 +17,20 @@ class Provider_Cloudns extends Dns_Provider {
 
 	private const API = 'https://api.cloudns.net/dns';
 
+	/**
+	 * Returns the display name of the ClouDNS provider.
+	 *
+	 * @return string Provider name.
+	 */
 	public static function label(): string {
 		return 'ClouDNS';
 	}
 
+	/**
+	 * Describes the credentials the ClouDNS provider needs.
+	 *
+	 * @return array Field definitions keyed by field key.
+	 */
 	public static function fields(): array {
 		return array(
 			'auth_id'       => array(
@@ -34,6 +44,14 @@ class Provider_Cloudns extends Dns_Provider {
 		);
 	}
 
+	/**
+	 * Adds the ACME challenge TXT record through the ClouDNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	public function create_txt_record( string $fqdn, string $value ): void {
 		$zone = $this->zone( $fqdn );
 
@@ -53,6 +71,13 @@ class Provider_Cloudns extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Removes the ACME challenge TXT record through the ClouDNS API.
+	 *
+	 * @param string $fqdn  Full record name.
+	 * @param string $value TXT value.
+	 * @return void
+	 */
 	public function delete_txt_record( string $fqdn, string $value ): void {
 		$zone     = $this->zone( $fqdn );
 		$relative = $this->relative_name( $fqdn, $zone );
@@ -81,6 +106,13 @@ class Provider_Cloudns extends Dns_Provider {
 		}
 	}
 
+	/**
+	 * Finds the ClouDNS zone that contains a record name.
+	 *
+	 * @param string $fqdn Full record name.
+	 * @return string Zone name or id.
+	 * @throws \RuntimeException When the operation fails.
+	 */
 	private function zone( string $fqdn ): string {
 		foreach ( $this->zone_candidates( $fqdn ) as $candidate ) {
 			$body = $this->call( 'get-zone-info.json', array( 'domain-name' => $candidate ) );
@@ -92,6 +124,13 @@ class Provider_Cloudns extends Dns_Provider {
 		throw new \RuntimeException( "ClouDNS: no zone found for {$fqdn}." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, never echoed as HTML; only logged via Audit_Log/record_run().
 	}
 
+	/**
+	 * Sends a request to the ClouDNS API.
+	 *
+	 * @param string $endpoint API endpoint.
+	 * @param array  $params   Request parameters.
+	 * @return string Response body.
+	 */
 	private function call( string $endpoint, array $params ): string {
 		$auth_id = trim( $this->credential( 'auth_id' ) );
 		$auth    = str_starts_with( $auth_id, 'sub:' )

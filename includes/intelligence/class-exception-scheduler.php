@@ -29,10 +29,20 @@ final class Exception_Scheduler {
 
 	private Exception_Store $store;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Exception_Store|null $store Exception store, a new one is created when omitted.
+	 */
 	public function __construct( ?Exception_Store $store = null ) {
 		$this->store = null !== $store ? $store : new Exception_Store();
 	}
 
+	/**
+	 * Registers the daily check and schedules it when it is not scheduled yet.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( self::CHECK_HOOK, array( $this, 'run_daily_check' ) );
 
@@ -41,11 +51,21 @@ final class Exception_Scheduler {
 		}
 	}
 
+	/**
+	 * Expires overdue exceptions and notifies about those expiring soon.
+	 *
+	 * @return void
+	 */
 	public function run_daily_check(): void {
 		$this->store->expire_overdue();
 		$this->maybe_notify_of_upcoming_expiry();
 	}
 
+	/**
+	 * Emails the notification address about exceptions that are about to expire.
+	 *
+	 * @return void
+	 */
 	private function maybe_notify_of_upcoming_expiry(): void {
 		$window_days = max( 1, (int) get_option( 'wp_sam_exception_notice_window_days', self::DEFAULT_NOTICE_WINDOW_DAYS ) );
 		$due         = $this->store->due_for_notice( $window_days );

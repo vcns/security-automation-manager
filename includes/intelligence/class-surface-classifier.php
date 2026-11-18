@@ -38,11 +38,17 @@ final class Surface_Classifier {
 			return false;
 		}
 
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the header is matched verbatim against a 64-char hex token by Conflict_Probe_Token::is_valid(); unslashing or sanitizing could alter it, and any non-token value is rejected by that method's strict preg_match.
 		return Conflict_Probe_Token::is_valid( (string) $_SERVER[ $server_key ] );
 	}
 
 	// ── Surface detection ─────────────────────────────────────────────────────
 
+	/**
+	 * Works out which surface the current request belongs to.
+	 *
+	 * @return string Surface slug: api, login, admin or frontend.
+	 */
 	public static function detect(): string {
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
 			return 'api';
@@ -66,6 +72,11 @@ final class Surface_Classifier {
 		return 'frontend';
 	}
 
+	/**
+	 * Returns the request path without the query string or a trailing slash.
+	 *
+	 * @return string Path, or an empty string.
+	 */
 	public static function request_path(): string {
 		$uri = self::raw_server_value( 'REQUEST_URI' );
 		if ( '' === $uri ) {
@@ -76,6 +87,11 @@ final class Surface_Classifier {
 		return is_string( $path ) ? rtrim( $path, '/' ) : '';
 	}
 
+	/**
+	 * Returns the raw query string of the request.
+	 *
+	 * @return string Query string.
+	 */
 	public static function query_string(): string {
 		return self::raw_server_value( 'QUERY_STRING' );
 	}
@@ -97,7 +113,7 @@ final class Surface_Classifier {
 			return '';
 		}
 
-		$value    = wp_unslash( (string) $_SERVER[ $key ] );
+		$value    = wp_unslash( (string) $_SERVER[ $key ] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- deliberately unsanitized; see the docblock above. Control characters are stripped below.
 		$filtered = preg_replace( '/[\x00-\x1F\x7F]/', '', $value );
 		return null !== $filtered ? $filtered : '';
 	}

@@ -97,6 +97,15 @@ class Reporting_Endpoint {
 		return in_array( $value, self::HINTED_SURFACES, true ) ? $value : 'frontend';
 	}
 
+	/**
+	 * Whether an administrator has configured a valid override report URL
+	 * (the wp_sam_report_endpoint_url option). url_for_surface() leaves such
+	 * a URL untouched rather than appending a surface hint, since it usually
+	 * fronts a proxy whose handling of an extra query parameter this plugin
+	 * can't know.
+	 *
+	 * @return bool
+	 */
 	private static function has_override(): bool {
 		$override = trim( (string) get_option( 'wp_sam_report_endpoint_url', '' ) );
 		return '' !== $override && self::is_allowed_url( $override );

@@ -32,6 +32,11 @@ final class Baseline_State_Builder {
 
 	private Policy_Builder $policy_builder;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Policy_Builder $policy_builder Policy builder used to read the CSP headers.
+	 */
 	public function __construct( Policy_Builder $policy_builder ) {
 		$this->policy_builder = $policy_builder;
 	}

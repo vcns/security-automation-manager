@@ -27,10 +27,20 @@ class Renewal_Scheduler {
 
 	private Certificate_Manager $manager;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Certificate_Manager $manager Certificate manager that runs the scheduled work.
+	 */
 	public function __construct( Certificate_Manager $manager ) {
 		$this->manager = $manager;
 	}
 
+	/**
+	 * Registers the issue and renewal hooks and schedules the daily renewal check when it is missing.
+	 *
+	 * @return void
+	 */
 	public function register(): void {
 		add_action( self::ISSUE_HOOK, array( $this->manager, 'issue' ) );
 		add_action( self::RENEWAL_HOOK, array( $this->manager, 'maybe_renew' ) );

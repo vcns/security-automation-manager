@@ -380,6 +380,33 @@ class ViolationReporterTest extends TestCase {
 		$this->assertStringContainsString( 'status_code = VALUES(status_code)', $query );
 	}
 
+	/**
+	 * Regression test: the User-Agent is cut to fit user_agent varchar(512)
+	 * by characters, not bytes. A byte cut can split a multibyte character
+	 * and leave invalid UTF-8 in the middle of the value; wpdb::query() then
+	 * refuses the whole write and the report is dropped. Here the UA is 600
+	 * three-byte characters, so a byte cut at 512 would land inside the 171st
+	 * character. The stored query must stay valid UTF-8 and hold exactly 512
+	 * characters of UA.
+	 */
+	public function test_long_multibyte_user_agent_is_truncated_without_corrupting_utf8(): void {
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		$_SERVER['HTTP_USER_AGENT']                   = str_repeat( '中', 600 );
+
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"script-src","document-uri":"https://example.com/","blocked-uri":"https://cdn.example.com"}}'
+		);
+
+		$this->reporter->handle( $request );
+
+		$query = (string) $GLOBALS['_wpdb_last_query'];
+		$this->assertTrue( mb_check_encoding( $query, 'UTF-8' ), 'Stored query must be valid UTF-8.' );
+		$this->assertStringContainsString( str_repeat( '中', 512 ), $query, 'UA should keep 512 characters.' );
+		$this->assertStringNotContainsString( str_repeat( '中', 513 ), $query, 'UA should be cut at 512 characters.' );
+
+		unset( $_SERVER['HTTP_USER_AGENT'] );
+	}
+
 	public function test_report_endpoint_learning_creates_pending_source_candidate_when_window_open(): void {
 		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
 		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );

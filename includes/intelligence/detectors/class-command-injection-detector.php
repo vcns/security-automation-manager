@@ -21,22 +21,48 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Command_Injection_Detector extends Pattern_Detector {
 
+	/**
+	 * Returns the stable id of the command injection detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'command-injection';
 	}
 
+	/**
+	 * Returns the family the command injection detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'command-injection';
 	}
 
+	/**
+	 * Returns the plain-language description of the command injection detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Flags shell command syntax (chained via ;, backticks, $(...), or piped to another command) in a request.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the command injection detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the request data (path, query string) that the command injection rules are matched against.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return string Text to match.
+	 */
 	protected function subject( array $context ): string {
 		$path         = (string) ( $context['path'] ?? '' );
 		$query_string = (string) ( $context['query_string'] ?? '' );
@@ -44,6 +70,11 @@ final class Command_Injection_Detector extends Pattern_Detector {
 		return '' !== $query_string ? $path . '?' . $query_string : $path;
 	}
 
+	/**
+	 * Returns the command injection detection rules.
+	 *
+	 * @return array Rules, each with an id, pattern, severity and description.
+	 */
 	protected function rules(): array {
 		return array(
 			array(

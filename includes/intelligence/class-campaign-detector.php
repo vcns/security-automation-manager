@@ -39,6 +39,12 @@ final class Campaign_Detector {
 	private Event_Store $events;
 	private Campaign_Store $campaigns;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Event_Store    $events    Event store to read from.
+	 * @param Campaign_Store $campaigns Campaign store to write to.
+	 */
 	public function __construct( Event_Store $events, Campaign_Store $campaigns ) {
 		$this->events    = $events;
 		$this->campaigns = $campaigns;

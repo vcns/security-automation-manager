@@ -100,7 +100,7 @@ unset( $wp_sam_mode_key );
 
 // Shared pagination defaults.
 $per_page = 20;
-$page_num = max( 1, (int) ( isset( $_GET['paged'] ) ? $_GET['paged'] : 1 ) );
+$page_num = max( 1, intval( wp_unslash( $_GET['paged'] ?? 1 ) ) );
 $offset   = ( $page_num - 1 ) * $per_page;
 
 // Violations are queried in full (filtered, sorted, paginated) inside the
@@ -211,7 +211,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'The learning window.', 'vcns-security-automation-manager' ); ?></strong>
-			<?php esc_html_e( 'While the learning window is open (48 hours after the last material change to the site by default - a page, post, plugin, or theme edit - adjustable on the Settings tab), validated violation reports and scan discoveries add candidate sources to the For Review queue instead of just being logged. Once the window locks, new discoveries stop being added automatically until another material change reopens it.', 'vcns-security-automation-manager' ); ?>
+			<?php esc_html_e( 'While the learning window is open (48 hours after the last material change to the site by default - publishing content of any public type, a Site Editor or Customizer change, or a plugin, theme or WordPress update - adjustable on the Settings tab), validated violation reports and scan discoveries add candidate sources to the For Review queue instead of just being logged. Once the window locks, new discoveries stop being added automatically until another material change reopens it.', 'vcns-security-automation-manager' ); ?>
 		</li>
 		<li>
 			<strong><?php esc_html_e( 'Review.', 'vcns-security-automation-manager' ); ?></strong>
@@ -381,7 +381,8 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 					/>
 					<code><?php echo esc_html( $bypass_entry['directive'] . ': ' . $bypass_entry['token'] ); ?></code>
 					<?php
-					$bypass_note = $bypass_entry['label'] . ' ' . $bypass_entry['risk_note'];
+					$bypass_text = \WP_SAM\CSP\Policy_Builder::bypass_text( $bypass_flag );
+					$bypass_note = $bypass_text['label'] . ' ' . $bypass_text['risk_note'];
 					if ( $bypass_count > 0 ) {
 						$bypass_note .= ' ' . sprintf(
 							/* translators: %s: formatted violation occurrence count */
@@ -528,7 +529,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$src_total = (int) $wpdb->get_var( $count_sql );
 
 		$src_pages = max( 1, (int) ceil( $src_total / $per_page ) );
-		$page_num  = min( max( 1, (int) ( isset( $_GET['paged'] ) ? $_GET['paged'] : 1 ) ), $src_pages );
+		$page_num  = min( max( 1, intval( wp_unslash( $_GET['paged'] ?? 1 ) ) ), $src_pages );
 		$offset    = ( $page_num - 1 ) * $per_page;
 
 		$query_args = array_merge( $src_args, array( $per_page, $offset ) );
@@ -803,7 +804,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 
 		$pc_total      = count( $policy_events_sorted );
 		$pc_pages      = max( 1, (int) ceil( $pc_total / $per_page ) );
-		$pc_page_num   = min( max( 1, (int) ( isset( $_GET['pc_paged'] ) ? $_GET['pc_paged'] : 1 ) ), $pc_pages );
+		$pc_page_num   = min( max( 1, intval( wp_unslash( $_GET['pc_paged'] ?? 1 ) ) ), $pc_pages );
 		$pc_offset     = ( $pc_page_num - 1 ) * $per_page;
 		$policy_events = array_slice( $policy_events_sorted, $pc_offset, $per_page );
 
@@ -1136,7 +1137,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$viol_total = (int) $wpdb->get_var( $viol_count_sql );
 
 		$viol_pages    = max( 1, (int) ceil( $viol_total / $per_page ) );
-		$viol_page_num = min( max( 1, (int) ( isset( $_GET['v_paged'] ) ? $_GET['v_paged'] : 1 ) ), $viol_pages );
+		$viol_page_num = min( max( 1, intval( wp_unslash( $_GET['v_paged'] ?? 1 ) ) ), $viol_pages );
 		$viol_offset   = ( $viol_page_num - 1 ) * $per_page;
 
 		$viol_data_args = array_merge( $viol_args, array( $per_page, $viol_offset ) );
@@ -1474,6 +1475,9 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		$automation_mode_labels     = \WP_SAM\CSP\Automation_Config::mode_labels();
 		$automation_directives      = array( 'default-src', 'img-src', 'font-src', 'media-src', 'manifest-src' );
 		$automation_schemes         = array( 'https', 'wss' );
+		$page_cache_purger          = new \WP_SAM\CSP\Page_Cache_Purger();
+		$detected_page_caches       = $page_cache_purger->detected_caches();
+		$last_page_cache_purge      = get_option( \WP_SAM\CSP\Page_Cache_Purger::OPTION_LAST_PURGE, array() );
 		?>
 	<p class="description">
 		<?php esc_html_e( "Everything below is grouped by what it governs: when a surface is allowed to promote itself to enforce mode, how much decision-making the deterministic engine can do without you, how this plugin's CSP header reaches visitors when a proxy or CDN sits in front of the site, how it learns from browser reports, and when it re-scans the site automatically.", 'vcns-security-automation-manager' ); ?>
@@ -1606,6 +1610,50 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			</tr>
 		</table>
 
+		<h2 class="title"><?php esc_html_e( 'Page Caches', 'vcns-security-automation-manager' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'A page cache keeps each page together with the headers it was first sent with. Until the cached copy is cleared or expires, visitors keep getting the policy it was stored with, whatever you have approved or changed since.', 'vcns-security-automation-manager' ); ?>
+		</p>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Clear page caches', 'vcns-security-automation-manager' ); ?></th>
+				<td>
+					<label for="<?php echo esc_attr( \WP_SAM\CSP\Page_Cache_Purger::OPTION_ENABLED ); ?>">
+						<input type="checkbox" id="<?php echo esc_attr( \WP_SAM\CSP\Page_Cache_Purger::OPTION_ENABLED ); ?>" name="<?php echo esc_attr( \WP_SAM\CSP\Page_Cache_Purger::OPTION_ENABLED ); ?>" value="1" <?php checked( $page_cache_purger->is_enabled() ); ?> />
+						<?php esc_html_e( 'Clear page caches when the frontend policy changes', 'vcns-security-automation-manager' ); ?>
+					</label>
+					<p class="description">
+						<?php
+						if ( empty( $detected_page_caches ) ) {
+							esc_html_e( 'No page cache this plugin knows how to clear was found on this site.', 'vcns-security-automation-manager' );
+						} else {
+							printf(
+								/* translators: %s: comma-separated names of page cache plugins, e.g. "LiteSpeed Cache" */
+								esc_html__( 'Found on this site: %s.', 'vcns-security-automation-manager' ),
+								esc_html( implode( ', ', $detected_page_caches ) )
+							);
+						}
+						?>
+					</p>
+					<?php if ( is_array( $last_page_cache_purge ) && ! empty( $last_page_cache_purge['at'] ) ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: 1: UTC date and time, 2: comma-separated names of page cache plugins */
+							esc_html__( 'Last cleared %1$s UTC: %2$s.', 'vcns-security-automation-manager' ),
+							esc_html( gmdate( 'Y-m-d H:i:s', (int) $last_page_cache_purge['at'] ) ),
+							esc_html( implode( ', ', array_map( 'strval', (array) ( $last_page_cache_purge['caches'] ?? array() ) ) ) )
+						);
+						?>
+					</p>
+					<?php endif; ?>
+					<p class="description">
+						<?php esc_html_e( 'This plugin can only clear caches that run inside WordPress. A CDN in front of the site, such as Cloudflare, keeps its own copies: clear it from the CDN\'s dashboard after changing the policy. Settings → Security Health shows what visitors actually receive.', 'vcns-security-automation-manager' ); ?>
+					</p>
+				</td>
+			</tr>
+		</table>
+
 		<h2 class="title"><?php esc_html_e( 'Report Endpoint Learning', 'vcns-security-automation-manager' ); ?></h2>
 		<p class="description">
 			<?php esc_html_e( 'Validated CSP reports can add pending source candidates while the site is inside the material-change learning window.', 'vcns-security-automation-manager' ); ?>
@@ -1656,7 +1704,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 						value="<?php echo esc_attr( get_option( 'wp_sam_learning_window_hours', 48 ) ); ?>"
 						min="1" max="720" class="small-text" />
 					<p class="description">
-						<?php esc_html_e( 'Default: 48. The report endpoint stops creating or updating source candidates after this many hours from the latest page, post, or plugin change.', 'vcns-security-automation-manager' ); ?>
+						<?php esc_html_e( 'Default: 48. The report endpoint stops creating or updating source candidates after this many hours from the latest material change: publishing content of any public type (posts, pages, products and other custom types), a Site Editor or Customizer change, or installing, activating or updating a plugin, theme or WordPress.', 'vcns-security-automation-manager' ); ?>
 					</p>
 				</td>
 			</tr>

@@ -37,26 +37,57 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Http_Method_Detector extends Detector {
 
+	/**
+	 * Returns the stable id of the HTTP method detector.
+	 *
+	 * @return string Detector id.
+	 */
 	public function id(): string {
 		return 'http-method-intelligence';
 	}
 
+	/**
+	 * Returns the family the HTTP method detector belongs to.
+	 *
+	 * @return string Family label.
+	 */
 	public function family(): string {
 		return 'http-method-intelligence';
 	}
 
+	/**
+	 * Returns the plain-language description of the HTTP method detector shown in the Detectors tab.
+	 *
+	 * @return string Translated description.
+	 */
 	public function description(): string {
 		return __( 'Classifies OPTIONS requests as a genuine CORS preflight or unexplained -- never treats OPTIONS as malicious on its own.', 'vcns-security-automation-manager' );
 	}
 
+	/**
+	 * Returns the surfaces the HTTP method detector runs on.
+	 *
+	 * @return array Surface slugs, or an empty array for every surface.
+	 */
 	public function applicable_surfaces(): array {
 		return array();
 	}
 
+	/**
+	 * Returns the control actions the HTTP method detector may be set to.
+	 *
+	 * @return array Control action keys.
+	 */
 	public function allowed_control_actions(): array {
 		return array( 'observe', 'enforce' );
 	}
 
+	/**
+	 * Classifies OPTIONS requests as CORS preflights or unclassified.
+	 *
+	 * @param array $context Request context built by Request_Observer.
+	 * @return array|null Finding data, or null when nothing was found.
+	 */
 	public function evaluate( array $context ): ?array {
 		if ( 'OPTIONS' !== strtoupper( (string) ( $context['method'] ?? '' ) ) ) {
 			return null;
