@@ -343,4 +343,68 @@ class TrafficGuardTest extends TestCase {
 
 		$this->assertSame( 'block', $verdict['action'] );
 	}
+
+	// ── Recording network-rule blocks ────────────────────────────────────────
+
+	private function guard_with_responder( ?string &$sent_reason ): Traffic_Guard {
+		return new Traffic_Guard(
+			new Traffic_Policy_Store(),
+			new Ip_Rule_Store(),
+			new Traffic_Block_Store(),
+			new Rate_Limiter(),
+			new Network_Rule_Store(),
+			new Network_Intelligence_Resolver( new Tor_Exit_List_Store(), new Asn_Lookup_Store(), new Geo_Ip_Store() ),
+			static fn(): bool => false,
+			static function ( string $reason ) use ( &$sent_reason ): void {
+				$sent_reason = $reason;
+			},
+			static function (): void {}
+		);
+	}
+
+	private function hit_inserts(): array {
+		return array_values(
+			array_filter(
+				$GLOBALS['_wpdb_queries'] ?? array(),
+				static fn( string $sql ): bool => str_contains( $sql, 'INSERT INTO wp_sam_network_rule_hits' )
+			)
+		);
+	}
+
+	public function test_enforce_counts_a_network_rule_block_before_sending_the_403(): void {
+		$_SERVER['REMOTE_ADDR']             = '203.0.113.42';
+		$_SERVER['REQUEST_URI']             = '/wp-login.php?redirect_to=%2Fwp-admin%2F';
+		$GLOBALS['_wpdb_get_var_queue']     = array( 1, 1 ); // has_any(); Tor check inside resolve().
+		$GLOBALS['_wpdb_get_row']           = array( 'asn' => 15169, 'asn_org' => 'GOOGLE' );
+		$GLOBALS['_wpdb_get_results_queue'] = array(
+			array(), // Ip_Rule_Store::all().
+			array( array( 'id' => 1, 'rule_type' => 'asn', 'value' => '15169', 'surface' => '' ) ),
+		);
+
+		$sent_reason = null;
+		$this->guard_with_responder( $sent_reason )->enforce();
+		unset( $_SERVER['REMOTE_ADDR'] );
+
+		$this->assertSame( 'network_rule_block', $sent_reason );
+		$inserts = $this->hit_inserts();
+		$this->assertCount( 1, $inserts );
+		$this->assertStringContainsString( "'asn', '15169', '203.0.113.42', 'login', '/wp-login.php'", $inserts[0] );
+		$this->assertStringNotContainsString( 'redirect_to', $inserts[0] );
+		$this->assertStringContainsString( 'ON DUPLICATE KEY UPDATE hit_count = hit_count + 1', $inserts[0] );
+	}
+
+	public function test_enforce_does_not_count_an_ip_rule_block_as_a_network_rule_block(): void {
+		$_SERVER['REMOTE_ADDR']       = '185.199.223.7';
+		$_SERVER['REQUEST_URI']       = '/';
+		$GLOBALS['_wpdb_get_results'] = array(
+			array( 'id' => 1, 'list_type' => 'block', 'cidr' => '185.199.223.7', 'surface' => '', 'expires_at' => null ),
+		);
+
+		$sent_reason = null;
+		$this->guard_with_responder( $sent_reason )->enforce();
+		unset( $_SERVER['REMOTE_ADDR'] );
+
+		$this->assertSame( 'ip_rule_block', $sent_reason );
+		$this->assertSame( array(), $this->hit_inserts() );
+	}
 }

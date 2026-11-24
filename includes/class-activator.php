@@ -408,6 +408,7 @@ class Activator {
 			'sam_network_rules',
 			'sam_exceptions',
 			'sam_recommendation_dismissals',
+			'sam_network_rule_hits',
 		);
 	}
 
@@ -1479,6 +1480,32 @@ class Activator {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY rule_type (rule_type)
+) {$cc};"
+		);
+
+		// Schema v49: sam_network_rule_hits -- what the sam_network_rules
+		// above actually block. Traffic_Guard answers a match with a 403
+		// and stops; Network_Rule_Hit_Store counts it here first, one row
+		// per UTC day, rule and address, so the Country Block List and the
+		// ASN rules can show what they are catching. Holds visitor
+		// addresses and request paths (never query strings), so Scheduler
+		// deletes rows after the data-retention window, like request events.
+		dbDelta(
+			"CREATE TABLE {$p}sam_network_rule_hits (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  hit_date date NOT NULL,
+  rule_type varchar(10) NOT NULL,
+  rule_value varchar(32) NOT NULL,
+  ip varchar(64) NOT NULL,
+  surface varchar(32) NOT NULL DEFAULT '',
+  last_path varchar(255) NOT NULL DEFAULT '',
+  hit_count int(11) UNSIGNED NOT NULL DEFAULT 1,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY hit_day_rule_ip (hit_date,rule_type,rule_value,ip),
+  KEY rule_last_seen (rule_type,last_seen_at),
+  KEY last_seen_at (last_seen_at)
 ) {$cc};"
 		);
 
