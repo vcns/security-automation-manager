@@ -374,6 +374,12 @@ if ( ! function_exists( 'submit_button' ) ) {
 	}
 }
 
+if ( ! function_exists( 'settings_fields' ) ) {
+	function settings_fields( string $option_group ): void {
+		echo '<input type="hidden" name="option_page" value="' . htmlspecialchars( $option_group, ENT_QUOTES, 'UTF-8' ) . '" />';
+	}
+}
+
 if ( ! function_exists( 'wp_nonce_field' ) ) {
 	// Fixed, non-cryptographic value -- no test asserts a real nonce's
 	// actual value, only that a form renders one of these fields at all.

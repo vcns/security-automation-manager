@@ -1748,6 +1748,32 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			</tr>
 		</table>
 
+		<!-- ── Data retention ─────────────────────────────────────────────── -->
+		<?php $retention_days = \WP_SAM\Data_Retention::days(); ?>
+		<h2 class="title" id="wp-sam-data-retention"><?php esc_html_e( 'Data Retention', 'vcns-security-automation-manager' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="<?php echo esc_attr( \WP_SAM\Data_Retention::OPTION ); ?>"><?php esc_html_e( 'Keep records for (days)', 'vcns-security-automation-manager' ); ?></label></th>
+				<td>
+					<input type="number" id="<?php echo esc_attr( \WP_SAM\Data_Retention::OPTION ); ?>" name="<?php echo esc_attr( \WP_SAM\Data_Retention::OPTION ); ?>"
+						value="<?php echo esc_attr( (string) $retention_days ); ?>"
+						min="0" max="<?php echo esc_attr( (string) \WP_SAM\Data_Retention::MAX_DAYS ); ?>" class="small-text" />
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %d: default number of days */
+							esc_html__( 'Default: %d. Each daily scan deletes CSP and header violation reports, Continuous Intelligence events and identities, and cached ASN and Geo-IP lookups older than this. Identities you have authorised or denied are kept. 0 keeps everything.', 'vcns-security-automation-manager' ),
+							(int) \WP_SAM\Data_Retention::DEFAULT_DAYS
+						);
+						?>
+					</p>
+					<?php if ( 0 === $retention_days ) : ?>
+					<div class="notice notice-warning inline"><p><?php esc_html_e( 'Nothing is being deleted, so visitor IP addresses, user agents and referrers build up in the database indefinitely.', 'vcns-security-automation-manager' ); ?></p></div>
+					<?php endif; ?>
+				</td>
+			</tr>
+		</table>
+
 		<?php submit_button(); ?>
 	</form>
 	<?php endif; ?>

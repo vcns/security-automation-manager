@@ -233,11 +233,15 @@
       <section id='violations' class='section'>
         <p class='section-label'>Violations</p>
         <h2>Browser reports and learning behaviour.</h2>
-        <p class='section-note'>Reports and occurrence counts are reviewed on <strong>Security Automation Manager -> CSP -> Violations</strong>; the reporting-endpoint URL and retention period are set on <strong>-> Settings</strong>.</p>
+        <p class='section-note'>Reports and occurrence counts are reviewed on <strong>Observe &rarr; CSP Violations</strong>; the reporting-endpoint URL and the retention period are set on <strong>Control &rarr; Automation Settings</strong>.</p>
         <div class='faq-list'>
           <article class='faq-item'>
             <h3>Where are violation reports stored?</h3>
-            <p>They are stored locally in the WordPress database in the plugin violation reports table. Old reports are purged by the daily scan according to the configured retention period. The default is 90 days; zero keeps reports indefinitely.</p>
+            <p>They are stored locally in the WordPress database in the plugin violation reports table. The daily scan deletes reports older than the retention period set under <strong>Control &rarr; Automation Settings &rarr; Data Retention</strong>. The default is 90 days; zero keeps reports indefinitely. The same period applies to Continuous Intelligence events and identities and to cached ASN and Geo-IP lookups. Identities you have authorised or denied are kept.</p>
+          </article>
+          <article class='faq-item'>
+            <h3>My retention period was 0 after upgrading to 2.16.0. Why did it change?</h3>
+            <p>Before 2.16.0 the retention period had no field of its own, and saving Automation Settings reset it to 0, which means keep everything. So nothing was being deleted on most sites. 2.16.0 adds the field and, once, puts a period of 0 back to 90 days. You'll see a notice when that happens. The next daily scan then deletes older records. If you really do want to keep everything, set it back to 0.</p>
           </article>
           <article class='faq-item'>
             <h3>Are reports sent to a third-party reporting service?</h3>
