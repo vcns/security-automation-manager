@@ -147,6 +147,84 @@ class TableQueryTest extends TestCase {
 		$this->assertSame( '%100\%\_off%', $fragment['args'][0] );
 	}
 
+	// ── ip_where() / ip_range() ──────────────────────────────────────────────────
+
+	public function test_ip_where_returns_null_for_blank_term(): void {
+		$this->assertNull( Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '  ' ) );
+	}
+
+	public function test_ip_where_matches_part_of_an_address_anywhere(): void {
+		$fragment = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '172.70.' );
+
+		$this->assertSame( 'ip LIKE %s', $fragment['sql'] );
+		$this->assertSame( array( '%172.70.%' ), $fragment['args'] );
+	}
+
+	public function test_ip_where_anchors_a_wildcard_pattern_to_the_whole_address(): void {
+		$prefix = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '172.70.*' );
+		$suffix = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '*.135' );
+		$middle = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '10.*.1.*' );
+
+		$this->assertSame( 'ip LIKE %s', $prefix['sql'] );
+		$this->assertSame( array( '172.70.%' ), $prefix['args'] );
+		$this->assertSame( array( '%.135' ), $suffix['args'] );
+		$this->assertSame( array( '10.%.1.%' ), $middle['args'] );
+	}
+
+	public function test_ip_where_escapes_like_wildcards_typed_alongside_a_star(): void {
+		$fragment = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '10_%*' );
+
+		$this->assertSame( array( '10\_\%%' ), $fragment['args'] );
+	}
+
+	public function test_ip_where_turns_an_ipv4_range_into_integer_bounds(): void {
+		$fragment = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '172.64.0.0/13' );
+
+		$this->assertSame( '(ip NOT LIKE %s AND INET_ATON(ip) BETWEEN %d AND %d)', $fragment['sql'] );
+		// 172.64.0.0 to 172.71.255.255.
+		$this->assertSame( array( '%:%', 2889875456, 2890399743 ), $fragment['args'] );
+	}
+
+	public function test_ip_where_turns_an_ipv6_range_into_hex_bounds_and_excludes_ipv4_rows(): void {
+		$fragment = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', '2400:cb00::/32' );
+
+		$this->assertSame( '(ip LIKE %s AND HEX(INET6_ATON(ip)) BETWEEN %s AND %s)', $fragment['sql'] );
+		$this->assertSame(
+			array( '%:%', '2400CB00' . str_repeat( '0', 24 ), '2400CB00' . str_repeat( 'F', 24 ) ),
+			$fragment['args']
+		);
+	}
+
+	public function test_ip_where_matches_nothing_for_a_malformed_range(): void {
+		foreach ( array( '172.64.0.0/33', 'cloudflare/13', '172.64.0.0/', '172.64.0.0/1/2', '172.64.0.0/-1', '2400:cb00::/129' ) as $term ) {
+			$fragment = Table_Query::ip_where( $GLOBALS['wpdb'], 'ip', $term );
+
+			$this->assertSame( '1=0', $fragment['sql'], $term );
+			$this->assertSame( array(), $fragment['args'], $term );
+		}
+	}
+
+	public function test_ip_range_ignores_host_bits(): void {
+		$this->assertSame( Table_Query::ip_range( '172.64.0.0/13' ), Table_Query::ip_range( '172.70.5.9/13' ) );
+	}
+
+	public function test_ip_range_covers_single_addresses_and_everything(): void {
+		$single = Table_Query::ip_range( '203.0.113.7/32' );
+		$all    = Table_Query::ip_range( '0.0.0.0/0' );
+
+		$this->assertSame( $single['low'], $single['high'] );
+		$this->assertSame( 0, $all['low'] );
+		$this->assertSame( 4294967295, $all['high'] );
+	}
+
+	public function test_ip_range_handles_a_prefix_that_ends_mid_byte(): void {
+		$range = Table_Query::ip_range( '2001:db8:abcd:12::/60' );
+
+		$this->assertSame( 6, $range['family'] );
+		$this->assertSame( '20010DB8ABCD0010' . str_repeat( '0', 16 ), $range['low'] );
+		$this->assertSame( '20010DB8ABCD001F' . str_repeat( 'F', 16 ), $range['high'] );
+	}
+
 	// ── numeric_gte_where() ──────────────────────────────────────────────────────
 
 	public function test_numeric_gte_where_returns_null_when_absent(): void {
