@@ -26,6 +26,7 @@ use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Humans_Txt_Store;
 use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
+use WP_SAM\Intelligence\Network_Rule_Hit_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
@@ -98,6 +99,7 @@ class Scheduler {
 			$this->purge_old_violations();
 			$this->purge_old_pillar_violations();
 			$this->purge_old_request_events();
+			$this->purge_old_network_rule_hits();
 			$this->purge_stale_traffic_blocks();
 			$hash_mgr->retire_json_data_hashes();
 			$hash_mgr->prune_stale_by_age();
@@ -257,6 +259,24 @@ class Scheduler {
 				'scheduler',
 				'request_events_purged',
 				sprintf( 'Purged %d request observation event(s) older than %d days.', $deleted, $days ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Same retention window as request events (wp_sam_violation_retention_days):
+	 * the network-rule block counts hold visitor addresses too.
+	 */
+	private function purge_old_network_rule_hits(): void {
+		$days    = (int) get_option( 'wp_sam_violation_retention_days', 90 );
+		$deleted = ( new Network_Rule_Hit_Store() )->purge_older_than( $days );
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'network_rule_hits_purged',
+				sprintf( 'Purged %d network-rule block record(s) older than %d days.', $deleted, $days ),
 				'info'
 			);
 		}

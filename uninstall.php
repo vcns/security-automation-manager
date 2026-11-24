@@ -39,6 +39,7 @@ $wp_sam_tables = array(
 	'sam_pillar_violation_reports',
 	'sam_internal_asset_inventory',
 	'sam_certificates',
+	'sam_network_rule_hits',
 );
 
 // Extension-owned tables (e.g. a paid automation mode's own commercial

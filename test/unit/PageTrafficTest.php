@@ -573,6 +573,73 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringContainsString( 'data-wp-sam-dialog-open="wp-sam-geoip-settings">Change where this website operates</button>', $output );
 	}
 
+	/**
+	 * One row carrying both a country rule's columns and a block record's,
+	 * since the test wpdb answers every get_results() call with the same
+	 * rows: Network_Rule_Store::all() reads the first set, and
+	 * Network_Rule_Hit_Store's summary/recent/totals queries the second.
+	 */
+	private function country_rule_with_hits(): array {
+		return array(
+			'id'           => 9,
+			'rule_type'    => 'country',
+			'value'        => 'CN',
+			'surface'      => '',
+			'reason'       => 'Blocked via Geo-IP country list',
+			'rule_value'   => 'CN',
+			'requests'     => '1234',
+			'addresses'    => '14',
+			'ip'           => '198.51.100.9',
+			'last_path'    => '/wp-login.php',
+			'hit_count'    => '3',
+			'last_seen_at' => '2026-11-24 09:00:00',
+		);
+	}
+
+	public function test_geoip_subtab_shows_what_the_country_rules_blocked(): void {
+		$_GET['tab']                  = 'network-intelligence';
+		$_GET['subtab']               = 'geoip';
+		$GLOBALS['_wpdb_get_results'] = array( $this->country_rule_with_hits() );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'Blocked by country', $output );
+		$summary = $this->table_with_class( $output, 'wp-sam-country-blocks-table' );
+		$this->assertStringContainsString( 'China (CN)', $summary );
+		$this->assertStringContainsString( '1,234', $summary );
+		$this->assertStringContainsString( '2026-11-24 09:00:00', $summary );
+
+		$recent = $this->table_with_class( $output, 'wp-sam-country-blocks-recent-table' );
+		$this->assertStringContainsString( '<code>198.51.100.9</code>', $recent );
+		$this->assertStringContainsString( '<code>/wp-login.php</code>', $recent );
+	}
+
+	public function test_geoip_subtab_says_when_nothing_was_blocked_by_country(): void {
+		$output = $this->render_geoip_subtab();
+
+		$this->assertStringContainsString( 'Nothing blocked by country in this period.', $this->table_with_class( $output, 'wp-sam-country-blocks-table' ) );
+		$this->assertSame( '', $this->table_with_class( $output, 'wp-sam-country-blocks-recent-table' ) );
+	}
+
+	public function test_network_rules_list_shows_how_many_requests_each_rule_blocked(): void {
+		$_GET['tab']                  = 'network-intelligence';
+		$_GET['subtab']               = 'network-rules';
+		$GLOBALS['_wpdb_get_results'] = array( $this->country_rule_with_hits() );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'Blocked, last 7 days', $output );
+		$this->assertStringContainsString( '<td class="wp-sam-col-count">1,234</td>', $output );
+	}
+
 	public function test_geoip_subtab_renders_country_grid_with_nothing_blocked(): void {
 		$_GET['tab']    = 'network-intelligence';
 		$_GET['subtab'] = 'geoip';

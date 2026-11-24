@@ -30,6 +30,7 @@ additionally transmits data to Stripe as described below.
 | `sam_audit_log` | Structured event log: component, event type, human-readable detail, severity, WordPress `user_id` of the admin who triggered the event | `user_id` is a local WordPress user reference | **Indefinite, append-only, no purge mechanism** - this is intentional (it's the permanent audit trail) but should be stated explicitly rather than left implicit | Deleted only on full plugin uninstall |
 | `sam_policy_change_decisions`, `sam_policy_versions`, `sam_decision_rule_evaluations` | Policy change history and decision provenance | No | Indefinite | Deleted on uninstall |
 | `wp_sam_stripe_secret_key_test`/`_live`, `wp_sam_webhook_secret` | Stripe API credentials (commercial build only) | Not personal data, but a high-value secret - see `docs/threat-model.md` "Entitlements and commercial control plane" and `docs/checkout-proxy-design.md` | Until manually rotated or the plugin is uninstalled | Deleted on uninstall |
+| `sam_network_rule_hits` | Requests an ASN or country rule (including the Country Block List) blocked: per UTC day, rule and visitor IP address, a count plus the surface and path of the latest one (never the query string) | **Yes** - visitor IP addresses | Rows not seen for `wp_sam_violation_retention_days` days (default 90) are deleted by the daily cron | Deleted by the retention purge, Reset Plugin Data, and uninstall |
 
 **Gap identified:** `wp_sam_violation_retention_days` accepting `0` as "never
 purge" means an operator can (accidentally or deliberately) accumulate an
