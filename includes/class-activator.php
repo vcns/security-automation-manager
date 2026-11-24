@@ -500,6 +500,10 @@ class Activator {
 			'wp_sam_mta_sts_txt_fields',
 			'wp_sam_mta_sts_txt_refreshed_at',
 			'wp_sam_mta_sts_txt_last_fetch_status',
+			'wp_sam_traffic_advice_content',
+			'wp_sam_traffic_advice_refreshed_at',
+			'wp_sam_traffic_advice_last_fetch_status',
+			'wp_sam_traffic_advice_media_type_ok',
 		);
 	}
 

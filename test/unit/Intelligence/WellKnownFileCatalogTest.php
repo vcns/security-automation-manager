@@ -18,7 +18,7 @@ class WellKnownFileCatalogTest extends TestCase {
 	public function test_every_file_has_a_label_a_root_path_a_purpose_and_a_template(): void {
 		$files = Well_Known_File_Catalog::files();
 
-		$this->assertSame( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts' ), array_keys( $files ) );
+		$this->assertSame( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts', 'traffic-advice' ), array_keys( $files ) );
 		foreach ( $files as $key => $file ) {
 			$this->assertNotSame( '', $file['label'], $key );
 			$this->assertNotSame( '', $file['purpose'], $key );

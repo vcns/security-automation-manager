@@ -55,6 +55,17 @@ class WellKnownFileEditorTest extends TestCase {
 		$this->assertSame( array(), $this->refreshed );
 	}
 
+	public function test_traffic_advice_counts_as_served_only_with_the_media_type_proxies_require(): void {
+		$advice   = "[{\"user_agent\": \"prefetch-proxy\", \"disallow\": true}]\n";
+		$as_json  = $this->http_response( $advice ) + array( 'headers' => array( 'content-type' => 'application/trafficadvice+json' ) );
+		$as_plain = $this->http_response( $advice ) + array( 'headers' => array( 'content-type' => 'text/plain' ) );
+
+		$this->assertSame( Well_Known_File_Store::CHECK_SERVED, $this->editor( $as_json )->save( 'traffic-advice', $advice, 1 )['check'] );
+		$this->assertSame( Well_Known_File_Store::CHECK_NOT_SERVED, $this->editor( $as_plain )->save( 'traffic-advice', $advice, 1 )['check'] );
+		$this->assertSame( array( 'https://example.com/.well-known/traffic-advice', 'https://example.com/.well-known/traffic-advice' ), $this->fetched );
+		$this->assertSame( array( 'traffic-advice', 'traffic-advice' ), $this->refreshed );
+	}
+
 	public function test_a_saved_file_the_site_returns_unchanged_is_recorded_as_served(): void {
 		$result = $this->editor( $this->http_response( "Site: Example\r\n" ) )->save( 'humans', "Site: Example\n", 7 );
 

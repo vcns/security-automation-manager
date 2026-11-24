@@ -27,6 +27,10 @@
  * out the previous version under the new DNS id would leave mail servers
  * holding the old policy until its max_age runs out (RFC 8461 §3.3 already
  * forbids them caching it over HTTP themselves).
+ *
+ * Traffic advice is sent as application/trafficadvice+json, the only type
+ * prefetch proxies accept, with a 30-minute max-age so an edit reaches
+ * them, and any cache in front of the site, within half an hour.
  */
 
 declare( strict_types=1 );
@@ -69,11 +73,14 @@ class Well_Known_File_Server {
 			return;
 		}
 
+		$key = Well_Known_File_Catalog::key_for_path( $path );
 		$this->emit_status( 200 );
-		$this->emit_header( 'Content-Type: text/plain; charset=utf-8' );
+		$this->emit_header( 'traffic-advice' === $key ? 'Content-Type: ' . Traffic_Advice::MEDIA_TYPE : 'Content-Type: text/plain; charset=utf-8' );
 		$this->emit_header( 'X-Content-Type-Options: nosniff' );
-		if ( 'mta-sts' === Well_Known_File_Catalog::key_for_path( $path ) ) {
+		if ( 'mta-sts' === $key ) {
 			$this->emit_header( 'Cache-Control: no-store' );
+		} elseif ( 'traffic-advice' === $key ) {
+			$this->emit_header( 'Cache-Control: public, max-age=' . Traffic_Advice::MAX_AGE );
 		}
 		if ( 'HEAD' !== $method ) {
 			$this->emit_body( $body );
@@ -108,7 +115,7 @@ class Well_Known_File_Server {
 	}
 
 	protected function emit_body( string $body ): void {
-		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- served as text/plain with nosniff, never as HTML.
+		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- served as text/plain or JSON with nosniff, never as HTML.
 	}
 
 	protected function terminate(): void {
