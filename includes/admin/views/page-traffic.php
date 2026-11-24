@@ -42,6 +42,7 @@ use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Site_Country;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
+use WP_SAM\Intelligence\Traffic_Advice_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
 use WP_SAM\Intelligence\Well_Known_File_Catalog;
@@ -950,9 +951,29 @@ $tab_help = array(
 					$mta_sts_txt_contents = __( 'Present, but not a valid policy', 'vcns-security-automation-manager' );
 				}
 
+				$traffic_advice_store  = new Traffic_Advice_Store();
+				$traffic_advice        = $traffic_advice_store->advice();
+				$traffic_advice_note   = null;
+				$traffic_advice_status = $traffic_advice_store->last_fetch_status();
+				if ( ! $traffic_advice_store->is_present() ) {
+					$traffic_advice_contents = __( 'Not present', 'vcns-security-automation-manager' );
+				} elseif ( null === $traffic_advice ) {
+					$traffic_advice_contents = __( 'Present, but no advice for prefetch proxies', 'vcns-security-automation-manager' );
+				} elseif ( $traffic_advice['disallow'] ) {
+					$traffic_advice_contents = __( 'Present: prefetch proxies asked to stay away', 'vcns-security-automation-manager' );
+				} elseif ( $traffic_advice['fraction'] < 1 ) {
+					/* translators: %s: percentage of prefetch traffic allowed, e.g. 50% */
+					$traffic_advice_contents = sprintf( __( 'Present: prefetch proxies limited to %s of their traffic', 'vcns-security-automation-manager' ), round( $traffic_advice['fraction'] * 100 ) . '%' );
+				} else {
+					$traffic_advice_contents = __( 'Present: prefetch proxies allowed', 'vcns-security-automation-manager' );
+				}
+				if ( $traffic_advice_store->is_present() && ! $traffic_advice_store->has_media_type() ) {
+					$traffic_advice_note = __( 'Not sent as application/trafficadvice+json, so proxies ignore it', 'vcns-security-automation-manager' );
+				}
+
 				// One row per file, in Well_Known_File_Catalog's order.
 				$well_known_files = array(
-					'robots'   => array(
+					'robots'         => array(
 						/* translators: %s: number of disallow rules */
 						'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $robots_rule_count, 'vcns-security-automation-manager' ), number_format( $robots_rule_count ) ),
 						'expired'   => false,
@@ -960,7 +981,7 @@ $tab_help = array(
 						'status'    => $robots_rules_store->last_fetch_status(),
 						'action'    => 'wp_sam_robots_rules_refresh',
 					),
-					'agents'   => array(
+					'agents'         => array(
 						/* translators: %s: number of disallow rules */
 						'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $agents_rule_count, 'vcns-security-automation-manager' ), number_format( $agents_rule_count ) ),
 						'expired'   => false,
@@ -968,21 +989,21 @@ $tab_help = array(
 						'status'    => $agents_rules_store->last_fetch_status(),
 						'action'    => 'wp_sam_agents_rules_refresh',
 					),
-					'security' => array(
+					'security'       => array(
 						'contents'  => $security_txt_contents,
 						'expired'   => null !== $security_txt_expires && $security_txt_store->is_expired(),
 						'refreshed' => $security_txt_store->last_refreshed_at(),
 						'status'    => $security_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_security_txt_refresh',
 					),
-					'humans'   => array(
+					'humans'         => array(
 						'contents'  => $humans_txt_store->is_present() ? __( 'Present', 'vcns-security-automation-manager' ) : __( 'Not present', 'vcns-security-automation-manager' ),
 						'expired'   => false,
 						'refreshed' => $humans_txt_store->last_refreshed_at(),
 						'status'    => $humans_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_humans_txt_refresh',
 					),
-					'ads'      => array(
+					'ads'            => array(
 						/* translators: %s: number of authorised-seller records */
 						'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $ads_record_count, 'vcns-security-automation-manager' ), number_format( $ads_record_count ) ),
 						'expired'   => false,
@@ -990,7 +1011,7 @@ $tab_help = array(
 						'status'    => $ads_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_ads_txt_refresh',
 					),
-					'app-ads'  => array(
+					'app-ads'        => array(
 						/* translators: %s: number of authorised-seller records */
 						'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $app_ads_record_count, 'vcns-security-automation-manager' ), number_format( $app_ads_record_count ) ),
 						'expired'   => false,
@@ -998,13 +1019,21 @@ $tab_help = array(
 						'status'    => $app_ads_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_app_ads_txt_refresh',
 					),
-					'mta-sts'  => array(
+					'mta-sts'        => array(
 						'contents'  => $mta_sts_txt_contents,
 						'expired'   => false,
 						'note'      => $mta_sts_txt_note,
 						'refreshed' => $mta_sts_txt_store->last_refreshed_at(),
 						'status'    => $mta_sts_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_mta_sts_txt_refresh',
+					),
+					'traffic-advice' => array(
+						'contents'  => $traffic_advice_contents,
+						'expired'   => false,
+						'note'      => $traffic_advice_note,
+						'refreshed' => $traffic_advice_store->last_refreshed_at(),
+						'status'    => $traffic_advice_status,
+						'action'    => 'wp_sam_traffic_advice_refresh',
 					),
 				);
 

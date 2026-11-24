@@ -1,6 +1,6 @@
 <?php
 /**
- * The seven well-known files listed on Control → Traffic Controls →
+ * The eight well-known files listed on Control → Traffic Controls →
  * Network Intelligence → Well-Known Files: where each is served, what it
  * is for, the starter templates its editor offers, and the checks a
  * version must pass before this plugin will serve it.
@@ -58,40 +58,45 @@ final class Well_Known_File_Catalog {
 	/** @return array<string, array{label:string, paths:array<int,string>, purpose:string}> */
 	public static function files(): array {
 		return array(
-			'robots'   => array(
+			'robots'         => array(
 				'label'   => __( 'Robots.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( '/robots.txt' ),
 				'purpose' => __( 'Tells search engines and other crawlers which parts of the site to stay out of. Well-behaved crawlers follow it; it does not stop anyone else.', 'vcns-security-automation-manager' ),
 			),
-			'agents'   => array(
+			'agents'         => array(
 				'label'   => __( 'Agents.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( '/agents.txt' ),
 				'purpose' => __( 'An emerging convention for telling AI agents what they may access, written the same way as robots.txt. Only some agents read it so far.', 'vcns-security-automation-manager' ),
 			),
-			'security' => array(
+			'security'       => array(
 				'label'   => __( 'Security.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( '/.well-known/security.txt', '/security.txt' ),
 				'purpose' => __( 'Tells security researchers how to report a vulnerability they find on this site (RFC 9116). Everything in it is public.', 'vcns-security-automation-manager' ),
 			),
-			'humans'   => array(
+			'humans'         => array(
 				'label'   => __( 'Humans.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( '/humans.txt' ),
 				'purpose' => __( 'An informal credits page in plain text: who made the site and what it runs on. Entirely optional.', 'vcns-security-automation-manager' ),
 			),
-			'ads'      => array(
+			'ads'            => array(
 				'label'   => __( 'Ads.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( '/ads.txt' ),
 				'purpose' => __( 'Lists the companies allowed to sell ad space on this site, so advertisers can refuse anyone else (IAB ads.txt). Only needed if the site shows ads.', 'vcns-security-automation-manager' ),
 			),
-			'app-ads'  => array(
+			'app-ads'        => array(
 				'label'   => __( 'App-Ads.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( '/app-ads.txt' ),
 				'purpose' => __( 'The ads.txt list for mobile apps whose app store listing names this site as the developer website. Only needed if you publish apps with ads.', 'vcns-security-automation-manager' ),
 			),
-			'mta-sts'  => array(
+			'mta-sts'        => array(
 				'label'   => __( 'MTA-STS.txt', 'vcns-security-automation-manager' ),
 				'paths'   => array( Mta_Sts_Policy::PATH ),
 				'purpose' => __( 'Tells other mail servers that email for this domain must arrive over an encrypted connection, to a mail server the policy names, with a valid certificate (MTA-STS, RFC 8461). Mail servers read it from this domain\'s mta-sts address, not from the site itself, and only once a DNS record says it exists.', 'vcns-security-automation-manager' ),
+			),
+			'traffic-advice' => array(
+				'label'   => __( 'Traffic-Advice', 'vcns-security-automation-manager' ),
+				'paths'   => array( Traffic_Advice::PATH ),
+				'purpose' => __( 'Tells private prefetch proxies, such as the one Chrome uses to load pages from search results before you click, whether they may fetch pages from this site, or how much of their traffic to send. Without it they assume they may. It is JSON, not plain text.', 'vcns-security-automation-manager' ),
 			),
 		);
 	}
@@ -194,6 +199,8 @@ final class Well_Known_File_Catalog {
 				return self::ads_templates( __( 'Google AdMob', 'vcns-security-automation-manager' ), __( 'The line Google asks AdMob publishers to add. Replace the publisher ID with yours (AdMob → Settings → Account information) before saving.', 'vcns-security-automation-manager' ) );
 			case 'mta-sts':
 				return Mta_Sts_Policy::templates( self::mail_servers() );
+			case 'traffic-advice':
+				return Traffic_Advice::templates();
 		}
 		return array();
 	}
@@ -248,6 +255,9 @@ final class Well_Known_File_Catalog {
 				break;
 			case 'mta-sts':
 				$problems = Mta_Sts_Policy::problems( $content, self::mail_servers() );
+				break;
+			case 'traffic-advice':
+				$problems = Traffic_Advice::problems( $content );
 				break;
 			default:
 				$problems = array();

@@ -201,11 +201,11 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertSame( 1, substr_count( $output, 'wp-sam-well-known-table' ) );
 		$table = $this->table_with_class( $output, 'wp-sam-well-known-table' );
-		$this->assertSame( 7, substr_count( $table, '<tr>' ) - 1 );
-		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt', 'MTA-STS.txt' ) as $well_known_label ) {
+		$this->assertSame( 8, substr_count( $table, '<tr>' ) - 1 );
+		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt', 'MTA-STS.txt', 'Traffic-Advice' ) as $well_known_label ) {
 			$this->assertStringContainsString( '>' . $well_known_label . '<', $table );
 		}
-		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt', 'mta_sts_txt' ) as $refresh ) {
+		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt', 'mta_sts_txt', 'traffic_advice' ) as $refresh ) {
 			$this->assertStringContainsString( 'value="wp_sam_' . $refresh . '_refresh"', $table );
 		}
 		$this->assertStringNotContainsString( 'wp-sam-stat-row', $output );
@@ -275,7 +275,7 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertStringNotContainsString( '>About<', $table );
 		$this->assertStringNotContainsString( 'Refreshed automatically once a day', $table );
-		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts' ) as $key ) {
+		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts', 'traffic-advice' ) as $key ) {
 			$this->assertMatchesRegularExpression( '#subtab=well-known&(amp;)?file=' . preg_quote( $key, '#' ) . '"#', $table );
 		}
 		$this->assertMatchesRegularExpression( '#file=ads"[^>]*>Create</a>#', $table, 'An absent file is created, not edited.' );
@@ -393,6 +393,37 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertStringContainsString( 'Present, mode: testing', $table );
 		$this->assertStringContainsString( 'No _mta-sts DNS record', $table );
+	}
+
+	public function test_well_known_table_says_what_traffic_advice_tells_prefetch_proxies(): void {
+		update_option( 'wp_sam_traffic_advice_last_fetch_status', 'success' );
+		update_option( 'wp_sam_traffic_advice_content', '[{"user_agent": "prefetch-proxy", "fraction": 0.25}]' );
+		update_option( 'wp_sam_traffic_advice_media_type_ok', true );
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertStringContainsString( 'Present: prefetch proxies limited to 25% of their traffic', $table );
+		$this->assertStringNotContainsString( 'so proxies ignore it', $table );
+	}
+
+	public function test_well_known_table_warns_when_traffic_advice_has_the_wrong_media_type(): void {
+		update_option( 'wp_sam_traffic_advice_last_fetch_status', 'success' );
+		update_option( 'wp_sam_traffic_advice_content', '[{"user_agent": "prefetch-proxy", "disallow": true}]' );
+		update_option( 'wp_sam_traffic_advice_media_type_ok', false );
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertStringContainsString( 'Present: prefetch proxies asked to stay away', $table );
+		$this->assertStringContainsString( 'Not sent as application/trafficadvice+json, so proxies ignore it', $table );
+	}
+
+	public function test_traffic_advice_editor_opens_on_the_turn_off_template(): void {
+		$output = $this->render_well_known( array( 'file' => 'traffic-advice' ) );
+
+		$this->assertStringContainsString( 'Traffic-Advice', $output );
+		$this->assertStringContainsString( '&quot;user_agent&quot;: &quot;prefetch-proxy&quot;', $output );
+		$this->assertStringContainsString( 'Turn off prefetch proxies', $output );
+		$this->assertStringContainsString( 'Reduce prefetch traffic', $output );
 	}
 
 	public function test_mta_sts_editor_shows_the_dns_record_and_which_mail_servers_the_policy_covers(): void {

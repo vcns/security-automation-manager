@@ -29,6 +29,7 @@ use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
+use WP_SAM\Intelligence\Traffic_Advice_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -112,6 +113,7 @@ class Scheduler {
 			$this->refresh_ads_txt();
 			$this->refresh_app_ads_txt();
 			$this->refresh_mta_sts_txt();
+			$this->refresh_traffic_advice();
 			( new Delivered_Policy_Check( null, null, $this->audit ) )->run();
 
 		} catch ( \Throwable $e ) {
@@ -453,6 +455,10 @@ class Scheduler {
 	 */
 	private function refresh_mta_sts_txt(): void {
 		$this->log_well_known_refresh( 'mta_sts_txt', ( new Mta_Sts_Txt_Store() )->refresh() );
+	}
+
+	private function refresh_traffic_advice(): void {
+		$this->log_well_known_refresh( 'traffic_advice', ( new Traffic_Advice_Store() )->refresh() );
 	}
 
 	/**

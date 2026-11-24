@@ -117,6 +117,11 @@ final class Well_Known_File_Editor {
 		if ( 'mta-sts' === $key && null !== Mta_Sts_Policy::unusable_reason( $response ) ) {
 			return Well_Known_File_Store::CHECK_NOT_SERVED;
 		}
+		// Proxies ignore traffic advice sent as any other type, so a copy
+		// with the right text but the wrong type isn't being served.
+		if ( 'traffic-advice' === $key && ! Traffic_Advice::has_media_type( $response ) ) {
+			return Well_Known_File_Store::CHECK_NOT_SERVED;
+		}
 
 		return Well_Known_File_Catalog::sanitize( (string) wp_remote_retrieve_body( $response ) ) === $content
 			? Well_Known_File_Store::CHECK_SERVED
@@ -150,6 +155,9 @@ final class Well_Known_File_Editor {
 				break;
 			case 'mta-sts':
 				( new Mta_Sts_Txt_Store() )->refresh();
+				break;
+			case 'traffic-advice':
+				( new Traffic_Advice_Store() )->refresh();
 				break;
 		}
 	}
