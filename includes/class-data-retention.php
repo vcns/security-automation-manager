@@ -4,7 +4,8 @@
  *
  * Despite its name it covers every log-like table that records visitors:
  * CSP and header violation reports, Continuous Intelligence events and
- * identities, and the ASN and Geo-IP lookup caches. Scheduler deletes rows
+ * identities, network-rule block records, and the ASN and Geo-IP lookup
+ * caches. Scheduler deletes rows
  * older than this every day. 0 keeps everything.
  *
  * The setting is registered in wp_sam_settings_group, whose form posts to
