@@ -23,6 +23,11 @@ additionally transmits data to Stripe as described below.
 | Table / option | What it holds | Personal or site-identifying? | Retention | Deletion |
 |---|---|---|---|---|
 | `csp_violation_reports` | Browser-submitted CSP violation reports: blocked URI, document URI, referrer, user agent, up to ~40 characters of inline script/style content (`sample`) | Referrer and user-agent are visitor-supplied and client-generated (spoofable); no visitor IP address, cookie, or account identifier is stored | Auto-purged after `wp_sam_violation_retention_days` (default 90 days) by the daily cron scan; **can be set to `0`, which disables purging entirely - see gap below** | Deleted on plugin uninstall (table dropped); individually purgeable via the retention-days cron before that |
+| `sam_pillar_violation_reports` | COOP/COEP violation reports, grouped per blocked resource | As for `csp_violation_reports` | Rows not seen for `wp_sam_violation_retention_days` days (default 90) are deleted by the daily cron | Deleted by the retention purge, Reset Plugin Data, and uninstall |
+| `sam_request_events` | Continuous Intelligence detector matches: visitor IP address, request path and query, user agent, ASN and Geo-IP country/region/city | **Yes** - visitor IP addresses | Rows not seen for `wp_sam_violation_retention_days` days are deleted by the daily cron | Deleted by the retention purge, Reset Plugin Data, and uninstall |
+| `sam_scanner_identities` | Claimed bot/scanner identities: visitor IP address, user agent, reverse-DNS hostname, recent paths and timings, ASN and Geo-IP location, and any administrator decision | **Yes** - visitor IP addresses | Rows not seen for `wp_sam_violation_retention_days` days are deleted by the daily cron, **except** identities an administrator authorised or denied, which are kept as decisions | Deleted by the retention purge (undecided rows), Reset Plugin Data, and uninstall |
+| `sam_traffic_blocks` | Rate-limit and brute-force escalation state per visitor IP address | **Yes** - visitor IP addresses | Non-persistent rows not seen for 30 days are deleted by the daily cron; persistent blocks are an administrator decision and are kept | Deleted by the 30-day purge, Reset Plugin Data, and uninstall (releasing a block resets it to observe rather than deleting it) |
+| `sam_asn_cache`, `sam_geoip_cache` | Per-IP ASN and Geo-IP lookup results | **Yes** - visitor IP addresses | Rows older than `wp_sam_violation_retention_days` days are deleted by the daily cron (lookups older than 30 days are already ignored) | Deleted by the retention purge, Reset Plugin Data, and uninstall |
 | `csp_source_inventory`, `csp_hash_inventory` | Discovered external script/style sources and content hashes; owning plugin/theme where detectable | No | Indefinite (these are the plugin's working configuration, not transient logs) | Deleted on uninstall |
 | `sam_scan_logs` | Scan execution history, diff summaries, warnings | No | Indefinite | Deleted on uninstall |
 | `sam_entitlements` | `site_identity` (truncated SHA-256 hash of the site URL, not the raw URL), product tier, status, `stripe_customer_id`/`stripe_session_id`/`stripe_payment_intent_id` | The Stripe IDs are identifiers into VCNS's Stripe account, not personal data by themselves, but they are the key that lets whoever holds the Stripe secret key look up the associated billing/customer record at Stripe - see the threat-model note on why local storage of that key is the higher-severity problem | Indefinite (license/entitlement state) | Deleted on uninstall |
@@ -31,12 +36,17 @@ additionally transmits data to Stripe as described below.
 | `sam_policy_change_decisions`, `sam_policy_versions`, `sam_decision_rule_evaluations` | Policy change history and decision provenance | No | Indefinite | Deleted on uninstall |
 | `wp_sam_stripe_secret_key_test`/`_live`, `wp_sam_webhook_secret` | Stripe API credentials (commercial build only) | Not personal data, but a high-value secret - see `docs/threat-model.md` "Entitlements and commercial control plane" and `docs/checkout-proxy-design.md` | Until manually rotated or the plugin is uninstalled | Deleted on uninstall |
 
-**Gap identified:** `wp_sam_violation_retention_days` accepting `0` as "never
-purge" means an operator can (accidentally or deliberately) accumulate an
-unbounded amount of client-supplied referrer/user-agent data indefinitely.
-This should either warn clearly in the admin UI when set to `0`, or be
-reconsidered as a supported value. Filed as a follow-up below rather than
-changed here, since it's a product-behaviour decision, not just documentation.
+**Retention setting.** `wp_sam_violation_retention_days` is set under Control →
+Automation Settings → Data Retention (default 90, at most 3650). `0` still
+means "never purge"; the settings page and Continuous Intelligence warn while
+it is `0`, because visitor IP addresses, user agents and referrers then build
+up indefinitely.
+
+Before 2.16.0 the setting had no field, and saving Automation Settings stored
+`0`, so on most sites nothing was purged. 2.16.0 puts a stored `0` back to 90
+once (`Activator::migrate_repair_zeroed_retention()`, logged as
+`retention_repaired`), and the setting's sanitizer now keeps the stored value
+when a form posts the settings group without it.
 
 ## Data transmitted off-site
 
@@ -128,8 +138,9 @@ specific to this document:
 
 ## Follow-up
 
-- [ ] Decide whether `wp_sam_violation_retention_days = 0` should remain a
-      supported "never purge" value or be replaced with a maximum cap.
+- [x] Decide whether `wp_sam_violation_retention_days = 0` should remain a
+      supported "never purge" value or be replaced with a maximum cap:
+      kept, with a warning in the admin while it is `0` (2.16.0).
 - [ ] Re-run this data inventory once #172 (checkout proxy) ships - the
       Stripe secret key rows above should be removed entirely at that point.
 - [ ] Re-run this data inventory before #182 (external verification) and

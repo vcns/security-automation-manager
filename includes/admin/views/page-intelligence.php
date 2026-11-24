@@ -60,6 +60,25 @@ $tab_help = array(
 		<?php esc_html_e( 'Layer 3 of this plugin\'s protection model: request observation and classification, independent of the enforced header policies above. Which detector families run, and whether a match stays pure evidence or feeds progressive blocking, is configured on Traffic Controls\' Detectors tab -- this page is where you read what they\'ve actually found, who\'s making the requests, and the vendor catalogue those identities are checked against.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
+	<?php
+	$retention_days = \WP_SAM\Data_Retention::days();
+	$retention_url  = admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-data-retention' );
+	?>
+	<p class="description">
+		<?php
+		if ( $retention_days > 0 ) {
+			printf(
+				/* translators: %d: number of days */
+				esc_html__( 'Events and identities not seen for %d days are deleted by the daily scan. Identities you have authorised or denied are kept.', 'vcns-security-automation-manager' ),
+				(int) $retention_days
+			);
+		} else {
+			esc_html_e( 'Nothing here is ever deleted: data retention is set to keep everything.', 'vcns-security-automation-manager' );
+		}
+		?>
+		<a href="<?php echo esc_url( $retention_url ); ?>"><?php esc_html_e( 'Change in Control → Automation Settings', 'vcns-security-automation-manager' ); ?></a>
+	</p>
+
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Continuous Intelligence sections', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tab_help as $tab_key => $tab_data ) : ?>
 		<a class="nav-tab<?php echo $tab_key === $tab ? ' nav-tab-active' : ''; ?>"

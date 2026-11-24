@@ -919,6 +919,7 @@ class AdminUITest extends TestCase {
 			'certificate -> Certificates'        => array( 'certificates', 'cert_issue_failed', 'admin.php?page=security-automation-manager-certificates&tab=renew' ),
 			'stale policy -> Security Health'    => array( 'delivered_policy', 'stale', 'admin.php?page=security-automation-manager&tab=health' ),
 			'cache clear failed -> Settings'     => array( 'page_cache', 'purge_failed', 'admin.php?page=security-automation-manager-dashboard&tab=settings' ),
+			'retention repaired -> Settings'     => array( 'scheduler', 'retention_repaired', 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-data-retention' ),
 			'import -> Recovery'               => array( 'config_portability', 'config_imported', 'admin.php?page=security-automation-manager&tab=recovery#wp-sam-portability' ),
 			'rollback -> Recovery'               => array( 'rollback', 'snapshot_restored', 'admin.php?page=security-automation-manager&tab=recovery' ),
 			'security.txt -> Well-Known Files'   => array( 'scheduler', 'security_txt_refresh_failed', 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ),

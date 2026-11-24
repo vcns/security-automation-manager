@@ -598,8 +598,10 @@ class Admin_UI {
 			'wp_sam_policy_header_name'            => array( $this, 'sanitize_policy_header_name' ),
 			'wp_sam_automation_config'             => array( $this, 'sanitize_automation_config' ),
 			Page_Cache_Purger::OPTION_ENABLED      => array( Page_Cache_Purger::class, 'sanitize_enabled' ),
-			// Data retention: days to keep violation reports (0 = keep forever).
-			'wp_sam_violation_retention_days'      => 'absint',
+			// Data retention: days to keep violation reports and visitor
+			// records (0 = keep forever). See Data_Retention for why this
+			// can't simply be absint().
+			\WP_SAM\Data_Retention::OPTION         => array( \WP_SAM\Data_Retention::class, 'sanitize' ),
 		);
 
 		foreach ( $settings as $option => $callback ) {
@@ -3247,6 +3249,12 @@ class Admin_UI {
 				);
 
 			case 'scheduler':
+				if ( 'retention_repaired' === $event ) {
+					return array(
+						'url'   => $csp( 'settings' ) . '#wp-sam-data-retention',
+						'label' => __( 'Open Control → Automation Settings', 'vcns-security-automation-manager' ),
+					);
+				}
 				if ( str_starts_with( $event, 'tor_exit_list_' ) ) {
 					return array(
 						'url'   => $network( 'tor' ),

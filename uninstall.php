@@ -38,6 +38,27 @@ $wp_sam_tables = array(
 	'sam_dependency_inventory',
 	'sam_pillar_violation_reports',
 	'sam_internal_asset_inventory',
+	'sam_migration_snapshots',
+	'sam_request_events',
+	'sam_scanner_vendors',
+	'sam_scanner_identities',
+	'sam_traffic_policies',
+	'sam_ip_rules',
+	'sam_traffic_blocks',
+	'sam_security_baselines',
+	'sam_drift_records',
+	'sam_change_log',
+	'sam_campaigns',
+	'sam_honeypaths',
+	'sam_change_windows',
+	'sam_tor_exit_nodes',
+	'sam_asn_cache',
+	'sam_geoip_cache',
+	'sam_detector_policies',
+	'sam_custom_detector_rules',
+	'sam_network_rules',
+	'sam_exceptions',
+	'sam_recommendation_dismissals',
 	'sam_certificates',
 );
 
@@ -93,6 +114,22 @@ $wp_sam_options = apply_filters( 'wp_sam_option_names', $wp_sam_options );
 foreach ( $wp_sam_options as $wp_sam_option ) {
 	delete_option( $wp_sam_option );
 }
+
+// Anything the list above has missed: well-known file stores, one-time
+// migration flags and the like all share the wp_sam_ prefix, and so do
+// SAM's transients. The list above still runs first so delete_option()'s
+// object-cache invalidation applies to the named options.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
+		$wpdb->esc_like( 'wp_sam_' ) . '%',
+		$wpdb->esc_like( '_transient_wp_sam_' ) . '%',
+		$wpdb->esc_like( '_transient_timeout_wp_sam_' ) . '%'
+	)
+);
+wp_cache_delete( 'alloptions', 'options' );
+wp_cache_delete( 'notoptions', 'options' );
 
 // ── Remove transients ─────────────────────────────────────────────────────────
 delete_transient( 'wp_sam_conflict_probe_ran' );

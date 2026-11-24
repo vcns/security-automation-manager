@@ -47,6 +47,7 @@ class Activator {
 		self::migrate_consolidate_bypass_flags_into_json();
 		self::migrate_default_reporting_transport_to_both();
 		self::migrate_hold_admin_csp_at_report_only();
+		self::migrate_repair_zeroed_retention();
 
 		// Generic, empty-by-default extension point: an extension (see
 		// includes/extensions/, physically absent from the WordPress.org-
@@ -230,6 +231,39 @@ class Activator {
 				'warning'
 			);
 		}
+	}
+
+	/**
+	 * Until 2.16.0 the data-retention period had no field on any settings
+	 * page, but it was registered in the same settings group as Control ->
+	 * Automation Settings. options.php writes every option in a group, so
+	 * each save of that page stored 0 ("keep everything") and silently
+	 * switched off every daily purge: violation reports, Continuous
+	 * Intelligence events, the lookup caches. Nothing in the admin could set
+	 * 0 on purpose, so put sites left at 0 back on the documented default,
+	 * once. Flag-guarded, so a deliberate 0 chosen afterwards is kept.
+	 */
+	private static function migrate_repair_zeroed_retention(): void {
+		if ( get_option( 'wp_sam_retention_repaired', false ) ) {
+			return;
+		}
+		update_option( 'wp_sam_retention_repaired', true );
+
+		$stored = get_option( Data_Retention::OPTION, false );
+		if ( false === $stored || 0 !== (int) $stored ) {
+			return;
+		}
+
+		update_option( Data_Retention::OPTION, Data_Retention::DEFAULT_DAYS );
+		( new Audit_Log() )->log(
+			'scheduler',
+			'retention_repaired',
+			sprintf(
+				'Data retention was set to keep everything, because saving Automation Settings used to clear it. It is now %d days: the next daily scan deletes older violation reports and Continuous Intelligence records. Change it under Control → Automation Settings → Data Retention.',
+				Data_Retention::DEFAULT_DAYS
+			),
+			'warning'
+		);
 	}
 
 	private static function migrate_default_reporting_transport_to_both(): void {
