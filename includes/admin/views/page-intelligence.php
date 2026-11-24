@@ -332,7 +332,7 @@ $tab_help = array(
 			array(
 				Table_Query::equals_where( 'surface', $id_surface ),
 				Table_Query::equals_where( 'verification_state', $id_state ),
-				Table_Query::like_where_any( $wpdb, array( 'ip' ), $id_ip ),
+				Table_Query::ip_where( $wpdb, 'ip', $id_ip ),
 			) as $fragment
 		) {
 			if ( null === $fragment ) {
@@ -481,10 +481,14 @@ $tab_help = array(
 					</select>
 				</label>
 				<label>
-					<?php esc_html_e( 'IP contains', 'vcns-security-automation-manager' ); ?>
-					<input type="text" name="id_ip" value="<?php echo esc_attr( $id_ip ); ?>" />
+					<?php esc_html_e( 'IP address', 'vcns-security-automation-manager' ); ?>
+					<input type="text" name="id_ip" value="<?php echo esc_attr( $id_ip ); ?>" placeholder="172.64.0.0/13" aria-describedby="wp-sam-id-ip-help" />
 				</label>
 				<?php submit_button( __( 'Filter', 'vcns-security-automation-manager' ), 'secondary', 'filter_identities', false ); ?>
+				<p id="wp-sam-id-ip-help" class="description"><?php esc_html_e( 'Part of an address (172.70.), a pattern with * (172.70.* or *.135), or a range (172.64.0.0/13 or 2400:cb00::/32).', 'vcns-security-automation-manager' ); ?></p>
+				<?php if ( str_contains( $id_ip, '/' ) && null === Table_Query::ip_range( $id_ip ) ) : ?>
+				<div class="notice notice-error inline" role="alert"><p><?php esc_html_e( 'That isn\'t a valid address range, so nothing matches. Write it as an address and a prefix length, for example 172.64.0.0/13.', 'vcns-security-automation-manager' ); ?></p></div>
+				<?php endif; ?>
 			</form>
 		</details>
 

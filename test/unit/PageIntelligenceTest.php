@@ -137,6 +137,38 @@ class PageIntelligenceTest extends TestCase {
 		$this->assertStringContainsString( 'id_paged=2', $output );
 	}
 
+	public function test_identities_ip_filter_accepts_a_cidr_range(): void {
+		$_GET['tab']   = 'identities';
+		$_GET['id_ip'] = '172.64.0.0/13';
+		$GLOBALS['_wpdb_get_var']           = 1;
+		$GLOBALS['_wpdb_get_results_queue'] = array( $this->identity_rows( 1, array( 'ip' => '172.70.1.2' ) ) );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['id_ip'] );
+
+		$this->assertStringContainsString( 'INET_ATON(ip) BETWEEN 2889875456 AND 2890399743', implode( "\n", $GLOBALS['_wpdb_get_results_log'] ?? array() ) );
+		$this->assertStringContainsString( '172.70.1.2', $output );
+		$this->assertStringNotContainsString( 'valid address range', $output );
+	}
+
+	public function test_identities_ip_filter_explains_a_malformed_range(): void {
+		$_GET['tab']              = 'identities';
+		$_GET['id_ip']            = '172.64.0.0/40';
+		$GLOBALS['_wpdb_get_var'] = 0;
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-intelligence.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['id_ip'] );
+
+		$this->assertStringContainsString( 'valid address range, so nothing matches', $output );
+		$this->assertStringContainsString( '172.64.0.0/13 or 2400:cb00::/32', $output );
+	}
+
 	public function test_identities_empty_result_set_renders_without_fatal(): void {
 		$_GET['tab']              = 'identities';
 		$GLOBALS['_wpdb_get_var'] = 0;
