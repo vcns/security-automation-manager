@@ -1762,7 +1762,7 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 						<?php
 						printf(
 							/* translators: %d: default number of days */
-							esc_html__( 'Default: %d. Each daily scan deletes CSP and header violation reports, Continuous Intelligence events and identities, and cached ASN and Geo-IP lookups older than this. Identities you have authorised or denied are kept. 0 keeps everything.', 'vcns-security-automation-manager' ),
+							esc_html__( 'Default: %d. Each daily scan deletes CSP and header violation reports, Continuous Intelligence events and identities, records of requests the country and ASN rules blocked, and cached ASN and Geo-IP lookups older than this. Identities you have authorised or denied are kept. 0 keeps everything.', 'vcns-security-automation-manager' ),
 							(int) \WP_SAM\Data_Retention::DEFAULT_DAYS
 						);
 						?>
