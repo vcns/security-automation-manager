@@ -132,6 +132,22 @@ final class Plugin {
 	private function __construct() {}
 
 	/**
+	 * Whether uninstall.php is running for this plugin in the current request.
+	 *
+	 * `wp plugin uninstall --deactivate` loads the plugin, deactivates it and
+	 * includes uninstall.php in one process, so callbacks registered at boot
+	 * still run afterwards -- on `shutdown` in particular. Anything that
+	 * writes there must check this first, or it recreates data uninstall.php
+	 * has just removed. (wp-admin's Delete runs uninstall.php only once the
+	 * plugin is inactive, so its hooks are never registered there.)
+	 *
+	 * @return bool
+	 */
+	public static function is_being_uninstalled(): bool {
+		return defined( 'WP_UNINSTALL_PLUGIN' ) && plugin_basename( WP_SAM_FILE ) === WP_UNINSTALL_PLUGIN;
+	}
+
+	/**
 	 * Returns the single plugin instance, creating it on first use.
 	 *
 	 * @return self The plugin singleton.

@@ -195,6 +195,11 @@ final class Page_Cache_Purger {
 	 * @return void
 	 */
 	public function check(): void {
+		// Runs on shutdown, which follows uninstall.php in a WP-CLI uninstall.
+		if ( \WP_SAM\Plugin::is_being_uninstalled() ) {
+			return;
+		}
+
 		$current = $this->fingerprint();
 		if ( '' === $current ) {
 			return;
