@@ -338,6 +338,9 @@ class Policy_Builder extends Header_Builder {
 	private ?Audit_Log $audit;
 	private Policy_Data_Loader $data_loader;
 
+	/** The policy header line this request sent, kept so reassert_policy_header() can restore it. */
+	private string $sent_policy_line = '';
+
 	/**
 	 * $data_loader is the sole seam for how policy input is loaded (GitHub
 	 * issue #170) -- defaults to the real wpdb-backed implementation, so
@@ -372,6 +375,46 @@ class Policy_Builder extends Header_Builder {
 	public function register(): void {
 		parent::register();
 		add_action( 'admin_init', array( $this, 'emit_admin_header' ), 1 );
+
+		// WordPress 7.1+ core's send_frame_options_header() runs on admin_init
+		// and login_init at priority 10 and calls
+		// header( "Content-Security-Policy: frame-ancestors 'self';" ), which
+		// by default replaces every earlier header of that name -- so an
+		// enforced admin policy sent at priority 1 never reached the browser.
+		// Report-only was unaffected (different header name). Last on both
+		// hooks, put this request's policy back if anything replaced it.
+		add_action( 'admin_init', array( $this, 'reassert_policy_header' ), PHP_INT_MAX );
+		add_action( 'login_init', array( $this, 'reassert_policy_header' ), PHP_INT_MAX );
+	}
+
+	/**
+	 * Re-sends this request's policy header if a later header() call with
+	 * the same name replaced it (see register()). Added alongside, never
+	 * replacing, so the other code's own policy -- core's frame-ancestors
+	 * -- still applies too; browsers enforce every policy they receive.
+	 *
+	 * @return void
+	 */
+	public function reassert_policy_header(): void {
+		if ( '' === $this->sent_policy_line || headers_sent() ) {
+			return;
+		}
+
+		if ( in_array( $this->sent_policy_line, $this->current_headers(), true ) ) {
+			return;
+		}
+
+		$this->add_header( $this->sent_policy_line );
+	}
+
+	/**
+	 * The response headers set so far. A seam for tests, where headers_list()
+	 * is always empty under the CLI SAPI.
+	 *
+	 * @return string[]
+	 */
+	protected function current_headers(): array {
+		return headers_list();
 	}
 
 	/**
@@ -422,7 +465,8 @@ class Policy_Builder extends Header_Builder {
 			}
 		}
 
-		$this->send_header( $header_name . ': ' . $policy );
+		$this->sent_policy_line = $header_name . ': ' . $policy;
+		$this->send_header( $this->sent_policy_line );
 		Csp_Delivery_Log::record_sent( $surface );
 		return true;
 	}
@@ -434,6 +478,15 @@ class Policy_Builder extends Header_Builder {
 	 */
 	protected function send_header( string $line ): void {
 		header( $line );
+	}
+
+	/**
+	 * header() without replacing a header of the same name, so both apply.
+	 * Only reassert_policy_header() uses it. Overridden in tests like
+	 * send_header().
+	 */
+	protected function add_header( string $line ): void {
+		header( $line, false );
 	}
 
 	public function get_policy_header_name( bool $is_report_only ): string {

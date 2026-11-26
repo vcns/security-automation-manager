@@ -75,6 +75,82 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertSame( 1, $GLOBALS['_wp_actions']['admin_init'][0][1] );
 	}
 
+	public function test_register_reasserts_the_policy_last_on_admin_init_and_login_init(): void {
+		$this->builder->register();
+
+		foreach ( array( 'admin_init', 'login_init' ) as $hook ) {
+			$reassert = array_values(
+				array_filter(
+					$GLOBALS['_wp_actions'][ $hook ],
+					fn ( $entry ) => array( $this->builder, 'reassert_policy_header' ) === $entry[0]
+				)
+			);
+			$this->assertCount( 1, $reassert, $hook );
+			$this->assertSame( PHP_INT_MAX, $reassert[0][1], $hook );
+		}
+	}
+
+	/**
+	 * WordPress 7.1+ core's send_frame_options_header() calls
+	 * header( "Content-Security-Policy: frame-ancestors 'self';" ) on
+	 * admin_init at priority 10, which replaced the enforced admin policy
+	 * sent at priority 1 -- the browser received only core's
+	 * frame-ancestors. Found by tools/docker-matrix on WordPress 7.1.5 and
+	 * 7.2-RC3.
+	 */
+	public function test_an_enforced_policy_replaced_by_core_is_added_back_beside_it(): void {
+		$builder = $this->header_capturing_builder();
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
+		$profile['mode'] = 'enforce';
+
+		( new ReflectionMethod( $builder, 'emit_profile_header' ) )->invoke( $builder, $profile, 'admin' );
+		$policy_line = end( $builder->sent );
+		$this->assertStringStartsWith( 'Content-Security-Policy: ', $policy_line );
+
+		// Core's header() replaced every Content-Security-Policy line.
+		$builder->headers = array( 'X-Frame-Options: SAMEORIGIN', "Content-Security-Policy: frame-ancestors 'self';" );
+		$builder->reassert_policy_header();
+
+		$this->assertSame( array( $policy_line ), $builder->added, 'Added with replace = false, so core\'s frame-ancestors stays too.' );
+	}
+
+	public function test_reassert_does_nothing_while_the_policy_is_still_there_or_none_was_sent(): void {
+		$builder = $this->header_capturing_builder();
+		$builder->reassert_policy_header();
+		$this->assertSame( array(), $builder->added, 'Nothing was sent this request.' );
+
+		$profile         = $this->make_profile( [ 'default-src' => [ "'none'" ] ] );
+		$profile['mode'] = 'enforce';
+		( new ReflectionMethod( $builder, 'emit_profile_header' ) )->invoke( $builder, $profile, 'login' );
+		$builder->headers = array( "Content-Security-Policy: frame-ancestors 'self';", end( $builder->sent ) );
+		$builder->reassert_policy_header();
+
+		$this->assertSame( array(), $builder->added );
+	}
+
+	private function header_capturing_builder(): Policy_Builder {
+		return new class( $this->gate ) extends Policy_Builder {
+			/** @var string[] */
+			public array $sent = array();
+			/** @var string[] */
+			public array $added = array();
+			/** @var string[] */
+			public array $headers = array();
+
+			protected function send_header( string $line ): void {
+				$this->sent[] = $line;
+			}
+
+			protected function add_header( string $line ): void {
+				$this->added[] = $line;
+			}
+
+			protected function current_headers(): array {
+				return $this->headers;
+			}
+		};
+	}
+
 	public function test_emit_admin_header_skips_admin_ajax(): void {
 		// Counts emit_header() calls instead of sending real headers, which
 		// can't be observed in-process (see this file's docblock).
