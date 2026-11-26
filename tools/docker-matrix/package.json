@@ -1,0 +1,12 @@
+{
+  "name": "sam-docker-matrix",
+  "private": true,
+  "description": "Browser checks for the SAM WordPress/PHP compatibility matrix. Not shipped (tools/ is in .distignore).",
+  "type": "module",
+  "scripts": {
+    "checks": "node checks.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}

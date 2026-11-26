@@ -1,0 +1,61 @@
+# One matrix environment. run.sh sets the variables and a distinct project
+# name (-p sam-<wp>-<php>), so several environments can run side by side.
+#
+#   WP_VERSION, PHP_VERSION  the pair under test (build args)
+#   BASE_IMAGE               chosen by run.sh -- see README.md
+#   HTTP_PORT                host port, also Apache's port inside the container
+#   PLUGIN_DIR               plugin checkout, mounted read-only
+#   REGISTRY                 registry prefix for official images
+
+services:
+  db:
+    image: ${REGISTRY:-public.ecr.aws/docker/library}/mysql:8.0
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: root
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 3s
+      timeout: 5s
+      retries: 60
+
+  wordpress:
+    build:
+      context: .
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:?set by run.sh}
+        WP_VERSION: ${WP_VERSION:?set by run.sh}
+        PHP_VERSION: ${PHP_VERSION:?set by run.sh}
+    image: sam-matrix:wp${WP_VERSION}-php${PHP_VERSION}
+    environment:
+      APACHE_PORT: ${HTTP_PORT:?set by run.sh}
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    volumes:
+      - html:/var/www/html
+      - ${PLUGIN_DIR:?set by run.sh}:/var/www/html/wp-content/plugins/security-automation-manager:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cli:
+    image: sam-matrix:wp${WP_VERSION}-php${PHP_VERSION}
+    entrypoint: ["wp"]
+    user: "33:33"
+    working_dir: /var/www/html
+    environment:
+      HOME: /tmp
+      WP_CLI_CACHE_DIR: /tmp/wp-cli-cache
+    volumes:
+      - html:/var/www/html
+      - ${PLUGIN_DIR}:/var/www/html/wp-content/plugins/security-automation-manager:ro
+    depends_on:
+      - wordpress
+    profiles: ["cli"]
+
+volumes:
+  html: {}
