@@ -98,8 +98,8 @@ Key columns:
 - `surface`
 - `directive` - the CSP directive this source applies to (e.g. `script-src`, `img-src`)
 - `source_uri` - full URL of the discovered source
-- `source_scheme` - scheme component (e.g. `https`)
-- `source_host` - host component as it should appear in the CSP directive value
+- `source_scheme` - scheme component (e.g. `https`), or `self` for a file on this site (see below)
+- `source_host` - host component as it should appear in the CSP directive value; for a `self` row, the file's exact path (e.g. `/gtm/gtm.js`), case preserved
 - `owner_component` - plugin or theme that introduced this source (if detectable)
 - `owner_type` - `plugin`, `theme`, `core`, or `custom`
 - `approval_state` - `pending`, `approved`, `denied`
@@ -118,7 +118,7 @@ Operational notes:
 - discovery upserts rows by `(surface, directive, source_host)` rather than inserting duplicates
 - approval state is operator-controlled only; sources are never auto-approved
 - rejected and reverted fingerprints are suppressed by the latest matching row in `sam_policy_change_decisions`
-- same-origin resources must not be stored as inventory rows
+- same-origin resources are not stored as inventory rows, except an exact file in `script-src`, `script-src-elem` or `worker-src` that the browser blocked (those defaults have no `'self'`). Such a row has `source_scheme` `self` and the path in `source_host`; `Policy_Builder` emits it as the site's current origin plus the path, never `'self'`, and `Same_Origin_Source::proposable_path()` refuses the REST prefix, the uploads directory, PHP endpoints, directories, JSONP-style queries and any `%`. Storing the path keeps the site's hostname out of configuration exports. These rows are never automation-eligible.
 - only `approved` rows are included in emitted CSP headers
 
 ### `csp_hash_inventory`

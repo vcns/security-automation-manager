@@ -73,6 +73,12 @@ class Decision_Engine {
 			$this->add_finding( $findings, 'CSP-SCHEME-001', 'fail', 'high', 'blocked', 'Cleartext HTTP sources are hard-excluded from automation.' );
 		}
 
+		if ( Same_Origin_Source::SCHEME === $scheme ) {
+			$risk         = 'high';
+			$exclusions[] = 'same_origin_file';
+			$this->add_finding( $findings, 'CSP-SRC-005', 'fail', 'high', 'blocked', 'A file on this site that reached the page without a nonce. Approving allows this exact path only, but it is executable content, so a person must decide.' );
+		}
+
 		if ( in_array( $scheme, array( 'data', 'blob' ), true ) || str_starts_with( $uri, 'data:' ) || str_starts_with( $uri, 'blob:' ) ) {
 			$risk         = 'high';
 			$exclusions[] = 'browser_scheme';

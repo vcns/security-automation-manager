@@ -670,7 +670,11 @@ class Violation_Reporter {
 		$host      = strtolower( $parsed['host'] );
 		$site_host = wp_parse_url( home_url(), PHP_URL_HOST );
 		if ( ! empty( $site_host ) && strtolower( (string) $site_host ) === $host ) {
-			return null;
+			// A file on this site. Where the default directive already has
+			// 'self' this report can't happen; where it doesn't (scripts and
+			// workers), the exact path becomes the proposal -- see
+			// Same_Origin_Source for what is never offered.
+			return Same_Origin_Source::candidate( $directive, $blocked_uri );
 		}
 
 		return array(

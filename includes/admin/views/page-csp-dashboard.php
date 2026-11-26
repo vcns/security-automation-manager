@@ -625,8 +625,12 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 			<td class="wp-sam-col-surface"><?php echo esc_html( $src['surface'] ); ?></td>
 			<td class="wp-sam-col-technical"><code><?php echo esc_html( $src['directive'] ); ?></code></td>
 			<td class="wp-sam-col-technical">
+				<?php if ( \WP_SAM\CSP\Same_Origin_Source::SCHEME === ( $src['source_scheme'] ?? '' ) ) : ?>
+				<code><?php echo esc_html( \WP_SAM\CSP\Same_Origin_Source::label( (string) $src['source_host'] ) ); ?></code>
+				<?php else : ?>
 				<code><?php echo esc_html( $src['source_host'] ); ?></code>
-				<?php echo Known_Source_Badge::render( (string) $src['source_host'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
+					<?php echo Known_Source_Badge::render( (string) $src['source_host'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>
+				<?php endif; ?>
 			</td>
 			<td class="wp-sam-col-status">
 				<?php echo Risk_Badge::render( (string) ( $src['risk_level'] ?? 'low' ), (string) ( $src['risk_reason'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes internally. ?>

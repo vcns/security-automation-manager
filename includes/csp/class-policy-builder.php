@@ -667,6 +667,16 @@ class Policy_Builder extends Header_Builder {
 			if ( isset( $directives[ $dir ] ) && is_array( $directives[ $dir ] ) ) {
 				$host   = sanitize_text_field( (string) $src['source_host'] );
 				$scheme = strtolower( sanitize_text_field( (string) ( $src['source_scheme'] ?? '' ) ) );
+				if ( Same_Origin_Source::SCHEME === $scheme ) {
+					// An exact file on this site: current origin + path, never
+					// 'self' (see Same_Origin_Source). Empty when the path is
+					// no longer one that may be emitted.
+					$expression = Same_Origin_Source::expression( $host );
+					if ( '' !== $expression ) {
+						$directives[ $dir ][] = $expression;
+					}
+					continue;
+				}
 				if ( '' === $scheme ) {
 					$scheme = 'https';
 				}

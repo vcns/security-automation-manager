@@ -462,6 +462,51 @@ class ViolationReporterTest extends TestCase {
 		$this->assertSame( 'query', $GLOBALS['_wpdb_last_operation'] );
 	}
 
+	public function test_report_endpoint_learning_proposes_a_blocked_same_origin_script_by_exact_path(): void {
+		// script-src has no 'self' by default, so a file on this site that
+		// reaches the page without the nonce (Google tag gateway's
+		// /gtm/gtm.js, for one) used to be dropped as "same origin" and could
+		// never be allowed.
+		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
+		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		$reporter = new Violation_Reporter( $this->audit, new Learning_Window() );
+		$reporter->handle(
+			$this->make_request(
+				'{"csp-report":{"effective-directive":"script-src-elem","violated-directive":"script-src-elem","document-uri":"https://example.com/","blocked-uri":"https://example.com/GTM/gtm.js?id=G-TEST123"}}'
+			)
+		);
+
+		$this->assertCount( 1, $GLOBALS['_wpdb_inserted_rows'] );
+		$source_insert = $GLOBALS['_wpdb_inserted_rows'][0]['data'];
+		$this->assertSame( 'script-src-elem', $source_insert['directive'] );
+		$this->assertSame( 'self', $source_insert['source_scheme'] );
+		$this->assertSame( '/GTM/gtm.js', $source_insert['source_host'], 'The path keeps its case and drops the query.' );
+		$this->assertSame( 'pending', $source_insert['approval_state'] );
+		$this->assertSame( 'high', $source_insert['risk_level'] );
+	}
+
+	public function test_report_endpoint_learning_never_proposes_a_same_origin_rest_or_image_source(): void {
+		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
+		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+
+		$reporter = new Violation_Reporter( $this->audit, new Learning_Window() );
+		$reporter->handle(
+			$this->make_request(
+				'{"csp-report":{"effective-directive":"script-src-elem","violated-directive":"script-src-elem","document-uri":"https://example.com/","blocked-uri":"https://example.com/wp-json/wp/v2/users?_jsonp=alert"}}'
+			)
+		);
+		$reporter->handle(
+			$this->make_request(
+				'{"csp-report":{"effective-directive":"img-src","violated-directive":"img-src","document-uri":"https://example.com/","blocked-uri":"https://example.com/logo.png"}}'
+			)
+		);
+
+		$this->assertCount( 0, $GLOBALS['_wpdb_inserted_rows'] );
+	}
+
 	public function test_report_endpoint_learning_skips_inline_reports(): void {
 		update_option( Learning_Window::OPTION_LAST_CHANGE, gmdate( 'Y-m-d H:i:s' ) );
 		update_option( Learning_Window::OPTION_WINDOW_HOURS, 48 );

@@ -441,6 +441,32 @@ class PolicyBuilderTest extends TestCase {
 		$this->assertStringContainsString( 'wss://api.example.com', $policy );
 	}
 
+	public function test_build_emits_an_approved_same_origin_file_as_origin_plus_path_never_self(): void {
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src' => [], 'script-src-elem' => [] ] );
+
+		$policy = $this->build_with_approved_sources( $profile, 'frontend', [
+			[ 'directive' => 'script-src-elem', 'source_host' => '/gtm/gtm.js', 'source_scheme' => 'self' ],
+		] );
+
+		$this->assertStringContainsString( 'script-src-elem https://example.com/gtm/gtm.js', $policy );
+		$this->assertStringNotContainsString( 'self://', $policy );
+		$this->assertStringNotContainsString( "'self'", $policy );
+	}
+
+	public function test_build_leaves_out_a_same_origin_row_whose_path_may_not_be_emitted(): void {
+		// Defence in depth: a row altered in the database, or one that no
+		// longer passes Same_Origin_Source's checks, never reaches the header.
+		$profile = $this->make_profile( [ 'default-src' => [ "'none'" ], 'script-src-elem' => [] ] );
+
+		$policy = $this->build_with_approved_sources( $profile, 'frontend', [
+			[ 'directive' => 'script-src-elem', 'source_host' => '/wp-json/wp/v2/users', 'source_scheme' => 'self' ],
+			[ 'directive' => 'script-src-elem', 'source_host' => "/a.js; script-src 'unsafe-inline'", 'source_scheme' => 'self' ],
+		] );
+
+		$this->assertStringNotContainsString( 'wp/v2/users', $policy );
+		$this->assertStringNotContainsString( 'unsafe-inline', $policy );
+	}
+
 	public function test_build_defaults_approved_source_scheme_to_https_when_absent(): void {
 		// Rows from before the scheme column was read back out (or a stub missing
 		// the key entirely) must not silently emit a bare, scheme-less host.

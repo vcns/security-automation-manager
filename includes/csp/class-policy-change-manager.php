@@ -74,9 +74,13 @@ class Policy_Change_Manager {
 
 		$surface   = $this->normalise_token( $surface, 32 );
 		$directive = $this->normalise_directive( $candidate['directive'] ?? '' );
-		$host      = $this->normalise_host( $candidate['host'] ?? '' );
 		$scheme    = $this->normalise_token( $candidate['scheme'] ?? 'https', 16 );
-		$uri       = esc_url_raw( (string) ( $candidate['uri'] ?? '' ) );
+		// A same-origin row's "host" is a path, and CSP path matching is
+		// case-sensitive, so it must not be lowercased like a hostname.
+		$host = Same_Origin_Source::SCHEME === $scheme
+			? (string) Same_Origin_Source::proposable_path( (string) ( $candidate['host'] ?? '' ) )
+			: $this->normalise_host( $candidate['host'] ?? '' );
+		$uri  = esc_url_raw( (string) ( $candidate['uri'] ?? '' ) );
 
 		if ( '' === $surface || '' === $directive || '' === $host ) {
 			return array(
