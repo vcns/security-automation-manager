@@ -122,6 +122,23 @@ class WellKnownFileServerTest extends TestCase {
 		$this->assertStringStartsWith( "version: STSv1\n", (string) $server->body );
 	}
 
+	public function test_maybe_serve_sends_traffic_advice_as_json_for_thirty_minutes(): void {
+		$store = new Well_Known_File_Store();
+		$store->save( 'traffic-advice', "[{\"user_agent\": \"prefetch-proxy\", \"disallow\": true}]\n", 1 );
+		$server                    = new Recording_Well_Known_File_Server( $store );
+		$_SERVER['REQUEST_URI']    = '/.well-known/traffic-advice';
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$server->maybe_serve();
+
+		$this->assertSame( 200, $server->status );
+		$this->assertContains( 'Content-Type: application/trafficadvice+json', $server->headers );
+		$this->assertNotContains( 'Content-Type: text/plain; charset=utf-8', $server->headers );
+		$this->assertContains( 'Cache-Control: public, max-age=1800', $server->headers );
+		$this->assertContains( 'X-Content-Type-Options: nosniff', $server->headers );
+		$this->assertStringStartsWith( '[{"user_agent"', (string) $server->body );
+	}
+
 	public function test_maybe_serve_sends_no_body_for_head(): void {
 		$store = new Well_Known_File_Store();
 		$store->save( 'humans', "Site: Example\n", 1 );

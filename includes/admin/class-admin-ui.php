@@ -97,6 +97,7 @@ use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Iso_Countries;
 use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
+use WP_SAM\Intelligence\Traffic_Advice_Store;
 use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Own_Address_Store;
 use WP_SAM\Intelligence\Recommendation_Dismissal_Store;
@@ -250,6 +251,7 @@ class Admin_UI {
 		add_action( 'admin_post_wp_sam_ads_txt_refresh', array( $this, 'handle_ads_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_app_ads_txt_refresh', array( $this, 'handle_app_ads_txt_refresh' ) );
 		add_action( 'admin_post_wp_sam_mta_sts_txt_refresh', array( $this, 'handle_mta_sts_txt_refresh' ) );
+		add_action( 'admin_post_wp_sam_traffic_advice_refresh', array( $this, 'handle_traffic_advice_refresh' ) );
 		add_action( 'admin_post_wp_sam_well_known_save', array( $this, 'handle_well_known_save' ) );
 		add_action( 'admin_post_wp_sam_well_known_remove', array( $this, 'handle_well_known_remove' ) );
 		add_action( 'admin_post_wp_sam_save_cert_settings', array( $this, 'handle_save_cert_settings' ) );
@@ -598,8 +600,10 @@ class Admin_UI {
 			'wp_sam_policy_header_name'            => array( $this, 'sanitize_policy_header_name' ),
 			'wp_sam_automation_config'             => array( $this, 'sanitize_automation_config' ),
 			Page_Cache_Purger::OPTION_ENABLED      => array( Page_Cache_Purger::class, 'sanitize_enabled' ),
-			// Data retention: days to keep violation reports (0 = keep forever).
-			'wp_sam_violation_retention_days'      => 'absint',
+			// Data retention: days to keep violation reports and visitor
+			// records (0 = keep forever). See Data_Retention for why this
+			// can't simply be absint().
+			\WP_SAM\Data_Retention::OPTION         => array( \WP_SAM\Data_Retention::class, 'sanitize' ),
 		);
 
 		foreach ( $settings as $option => $callback ) {
@@ -2303,6 +2307,23 @@ class Admin_UI {
 		exit;
 	}
 
+	/**
+	 * Handles the traffic-advice refresh form post: checks the nonce and the manage_options capability, refreshes the reading, then redirects to `security-automation-manager-traffic&tab=network-intelligence&subtab=well-known`.
+	 *
+	 * @return void
+	 */
+	public function handle_traffic_advice_refresh(): void {
+		check_admin_referer( 'wp_sam_traffic_advice_refresh' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to refresh the traffic advice.', 'vcns-security-automation-manager' ) );
+		}
+
+		( new Traffic_Advice_Store() )->refresh();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=security-automation-manager-traffic&tab=network-intelligence&subtab=well-known' ) );
+		exit;
+	}
+
 	/** The editor for one file on Control → Traffic Controls → Network Intelligence → Well-Known Files. */
 	public static function well_known_editor_url( string $key, array $args = array() ): string {
 		return add_query_arg(
@@ -3247,15 +3268,22 @@ class Admin_UI {
 				);
 
 			case 'scheduler':
+				if ( 'retention_repaired' === $event ) {
+					return array(
+						'url'   => $csp( 'settings' ) . '#wp-sam-data-retention',
+						'label' => __( 'Open Control → Automation Settings', 'vcns-security-automation-manager' ),
+					);
+				}
 				if ( str_starts_with( $event, 'tor_exit_list_' ) ) {
 					return array(
 						'url'   => $network( 'tor' ),
 						'label' => __( 'Open Control → Traffic Controls → Tor Exit List', 'vcns-security-automation-manager' ),
 					);
 				}
-				// The seven well-known-file refreshes (robots_rules_, agents_rules_,
-				// security_txt_, humans_txt_, ads_txt_, app_ads_txt_, mta_sts_txt_).
-				if ( 1 === preg_match( '/^(robots_rules|agents_rules|security_txt|humans_txt|ads_txt|app_ads_txt|mta_sts_txt)_/', $event ) ) {
+				// The eight well-known-file refreshes (robots_rules_, agents_rules_,
+				// security_txt_, humans_txt_, ads_txt_, app_ads_txt_, mta_sts_txt_,
+				// traffic_advice_).
+				if ( 1 === preg_match( '/^(robots_rules|agents_rules|security_txt|humans_txt|ads_txt|app_ads_txt|mta_sts_txt|traffic_advice)_/', $event ) ) {
 					return array(
 						'url'   => $network( 'well-known' ),
 						'label' => __( 'Open Control → Traffic Controls → Well-Known Files', 'vcns-security-automation-manager' ),

@@ -77,6 +77,9 @@ if ( 'mta-sts' === $well_known_key ) {
 		Well_Known_File_Store::CHECK_NOT_SERVED  => array( 'warning', __( 'Saved, but the policy address returns something else: a redirect (mail servers don\'t follow them), another server\'s copy, or a file not sent as text/plain. Check where the mta-sts address points.', 'vcns-security-automation-manager' ) ),
 		Well_Known_File_Store::CHECK_UNREACHABLE => array( 'warning', __( 'Saved, but this plugin couldn\'t fetch the policy address, so mail servers can\'t either. Check the setup steps below.', 'vcns-security-automation-manager' ) ),
 	);
+} elseif ( 'traffic-advice' === $well_known_key ) {
+	$wk_check_notices[ Well_Known_File_Store::CHECK_SERVED ]     = array( 'success', __( 'Saved. Prefetch proxies now get this advice, within 30 minutes for any that had already read it.', 'vcns-security-automation-manager' ) );
+	$wk_check_notices[ Well_Known_File_Store::CHECK_NOT_SERVED ] = array( 'warning', __( 'Saved, but the site returns something else at this address, or doesn\'t send it as application/trafficadvice+json, which prefetch proxies require. A real file in the site\'s folder, a page cache or the web server is answering before WordPress. Clear whichever it is, then save again to check.', 'vcns-security-automation-manager' ) );
 }
 ?>
 

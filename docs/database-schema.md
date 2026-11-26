@@ -54,6 +54,7 @@ The plugin creates custom tables on activation. All table names are prefixed wit
 | v46 | no new table -- bumped purely to re-run `Activator::activate()`'s new generic `wp_sam_extension_migrations` hook on every already-upgraded site. `includes/extensions/fully-automatic-mode.php` listens on it to remove any of the 8 direct-Stripe option values (secret/price/webhook) a previous private/commercial build may have stored, now that it no longer has a direct-Stripe checkout path (`docs/threat-model.md` "Stripe secret storage" finding; `docs/sam-portal-requirements-spec.md` §21.2). That cleanup deliberately lives in the extension, not in `Activator` itself, since a core migration referencing those exact option-name strings would defeat `.github/scripts/verify-wporg-package.sh`'s forbidden-string scan. Only ever mattered on a private/commercial build; neither public release channel has shipped a working checkout path. |
 | v47 | no new table -- bumped to run `Activator::migrate_hold_admin_csp_at_report_only()` once on every already-upgraded site. `Policy_Builder` now sends the admin surface's policy (it hooks `admin_init`; WordPress never fires `send_headers` on wp-admin pages, so no admin policy was ever sent before). Any `csp_policy_profiles` row with `surface = 'admin'` and `mode = 'enforce'` is set back to `report-only` so a never-tested admin policy isn't suddenly enforced on the dashboard; guarded by the `wp_sam_admin_csp_held_v47` option so a later re-promotion is never undone. Also adds the per-surface `wp_sam_csp_delivery_{surface}` options (`Csp_Delivery_Log`: first/last time a policy was sent, last hash trim), which `Recommendation_Rule_Csp_Enforce_Ready` now requires before recommending enforce. |
 | v48 | adds `pinned_url`, `integrity_checked_at`, `integrity_attempted_at`, `integrity_check_error`, `drift_detected_at`, and `drift_observed_sri` to `sam_dependency_inventory` for the daily pinned-hash drift check (`Security\Pinned_Dependency_Checker`). Each `immutable_pinned` row's file is re-fetched from `pinned_url` (the exact URL its hash was taken from; `last_seen_url` for rows pinned earlier) and re-hashed with `expected_sri`'s own algorithm. A changed file records `drift_detected_at`/`drift_observed_sri` for the administrator to re-approve or reclassify under Decide → Dependency Classification; a fetch failure only records `integrity_check_error`, never drift. Nothing is approved automatically. Existing rows need no data migration: the new columns start `NULL`. |
+| v49 | adds `sam_network_rule_hits`: a count of the requests each ASN/country network rule blocked, per UTC day, rule and address, with the latest surface and path. Before this, `Traffic_Guard` answered a match with a 403 and kept no record. Deleted after the data-retention window like request events. See `Intelligence\Network_Rule_Hit_Store`. |
 
 ## Table list
 
@@ -411,6 +412,25 @@ Operational notes:
 - `Security\Pinned_Dependency_Checker` (daily WP-Cron hook `wp_sam_dependency_hash_check`) checks at most 25 rows per run, least recently attempted first; the fetch is https-only, restricted to the row's own origin, with TLS verification, a 10 s timeout, and a 5 MB cap (`Security\Dependency_Sri_Fetcher`, shared with "Suggest")
 - a new hash, re-approval, or leaving `immutable_pinned` clears the drift and check columns
 - included in configuration export/import and pre-migration snapshots (`SELECT *`), so the new columns travel with it
+
+### `sam_network_rule_hits`
+
+Purpose:
+
+- what the ASN and country rules in `sam_network_rules` (including the Country Block List) actually block. `Traffic_Guard` answers a match with a 403 and stops the request; `Intelligence\Network_Rule_Hit_Store` counts it here first. Shown under Control → Traffic Controls → Network Intelligence → Geo-IP and on the Network Rules list
+
+Key columns:
+
+- `hit_date` (UTC), `rule_type` (`asn` | `country`), `rule_value` (ASN number or two-letter country code), `ip` - unique together: one row per day, rule and address
+- `hit_count` - requests from that address the rule blocked that day
+- `surface`, `last_path` - surface and path of the latest blocked request. The path never includes the query string
+- `first_seen_at`, `last_seen_at`
+
+Operational notes:
+
+- one upsert per blocked request (`INSERT ... ON DUPLICATE KEY UPDATE`), so a busy blocked address costs one row per day, not one per request
+- holds visitor addresses, so rows not seen for `wp_sam_violation_retention_days` days (default 90) are deleted by the daily cron, like `sam_request_events`
+- not configuration: excluded from configuration export/import and pre-migration snapshots
 
 ## Relationships
 

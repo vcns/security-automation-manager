@@ -213,6 +213,12 @@ if ( ! function_exists( 'esc_html' ) ) {
 	}
 }
 
+if ( ! function_exists( 'number_format_i18n' ) ) {
+	function number_format_i18n( float|int|string $number, int $decimals = 0 ): string {
+		return number_format( (float) $number, $decimals );
+	}
+}
+
 if ( ! function_exists( 'esc_js' ) ) {
 	function esc_js( string $text ): string {
 		return addslashes( $text );
@@ -365,6 +371,12 @@ if ( ! function_exists( 'submit_button' ) ) {
 			esc_attr( $type ),
 			esc_attr( $text )
 		);
+	}
+}
+
+if ( ! function_exists( 'settings_fields' ) ) {
+	function settings_fields( string $option_group ): void {
+		echo '<input type="hidden" name="option_page" value="' . htmlspecialchars( $option_group, ENT_QUOTES, 'UTF-8' ) . '" />';
 	}
 }
 

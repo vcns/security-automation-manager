@@ -47,6 +47,7 @@ class Activator {
 		self::migrate_consolidate_bypass_flags_into_json();
 		self::migrate_default_reporting_transport_to_both();
 		self::migrate_hold_admin_csp_at_report_only();
+		self::migrate_repair_zeroed_retention();
 
 		// Generic, empty-by-default extension point: an extension (see
 		// includes/extensions/, physically absent from the WordPress.org-
@@ -232,6 +233,39 @@ class Activator {
 		}
 	}
 
+	/**
+	 * Until 2.16.0 the data-retention period had no field on any settings
+	 * page, but it was registered in the same settings group as Control ->
+	 * Automation Settings. options.php writes every option in a group, so
+	 * each save of that page stored 0 ("keep everything") and silently
+	 * switched off every daily purge: violation reports, Continuous
+	 * Intelligence events, the lookup caches. Nothing in the admin could set
+	 * 0 on purpose, so put sites left at 0 back on the documented default,
+	 * once. Flag-guarded, so a deliberate 0 chosen afterwards is kept.
+	 */
+	private static function migrate_repair_zeroed_retention(): void {
+		if ( get_option( 'wp_sam_retention_repaired', false ) ) {
+			return;
+		}
+		update_option( 'wp_sam_retention_repaired', true );
+
+		$stored = get_option( Data_Retention::OPTION, false );
+		if ( false === $stored || 0 !== (int) $stored ) {
+			return;
+		}
+
+		update_option( Data_Retention::OPTION, Data_Retention::DEFAULT_DAYS );
+		( new Audit_Log() )->log(
+			'scheduler',
+			'retention_repaired',
+			sprintf(
+				'Data retention was set to keep everything, because saving Automation Settings used to clear it. It is now %d days: the next daily scan deletes older violation reports and Continuous Intelligence records. Change it under Control → Automation Settings → Data Retention.',
+				Data_Retention::DEFAULT_DAYS
+			),
+			'warning'
+		);
+	}
+
 	private static function migrate_default_reporting_transport_to_both(): void {
 		if ( get_option( 'wp_sam_reporting_transport_defaulted_v39', false ) ) {
 			return;
@@ -408,6 +442,7 @@ class Activator {
 			'sam_network_rules',
 			'sam_exceptions',
 			'sam_recommendation_dismissals',
+			'sam_network_rule_hits',
 		);
 	}
 
@@ -465,6 +500,10 @@ class Activator {
 			'wp_sam_mta_sts_txt_fields',
 			'wp_sam_mta_sts_txt_refreshed_at',
 			'wp_sam_mta_sts_txt_last_fetch_status',
+			'wp_sam_traffic_advice_content',
+			'wp_sam_traffic_advice_refreshed_at',
+			'wp_sam_traffic_advice_last_fetch_status',
+			'wp_sam_traffic_advice_media_type_ok',
 		);
 	}
 
@@ -1479,6 +1518,32 @@ class Activator {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY rule_type (rule_type)
+) {$cc};"
+		);
+
+		// Schema v49: sam_network_rule_hits -- what the sam_network_rules
+		// above actually block. Traffic_Guard answers a match with a 403
+		// and stops; Network_Rule_Hit_Store counts it here first, one row
+		// per UTC day, rule and address, so the Country Block List and the
+		// ASN rules can show what they are catching. Holds visitor
+		// addresses and request paths (never query strings), so Scheduler
+		// deletes rows after the data-retention window, like request events.
+		dbDelta(
+			"CREATE TABLE {$p}sam_network_rule_hits (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  hit_date date NOT NULL,
+  rule_type varchar(10) NOT NULL,
+  rule_value varchar(32) NOT NULL,
+  ip varchar(64) NOT NULL,
+  surface varchar(32) NOT NULL DEFAULT '',
+  last_path varchar(255) NOT NULL DEFAULT '',
+  hit_count int(11) UNSIGNED NOT NULL DEFAULT 1,
+  first_seen_at datetime NOT NULL,
+  last_seen_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY hit_day_rule_ip (hit_date,rule_type,rule_value,ip),
+  KEY rule_last_seen (rule_type,last_seen_at),
+  KEY last_seen_at (last_seen_at)
 ) {$cc};"
 		);
 

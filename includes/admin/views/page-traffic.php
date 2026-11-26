@@ -35,6 +35,7 @@ use WP_SAM\Intelligence\Ip_Resolver;
 use WP_SAM\Intelligence\Ip_Rule_Store;
 use WP_SAM\Intelligence\Iso_Countries;
 use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
+use WP_SAM\Intelligence\Network_Rule_Hit_Store;
 use WP_SAM\Intelligence\Network_Rule_Store;
 use WP_SAM\Intelligence\Own_Address_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
@@ -42,6 +43,7 @@ use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Site_Country;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
+use WP_SAM\Intelligence\Traffic_Advice_Store;
 use WP_SAM\Intelligence\Traffic_Block_Store;
 use WP_SAM\Intelligence\Traffic_Policy_Store;
 use WP_SAM\Intelligence\Well_Known_File_Catalog;
@@ -849,6 +851,86 @@ $tab_help = array(
 				<?php submit_button( __( 'Save Country Block List', 'vcns-security-automation-manager' ) ); ?>
 			</form>
 
+			<?php
+			$geoip_hit_store   = new Network_Rule_Hit_Store();
+			$geoip_hit_summary = $geoip_hit_store->summary( 'country' );
+			$geoip_hit_recent  = $geoip_hit_store->recent( 'country', 20 );
+			?>
+			<h3 id="wp-sam-country-blocks-seen" style="margin:1.5em 0 0.25em"><?php esc_html_e( 'Blocked by country', 'vcns-security-automation-manager' ); ?></h3>
+			<p class="description" style="margin-top:0">
+				<?php
+				printf(
+					/* translators: %d: number of days, today included */
+					esc_html__( 'Requests a country rule stopped in the last %d days, today included. Each one got a 403.', 'vcns-security-automation-manager' ),
+					(int) Network_Rule_Hit_Store::SUMMARY_DAYS
+				);
+				?>
+			</p>
+			<div class="wp-sam-table-wrap">
+			<table class="widefat striped wp-sam-table wp-sam-country-blocks-table" style="margin-top:0.5em">
+				<thead>
+					<tr>
+						<th class="wp-sam-col-primary"><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-count"><?php esc_html_e( 'Requests blocked', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-count"><?php esc_html_e( 'Addresses', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last blocked (UTC)', 'vcns-security-automation-manager' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ( $geoip_hit_summary as $geoip_hit ) : ?>
+					<tr>
+						<td class="wp-sam-col-primary">
+							<?php
+							echo esc_html(
+								/* translators: 1: country name, 2: two-letter country code */
+								sprintf( __( '%1$s (%2$s)', 'vcns-security-automation-manager' ), $geoip_country_names[ $geoip_hit['rule_value'] ] ?? $geoip_hit['rule_value'], $geoip_hit['rule_value'] )
+							);
+							?>
+						</td>
+						<td class="wp-sam-col-count"><?php echo esc_html( number_format_i18n( $geoip_hit['requests'] ) ); ?></td>
+						<td class="wp-sam-col-count"><?php echo esc_html( number_format_i18n( $geoip_hit['addresses'] ) ); ?></td>
+						<td class="wp-sam-col-datetime"><?php echo esc_html( $geoip_hit['last_seen_at'] ); ?></td>
+					</tr>
+				<?php endforeach; ?>
+				<?php if ( empty( $geoip_hit_summary ) ) : ?>
+					<tr>
+						<td colspan="4"><p><?php esc_html_e( 'Nothing blocked by country in this period.', 'vcns-security-automation-manager' ); ?></p></td>
+					</tr>
+				<?php endif; ?>
+				</tbody>
+			</table>
+			</div>
+
+			<?php if ( ! empty( $geoip_hit_recent ) ) : ?>
+			<h4 style="margin:1.25em 0 0.25em"><?php esc_html_e( 'Most recently blocked addresses', 'vcns-security-automation-manager' ); ?></h4>
+			<div class="wp-sam-table-wrap">
+			<table class="widefat striped wp-sam-table wp-sam-country-blocks-recent-table" style="margin-top:0.5em">
+				<thead>
+					<tr>
+						<th class="wp-sam-col-datetime"><?php esc_html_e( 'Last blocked (UTC)', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-technical"><?php esc_html_e( 'Address', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-status"><?php esc_html_e( 'Country', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-description"><?php esc_html_e( 'Last path', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-count"><?php esc_html_e( 'Requests that day', 'vcns-security-automation-manager' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ( $geoip_hit_recent as $geoip_hit ) : ?>
+					<tr>
+						<td class="wp-sam-col-datetime"><?php echo esc_html( $geoip_hit['last_seen_at'] ); ?></td>
+						<td class="wp-sam-col-technical"><code><?php echo esc_html( $geoip_hit['ip'] ); ?></code></td>
+						<td class="wp-sam-col-status"><code><?php echo esc_html( $geoip_hit['rule_value'] ); ?></code></td>
+						<td class="wp-sam-col-surface"><?php echo esc_html( ucfirst( $geoip_hit['surface'] ) ); ?></td>
+						<td class="wp-sam-col-description"><code><?php echo esc_html( $geoip_hit['last_path'] ); ?></code></td>
+						<td class="wp-sam-col-count"><?php echo esc_html( number_format_i18n( $geoip_hit['hit_count'] ) ); ?></td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+			</div>
+			<?php endif; ?>
+
 			<?php // Opened by the cog and the buttons above; see assets/js/admin.js. ?>
 			<dialog id="wp-sam-geoip-settings" class="wp-sam-dialog" aria-labelledby="wp-sam-geoip-settings-title">
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -950,9 +1032,29 @@ $tab_help = array(
 					$mta_sts_txt_contents = __( 'Present, but not a valid policy', 'vcns-security-automation-manager' );
 				}
 
+				$traffic_advice_store  = new Traffic_Advice_Store();
+				$traffic_advice        = $traffic_advice_store->advice();
+				$traffic_advice_note   = null;
+				$traffic_advice_status = $traffic_advice_store->last_fetch_status();
+				if ( ! $traffic_advice_store->is_present() ) {
+					$traffic_advice_contents = __( 'Not present', 'vcns-security-automation-manager' );
+				} elseif ( null === $traffic_advice ) {
+					$traffic_advice_contents = __( 'Present, but no advice for prefetch proxies', 'vcns-security-automation-manager' );
+				} elseif ( $traffic_advice['disallow'] ) {
+					$traffic_advice_contents = __( 'Present: prefetch proxies asked to stay away', 'vcns-security-automation-manager' );
+				} elseif ( $traffic_advice['fraction'] < 1 ) {
+					/* translators: %s: percentage of prefetch traffic allowed, e.g. 50% */
+					$traffic_advice_contents = sprintf( __( 'Present: prefetch proxies limited to %s of their traffic', 'vcns-security-automation-manager' ), round( $traffic_advice['fraction'] * 100 ) . '%' );
+				} else {
+					$traffic_advice_contents = __( 'Present: prefetch proxies allowed', 'vcns-security-automation-manager' );
+				}
+				if ( $traffic_advice_store->is_present() && ! $traffic_advice_store->has_media_type() ) {
+					$traffic_advice_note = __( 'Not sent as application/trafficadvice+json, so proxies ignore it', 'vcns-security-automation-manager' );
+				}
+
 				// One row per file, in Well_Known_File_Catalog's order.
 				$well_known_files = array(
-					'robots'   => array(
+					'robots'         => array(
 						/* translators: %s: number of disallow rules */
 						'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $robots_rule_count, 'vcns-security-automation-manager' ), number_format( $robots_rule_count ) ),
 						'expired'   => false,
@@ -960,7 +1062,7 @@ $tab_help = array(
 						'status'    => $robots_rules_store->last_fetch_status(),
 						'action'    => 'wp_sam_robots_rules_refresh',
 					),
-					'agents'   => array(
+					'agents'         => array(
 						/* translators: %s: number of disallow rules */
 						'contents'  => sprintf( _n( '%s disallow rule', '%s disallow rules', $agents_rule_count, 'vcns-security-automation-manager' ), number_format( $agents_rule_count ) ),
 						'expired'   => false,
@@ -968,21 +1070,21 @@ $tab_help = array(
 						'status'    => $agents_rules_store->last_fetch_status(),
 						'action'    => 'wp_sam_agents_rules_refresh',
 					),
-					'security' => array(
+					'security'       => array(
 						'contents'  => $security_txt_contents,
 						'expired'   => null !== $security_txt_expires && $security_txt_store->is_expired(),
 						'refreshed' => $security_txt_store->last_refreshed_at(),
 						'status'    => $security_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_security_txt_refresh',
 					),
-					'humans'   => array(
+					'humans'         => array(
 						'contents'  => $humans_txt_store->is_present() ? __( 'Present', 'vcns-security-automation-manager' ) : __( 'Not present', 'vcns-security-automation-manager' ),
 						'expired'   => false,
 						'refreshed' => $humans_txt_store->last_refreshed_at(),
 						'status'    => $humans_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_humans_txt_refresh',
 					),
-					'ads'      => array(
+					'ads'            => array(
 						/* translators: %s: number of authorised-seller records */
 						'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $ads_record_count, 'vcns-security-automation-manager' ), number_format( $ads_record_count ) ),
 						'expired'   => false,
@@ -990,7 +1092,7 @@ $tab_help = array(
 						'status'    => $ads_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_ads_txt_refresh',
 					),
-					'app-ads'  => array(
+					'app-ads'        => array(
 						/* translators: %s: number of authorised-seller records */
 						'contents'  => sprintf( _n( '%s authorised-seller record', '%s authorised-seller records', $app_ads_record_count, 'vcns-security-automation-manager' ), number_format( $app_ads_record_count ) ),
 						'expired'   => false,
@@ -998,13 +1100,21 @@ $tab_help = array(
 						'status'    => $app_ads_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_app_ads_txt_refresh',
 					),
-					'mta-sts'  => array(
+					'mta-sts'        => array(
 						'contents'  => $mta_sts_txt_contents,
 						'expired'   => false,
 						'note'      => $mta_sts_txt_note,
 						'refreshed' => $mta_sts_txt_store->last_refreshed_at(),
 						'status'    => $mta_sts_txt_store->last_fetch_status(),
 						'action'    => 'wp_sam_mta_sts_txt_refresh',
+					),
+					'traffic-advice' => array(
+						'contents'  => $traffic_advice_contents,
+						'expired'   => false,
+						'note'      => $traffic_advice_note,
+						'refreshed' => $traffic_advice_store->last_refreshed_at(),
+						'status'    => $traffic_advice_status,
+						'action'    => 'wp_sam_traffic_advice_refresh',
 					),
 				);
 
@@ -1084,6 +1194,7 @@ $tab_help = array(
 			$network_rules           = ( new Network_Rule_Store() )->all();
 			$network_rules_geoip_url = add_query_arg( 'subtab', 'geoip', $ni_base_url ) . '#wp-sam-country-block-list';
 			$network_rules_countries = array_filter( $network_rules, static fn( $rule ) => 'country' === $rule['rule_type'] );
+			$network_rule_hit_totals = ( new Network_Rule_Hit_Store() )->totals();
 			?>
 
 			<p class="description">
@@ -1112,6 +1223,15 @@ $tab_help = array(
 						<th class="wp-sam-col-technical"><?php esc_html_e( 'Value', 'vcns-security-automation-manager' ); ?></th>
 						<th class="wp-sam-col-surface"><?php esc_html_e( 'Surface', 'vcns-security-automation-manager' ); ?></th>
 						<th class="wp-sam-col-description"><?php esc_html_e( 'Reason', 'vcns-security-automation-manager' ); ?></th>
+						<th class="wp-sam-col-count">
+							<?php
+							printf(
+								/* translators: %d: number of days, today included */
+								esc_html__( 'Blocked, last %d days', 'vcns-security-automation-manager' ),
+								(int) Network_Rule_Hit_Store::SUMMARY_DAYS
+							);
+							?>
+						</th>
 						<th class="wp-sam-col-actions"><?php esc_html_e( 'Actions', 'vcns-security-automation-manager' ); ?></th>
 					</tr>
 				</thead>
@@ -1128,6 +1248,7 @@ $tab_help = array(
 					</td>
 					<td class="wp-sam-col-surface"><?php echo esc_html( '' !== (string) $network_rule['surface'] ? ucfirst( (string) $network_rule['surface'] ) : __( 'All', 'vcns-security-automation-manager' ) ); ?></td>
 					<td class="wp-sam-col-description"><?php echo esc_html( (string) $network_rule['reason'] ); ?></td>
+					<td class="wp-sam-col-count"><?php echo esc_html( number_format_i18n( $network_rule_hit_totals[ $network_rule['rule_type'] . ':' . $network_rule['value'] ] ?? 0 ) ); ?></td>
 					<td class="wp-sam-col-actions">
 						<?php if ( 'country' === $network_rule['rule_type'] && '' === (string) $network_rule['surface'] ) : ?>
 						<a href="<?php echo esc_url( $network_rules_geoip_url ); ?>" class="button button-small"><?php esc_html_e( 'Change on Geo-IP', 'vcns-security-automation-manager' ); ?></a>
@@ -1143,7 +1264,7 @@ $tab_help = array(
 				<?php endforeach; ?>
 				<?php if ( empty( $network_rules ) ) : ?>
 				<tr>
-					<td colspan="5"><p><?php esc_html_e( 'No network rules yet.', 'vcns-security-automation-manager' ); ?></p></td>
+					<td colspan="6"><p><?php esc_html_e( 'No network rules yet.', 'vcns-security-automation-manager' ); ?></p></td>
 				</tr>
 				<?php endif; ?>
 				</tbody>

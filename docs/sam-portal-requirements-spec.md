@@ -1,3 +1,5 @@
+> **Architecture update, 4 November 2026:** This is a historical September 2026 baseline, **superseded for component boundaries and naming** by the agreed separate services: `portal.vcns.tech` (VCNS Portal frontend), `platform.vcns.tech` (shared organisation/identity/communication services), `fleet.vcns.tech` (SAM Fleet Management API), and the existing `licensing.vcns.tech` authority. The earlier `vcns/sam-portal` combined-UI-and-Fleet repository concept, `sam.vcns.tech` portal domain, and claims that its §24 fixes those particular boundaries are no longer current decisions. Retain this document as historical design input. **SAM-only target requirements** now live in [`fleet-edge-integration-requirements.md`](fleet-edge-integration-requirements.md); Portal, Platform and Fleet specifications belong in their own repositories when established. Do not implement their backend logic in this WordPress repo.
+
 # VCNS SAM Platform
 ## Portal and Component Requirements Specification
 

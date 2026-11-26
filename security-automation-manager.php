@@ -341,8 +341,15 @@ define( 'WP_SAM_VERSION', '2.15.0' );
  *        changed file is recorded as drift for an administrator to
  *        re-approve or reclassify; a fetch failure is recorded separately
  *        and never as drift. Nothing is approved automatically.
+ *   v49: adds sam_network_rule_hits. Traffic_Guard used to answer an
+ *        ASN/country network-rule match with a 403 and keep no record of
+ *        it; Intelligence\Network_Rule_Hit_Store now counts each block per
+ *        UTC day, rule and address (with the last path, never the query
+ *        string), shown beside the Country Block List and the network
+ *        rules. Deleted after the data-retention window like request
+ *        events.
  */
-define( 'WP_SAM_DB_VERSION', '48' );
+define( 'WP_SAM_DB_VERSION', '49' );
 
 define( 'WP_SAM_FILE', __FILE__ );
 define( 'WP_SAM_DIR', plugin_dir_path( __FILE__ ) );

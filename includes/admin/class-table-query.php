@@ -178,6 +178,114 @@ final class Table_Query {
 	}
 
 	/**
+	 * Builds a condition for an IP address search box. The term can be:
+	 *
+	 * - part of an address ("172.70." or ".135"), matching any address that
+	 *   contains it, as like_where() does;
+	 * - a pattern with * wildcards ("172.70.*", "*.135"), matched against the
+	 *   whole address;
+	 * - an IPv4 or IPv6 range in CIDR notation ("172.64.0.0/13",
+	 *   "2400:cb00::/32").
+	 *
+	 * A malformed range matches nothing, rather than being searched for as
+	 * text that no stored address could contain. IPv6 ranges rely on
+	 * INET6_ATON(), available since MySQL 5.6.3 and MariaDB 10.0.12.
+	 *
+	 * @param \wpdb  $wpdb     WordPress database object, used to escape LIKE wildcards.
+	 * @param string $column   Column holding addresses in text form.
+	 * @param string $raw_term Search term.
+	 * @return array|null Fragment with sql and args, or null when the term is empty.
+	 */
+	public static function ip_where( \wpdb $wpdb, string $column, string $raw_term ): ?array {
+		$term = trim( $raw_term );
+		if ( '' === $term ) {
+			return null;
+		}
+
+		if ( str_contains( $term, '/' ) ) {
+			$range = self::ip_range( $term );
+			if ( null === $range ) {
+				return array(
+					'sql'  => '1=0',
+					'args' => array(),
+				);
+			}
+
+			// The family test keeps IPv4 rows out of IPv6 ranges and vice
+			// versa: compared as hex strings, a 4-byte IPv4 value can fall
+			// between the bounds of a short IPv6 prefix.
+			if ( 4 === $range['family'] ) {
+				return array(
+					'sql'  => "({$column} NOT LIKE %s AND INET_ATON({$column}) BETWEEN %d AND %d)",
+					'args' => array( '%:%', $range['low'], $range['high'] ),
+				);
+			}
+
+			return array(
+				'sql'  => "({$column} LIKE %s AND HEX(INET6_ATON({$column})) BETWEEN %s AND %s)",
+				'args' => array( '%:%', $range['low'], $range['high'] ),
+			);
+		}
+
+		if ( str_contains( $term, '*' ) ) {
+			$pieces = array_map( array( $wpdb, 'esc_like' ), explode( '*', $term ) );
+			return array(
+				'sql'  => "{$column} LIKE %s",
+				'args' => array( implode( '%', $pieces ) ),
+			);
+		}
+
+		return self::like_where( $wpdb, $column, $term );
+	}
+
+	/**
+	 * Parses a CIDR range into its lowest and highest address: integers for
+	 * IPv4 (to compare with INET_ATON()), 32-character upper-case hex for
+	 * IPv6 (to compare with HEX(INET6_ATON())). Host bits set in the address
+	 * are ignored, so 172.70.5.9/13 means 172.64.0.0/13.
+	 *
+	 * @param string $cidr Range such as "172.64.0.0/13".
+	 * @return array{family: int, low: int|string, high: int|string}|null Null when it isn't a valid range.
+	 */
+	public static function ip_range( string $cidr ): ?array {
+		$parts = explode( '/', trim( $cidr ) );
+		if ( 2 !== count( $parts ) || ! ctype_digit( $parts[1] ) || false === filter_var( $parts[0], FILTER_VALIDATE_IP ) ) {
+			return null;
+		}
+
+		$packed = (string) inet_pton( $parts[0] );
+		$length = strlen( $packed );
+		$prefix = (int) $parts[1];
+		if ( $prefix > $length * 8 ) {
+			return null;
+		}
+
+		$low  = '';
+		$high = '';
+		for ( $i = 0; $i < $length; $i++ ) {
+			$kept  = max( 0, min( 8, $prefix - ( $i * 8 ) ) );
+			$mask  = ( 0xFF << ( 8 - $kept ) ) & 0xFF;
+			$byte  = ord( $packed[ $i ] ) & $mask;
+			$low  .= chr( $byte );
+			$high .= chr( $byte | ( ~$mask & 0xFF ) );
+		}
+
+		if ( 4 === $length ) {
+			return array(
+				'family' => 4,
+				'low'    => (int) unpack( 'N', $low )[1],
+				'high'   => (int) unpack( 'N', $high )[1],
+			);
+		}
+
+		return array(
+			'family' => 6,
+			'low'    => strtoupper( bin2hex( $low ) ),
+			'high'   => strtoupper( bin2hex( $high ) ),
+		);
+	}
+
+	/**
 	 * Builds a minimum-value condition.
 	 *
 	 * @param string   $column  Column name.

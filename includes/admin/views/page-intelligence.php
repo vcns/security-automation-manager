@@ -60,6 +60,25 @@ $tab_help = array(
 		<?php esc_html_e( 'Layer 3 of this plugin\'s protection model: request observation and classification, independent of the enforced header policies above. Which detector families run, and whether a match stays pure evidence or feeds progressive blocking, is configured on Traffic Controls\' Detectors tab -- this page is where you read what they\'ve actually found, who\'s making the requests, and the vendor catalogue those identities are checked against.', 'vcns-security-automation-manager' ); ?>
 	</p>
 
+	<?php
+	$retention_days = \WP_SAM\Data_Retention::days();
+	$retention_url  = admin_url( 'admin.php?page=security-automation-manager-dashboard&tab=settings#wp-sam-data-retention' );
+	?>
+	<p class="description">
+		<?php
+		if ( $retention_days > 0 ) {
+			printf(
+				/* translators: %d: number of days */
+				esc_html__( 'Events and identities not seen for %d days are deleted by the daily scan. Identities you have authorised or denied are kept.', 'vcns-security-automation-manager' ),
+				(int) $retention_days
+			);
+		} else {
+			esc_html_e( 'Nothing here is ever deleted: data retention is set to keep everything.', 'vcns-security-automation-manager' );
+		}
+		?>
+		<a href="<?php echo esc_url( $retention_url ); ?>"><?php esc_html_e( 'Change in Control → Automation Settings', 'vcns-security-automation-manager' ); ?></a>
+	</p>
+
 	<nav class="nav-tab-wrapper wp-sam-tab-wrapper" role="tablist" aria-label="<?php esc_attr_e( 'Continuous Intelligence sections', 'vcns-security-automation-manager' ); ?>">
 		<?php foreach ( $tab_help as $tab_key => $tab_data ) : ?>
 		<a class="nav-tab<?php echo $tab_key === $tab ? ' nav-tab-active' : ''; ?>"
@@ -332,7 +351,7 @@ $tab_help = array(
 			array(
 				Table_Query::equals_where( 'surface', $id_surface ),
 				Table_Query::equals_where( 'verification_state', $id_state ),
-				Table_Query::like_where_any( $wpdb, array( 'ip' ), $id_ip ),
+				Table_Query::ip_where( $wpdb, 'ip', $id_ip ),
 			) as $fragment
 		) {
 			if ( null === $fragment ) {
@@ -481,10 +500,14 @@ $tab_help = array(
 					</select>
 				</label>
 				<label>
-					<?php esc_html_e( 'IP contains', 'vcns-security-automation-manager' ); ?>
-					<input type="text" name="id_ip" value="<?php echo esc_attr( $id_ip ); ?>" />
+					<?php esc_html_e( 'IP address', 'vcns-security-automation-manager' ); ?>
+					<input type="text" name="id_ip" value="<?php echo esc_attr( $id_ip ); ?>" placeholder="172.64.0.0/13" aria-describedby="wp-sam-id-ip-help" />
 				</label>
 				<?php submit_button( __( 'Filter', 'vcns-security-automation-manager' ), 'secondary', 'filter_identities', false ); ?>
+				<p id="wp-sam-id-ip-help" class="description"><?php esc_html_e( 'Part of an address (172.70.), a pattern with * (172.70.* or *.135), or a range (172.64.0.0/13 or 2400:cb00::/32).', 'vcns-security-automation-manager' ); ?></p>
+				<?php if ( str_contains( $id_ip, '/' ) && null === Table_Query::ip_range( $id_ip ) ) : ?>
+				<div class="notice notice-error inline" role="alert"><p><?php esc_html_e( 'That isn\'t a valid address range, so nothing matches. Write it as an address and a prefix length, for example 172.64.0.0/13.', 'vcns-security-automation-manager' ); ?></p></div>
+				<?php endif; ?>
 			</form>
 		</details>
 

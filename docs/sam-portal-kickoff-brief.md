@@ -1,3 +1,5 @@
+> **Superseded, 4 November 2026.** The original `vcns/sam-portal` kickoff instructions and `sam.vcns.tech` naming below reflect the September 2026 design. The architecture now separates `portal.vcns.tech` (frontend), `platform.vcns.tech` (shared services), and `fleet.vcns.tech` (SAM backend API). Do **not** bootstrap a combined SAM Portal repository from this historical brief. SAM edge requirements are in [`fleet-edge-integration-requirements.md`](fleet-edge-integration-requirements.md). New service specifications must be maintained in their respective repositories.
+
 <!--
 HOW TO USE THIS DOCUMENT
 

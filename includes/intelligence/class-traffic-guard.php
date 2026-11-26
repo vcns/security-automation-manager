@@ -68,6 +68,7 @@ final class Traffic_Guard {
 	private Rate_Limiter $rate_limiter;
 	private Network_Rule_Store $network_rules;
 	private Network_Intelligence_Resolver $network_intelligence;
+	private Network_Rule_Hit_Store $rule_hits;
 
 	/** @var callable(string):bool Real is_user_logged_in()+manage_options check by default; injectable for tests. */
 	private $is_privileged_user;
@@ -90,6 +91,7 @@ final class Traffic_Guard {
 	 * @param callable|null                 $is_privileged_user   Callback that says whether the current user is privileged, defaults to a capability check.
 	 * @param callable|null                 $respond_blocked      Callback that sends the blocked response, defaults to a 403 page.
 	 * @param callable|null                 $throttle_delay       Callback that delays a throttled request, defaults to sleeping.
+	 * @param Network_Rule_Hit_Store|null   $rule_hits            Where network-rule blocks are counted.
 	 */
 	public function __construct(
 		Traffic_Policy_Store $policies,
@@ -100,7 +102,8 @@ final class Traffic_Guard {
 		Network_Intelligence_Resolver $network_intelligence,
 		?callable $is_privileged_user = null,
 		?callable $respond_blocked = null,
-		?callable $throttle_delay = null
+		?callable $throttle_delay = null,
+		?Network_Rule_Hit_Store $rule_hits = null
 	) {
 		$this->policies             = $policies;
 		$this->ip_rules             = $ip_rules;
@@ -108,6 +111,7 @@ final class Traffic_Guard {
 		$this->rate_limiter         = $rate_limiter;
 		$this->network_rules        = $network_rules;
 		$this->network_intelligence = $network_intelligence;
+		$this->rule_hits            = $rule_hits ?? new Network_Rule_Hit_Store();
 		$this->is_privileged_user   = $is_privileged_user ?? static function (): bool {
 			return is_user_logged_in() && current_user_can( 'manage_options' );
 		};
@@ -149,6 +153,9 @@ final class Traffic_Guard {
 		}
 
 		if ( 'block' === $verdict['action'] ) {
+			if ( isset( $verdict['rule'] ) ) {
+				$this->rule_hits->record( $verdict['rule'], $ip, $surface, Surface_Classifier::request_path() );
+			}
 			( $this->respond_blocked )( $verdict['reason'], $verdict['retry_after_seconds'] );
 		}
 	}
@@ -267,6 +274,7 @@ final class Traffic_Guard {
 					'reason'              => 'network_rule_block',
 					'stage'               => 'persistent_block',
 					'retry_after_seconds' => null,
+					'rule'                => $network_rule,
 				);
 			}
 		}

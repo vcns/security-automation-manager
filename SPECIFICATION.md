@@ -4,7 +4,7 @@
 
 **Version:** 1.0
 **Date:** 2026-08-19
-**DB schema alignment:** v48
+**DB schema alignment:** v49
 **Status:** Active
 
 **Supersedes:** v0.3 (2026-06-07), which described a CSP-only product aligned to
@@ -677,6 +677,14 @@ This list is deliberately conservative - a capability not listed as a
 limitation elsewhere in this document and not listed here should be assumed
 implemented, not assumed absent; open a documentation-drift issue if you
 find a gap in that assumption.
+
+---
+
+## 15. Planned VCNS Fleet Integration (not yet implemented)
+
+The agreed 4 November 2026 WordPress-side requirements are in [`docs/fleet-edge-integration-requirements.md`](docs/fleet-edge-integration-requirements.md). They describe SAM's own enrolment, policy trust, agency signature validation, clone/reinitialisation behaviour, local policy authority, ownership-limited drift remediation, evidence reporting and target CSP approval-posture entitlement fallback.
+
+These are **requirements for future development**, not a description of released capabilities. §14 still applies: there is no fleet or multi-site management today. In particular, the target commercial Level 0 expiry behaviour is to fall back to **effective Level 3, all manual**. The postures in §9 and the lapsed-entitlement downgrade to `Automatic (high approvals only)` in §11 describe the implementation baseline and should not be mistaken for this target. Any future release that implements these behaviours must reconcile this product specification, README, readme.txt, admin UI, tests and user documentation. Fleet resolution and Zabbix tenant configuration belong outside this repository.
 
 ---
 

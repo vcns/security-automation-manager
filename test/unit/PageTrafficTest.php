@@ -201,11 +201,11 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertSame( 1, substr_count( $output, 'wp-sam-well-known-table' ) );
 		$table = $this->table_with_class( $output, 'wp-sam-well-known-table' );
-		$this->assertSame( 7, substr_count( $table, '<tr>' ) - 1 );
-		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt', 'MTA-STS.txt' ) as $well_known_label ) {
+		$this->assertSame( 8, substr_count( $table, '<tr>' ) - 1 );
+		foreach ( array( 'Robots.txt', 'Agents.txt', 'Security.txt', 'Humans.txt', 'Ads.txt', 'App-Ads.txt', 'MTA-STS.txt', 'Traffic-Advice' ) as $well_known_label ) {
 			$this->assertStringContainsString( '>' . $well_known_label . '<', $table );
 		}
-		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt', 'mta_sts_txt' ) as $refresh ) {
+		foreach ( array( 'robots_rules', 'agents_rules', 'security_txt', 'humans_txt', 'ads_txt', 'app_ads_txt', 'mta_sts_txt', 'traffic_advice' ) as $refresh ) {
 			$this->assertStringContainsString( 'value="wp_sam_' . $refresh . '_refresh"', $table );
 		}
 		$this->assertStringNotContainsString( 'wp-sam-stat-row', $output );
@@ -275,7 +275,7 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertStringNotContainsString( '>About<', $table );
 		$this->assertStringNotContainsString( 'Refreshed automatically once a day', $table );
-		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts' ) as $key ) {
+		foreach ( array( 'robots', 'agents', 'security', 'humans', 'ads', 'app-ads', 'mta-sts', 'traffic-advice' ) as $key ) {
 			$this->assertMatchesRegularExpression( '#subtab=well-known&(amp;)?file=' . preg_quote( $key, '#' ) . '"#', $table );
 		}
 		$this->assertMatchesRegularExpression( '#file=ads"[^>]*>Create</a>#', $table, 'An absent file is created, not edited.' );
@@ -393,6 +393,37 @@ class PageTrafficTest extends TestCase {
 
 		$this->assertStringContainsString( 'Present, mode: testing', $table );
 		$this->assertStringContainsString( 'No _mta-sts DNS record', $table );
+	}
+
+	public function test_well_known_table_says_what_traffic_advice_tells_prefetch_proxies(): void {
+		update_option( 'wp_sam_traffic_advice_last_fetch_status', 'success' );
+		update_option( 'wp_sam_traffic_advice_content', '[{"user_agent": "prefetch-proxy", "fraction": 0.25}]' );
+		update_option( 'wp_sam_traffic_advice_media_type_ok', true );
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertStringContainsString( 'Present: prefetch proxies limited to 25% of their traffic', $table );
+		$this->assertStringNotContainsString( 'so proxies ignore it', $table );
+	}
+
+	public function test_well_known_table_warns_when_traffic_advice_has_the_wrong_media_type(): void {
+		update_option( 'wp_sam_traffic_advice_last_fetch_status', 'success' );
+		update_option( 'wp_sam_traffic_advice_content', '[{"user_agent": "prefetch-proxy", "disallow": true}]' );
+		update_option( 'wp_sam_traffic_advice_media_type_ok', false );
+
+		$table = $this->table_with_class( $this->render_well_known(), 'wp-sam-well-known-table' );
+
+		$this->assertStringContainsString( 'Present: prefetch proxies asked to stay away', $table );
+		$this->assertStringContainsString( 'Not sent as application/trafficadvice+json, so proxies ignore it', $table );
+	}
+
+	public function test_traffic_advice_editor_opens_on_the_turn_off_template(): void {
+		$output = $this->render_well_known( array( 'file' => 'traffic-advice' ) );
+
+		$this->assertStringContainsString( 'Traffic-Advice', $output );
+		$this->assertStringContainsString( '&quot;user_agent&quot;: &quot;prefetch-proxy&quot;', $output );
+		$this->assertStringContainsString( 'Turn off prefetch proxies', $output );
+		$this->assertStringContainsString( 'Reduce prefetch traffic', $output );
 	}
 
 	public function test_mta_sts_editor_shows_the_dns_record_and_which_mail_servers_the_policy_covers(): void {
@@ -571,6 +602,73 @@ class PageTrafficTest extends TestCase {
 		$this->assertStringContainsString( 'value="eu"', $output, 'Blocs and regions are never narrowed.' );
 		$this->assertStringContainsString( 'Sanctions lists are narrowed to those that bind in France.', $output );
 		$this->assertStringContainsString( 'data-wp-sam-dialog-open="wp-sam-geoip-settings">Change where this website operates</button>', $output );
+	}
+
+	/**
+	 * One row carrying both a country rule's columns and a block record's,
+	 * since the test wpdb answers every get_results() call with the same
+	 * rows: Network_Rule_Store::all() reads the first set, and
+	 * Network_Rule_Hit_Store's summary/recent/totals queries the second.
+	 */
+	private function country_rule_with_hits(): array {
+		return array(
+			'id'           => 9,
+			'rule_type'    => 'country',
+			'value'        => 'CN',
+			'surface'      => '',
+			'reason'       => 'Blocked via Geo-IP country list',
+			'rule_value'   => 'CN',
+			'requests'     => '1234',
+			'addresses'    => '14',
+			'ip'           => '198.51.100.9',
+			'last_path'    => '/wp-login.php',
+			'hit_count'    => '3',
+			'last_seen_at' => '2026-11-24 09:00:00',
+		);
+	}
+
+	public function test_geoip_subtab_shows_what_the_country_rules_blocked(): void {
+		$_GET['tab']                  = 'network-intelligence';
+		$_GET['subtab']               = 'geoip';
+		$GLOBALS['_wpdb_get_results'] = array( $this->country_rule_with_hits() );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'Blocked by country', $output );
+		$summary = $this->table_with_class( $output, 'wp-sam-country-blocks-table' );
+		$this->assertStringContainsString( 'China (CN)', $summary );
+		$this->assertStringContainsString( '1,234', $summary );
+		$this->assertStringContainsString( '2026-11-24 09:00:00', $summary );
+
+		$recent = $this->table_with_class( $output, 'wp-sam-country-blocks-recent-table' );
+		$this->assertStringContainsString( '<code>198.51.100.9</code>', $recent );
+		$this->assertStringContainsString( '<code>/wp-login.php</code>', $recent );
+	}
+
+	public function test_geoip_subtab_says_when_nothing_was_blocked_by_country(): void {
+		$output = $this->render_geoip_subtab();
+
+		$this->assertStringContainsString( 'Nothing blocked by country in this period.', $this->table_with_class( $output, 'wp-sam-country-blocks-table' ) );
+		$this->assertSame( '', $this->table_with_class( $output, 'wp-sam-country-blocks-recent-table' ) );
+	}
+
+	public function test_network_rules_list_shows_how_many_requests_each_rule_blocked(): void {
+		$_GET['tab']                  = 'network-intelligence';
+		$_GET['subtab']               = 'network-rules';
+		$GLOBALS['_wpdb_get_results'] = array( $this->country_rule_with_hits() );
+
+		ob_start();
+		require WP_SAM_DIR . 'includes/admin/views/page-traffic.php';
+		$output = (string) ob_get_clean();
+
+		unset( $_GET['tab'], $_GET['subtab'] );
+
+		$this->assertStringContainsString( 'Blocked, last 7 days', $output );
+		$this->assertStringContainsString( '<td class="wp-sam-col-count">1,234</td>', $output );
 	}
 
 	public function test_geoip_subtab_renders_country_grid_with_nothing_blocked(): void {

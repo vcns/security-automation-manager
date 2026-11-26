@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 namespace WP_SAM\CSP;
 
+use WP_SAM\Data_Retention;
 use WP_SAM\Intelligence\Ads_Txt_Store;
 use WP_SAM\Intelligence\Agents_Rules_Store;
 use WP_SAM\Intelligence\App_Ads_Txt_Store;
@@ -26,9 +27,12 @@ use WP_SAM\Intelligence\Drift_Store;
 use WP_SAM\Intelligence\Event_Store;
 use WP_SAM\Intelligence\Humans_Txt_Store;
 use WP_SAM\Intelligence\Mta_Sts_Txt_Store;
+use WP_SAM\Intelligence\Network_Rule_Hit_Store;
 use WP_SAM\Intelligence\Robots_Rules_Store;
+use WP_SAM\Intelligence\Scanner_Identity_Store;
 use WP_SAM\Intelligence\Security_Txt_Store;
 use WP_SAM\Intelligence\Tor_Exit_List_Store;
+use WP_SAM\Intelligence\Traffic_Advice_Store;
 use WP_SAM\Modules\Audit_Log;
 use WP_SAM\Modules\Feature_Gate;
 
@@ -98,6 +102,7 @@ class Scheduler {
 			$this->purge_old_violations();
 			$this->purge_old_pillar_violations();
 			$this->purge_old_request_events();
+			$this->purge_old_network_rule_hits();
 			$this->purge_stale_traffic_blocks();
 			$hash_mgr->retire_json_data_hashes();
 			$hash_mgr->prune_stale_by_age();
@@ -105,6 +110,8 @@ class Scheduler {
 			$this->run_campaign_scan();
 			$this->refresh_tor_exit_list();
 			$this->purge_stale_asn_cache();
+			$this->purge_stale_geoip_cache();
+			$this->purge_old_identities();
 			$this->refresh_robots_rules();
 			$this->refresh_agents_rules();
 			$this->refresh_security_txt();
@@ -112,6 +119,7 @@ class Scheduler {
 			$this->refresh_ads_txt();
 			$this->refresh_app_ads_txt();
 			$this->refresh_mta_sts_txt();
+			$this->refresh_traffic_advice();
 			( new Delivered_Policy_Check( null, null, $this->audit ) )->run();
 
 		} catch ( \Throwable $e ) {
@@ -263,6 +271,24 @@ class Scheduler {
 	}
 
 	/**
+	 * Same retention window as request events (wp_sam_violation_retention_days):
+	 * the network-rule block counts hold visitor addresses too.
+	 */
+	private function purge_old_network_rule_hits(): void {
+		$days    = (int) get_option( 'wp_sam_violation_retention_days', 90 );
+		$deleted = ( new Network_Rule_Hit_Store() )->purge_older_than( $days );
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'network_rule_hits_purged',
+				sprintf( 'Purged %d network-rule block record(s) older than %d days.', $deleted, $days ),
+				'info'
+			);
+		}
+	}
+
+	/**
 	 * Deletes non-persistent Traffic_Block_Store rows (Phase 3E) not seen
 	 * again within 30 days -- a source that stopped offending shouldn't be
 	 * penalised forever. is_persistent = 1 rows are an explicit
@@ -371,6 +397,73 @@ class Scheduler {
 	}
 
 	/**
+	 * Same as purge_stale_asn_cache(), for sam_geoip_cache. Geo_Ip_Store
+	 * already ignores rows past their 30-day TTL; this stops the table, one
+	 * row per visitor address, from growing for ever.
+	 */
+	private function purge_stale_geoip_cache(): void {
+		$days = Data_Retention::days();
+		if ( $days <= 0 ) {
+			return;
+		}
+
+		global $wpdb;
+		$table   = $wpdb->prefix . 'sam_geoip_cache';
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM {$table} WHERE resolved_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				$days
+			)
+		);
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'geoip_cache_purged',
+				sprintf( 'Purged %d stale Geo-IP cache entries older than %d days.', $deleted, $days ),
+				'info'
+			);
+		}
+	}
+
+	/**
+	 * Deletes Continuous Intelligence identities not seen within the
+	 * retention window. Identities an administrator has authorised or
+	 * denied (Scanner_Identity_Store::DECISION_STATES) are decisions, not
+	 * observations, and are always kept.
+	 */
+	private function purge_old_identities(): void {
+		$days = Data_Retention::days();
+		if ( $days <= 0 ) {
+			return;
+		}
+
+		global $wpdb;
+		$table        = $wpdb->prefix . 'sam_scanner_identities';
+		$decisions    = Scanner_Identity_Store::DECISION_STATES;
+		$placeholders = implode( ', ', array_fill( 0, count( $decisions ), '%s' ) );
+		$deleted      = $wpdb->query(
+			// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- one %s per decision state, built above.
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM {$table} WHERE last_seen_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY) AND verification_state NOT IN ({$placeholders})",
+				$days,
+				...$decisions
+			)
+		);
+
+		if ( $deleted > 0 ) {
+			$this->audit->log(
+				'scheduler',
+				'identities_purged',
+				sprintf( 'Purged %d Continuous Intelligence identity record(s) not seen for %d days.', $deleted, $days ),
+				'info'
+			);
+		}
+	}
+
+	/**
 	 * Refreshes the Tor exit-node list (Phase 4A, .roadmap/phase4_plan.md).
 	 * A fetch failure is logged but never treated as fatal to the rest of
 	 * the daily scan -- Tor_Exit_List_Store::refresh() itself already
@@ -453,6 +546,10 @@ class Scheduler {
 	 */
 	private function refresh_mta_sts_txt(): void {
 		$this->log_well_known_refresh( 'mta_sts_txt', ( new Mta_Sts_Txt_Store() )->refresh() );
+	}
+
+	private function refresh_traffic_advice(): void {
+		$this->log_well_known_refresh( 'traffic_advice', ( new Traffic_Advice_Store() )->refresh() );
 	}
 
 	/**

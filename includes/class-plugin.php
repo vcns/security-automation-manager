@@ -40,6 +40,7 @@ use WP_SAM\Intelligence\Detectors\Http_Method_Detector;
 use WP_SAM\Intelligence\Detectors\Humans_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Login_Cookie_Consistency_Detector;
 use WP_SAM\Intelligence\Detectors\Mta_Sts_Txt_Detector;
+use WP_SAM\Intelligence\Detectors\Traffic_Advice_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Compliance_Detector;
 use WP_SAM\Intelligence\Detectors\Robots_Txt_Detector;
 use WP_SAM\Intelligence\Detectors\Security_Txt_Detector;
@@ -493,6 +494,7 @@ final class Plugin {
 		Detector_Registry::register( new Ads_Txt_Detector() );
 		Detector_Registry::register( new App_Ads_Txt_Detector() );
 		Detector_Registry::register( new Mta_Sts_Txt_Detector() );
+		Detector_Registry::register( new Traffic_Advice_Detector() );
 
 		// Custom, admin-authored regex detection rules (Phase 4C extension --
 		// fail2ban-style custom filters): one Custom_Rule_Detector per stored
