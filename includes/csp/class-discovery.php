@@ -268,7 +268,11 @@ class Discovery {
 			$found        = array_merge( $found, $font_sources );
 		}
 
-		// Filter out null entries and same-origin sources (already covered by 'self').
+		// Filter out null entries and same-origin sources. A crawl can't tell
+		// whether a same-origin file will carry the nonce, and most do, so
+		// it proposes none. A same-origin script or worker the browser
+		// actually blocks is learned from its violation report instead
+		// (Same_Origin_Source); the other directives default to 'self'.
 		$site_host = wp_parse_url( get_site_url(), PHP_URL_HOST );
 		return array_filter( $found, static fn( $item ) => null !== $item && $item['host'] !== $site_host );
 	}

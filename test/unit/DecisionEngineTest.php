@@ -64,6 +64,26 @@ class DecisionEngineTest extends TestCase {
 		$this->assertFalse( $result['automation_eligible'] );
 	}
 
+	public function test_a_same_origin_file_always_needs_a_person_even_in_a_mode_allowing_every_risk(): void {
+		$engine = new Decision_Engine();
+
+		$result = $engine->evaluate_source(
+			array(
+				'directive'      => 'script-src-elem',
+				'source_scheme'  => 'self',
+				'source_host'    => '/gtm/gtm.js',
+				'source_uri'     => 'https://example.com/gtm/gtm.js?id=G-TEST123',
+				'evidence_count' => 5,
+			),
+			array( 'mode' => self::ALL_RISK_MODE )
+		);
+
+		$this->assertSame( 'high', $result['risk'] );
+		$this->assertContains( 'same_origin_file', $result['hard_exclusions'] );
+		$this->assertFalse( $result['automation_eligible'] );
+		$this->assertTrue( $result['required_human_review'] );
+	}
+
 	public function test_low_risk_source_can_be_eligible_outside_manual_mode(): void {
 		$engine = new Decision_Engine();
 
