@@ -343,11 +343,24 @@ async function uploadOnce(page, where, file) {
 		.map((h) => ({ name: h.name.toLowerCase(), value: h.value }));
 	const samCsp = csp.find((h) => /default-src/.test(h.value));
 	const coi = await page.evaluate(() => window.crossOriginIsolated);
-	const input = (await page.locator('.moxie-shim input[type="file"]').count())
-		? page.locator('.moxie-shim input[type="file"]').first()
-		: page.locator('input[type="file"]').first();
-	await input.setInputFiles(file);
-	const uploaded = await waitFor(() => attachmentCount() > before, 120000, 1500);
+	const errors = [];
+	const onError = (e) => errors.push(String(e.message).slice(0, 160));
+	page.on('pageerror', onError);
+	await page.waitForTimeout(2000);
+	const shims = await page.locator('.moxie-shim input[type="file"]').count();
+	const inputs = await page.locator('input[type="file"]').count();
+	let uploaded = false;
+	let uiBroken = '';
+	if (shims + inputs === 0) {
+		// The uploader never started -- e.g. the Media Library grid's
+		// wp.template() needs 'unsafe-eval' (underscore's _.template).
+		uiBroken = 'no file input: the uploader did not start';
+	} else {
+		const input = shims ? page.locator('.moxie-shim input[type="file"]').first() : page.locator('input[type="file"]').first();
+		await input.setInputFiles(file);
+		uploaded = await waitFor(() => attachmentCount() > before, 120000, 1500);
+	}
+	page.off('pageerror', onError);
 	await page.waitForTimeout(4000);
 	const uiErrors = await page.locator('.upload-error, .media-item .error-div, .upload-errors .upload-error').count();
 	const pageViolations = await page.evaluate(() => window.__samCsp || []);
@@ -363,6 +376,8 @@ async function uploadOnce(page, where, file) {
 	return {
 		where,
 		uploaded,
+		ui_broken: uiBroken,
+		page_errors: [...new Set(errors)],
 		ui_errors: uiErrors,
 		cross_origin_isolated: coi,
 		document_isolation_policy: headers['document-isolation-policy'] || '',
@@ -413,7 +428,7 @@ async function media(file) {
 	const [ro, enf, both, blobOnly, wasmOnly] = out;
 	const desc = (r) =>
 		`${r.label}: ${r.uploads
-			.map((u) => `${u.where} ${u.uploaded ? 'ok' : 'FAILED'}${u.ui_errors ? ` (${u.ui_errors} UI errors)` : ''} via ${u.pipeline}, SAM CSP ${u.sam_csp}${u.worker_src ? ` [${u.worker_src}${u.script_src_keywords.length ? '; script-src ' + u.script_src_keywords.join(' ') : ''}]` : ''}, COI ${u.cross_origin_isolated}, ${u.report_posts} reports sent, ${u.page_violations.length} violation events`)
+			.map((u) => `${u.where} ${u.uploaded ? 'ok' : `FAILED${u.ui_broken ? ` (${u.ui_broken}${u.page_errors.length ? '; ' + u.page_errors[0].slice(0, 90) : ''})` : ''}`}${u.ui_errors ? ` (${u.ui_errors} UI errors)` : ''} via ${u.pipeline}, SAM CSP ${u.sam_csp}${u.worker_src ? ` [${u.worker_src}${u.script_src_keywords.length ? '; script-src ' + u.script_src_keywords.join(' ') : ''}]` : ''}, COI ${u.cross_origin_isolated}, ${u.report_posts} reports sent, ${u.page_violations.length} violation events`)
 			.join(' / ')}; SAM stored ${r.violations.length ? r.violations.join(', ') : 'nothing'}`;
 	check('e1', ok(ro) ? 'pass' : 'fail', desc(ro));
 	check('e2', ok(enf) ? 'pass' : 'fail', desc(enf));
