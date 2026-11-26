@@ -5,6 +5,7 @@
 
 declare( strict_types=1 );
 
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use WP_SAM\Intelligence\Asn_Lookup_Store;
 use WP_SAM\Intelligence\Detector_Engine;
@@ -133,6 +134,36 @@ class RequestObserverTest extends TestCase {
 		$this->observer->observe();
 		$this->observer->flush_identity_write( 200 );
 		$this->observer->flush_identity_write( 200 ); // e.g. 'shutdown' somehow firing twice.
+
+		$this->assertCount( 1, $this->identity_queries() );
+	}
+
+	/**
+	 * `wp plugin uninstall --deactivate` boots the plugin, then includes
+	 * uninstall.php, then fires 'shutdown' -- so this deferred write used
+	 * to recreate a wp_sam_scanner_identity_rate_* transient (and try to
+	 * write to the identity table) after uninstall.php had removed them.
+	 * Found by tools/docker-matrix's uninstall check.
+	 */
+	#[RunInSeparateProcess]
+	public function test_flush_identity_write_skips_once_uninstall_php_has_run_for_this_plugin(): void {
+		define( 'WP_UNINSTALL_PLUGIN', 'security-automation-manager/security-automation-manager.php' );
+		Detector_Registry::register( new Observer_Fixture_Detector() );
+
+		$this->observer->observe();
+		$this->observer->flush_identity_write( 200 );
+
+		$this->assertSame( array(), $this->identity_queries() );
+		$this->assertSame( false, get_transient( 'wp_sam_scanner_identity_rate_' . substr( hash( 'sha256', '203.0.113.42|' ), 0, 32 ) ) );
+	}
+
+	#[RunInSeparateProcess]
+	public function test_flush_identity_write_still_runs_while_another_plugin_is_uninstalled(): void {
+		define( 'WP_UNINSTALL_PLUGIN', 'another-plugin/another-plugin.php' );
+		Detector_Registry::register( new Observer_Fixture_Detector() );
+
+		$this->observer->observe();
+		$this->observer->flush_identity_write( 200 );
 
 		$this->assertCount( 1, $this->identity_queries() );
 	}

@@ -296,6 +296,11 @@ final class Request_Observer {
 		$args                         = $this->pending_identity_write;
 		$this->pending_identity_write = null;
 
+		// uninstall.php has run in this request; the identity table is gone.
+		if ( \WP_SAM\Plugin::is_being_uninstalled() ) {
+			return;
+		}
+
 		if ( null === $status ) {
 			$code   = http_response_code();
 			$status = is_int( $code ) ? $code : 200;
