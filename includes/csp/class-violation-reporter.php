@@ -224,8 +224,12 @@ class Violation_Reporter {
 
 		$reports = $this->normalise_body( $body );
 
+		// The endpoint's own ?surface= hint, for reports whose document has
+		// no URL to classify -- see surface_from_document_uri().
+		$hint = Reporting_Endpoint::surface_hint( $request->get_param( Reporting_Endpoint::SURFACE_PARAM ) );
+
 		foreach ( $reports as $report ) {
-			$this->store_report( $report );
+			$this->store_report( $report, $hint );
 		}
 
 		$this->store_pillar_reports( $body );
@@ -355,17 +359,18 @@ class Violation_Reporter {
 	/**
 	 * Stores a violation report, or increments the count of an identical one.
 	 *
-	 * @param array $r Report fields.
+	 * @param array  $r    Report fields.
+	 * @param string $hint Surface the report endpoint was told (its ?surface= parameter).
 	 * @return void
 	 */
-	private function store_report( array $r ): void {
+	private function store_report( array $r, string $hint = 'frontend' ): void {
 		global $wpdb;
 		$table = $wpdb->prefix . 'csp_violation_reports';
 
 		$blocked_uri        = sanitize_text_field( substr( $r['blocked_uri'], 0, 2048 ) );
 		$violated_directive = sanitize_text_field( substr( $r['violated_directive'], 0, 128 ) );
 		$document_uri       = isset( $r['document_uri'] ) ? $r['document_uri'] : '';
-		$surface            = $this->surface_from_document_uri( $document_uri );
+		$surface            = $this->surface_from_document_uri( $document_uri, $hint );
 
 		if ( empty( $violated_directive ) ) {
 			return;
@@ -782,9 +787,15 @@ class Violation_Reporter {
 	 * @param string $uri Document URI of the report.
 	 * @return string Surface slug.
 	 */
-	private function surface_from_document_uri( string $uri ): string {
-		if ( empty( $uri ) ) {
-			return 'frontend';
+	private function surface_from_document_uri( string $uri, string $hint = 'frontend' ): string {
+		// A worker reports its document as "blob" (a blob: worker) and an
+		// about:blank frame as "about": no host or path to classify. Such a
+		// report arrives at the endpoint URL of the page that created it, so
+		// that URL's surface hint is the right answer. Before, they all
+		// counted as frontend -- WordPress 7.2's media worker on an enforced
+		// admin page then logged a false "another CSP header" conflict.
+		if ( empty( $uri ) || '' === (string) wp_parse_url( $uri, PHP_URL_HOST ) ) {
+			return $hint;
 		}
 		$path = wp_parse_url( $uri, PHP_URL_PATH );
 		$path = ! empty( $path ) ? $path : '';

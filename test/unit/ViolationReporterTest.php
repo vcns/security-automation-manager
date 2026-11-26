@@ -612,6 +612,37 @@ class ViolationReporterTest extends TestCase {
 
 	// ── Surface detection ─────────────────────────────────────────────────────
 
+	/**
+	 * A blob: worker reports its document as "blob". WordPress 7.2's
+	 * client-side media worker, started from an admin page, sends its reports
+	 * to that page's ?surface=admin endpoint, and they used to be filed as
+	 * frontend -- logging a false "another CSP header" conflict when the
+	 * admin policy was enforced. Found by tools/docker-matrix.
+	 */
+	public function test_a_worker_report_takes_the_surface_of_the_endpoint_it_was_sent_to(): void {
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"connect-src","effective-directive":"connect-src","document-uri":"blob","blocked-uri":"blob","disposition":"enforce"}}'
+		);
+		$request->set_param( 'surface', 'admin' );
+
+		$this->reporter->handle( $request );
+
+		$this->assertStringContainsString( 'ON DUPLICATE KEY UPDATE', $GLOBALS['_wpdb_last_query'] );
+		$this->assertStringContainsString( "VALUES ( 'admin'", preg_replace( '/\s+/', ' ', $GLOBALS['_wpdb_last_query'] ) );
+	}
+
+	public function test_a_hostless_document_on_the_unhinted_endpoint_is_still_frontend(): void {
+		$GLOBALS['_wp_rest_headers']['content-type'] = 'application/csp-report';
+		$request = $this->make_request(
+			'{"csp-report":{"violated-directive":"img-src","document-uri":"about:blank","blocked-uri":"https://cdn.example.com/pixel.png"}}'
+		);
+
+		$this->reporter->handle( $request );
+
+		$this->assertStringContainsString( "VALUES ( 'frontend'", preg_replace( '/\s+/', ' ', $GLOBALS['_wpdb_last_query'] ) );
+	}
+
 	public function test_document_uri_in_wp_admin_maps_to_admin_surface(): void {
 		$reporter = $this->make_capturing_reporter();
 
