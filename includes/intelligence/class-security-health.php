@@ -24,6 +24,7 @@ declare( strict_types=1 );
 namespace WP_SAM\Intelligence;
 
 use WP_SAM\CSP\Automation_Config;
+use WP_SAM\CSP\Client_Side_Media_Guard;
 use WP_SAM\CSP\Csp_Surfaces;
 use WP_SAM\CSP\Delivered_Policy_Check;
 use WP_SAM\Security\Pinned_Dependency_Checker;
@@ -44,9 +45,11 @@ final class Security_Health {
 	 * exceptions_row(), both wiring in real signals GitHub issue #177
 	 * (time-bound exceptions) makes possible for the first time. v3 adds
 	 * delivered_policy_row(): the policy visitors actually receive, which
-	 * a page cache or CDN can hold back for days after a change.
+	 * a page cache or CDN can hold back for days after a change. v4 adds
+	 * admin_media_row(): which WordPress media screens can't load while the
+	 * admin surface is enforced, and what SAM does to keep uploads working.
 	 */
-	public const MODEL_VERSION = 3;
+	public const MODEL_VERSION = 4;
 
 	private const CERT_EXPIRY_WARNING_DAYS = 14;
 
@@ -57,6 +60,7 @@ final class Security_Health {
 		return array(
 			'enforcement'           => $this->enforcement_row(),
 			'delivered_policy'      => $this->delivered_policy_row(),
+			'admin_media'           => $this->admin_media_row(),
 			'drift'                 => $this->drift_row(),
 			'certificates'          => $this->certificates_row(),
 			'dependencies'          => $this->dependencies_row(),
@@ -186,6 +190,34 @@ final class Security_Health {
 			'value'  => $value,
 			'status' => $statuses[ $result['outcome'] ] ?? 'info',
 			'detail' => $detail,
+		);
+	}
+
+	/**
+	 * WordPress builds the Media Library's grid view and the media window
+	 * (wp.media) from underscore.js templates, which compile through
+	 * new Function() and so need 'unsafe-eval'. SAM never allows that, so an
+	 * enforced admin policy stops both from loading on every WordPress
+	 * version. Client_Side_Media_Guard keeps uploads working; this row is
+	 * where an administrator looking at a broken grid finds out why.
+	 */
+	private function admin_media_row(): array {
+		$label = __( 'Admin media screens', 'vcns-security-automation-manager' );
+
+		if ( ! ( new Client_Side_Media_Guard() )->admin_enforced() ) {
+			return array(
+				'label'  => $label,
+				'value'  => __( "Not affected: the Admin surface isn't enforced", 'vcns-security-automation-manager' ),
+				'status' => 'info',
+				'detail' => __( "Enforcing the Admin surface stops the Media Library's grid view and the media window from loading, because WordPress builds them with code that needs 'unsafe-eval', which SAM never allows. Read the note under Control → CSP Profiles before enforcing Admin.", 'vcns-security-automation-manager' ),
+			);
+		}
+
+		return array(
+			'label'  => $label,
+			'value'  => __( "The Media Library grid view and the media window can't load while Admin is enforced", 'vcns-security-automation-manager' ),
+			'status' => 'warning',
+			'detail' => __( "WordPress builds the Media Library's grid view and the media window (opened by buttons such as Add Media and Set featured image) with code that needs 'unsafe-eval', which SAM never allows, so neither loads while the Admin surface is enforced. Uploads still work from Media → Add New Media File: on WordPress 7.1 and later SAM turns off WordPress's in-browser image processing while Admin is enforced, because that needs 'unsafe-eval' too and fails with no fallback, so files are processed on the server instead. No Bypass Best Practices toggle restores these screens. To use them, switch Admin back to report-only under Control → CSP Profiles.", 'vcns-security-automation-manager' ),
 		);
 	}
 

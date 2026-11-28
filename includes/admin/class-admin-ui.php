@@ -935,6 +935,7 @@ class Admin_UI {
 						'scanError'              => __( 'Scan failed. Check error log.', 'vcns-security-automation-manager' ),
 						'reasonRequired'         => __( 'A decision reason is required.', 'vcns-security-automation-manager' ),
 						'enforceReasonPrompt'    => __( 'Reason for promoting this surface to enforce mode:', 'vcns-security-automation-manager' ),
+						'enforceAdminMediaNote'  => __( "Enforcing Admin stops the Media Library's grid view and the media window from loading: WordPress builds them with code that needs 'unsafe-eval', which SAM never allows. Uploads from Media → Add New Media File keep working.", 'vcns-security-automation-manager' ),
 						'failedSwitchMode'       => __( 'Failed to switch mode.', 'vcns-security-automation-manager' ),
 						'failedSave'             => __( 'Failed to save.', 'vcns-security-automation-manager' ),
 						'failedSwitchAutomation' => __( 'Failed to switch automation mode.', 'vcns-security-automation-manager' ),

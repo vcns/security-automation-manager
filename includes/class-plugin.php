@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WP_SAM;
 
 use WP_SAM\Admin\Admin_UI;
+use WP_SAM\CSP\Client_Side_Media_Guard;
 use WP_SAM\CSP\Conflict_Detector;
 use WP_SAM\CSP\Delivered_Policy_Check;
 use WP_SAM\CSP\Hash_Manager;
@@ -299,6 +300,7 @@ final class Plugin {
 		$this->nonce_manager->register();
 		$this->policy_builder->register();
 		( new Rest_Csp_Header() )->register();
+		( new Client_Side_Media_Guard() )->register();
 		$this->x_frame_options_builder->register();
 		$this->x_content_type_options_builder->register();
 		$this->information_masking_builder->register();

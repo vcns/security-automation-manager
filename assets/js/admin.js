@@ -40,7 +40,11 @@
 
 		let reason = '';
 		if ( mode === 'enforce' ) {
-			reason = requiredReason( wpSamAdmin.i18n.enforceReasonPrompt || 'Reason for promoting this surface to enforce mode:' );
+			let promptText = wpSamAdmin.i18n.enforceReasonPrompt || 'Reason for promoting this surface to enforce mode:';
+			if ( surface === 'admin' && wpSamAdmin.i18n.enforceAdminMediaNote ) {
+				promptText = wpSamAdmin.i18n.enforceAdminMediaNote + '\n\n' + promptText;
+			}
+			reason = requiredReason( promptText );
 			if ( reason === null ) {
 				return;
 			}
