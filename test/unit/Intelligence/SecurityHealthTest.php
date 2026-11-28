@@ -38,7 +38,7 @@ class SecurityHealthTest extends TestCase {
 
 		$report = $this->health->get_report();
 
-		foreach ( array( 'enforcement', 'delivered_policy', 'drift', 'certificates', 'dependencies', 'exceptions', 'automation', 'evidence_freshness', 'external_verification' ) as $key ) {
+		foreach ( array( 'enforcement', 'delivered_policy', 'admin_media', 'drift', 'certificates', 'dependencies', 'exceptions', 'automation', 'evidence_freshness', 'external_verification' ) as $key ) {
 			$this->assertArrayHasKey( $key, $report );
 			$this->assertArrayHasKey( 'status', $report[ $key ] );
 		}
@@ -262,8 +262,41 @@ class SecurityHealthTest extends TestCase {
 
 	// ── Scoring model versioning (GitHub issue #175) ────────────────────────
 
-	public function test_model_version_is_3(): void {
-		$this->assertSame( 3, Security_Health::MODEL_VERSION );
+	public function test_model_version_is_4(): void {
+		$this->assertSame( 4, Security_Health::MODEL_VERSION );
+	}
+
+	// ── admin_media_row() ───────────────────────────────────────────────────
+
+	public function test_admin_media_is_info_when_admin_is_not_enforced(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'surface' => 'admin',
+			'mode'    => 'report-only',
+		);
+
+		$row = $this->invoke( 'admin_media_row' );
+
+		$this->assertSame( 'info', $row['status'] );
+		$this->assertStringContainsString( 'Not affected', $row['value'] );
+		$this->assertStringContainsString( 'Control → CSP Profiles', $row['detail'] );
+	}
+
+	public function test_admin_media_warns_when_admin_is_enforced(): void {
+		$GLOBALS['_wpdb_get_row'] = array(
+			'surface' => 'admin',
+			'mode'    => 'enforce',
+		);
+
+		$row = $this->invoke( 'admin_media_row' );
+
+		$this->assertSame( 'warning', $row['status'] );
+		$this->assertStringContainsString( "can't load while Admin is enforced", $row['value'] );
+		// Names what still works, that no toggle restores the screens, and
+		// the route back -- the three things someone looking at a blank
+		// Media Library needs.
+		$this->assertStringContainsString( 'Media → Add New Media File', $row['detail'] );
+		$this->assertStringContainsString( 'No Bypass Best Practices toggle', $row['detail'] );
+		$this->assertStringContainsString( 'Control → CSP Profiles', $row['detail'] );
 	}
 
 	// ── delivered_policy_row() ──────────────────────────────────────────────

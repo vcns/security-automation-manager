@@ -419,6 +419,10 @@ $conflict_notices     = ! empty( $conflict_notices_raw ) ? $conflict_notices_raw
 		</tbody>
 	</table>
 	</div>
+	<p class="description">
+		<strong><?php esc_html_e( 'Before enforcing Admin:', 'vcns-security-automation-manager' ); ?></strong>
+		<?php esc_html_e( "WordPress builds the Media Library's grid view and the media window (opened by buttons such as Add Media and Set featured image) with code that needs 'unsafe-eval', which SAM never allows, so neither loads while Admin is enforced. Uploads still work from Media → Add New Media File: on WordPress 7.1 and later SAM turns off WordPress's in-browser image processing while Admin is enforced, because that needs 'unsafe-eval' too, so files are processed on the server instead. No Bypass Best Practices toggle restores these screens; switch Admin back to report-only to use them.", 'vcns-security-automation-manager' ); ?>
+	</p>
 
 	<?php elseif ( 'sources' === $tab ) : ?>
 	<!-- ── Sources tab ────────────────────────────────────────────────────── -->

@@ -461,7 +461,7 @@ flowchart TD
               <tr><td>Frontend</td><td>Medium</td><td>Best first candidate. Test public pages, forms, checkout, embeds, and consent tools.</td></tr>
               <tr><td>Login</td><td>Medium</td><td>Test normal login, password reset, MFA, SSO, and security plugins.</td></tr>
               <tr><td>API</td><td>Variable</td><td>Relevant where browser-driven REST calls occur. Many static resources do not apply to API responses.</td></tr>
-              <tr><td>Admin</td><td>High</td><td>Use caution. Some WordPress admin screens and third-party plugins may emit inline code outside the normal script API.</td></tr>
+              <tr><td>Admin</td><td>High</td><td>Use caution. Some WordPress admin screens and third-party plugins may emit inline code outside the normal script API. WordPress's own Media Library grid view and media window (Add Media, Set featured image) need <code>'unsafe-eval'</code>, which SAM never allows, so they don't load while Admin is enforced. Uploads from Media → Add New Media File keep working: on WordPress 7.1 and later SAM turns off in-browser image processing while Admin is enforced, so files are processed on the server.</td></tr>
             </tbody>
           </table>
         </div>
@@ -819,6 +819,7 @@ flowchart TD
             </thead>
             <tbody>
               <tr><td>Site breaks after enforce mode.</td><td>A required resource is not approved.</td><td>Return the affected surface to report-only. Review Violations, approve required narrow sources, then retest.</td></tr>
+              <tr><td>The Media Library grid or the media window is blank after enforcing Admin.</td><td>WordPress builds them with code that needs <code>'unsafe-eval'</code>, which SAM never allows. No Bypass Best Practices toggle changes that.</td><td>Upload from Media → Add New Media File, which keeps working. To use the grid or the media window, switch Admin back to report-only under Control → CSP Profiles. Settings → Security Health shows this as Admin media screens.</td></tr>
               <tr><td>Enforce button is blocked.</td><td>The promotion gate has not passed.</td><td>Check for approved inventory, recent violations, and temporary overrides.</td></tr>
               <tr><td>Manual scan finds little or nothing.</td><td>The activity is runtime behaviour rather than static HTML.</td><td>Browse the site in report-only mode and rely on violation reports for fetch, XHR, WebSocket, EventSource, and workers.</td></tr>
               <tr><td>No violation reports arrive.</td><td>The public site URL differs from the WordPress REST URL, or the configured reporting server URL does not route back to the plugin endpoint.</td><td>Open Settings and either use the current site endpoint button or set the public HTTPS reporting URL that reaches <code>/wp-json/sam/v1/report</code>.</td></tr>
