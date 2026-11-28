@@ -45,6 +45,7 @@ class Action_Centre {
 		'pillar_enforce_ready_'         => 'Enabling enforcement means this control becomes active for real traffic on this surface, instead of only being observed.',
 		'detector_disabled_but_firing_' => 'Re-enabling this detector means matching activity is evaluated (and can be acted on) again; it stays silent while disabled.',
 		'dependency_sri_drift_'         => 'Re-approving updates the hash SAM expects, but browsers keep blocking the file until the integrity attribute in the markup that loads it is updated too. Allowing by host instead stops SAM comparing hashes for this origin.',
+		'google_tag_gateway_'           => 'Turning the gateway on changes where Site Kit loads your Google tags from (this site instead of www.googletagmanager.com), not which tags run.',
 	);
 
 	/**
@@ -53,7 +54,7 @@ class Action_Centre {
 	 * additional aggregate sources are appended after it since they carry
 	 * no per-item risk rating of their own).
 	 *
-	 * @return array<int, array{what_found:string, why_it_matters:string, recommended_action:string, what_will_happen:string, evidence_url:string, risk:string, dismissible:bool, key:?string, technical_detail:string}>
+	 * @return array<int, array{what_found:string, why_it_matters:string, recommended_action:string, what_will_happen:string, evidence_url:string, risk:string, dismissible:bool, key:?string, technical_detail:string, docs?:array<int, array{label:string, url:string}>}>
 	 */
 	public function items(): array {
 		$items = array();
@@ -69,6 +70,7 @@ class Action_Centre {
 				'dismissible'        => (bool) $recommendation['dismissible'],
 				'key'                => (string) $recommendation['key'],
 				'technical_detail'   => $this->format_evidence( is_array( $recommendation['evidence'] ?? null ) ? $recommendation['evidence'] : array() ),
+				'docs'               => is_array( $recommendation['docs'] ?? null ) ? $recommendation['docs'] : array(),
 			);
 		}
 

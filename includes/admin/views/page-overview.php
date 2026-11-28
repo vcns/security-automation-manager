@@ -873,6 +873,15 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 			<?php if ( '' !== $wp_sam_ac_item['what_will_happen'] ) : ?>
 			<p class="description"><?php echo esc_html( $wp_sam_ac_item['what_will_happen'] ); ?></p>
 			<?php endif; ?>
+			<?php if ( ! empty( $wp_sam_ac_item['docs'] ) ) : ?>
+			<p class="description">
+				<?php esc_html_e( 'Documentation:', 'vcns-security-automation-manager' ); ?>
+				<?php foreach ( $wp_sam_ac_item['docs'] as $wp_sam_ac_doc_index => $wp_sam_ac_doc ) : ?>
+					<?php echo $wp_sam_ac_doc_index > 0 ? ' · ' : ''; ?>
+				<a href="<?php echo esc_url( (string) $wp_sam_ac_doc['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( (string) $wp_sam_ac_doc['label'] ); ?></a>
+				<?php endforeach; ?>
+			</p>
+			<?php endif; ?>
 			<?php if ( '' !== $wp_sam_ac_item['technical_detail'] ) : ?>
 			<details<?php echo 'technical' === $wp_sam_ac_prefs['presentation_depth'] ? ' open="open"' : ''; ?>>
 				<summary><?php esc_html_e( 'Technical details', 'vcns-security-automation-manager' ); ?></summary>
@@ -946,6 +955,15 @@ $rollback_snapshots = Rollback_Guard::list_snapshots();
 						);
 						?>
 					</p>
+					<?php if ( ! empty( $recommendation['docs'] ) && is_array( $recommendation['docs'] ) ) : ?>
+					<p class="description" style="margin:0.3em 0 0;">
+						<?php esc_html_e( 'Documentation:', 'vcns-security-automation-manager' ); ?>
+						<?php foreach ( $recommendation['docs'] as $recommendation_doc_index => $recommendation_doc ) : ?>
+							<?php echo $recommendation_doc_index > 0 ? ' · ' : ''; ?>
+						<a href="<?php echo esc_url( (string) $recommendation_doc['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( (string) $recommendation_doc['label'] ); ?></a>
+						<?php endforeach; ?>
+					</p>
+					<?php endif; ?>
 				</td>
 				<td class="wp-sam-col-status">
 					<?php

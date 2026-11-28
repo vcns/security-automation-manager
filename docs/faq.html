@@ -224,6 +224,10 @@
             <p>Undo appends a new audit decision that clears the latest approval or rejection and returns the source to pending. It does not delete the original ledger row.</p>
           </article>
           <article class='faq-item'>
+            <h3>I use Site Kit by Google with Tag Manager or Analytics. Should I approve www.googletagmanager.com?</h3>
+            <p>Not if you can avoid it. Anyone can publish a Tag Manager container, and every container is served from www.googletagmanager.com, so allowing that host lets an injected script tag load a container someone else controls. Turn on Site Kit's <strong>Google tag gateway for advertisers</strong> instead (Site Kit -> Settings -> Connected Services -> Edit on Tag Manager, Analytics or Ads). Site Kit then serves your tags from your own site, and SAM's nonce covers them. If the site is behind a CDN such as Cloudflare, you can run the gateway there instead. SAM shows this as a recommendation on <strong>Settings -> Recommendations</strong> while Site Kit isn't using the gateway. See <a href='https://sitekit.withgoogle.com/documentation/features/google-tag-gateway-for-advertisers/' target='_blank' rel='noopener'>Site Kit's documentation</a> and <a href='https://developers.google.com/tag-platform/tag-manager/gateway/setup-guide' target='_blank' rel='noopener'>Google's setup guide</a>.</p>
+          </article>
+          <article class='faq-item'>
             <h3>Why did a rejected source appear again?</h3>
             <p>Check whether the directive, host, or surface changed. Suppression is based on the source fingerprint, not every possible variant of a service.</p>
           </article>

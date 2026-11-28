@@ -75,6 +75,10 @@ final class Recommendation_Registry {
 		// approved SRI hash (Security\Pinned_Dependency_Checker).
 		self::register( new Recommendation_Rule_Dependency_Hash_Drift() );
 
+		// Site Kit by Google loading tags from www.googletagmanager.com
+		// rather than through its Google tag gateway for advertisers.
+		self::register( new Recommendation_Rule_Google_Tag_Gateway() );
+
 		do_action( 'wp_sam_register_recommendation_rules' );
 	}
 
