@@ -66,7 +66,8 @@ can reasonably express. See "Next steps" below.
 
 `.github/workflows/ci.yml`'s `php-lint-and-standards` job now runs the
 `test/unit/` PHPUnit suite (still stub-based, not a WordPress core checkout)
-across a real PHP version matrix: **PHP 8.1, 8.2, 8.3, and 8.4** (PHPCS runs
+across a real PHP version matrix: **PHP 8.1, 8.2, 8.3, 8.4, 8.5, and 8.6**
+(8.5 and 8.6 added 2026-11 for WordPress 7.2, which fully supports PHP 8.6; PHPCS runs
 once, on 8.1, since a style violation is a property of the code, not the PHP
 version). `release-verification.yml` separately runs against real WordPress
 core (`wordpress:6.7-php8.1-apache`) via Docker, currently pinned to a single
@@ -84,11 +85,11 @@ CI should run the full cross-product below on every PR to `main`. PHP is now
 covered for the stub-based unit suite; the WordPress axis for
 `release-verification.yml` is the remaining gap:
 
-| | PHP 8.1 | PHP 8.2 | PHP 8.3 | PHP 8.4 |
-|---|---|---|---|---|
-| WordPress 6.4 (`Requires at least`) | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no |
-| WordPress latest stable (7.0) | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no |
-| WordPress trunk/nightly | Not run | Not run | Not run | Not run |
+| | PHP 8.1 | PHP 8.2 | PHP 8.3 | PHP 8.4 | PHP 8.5 | PHP 8.6 |
+|---|---|---|---|---|---|---|
+| WordPress 6.4 (`Requires at least`) | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no |
+| WordPress latest stable (7.1) | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no | Unit: yes / WP: no |
+| WordPress trunk/nightly (7.2) | Not run | Not run | Not run | Not run | Not run | Not run |
 
 "Unit" = the stub-based `test/unit/` suite (PHP-version-sensitive, WordPress-
 version-insensitive since it never loads WordPress core). "WP" =

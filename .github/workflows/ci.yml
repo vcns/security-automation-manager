@@ -6,7 +6,7 @@ name: CI
 # development or main, so the pull_request trigger below covers them. Once a
 # PR is open, a push to its head branch fires BOTH a `push` and a
 # `pull_request: synchronize` event for the identical commit; keeping those
-# branch patterns here made this entire workflow (a 4-way PHPUnit matrix,
+# branch patterns here made this entire workflow (a 6-way PHPUnit matrix,
 # Secret Scan, Semgrep, and the release-artifact build) run twice per push.
 # push on development/main themselves is kept as a post-merge trunk health
 # check -- those refs can never simultaneously be a PR head into themselves.
@@ -32,11 +32,11 @@ jobs:
       fail-fast: false
       matrix:
         # 8.1 is the plugin's declared minimum (security-automation-manager.php
-        # "Requires PHP"); 8.2-8.4 are the later supported releases per
+        # "Requires PHP"); 8.2-8.6 are the later supported releases per
         # docs/testing-requirements.md's CI matrix requirement. PHPCS/lint
         # only need to pass once -- restricted to the minimum version so a
         # style violation reports once, not once per PHP version.
-        php-version: ['8.1', '8.2', '8.3', '8.4']
+        php-version: ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6']
 
     steps:
       - name: Checkout

@@ -622,7 +622,7 @@
 				return;
 			}
 			$( '#' + formId ).on( 'submit', function ( e ) {
-				const value = $.trim( $reason.val() );
+				const value = String( $reason.val() || '' ).trim();
 				if ( '' === value ) {
 					e.preventDefault();
 					const el = $reason.get( 0 );
