@@ -22,9 +22,11 @@
  * always false in this build; nothing here is authorised to act
  * automatically), rollback_position (string), evidence_changed_at (string,
  * mysql datetime -- the freshest timestamp behind this recommendation, what
- * a dismissal's currency is checked against), cta_url (string), and
+ * a dismissal's currency is checked against), cta_url (string),
  * dismissible (bool -- see Recommendation_Dismissal_Store's docblock for
- * why only some rules need this).
+ * why only some rules need this), and optionally docs (array of
+ * {label, url}: official documentation outside this plugin, shown as
+ * links next to the recommendation).
  */
 
 declare( strict_types=1 );
