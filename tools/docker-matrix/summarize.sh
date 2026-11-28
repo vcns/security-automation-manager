@@ -3,7 +3,7 @@
 # results/*/checks.tsv: one row per environment, one column per check.
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-cols=(a b c d e1 e2 e3 f g)
+cols=(a b c d e1 e2 e3 e-editor e-grid f g)
 
 printf '| Environment |'
 printf ' %s |' "${cols[@]}"

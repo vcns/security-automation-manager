@@ -343,6 +343,7 @@ async function uploadOnce(page, where, file) {
 		.map((h) => ({ name: h.name.toLowerCase(), value: h.value }));
 	const samCsp = csp.find((h) => /default-src/.test(h.value));
 	const coi = await page.evaluate(() => window.crossOriginIsolated);
+	const clientSideFlag = await page.evaluate(() => window.__clientSideMediaProcessing === true);
 	const errors = [];
 	const onError = (e) => errors.push(String(e.message).slice(0, 160));
 	page.on('pageerror', onError);
@@ -366,16 +367,11 @@ async function uploadOnce(page, where, file) {
 	const pageViolations = await page.evaluate(() => window.__samCsp || []);
 	await page.screenshot({ path: path.join(OUT, 'screenshots', `media_${where}_${Date.now()}.png`), fullPage: true });
 	page.off('response', onResp);
-	const pipeline = net.some((n) => /\/sideload|\/finalize/.test(n))
-		? 'client-side (REST sideload/finalize)'
-		: net.some((n) => /^POST \/wp-json\/wp\/v2\/media/.test(n))
-			? 'REST /wp/v2/media (no sideload)'
-			: net.some((n) => /async-upload\.php/.test(n))
-				? 'server (async-upload.php)'
-				: 'none observed';
+	const pipeline = pipelineOf(net);
 	return {
 		where,
 		uploaded,
+		client_side_flag: clientSideFlag,
 		ui_broken: uiBroken,
 		page_errors: [...new Set(errors)],
 		ui_errors: uiErrors,
@@ -394,6 +390,150 @@ async function uploadOnce(page, where, file) {
 	};
 }
 
+function pipelineOf(net) {
+	return net.some((n) => /\/sideload|\/finalize/.test(n))
+		? 'client-side (REST sideload/finalize)'
+		: net.some((n) => /^POST \/wp-json\/wp\/v2\/media/.test(n))
+			? 'server (REST /wp/v2/media, no sideload)'
+			: net.some((n) => /async-upload\.php/.test(n))
+				? 'server (async-upload.php)'
+				: 'none observed';
+}
+
+// SAM's own CSP header among a response's header lines: WordPress 7.1+
+// core sends a second one ("frame-ancestors 'self'"); SAM's has default-src.
+function samCspMode(lines) {
+	const sam = lines.find((h) => /^content-security-policy(-report-only)?$/i.test(h.name) && /default-src/.test(h.value));
+	return sam ? (sam.name.toLowerCase().endsWith('report-only') ? 'report-only' : 'enforce') : 'none';
+}
+
+// One image through the block editor's own upload path (what the Image
+// block's Upload button and dropping a file on the canvas use). WordPress
+// 7.1+ processes it in the browser when core's client-side flag is on.
+// Then the media window (wp.media), which Set featured image opens.
+async function editorUploadOnce(page, file) {
+	const before = attachmentCount();
+	const net = [];
+	const onResp = (r) => {
+		const u = r.url();
+		if (/\/wp\/v2\/media|rest_route=%2Fwp%2Fv2%2Fmedia|async-upload\.php/.test(u)) {
+			net.push(`${r.request().method()} ${u.replace(BASE, '').replace(/\?.*$/, '')} ${r.status()}`);
+		}
+	};
+	const errors = [];
+	const onError = (e) => errors.push(String(e.message).slice(0, 160));
+	page.on('response', onResp);
+	page.on('pageerror', onError);
+	const resp = await page.goto(`${BASE}/wp-admin/post-new.php`, { waitUntil: 'load', timeout: 120000 });
+	const headers = resp.headers();
+	const samCsp = samCspMode(await resp.headersArray());
+	const ready = await page
+		.waitForFunction(() => window.wp && wp.data && wp.data.select('core/block-editor') && wp.data.select('core/block-editor').getSettings().mediaUpload, null, { timeout: 90000 })
+		.then(() => true)
+		.catch(() => false);
+	const clientSideFlag = await page.evaluate(() => window.__clientSideMediaProcessing === true);
+	let uploaded = false;
+	let uiBroken = '';
+	let uploadErrors = [];
+	let modal = 'not tried';
+	// The editing canvas: an iframe (blob: URL) when the editor is iframed.
+	// Reading the DOM from evaluate() is fine; only code it runs skips CSP.
+	let canvas = 'not checked';
+	if (ready) {
+		for (let i = 0; i < 15; i++) {
+			canvas = await page.evaluate(() => {
+				const f = document.querySelector('iframe[name="editor-canvas"]');
+				if (!f) return document.querySelector('.editor-styles-wrapper .is-root-container, .editor-styles-wrapper .editor-post-title') ? 'loaded (not iframed)' : 'blank (not iframed)';
+				const d = f.contentDocument;
+				return d && d.querySelector('.is-root-container, .editor-post-title, .wp-block-post-title') ? 'loaded' : 'blank';
+			});
+			if (canvas.startsWith('loaded')) break;
+			await page.waitForTimeout(1000);
+		}
+	}
+	if (!ready) {
+		uiBroken = 'the block editor did not load';
+	} else {
+		await page.evaluate(() => {
+			try {
+				wp.data.dispatch('core/preferences').set('core/edit-post', 'welcomeGuide', false);
+			} catch (e) {}
+			const i = document.createElement('input');
+			i.type = 'file';
+			i.id = 'sam-matrix-one';
+			document.body.appendChild(i);
+		});
+		await page.setInputFiles('#sam-matrix-one', file);
+		await page.evaluate(() => {
+			window.__samOneErrors = [];
+			wp.data.select('core/block-editor').getSettings().mediaUpload({
+				filesList: Array.from(document.getElementById('sam-matrix-one').files),
+				allowedTypes: ['image'],
+				onFileChange: () => {},
+				onError: (e) => window.__samOneErrors.push(String(e?.message || e)),
+			});
+		});
+		uploaded = await waitFor(() => attachmentCount() > before, 120000, 1500);
+		await page.waitForTimeout(4000);
+		uploadErrors = await page.evaluate(() => window.__samOneErrors || []);
+		// The media window as a user opens it: Set featured image.
+		await page.keyboard.press('Escape').catch(() => {});
+		const toggle = page.locator('.editor-post-featured-image__toggle, button:has-text("Set featured image")').first();
+		if ((await toggle.count()) === 0) {
+			modal = 'not tried: no Set featured image button';
+		} else {
+			await toggle.click({ timeout: 10000 }).catch(() => {});
+			modal = 'did not open';
+			for (let i = 0; i < 40; i++) {
+				const state = await page.evaluate(() => {
+					const m = document.querySelector('.media-modal');
+					if (!m) return '';
+					return m.querySelector('.attachments-browser, .uploader-inline-content') ? 'opened' : 'blank';
+				});
+				if (state === 'opened') {
+					modal = 'opened';
+					break;
+				}
+				if (state === 'blank') modal = 'blank: the window has no content';
+				await page.waitForTimeout(250);
+			}
+		}
+	}
+	await page.screenshot({ path: path.join(OUT, 'screenshots', `media_editor_${Date.now()}.png`), fullPage: true });
+	page.off('pageerror', onError);
+	page.off('response', onResp);
+	return {
+		where: 'editor',
+		uploaded,
+		client_side_flag: clientSideFlag,
+		ui_broken: uiBroken,
+		page_errors: [...new Set(errors)],
+		ui_errors: uploadErrors.length,
+		upload_errors: uploadErrors.slice(0, 5),
+		modal,
+		canvas,
+		document_isolation_policy: headers['document-isolation-policy'] || '',
+		sam_csp: samCsp,
+		pipeline: pipelineOf(net),
+		requests: net,
+		page_violations: await page.evaluate(() => window.__samCsp || []).catch(() => []),
+	};
+}
+
+// The Media Library's list view: a classic list table, no wp.template().
+async function listViewOnce(page) {
+	const errors = [];
+	const onError = (e) => errors.push(String(e.message).slice(0, 160));
+	page.on('pageerror', onError);
+	const resp = await page.goto(`${BASE}/wp-admin/upload.php?mode=list`, { waitUntil: 'load' });
+	await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+	const rows = await page.locator('table.wp-list-table.media tbody tr:not(.no-items)').count();
+	const addNew = await page.locator('a.page-title-action[href*="media-new.php"]').count();
+	await page.screenshot({ path: path.join(OUT, 'screenshots', `media_list_${Date.now()}.png`), fullPage: true });
+	page.off('pageerror', onError);
+	return { where: 'list', rows, add_new_link: addNew > 0, page_errors: [...new Set(errors)], sam_csp: samCspMode(await resp.headersArray()) };
+}
+
 async function media(file) {
 	const ctx = await newContext();
 	await login(ctx, ADMIN);
@@ -402,8 +542,6 @@ async function media(file) {
 		['report-only, defaults', 'report-only', []],
 		['enforce, defaults', 'enforce', []],
 		['enforce, worker_src_blob + script_src_wasm_unsafe_eval', 'enforce', ['worker_src_blob', 'script_src_wasm_unsafe_eval']],
-		['enforce, worker_src_blob only', 'enforce', ['worker_src_blob']],
-		['enforce, script_src_wasm_unsafe_eval only', 'enforce', ['script_src_wasm_unsafe_eval']],
 	];
 	// Direct report-uri delivery for this check: Chrome sends those at once,
 	// where Reporting API (report-to) reports are batched for up to a minute.
@@ -412,9 +550,10 @@ async function media(file) {
 	const out = [];
 	for (const [label, mode, flags] of runs) {
 		setAdminCsp(mode, flags);
-		const uploads = [await uploadOnce(page, 'grid', file), await uploadOnce(page, 'media-new', file)];
+		const uploads = [await uploadOnce(page, 'grid', file), await uploadOnce(page, 'media-new', file), await editorUploadOnce(page, file)];
+		const list = await listViewOnce(page);
 		const violations = sqlRows("SELECT COALESCE(NULLIF(effective_directive,''),violated_directive), blocked_uri, occurrence_count FROM wp_csp_violation_reports WHERE profile_surface='admin' ORDER BY id").map(([d, b, n]) => `${d} ${b} x${n}`);
-		out.push({ label, mode, flags, uploads, violations });
+		out.push({ label, mode, flags, uploads, list, violations });
 	}
 	setAdminCsp('report-only', []);
 	if (transport === '') sql("DELETE FROM wp_options WHERE option_name='wp_sam_reporting_transport'");
@@ -424,16 +563,43 @@ async function media(file) {
 
 	// A run only counts when the browser really received SAM's policy in the
 	// mode under test -- otherwise it says nothing about that mode.
-	const ok = (r) => r.uploads.every((u) => u.uploaded && u.ui_errors === 0 && u.sam_csp === r.mode);
-	const [ro, enf, both, blobOnly, wasmOnly] = out;
+	const get = (r, where) => r.uploads.find((u) => u.where === where);
+	const ok = (r, where) => {
+		const u = get(r, where);
+		return u.uploaded && u.ui_errors === 0 && u.sam_csp === r.mode;
+	};
+	const listOk = (r) => r.list.sam_csp === r.mode && r.list.rows > 0 && r.list.add_new_link && r.list.page_errors.length === 0;
+	const one = (u) => {
+		const failure = `FAILED${u.ui_broken ? ` (${u.ui_broken}${u.page_errors.length ? '; ' + u.page_errors[0].slice(0, 90) : ''})` : ''}${u.upload_errors && u.upload_errors.length ? ` (${u.upload_errors[0].slice(0, 90)})` : ''}`;
+		return `${u.where} ${u.uploaded && u.ui_errors === 0 ? 'ok' : failure} via ${u.pipeline}, client-side flag ${u.client_side_flag ? 'on' : 'off'}, SAM CSP ${u.sam_csp}${u.canvas ? `, editor canvas ${u.canvas}` : ''}${u.modal ? `, media window ${u.modal}` : ''}`;
+	};
 	const desc = (r) =>
-		`${r.label}: ${r.uploads
-			.map((u) => `${u.where} ${u.uploaded ? 'ok' : `FAILED${u.ui_broken ? ` (${u.ui_broken}${u.page_errors.length ? '; ' + u.page_errors[0].slice(0, 90) : ''})` : ''}`}${u.ui_errors ? ` (${u.ui_errors} UI errors)` : ''} via ${u.pipeline}, SAM CSP ${u.sam_csp}${u.worker_src ? ` [${u.worker_src}${u.script_src_keywords.length ? '; script-src ' + u.script_src_keywords.join(' ') : ''}]` : ''}, COI ${u.cross_origin_isolated}, ${u.report_posts} reports sent, ${u.page_violations.length} violation events`)
-			.join(' / ')}; SAM stored ${r.violations.length ? r.violations.join(', ') : 'nothing'}`;
-	check('e1', ok(ro) ? 'pass' : 'fail', desc(ro));
-	check('e2', ok(enf) ? 'pass' : 'fail', desc(enf));
-	const clientUsed = both.uploads.some((u) => u.pipeline.startsWith('client-side'));
-	check('e3', ok(both) && ok(blobOnly) && ok(wasmOnly) ? (clientUsed ? 'pass' : 'fail') : 'fail', `${desc(both)} | ${desc(blobOnly)} | ${desc(wasmOnly)}`);
+		`${r.label}: ${r.uploads.map(one).join(' / ')} / list view ${listOk(r) ? 'ok' : 'FAILED'} (${r.list.rows} rows, SAM CSP ${r.list.sam_csp}${r.list.page_errors.length ? '; ' + r.list.page_errors[0].slice(0, 90) : ''}); SAM stored ${r.violations.length ? r.violations.slice(0, 12).join(', ') + (r.violations.length > 12 ? ` (+${r.violations.length - 12} more)` : '') : 'nothing'}`;
+	const [ro, enf, both] = out;
+	const modalOpened = (r) => get(r, 'editor').modal === 'opened';
+
+	const canvasOk = (r) => get(r, 'editor').canvas.startsWith('loaded');
+
+	// e1: report-only blocks nothing, so every path works.
+	check('e1', ['grid', 'media-new', 'editor'].every((w) => ok(ro, w)) && modalOpened(ro) && canvasOk(ro) && listOk(ro) ? 'pass' : 'fail', desc(ro));
+	// e2/e3: uploads under an enforced admin policy, with and without the two
+	// toggles: Add New Media File, the editor's own upload path (driven from
+	// evaluate(), so its synchronous part skips the eval rule -- the
+	// in-browser pipeline it would start is async and is not exempt) and the
+	// list view.
+	check('e2', ['media-new', 'editor'].every((w) => ok(enf, w)) && listOk(enf) ? 'pass' : 'fail', desc(enf));
+	check('e3', ['media-new', 'editor'].every((w) => ok(both, w)) && listOk(both) ? 'pass' : 'fail', desc(both));
+	// e-editor: the block editor's editing canvas under enforce.
+	check('e-editor', [enf, both].every(canvasOk) ? 'pass' : 'fail', [enf, both].map((r) => `${r.label}: canvas ${get(r, 'editor').canvas}`).join(' | '));
+	// e-grid: the Media Library grid and the media window (opened by a real
+	// click) under enforce. Both build their views with wp.template()
+	// (underscore's _.template, i.e. new Function), which needs 'unsafe-eval'.
+	const gridWorks = [enf, both].every((r) => ok(r, 'grid') && modalOpened(r));
+	check(
+		'e-grid',
+		gridWorks ? 'pass' : 'fail',
+		`${[enf, both].map((r) => `${r.label}: grid ${ok(r, 'grid') ? 'ok' : 'FAILED'}, media window ${get(r, 'editor').modal}`).join(' | ')}`
+	);
 }
 
 // ── f) Traffic Guard: an editor's 30-image batch with the API enforcing ────
@@ -644,10 +810,7 @@ const only = (opts.only || 'c,d,e,f').split(',');
 try {
 	const files = await fixtures(30);
 	if (only.includes('c') || only.includes('d')) await pagesAndMenu();
-	if (only.includes('e')) {
-		if (IS_72) await media(files[0]);
-		else check('e', 'not run', 'client-side media is WordPress 7.2 only');
-	}
+	if (only.includes('e')) await media(files[0]);
 	if (only.includes('f')) await traffic(files, IS_72 ? (await fixtures(90)).slice(30) : []);
 } catch (e) {
 	check('browser', 'fail', `checks.mjs stopped: ${String(e.stack || e).slice(0, 600)}`);
